@@ -1,5 +1,7 @@
+
 cat > README.md << 'EOF'
 # 🧠 Agent Lucie
+
 
 > Assistant IA local, souverain et multi-agents — fonctionne 100% hors-ligne sur macOS.
 
@@ -33,7 +35,7 @@ Agent Lucie
 ## 🚀 Installation
 ```bash
 # 1. Cloner le projet
-git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
+git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git 
 cd Agent-Lucie
 
 # 2. Installer les dépendances
