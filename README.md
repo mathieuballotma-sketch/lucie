@@ -1,111 +1,80 @@
-# 🧠 Agent Lucide
+cat > README.md << 'EOF'
+# 🧠 Agent Lucie
 
-> **Agent IA personnel 100% local, open source et souverain.**  
-> Vos données restent sur votre machine. Toujours.
+> Assistant IA local, souverain et multi-agents — fonctionne 100% hors-ligne sur macOS.
 
----
+![Python](https://img.shields.io/badge/Python-3.11+-blue)
+![macOS](https://img.shields.io/badge/macOS-13+-black)
+![Ollama](https://img.shields.io/badge/Ollama-local-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-## 🌱 Un mot honnête avant tout
+## ✨ Fonctionnalités actuelles
 
-Ce projet a démarré début février 2026. Il a **moins de 2 mois d'existence**.
+- 🖥️ **Ouvre des applications** — Notes, Word, Mail, Safari...
+- 📝 **Génère des documents Word** avec résumés automatiques
+- ⏰ **Crée des rappels** directement depuis la conversation
+- 🧠 **Mémoire épisodique** — se souvient des conversations
+- 🛡️ **Système immunitaire** — détecte et isole les erreurs
+- ⚡ **Multi-modèles** — nano (0.5B) à quality (14B)
+- 🔒 **100% local** — aucune donnée envoyée sur internet
 
-Je suis seul à le développer, brique par brique, en testant chaque composant avant de passer au suivant. La base est là et elle fonctionne — mais soyons clairs : **il reste beaucoup de travail**. Des bugs existent, certaines fonctionnalités sont encore fragiles, la documentation est incomplète, et l'architecture continue d'évoluer chaque jour.
+> 🚧 En développement actif — nouvelles fonctionnalités en cours
 
-Je publie ce projet en toute transparence, pas pour impressionner, mais pour construire quelque chose d'utile et d'honnête avec ceux qui partagent cette vision.
+## 🏗️ Architecture
+```
+Agent Lucie
+├── 🧠 Cortex          — orchestrateur principal (9 chemins d'exécution)
+├── 🤖 Agents          — Computer, Document, Knowledge, Cyber, Reminder...
+├── 💾 Mémoire         — working memory + épisodique (ChromaDB)
+├── ⚡ Event Bus       — communication inter-agents
+└── 🔌 Providers       — Ollama (local)
+```
 
-**Si vous cherchez un outil stable et prêt pour la production — ce n'est pas encore ça.**  
-**Si vous voulez suivre la naissance d'un projet ambitieux et y contribuer — vous êtes au bon endroit.**
-
----
-
-## 💡 Pourquoi Agent Lucide ?
-
-La plupart des assistants IA vous demandent de confier vos données à un serveur distant. Agent Lucide fait le choix inverse : **tout tourne sur votre machine**, avec vos propres modèles, sans aucun cloud.
-
-Trois piliers fondateurs :
-
-- 🔒 **Souveraineté totale** — 100% local, zéro dépendance cloud, vos données ne quittent jamais votre machine
-- 🤖 **Autonomie réelle** — L'agent apprend de vos routines, propose des automatisations, et s'améliore en continu
-- 🏪 **Extensibilité économique** — Une future marketplace permettra à la communauté de créer, partager et vendre ses propres agents
-
----
-
-## ✅ Ce que l'agent sait faire aujourd'hui
-
-### Fonctionnalités stables
-- **Interface HUD macOS** — Fenêtre translucide flottante, toujours accessible
-- **Contrôle de l'ordinateur** — Ouvrir des apps, taper du texte, cliquer, capturer l'écran, gérer les fenêtres
-- **Mémoire** — Mémoire de travail (contexte récent) + mémoire épisodique à long terme (ChromaDB)
-- **Recherche d'informations** — Web, Wikipedia, arXiv, actualités
-- **Création de documents** — Génération de fichiers Word (.docx)
-- **Rappels & Calendrier** — Lecture et ajout d'événements macOS
-- **Gestion de fichiers** — Lister, copier, déplacer, supprimer
-
-### Fonctionnalités expérimentales
-- **StrategistAgent** — Propose des automatisations basées sur vos habitudes
-- **Cache de prompts** — Cache exact + vectoriel (FAISS) pour accélérer les réponses
-- **Élasticité matérielle** — Choix dynamique du modèle LLM selon la charge CPU
-- **ProfileAgent** — Analyse vos thèmes récurrents en arrière-plan
-
-### Problèmes connus
-- Latence : 2 à 30 secondes selon la complexité (objectif < 3s en cours)
-- Certains appels AppleScript peuvent échouer si l'application est mal lancée
-- La mémoire vectorielle nécessite sentence-transformers — désactivée si absent
-- Documentation encore très incomplète
-- Couverture de tests insuffisante
-
----
-
-## 🚀 Vision Future
-
-Agent Lucide n'est pas qu'un assistant — c'est un **écosystème d'agents collaboratifs, souverains et auto-améliorants**.
-
-| Domaine | Aujourd'hui | Demain |
-|---|---|---|
-| Interface | HUD + Telegram | Commande vocale, notifications riches |
-| Actions | Ouverture, frappe, clic, email | Vérification post-action, zones de sécurité |
-| Mémoire | Épisodique + travail | Mémoire associative, apprentissage |
-| Autonomie | Strategist basique | Kaizen Agent, renforcement |
-| Réseau | Aucun | P2P, calcul distribué, immunité collective |
-| Économie | Aucune | Marketplace d'agents, SDK développeurs |
-
-### Ce qui arrive
-- 🛡️ **Vérification post-action** — L'agent contrôle le résultat de chaque action et corrige si nécessaire
-- 🔄 **Kaizen Agent** — Analyse les erreurs et propose des correctifs automatiquement
-- 🌐 **Réseau P2P** — Communication entre agents, partage de puissance de calcul
-- 🏪 **Marketplace d'agents** — SDK pour créer et vendre des agents spécialisés
-- 🎙️ **Commande vocale** — Mot déclencheur pour interagir sans les mains
-
----
-
-## 🛠️ Stack technique
-
-- **Langage** — Python 3.11
-- **Modèles LLM** — Ollama (qwen2.5 : 0.5b, 3b, 7b, 14b)
-- **Base vectorielle** — ChromaDB + FAISS
-- **Interface** — PyObjC (Cocoa) pour le HUD macOS
-- **Communication** — Bus d'événements asynchrone maison
-- **Métriques** — Prometheus
-
----
-
-## ⚙️ Installation
-
+## 🚀 Installation
 ```bash
-git clone https://github.com/mathieuballotma-sketch/agent-luci.git
-cd agent-luci
+# 1. Cloner le projet
+git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
+cd Agent-Lucie
+
+# 2. Installer les dépendances
 pip install -r requirements.txt
-cp config.yaml.example config.yaml
+
+# 3. Installer Ollama
+# https://ollama.com
+
+# 4. Télécharger les modèles
+ollama pull qwen2.5:0.5b
+ollama pull qwen2.5:3b
+
+# 5. Lancer l'agent
 python main.py
 ```
 
-**Prérequis** : Python 3.11 · Ollama installé et lancé · macOS (optimisé Apple Silicon)
+## 📁 Démos
 
----
+Le dossier `demos/` contient des documents générés automatiquement par Agent Lucie.
 
-## 🤝 Contribuer
+## 🛠️ Stack technique
 
-Le projet est open source (MIT) et ouvert aux contributions.  
-Que ce soit du code, des retours d'usage ou des idées — vous êtes les bienvenus.
+- **Python 3.11+** — asyncio, threading
+- **Ollama** — modèles LLM locaux
+- **ChromaDB** — mémoire vectorielle
+- **sentence-transformers** — embeddings sémantiques
+- **PyAutoGUI + AppleScript** — contrôle macOS
+- **Prometheus** — métriques
 
-> *C'est le début. La base est solide. Construisons ensemble.*
+## 👨‍💻 Auteur
+
+Mathieu Bellot — projet personnel open-source
+EOF
+## ⚙️ Prérequis macOS
+
+> **Important** — Autoriser l'accès dans Réglages Système :
+> - Confidentialité > Accessibilité → autoriser Terminal
+> - Confidentialité > Automatisation → autoriser Terminal
+
+## ⚠️ Disclaimer
+
+Ce projet manipule des applications et fichiers de votre Mac.
+Utilisez-le à vos propres risques — l'auteur n'est pas responsable
+des actions effectuées par l'agent (mails envoyés, fichiers modifiés, rappels créés).
