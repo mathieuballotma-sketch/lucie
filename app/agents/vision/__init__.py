@@ -1,5 +1,5 @@
+from .image_describer import ImageDescriberAgent
 from .text_extractor import TextExtractorAgent
 from .ui_element import UIElementAgent
-from .image_describer import ImageDescriberAgent
 
-__all__ = ['TextExtractorAgent', 'UIElementAgent', 'ImageDescriberAgent']
+__all__ = ["TextExtractorAgent", "UIElementAgent", "ImageDescriberAgent"]

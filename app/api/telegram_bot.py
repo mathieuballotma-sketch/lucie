@@ -6,10 +6,12 @@ Version robuste avec logs détaillés et désactivation du RAG.
 
 import asyncio
 import logging
-import requests
-from fastapi import FastAPI, Request
 import threading
+
+import requests
 import uvicorn
+from fastapi import FastAPI, Request
+
 from ..core.engine import LucidEngine
 from ..utils.logger import logger
 
@@ -22,7 +24,9 @@ class TelegramBot:
     Gère les interactions avec Telegram via webhook.
     """
 
-    def __init__(self, engine: LucidEngine, token: str, webhook_url: str, port: int = 8002):
+    def __init__(
+        self, engine: LucidEngine, token: str, webhook_url: str, port: int = 8002
+    ):
         self.engine = engine
         self.token = token
         self.webhook_url = webhook_url
@@ -47,19 +51,22 @@ class TelegramBot:
                     logger.info(f"📩 Message de {chat_id}: {text}")
 
                     # Vérifier que le moteur a bien la méthode process_async
-                    if not hasattr(self.engine, 'process_async'):
+                    if not hasattr(self.engine, "process_async"):
                         error_msg = "Erreur: engine n'a pas de méthode process_async"
                         logger.error(error_msg)
                         await self._send_message(chat_id, error_msg)
                         return {"ok": False, "error": error_msg}
 
-                    # Appeler l'agent (avec use_rag=False pour éviter les dépendances lourdes)
+                    # Appeler l'agent (avec use_rag=False pour éviter les
+                    # dépendances lourdes)
                     try:
                         response, latency = await self.engine.process_async(
                             query=text,
-                            use_rag=False  # ← désactive le RAG pour Telegram
+                            use_rag=False,  # ← désactive le RAG pour Telegram
                         )
-                        logger.info(f"🤖 Réponse obtenue en {latency:.2f}s: {response[:100]}...")
+                        logger.info(
+                            f"🤖 Réponse obtenue en {latency:.2f}s: {response[:100]}..."
+                        )
                         await self._send_message(chat_id, response)
                     except Exception as e:
                         logger.exception(f"❌ Erreur lors du traitement: {e}")
@@ -97,12 +104,14 @@ class TelegramBot:
             if response.status_code == 200:
                 logger.info("✅ Webhook Telegram configuré")
             else:
-                logger.error(f"❌ Erreur configuration webhook: {response.text}")
+                logger.error(f"❌ Erreur configuration webhook: {
+                        response.text}")
         except Exception as e:
             logger.error(f"❌ Exception configuration webhook: {e}")
 
     def start(self):
         """Démarre le serveur FastAPI pour le bot dans un thread."""
+
         def run():
             uvicorn.run(self.app, host="0.0.0.0", port=self.port)
 

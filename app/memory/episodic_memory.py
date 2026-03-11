@@ -5,12 +5,12 @@ Utilise ChromaDB avec une politique d'éviction LRU (basée sur timestamp).
 Version avec gestion optionnelle de sentence-transformers et cache LRU.
 """
 
-import time
 import hashlib
 import threading
-from typing import List, Dict, Any, Optional
-from pathlib import Path
+import time
 from collections import OrderedDict
+from pathlib import Path
+from typing import Dict, List, Optional
 
 import chromadb
 import numpy as np
@@ -20,14 +20,18 @@ from ..utils.logger import logger
 # Tentative d'import de SentenceTransformer
 try:
     from sentence_transformers import SentenceTransformer
+
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
-    logger.warning("sentence-transformers non disponible, la mémoire épisodique utilisera un embedding factice (recherche désactivée).")
+    logger.warning(
+        "sentence-transformers non disponible, la mémoire épisodique utilisera un embedding factice (recherche désactivée)."  # noqa: E501
+    )
 
 
 class DummyEmbedder:
     """Embedder factice qui retourne un vecteur de zéros."""
+
     def __init__(self):
         self.dimension = 384  # dimension par défaut
 
@@ -43,10 +47,13 @@ class EpisodicMemory:
     Chaque souvenir contient : query, response, timestamp, metadata (satisfaction, etc.)
     """
 
-    def __init__(self, persist_directory: str = "./data/episodic_memory",
-                 collection_name: str = "episodes",
-                 embedding_model: str = "all-MiniLM-L6-v2",
-                 max_entries: int = 10000):
+    def __init__(
+        self,
+        persist_directory: str = "./data/episodic_memory",
+        collection_name: str = "episodes",
+        embedding_model: str = "all-MiniLM-L6-v2",
+        max_entries: int = 10000,
+    ):
         self.persist_directory = Path(persist_directory)
         self.persist_directory.mkdir(parents=True, exist_ok=True)
 
@@ -55,7 +62,8 @@ class EpisodicMemory:
             try:
                 self.embedder = SentenceTransformer(embedding_model)
                 self.dimension = self.embedder.get_sentence_embedding_dimension()
-                logger.info(f"Embedder {embedding_model} chargé (dim={self.dimension})")
+                logger.info(f"Embedder {embedding_model} chargé (dim={
+                        self.dimension})")
             except Exception as e:
                 logger.error(f"Erreur chargement SentenceTransformer: {e}")
                 self.embedder = DummyEmbedder()
@@ -69,8 +77,7 @@ class EpisodicMemory:
         # Initialisation ChromaDB
         self.client = chromadb.PersistentClient(path=str(self.persist_directory))
         self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            metadata={"hnsw:space": "cosine"}
+            name=collection_name, metadata={"hnsw:space": "cosine"}
         )
 
         self._lock = threading.RLock()
@@ -79,13 +86,16 @@ class EpisodicMemory:
         self.query_cache = OrderedDict()
         self.cache_max_size = 20
 
-        logger.info(f"🧠 Mémoire épisodique initialisée avec {self.collection.count()} souvenirs (embedder: {'réel' if SENTENCE_TRANSFORMERS_AVAILABLE else 'factice'})")
+        logger.info(f"🧠 Mémoire épisodique initialisée avec {
+                self.collection.count()} souvenirs (embedder: {
+                'réel' if SENTENCE_TRANSFORMERS_AVAILABLE else 'factice'})")
 
     def add(self, query: str, response: str, metadata: Optional[Dict] = None):
         """
         Ajoute une interaction dans la mémoire épisodique.
         Se fait de manière asynchrone (via un thread) pour ne pas bloquer.
         """
+
         def _add():
             with self._lock:
                 # Vérifier si le nombre d'entrées dépasse le max
@@ -94,12 +104,13 @@ class EpisodicMemory:
                     self._evict_oldest()
 
                 # Générer un ID unique
-                doc_id = hashlib.md5(f"{query}_{time.time()}".encode()).hexdigest()
+                doc_id = hashlib.md5(f"{query}_{
+                        time.time()}".encode()).hexdigest()
 
                 # Métadonnées par défaut
                 meta = metadata or {}
-                meta['timestamp'] = time.time()
-                meta['query'] = query
+                meta["timestamp"] = time.time()
+                meta["query"] = query
 
                 # Calcul de l'embedding
                 embedding = self.embedder.encode(query).tolist()
@@ -109,13 +120,15 @@ class EpisodicMemory:
                     documents=[response],
                     metadatas=[meta],
                     ids=[doc_id],
-                    embeddings=[embedding]
+                    embeddings=[embedding],
                 )
                 logger.debug(f"Souvenir ajouté: {query[:50]}...")
 
         threading.Thread(target=_add, daemon=True).start()
 
-    def search(self, query: str, n_results: int = 3, min_similarity: float = 0.7) -> List[Dict]:
+    def search(
+        self, query: str, n_results: int = 3, min_similarity: float = 0.7
+    ) -> List[Dict]:
         """
         Recherche des souvenirs similaires à la requête.
         Retourne une liste de dict avec 'query', 'response', 'metadata', 'similarity'.
@@ -145,24 +158,26 @@ class EpisodicMemory:
             results = self.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results,
-                include=["documents", "metadatas", "distances"]
+                include=["documents", "metadatas", "distances"],
             )
 
             # Formater les résultats
             memories = []
-            if results['documents'] and results['documents'][0]:
-                for i, doc in enumerate(results['documents'][0]):
-                    metadata = results['metadatas'][0][i]
-                    distance = results['distances'][0][i]
+            if results["documents"] and results["documents"][0]:
+                for i, doc in enumerate(results["documents"][0]):
+                    metadata = results["metadatas"][0][i]
+                    distance = results["distances"][0][i]
                     similarity = 1 - distance
 
                     if similarity >= min_similarity:
-                        memories.append({
-                            'query': metadata.get('query', ''),
-                            'response': doc,
-                            'metadata': metadata,
-                            'similarity': similarity
-                        })
+                        memories.append(
+                            {
+                                "query": metadata.get("query", ""),
+                                "response": doc,
+                                "metadata": metadata,
+                                "similarity": similarity,
+                            }
+                        )
 
             # Mettre en cache
             with self._lock:
@@ -181,26 +196,28 @@ class EpisodicMemory:
         """Supprime le souvenir le plus ancien (par timestamp)"""
         try:
             all_data = self.collection.get(include=["metadatas"])
-            if not all_data['metadatas']:
+            if not all_data["metadatas"]:
                 return
 
             oldest_id = None
-            oldest_ts = float('inf')
-            for i, meta in enumerate(all_data['metadatas']):
-                ts = meta.get('timestamp', 0)
+            oldest_ts = float("inf")
+            for i, meta in enumerate(all_data["metadatas"]):
+                ts = meta.get("timestamp", 0)
                 if ts < oldest_ts:
                     oldest_ts = ts
-                    oldest_id = all_data['ids'][i]
+                    oldest_id = all_data["ids"][i]
 
             if oldest_id:
                 self.collection.delete(ids=[oldest_id])
-                logger.debug(f"Éviction du souvenir {oldest_id} (timestamp {oldest_ts})")
+                logger.debug(
+                    f"Éviction du souvenir {oldest_id} (timestamp {oldest_ts})"
+                )
         except Exception as e:
             logger.error(f"Erreur lors de l'éviction: {e}")
 
     def get_stats(self) -> dict:
         """Retourne des statistiques sur la mémoire"""
         return {
-            'count': self.collection.count(),
-            'max_entries': self.max_entries,
+            "count": self.collection.count(),
+            "max_entries": self.max_entries,
         }

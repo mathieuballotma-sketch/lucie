@@ -1,13 +1,13 @@
 import subprocess
-import shlex
-import time
 from pathlib import Path
 from typing import Optional, Tuple
+
 from ..utils.exceptions import ActionError, AppleScriptError, FileOperationError
 from ..utils.logger import get_logger
 from ..utils.notifier import send_notification
 
 logger = get_logger(__name__)
+
 
 class SystemActions:
     """
@@ -21,11 +21,11 @@ class SystemActions:
         logger.debug(f"Exécution AppleScript : {script[:200]}...")
         try:
             process = subprocess.run(
-                ['osascript', '-e', script],
+                ["osascript", "-e", script],
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                check=False
+                check=False,
             )
             if process.returncode == 0:
                 logger.debug(f"AppleScript réussi : {process.stdout[:100]}...")
@@ -44,11 +44,11 @@ class SystemActions:
         """
         # Séquence d'échappement : backslash, guillemet, retour à la ligne
         replacements = [
-            ('\\', '\\\\'),
+            ("\\", "\\\\"),
             ('"', '\\"'),
-            ('\n', '\\n'),
-            ('\r', '\\r'),
-            ('\t', '\\t'),
+            ("\n", "\\n"),
+            ("\r", "\\r"),
+            ("\t", "\\t"),
         ]
         for old, new in replacements:
             text = text.replace(old, new)
@@ -60,7 +60,7 @@ class SystemActions:
         """
         try:
             # Utiliser la liste d'arguments pour éviter shell=True
-            result = subprocess.run(['open', str(path)], capture_output=True, text=True)
+            result = subprocess.run(["open", str(path)], capture_output=True, text=True)
             if result.returncode == 0:
                 logger.info(f"✅ Fichier ouvert : {path}")
                 return True
@@ -78,21 +78,28 @@ class SystemActions:
             raise ActionError("Le titre et le contenu ne peuvent pas être vides.")
         escaped_title = self._escape_applescript(title)
         escaped_content = self._escape_applescript(content)
-        script = f'''
+        script = f"""
         tell application "Notes"
-            make new note with properties {{name:"{escaped_title}", body:"{escaped_content}"}}
+            make new note with properties {{
+                name:"{escaped_title}",
+                body:"{escaped_content}"
+            }}
         end tell
-        '''
+        """
         logger.info(f"Tentative de création de la note '{title}'...")
         success, output = self._run_applescript(script)
         if success:
             logger.info(f"✅ Note '{title}' créée.")
-            send_notification(title="Note créée", message=f"Note '{title}' ajoutée dans Notes")
+            send_notification(
+                title="Note créée", message=f"Note '{title}' ajoutée dans Notes"
+            )
             return True
         else:
             raise AppleScriptError(f"Échec création note : {output}")
 
-    def create_reminder(self, name: str, notes: str = "", due_date: Optional[str] = None) -> bool:
+    def create_reminder(
+        self, name: str, notes: str = "", due_date: Optional[str] = None
+    ) -> bool:
         """
         Crée un rappel dans l'application Rappels.
         """
@@ -100,13 +107,16 @@ class SystemActions:
             raise ActionError("Le nom du rappel ne peut pas être vide.")
         escaped_name = self._escape_applescript(name)
         escaped_notes = self._escape_applescript(notes)
-        script = f'''
+        script = f"""
         tell application "Reminders"
             tell default list
-                make new reminder with properties {{name:"{escaped_name}", body:"{escaped_notes}"}}
+                make new reminder with properties {{
+                    name:"{escaped_name}",
+                    body:"{escaped_notes}"
+                }}
             end tell
         end tell
-        '''
+        """
         logger.info(f"Tentative de création du rappel '{name}'...")
         success, output = self._run_applescript(script)
         if success:
@@ -115,21 +125,29 @@ class SystemActions:
             return True
         else:
             # Fallback sur la liste par défaut "Rappels"
-            fallback_script = f'''
+            fallback_script = f"""
             tell application "Reminders"
                 tell list "Rappels"
-                    make new reminder with properties {{name:"{escaped_name}", body:"{escaped_notes}"}}
+                    make new reminder with properties {{
+                        name:"{escaped_name}",
+                        body:"{escaped_notes}"
+                    }}
                 end tell
             end tell
-            '''
-            logger.warning(f"Premier script échoué, tentative avec liste 'Rappels'...")
+            """
+            logger.warning("Premier script échoué, tentative avec liste 'Rappels'...")
             success2, output2 = self._run_applescript(fallback_script)
             if success2:
                 logger.info(f"✅ Rappel '{name}' créé (liste Rappels).")
-                send_notification(title="Rappel créé", message=f"Rappel '{name}' ajouté")
+                send_notification(
+                    title="Rappel créé", message=f"Rappel '{name}' ajouté"
+                )
                 return True
             else:
-                raise AppleScriptError(f"Échec création rappel : {output} (premier) et {output2} (fallback)")
+                raise AppleScriptError(
+                    f"Échec création rappel : {output} (premier) "
+                    f"et {output2} (fallback)"
+                )
 
     def send_notification(self, title: str, message: str) -> bool:
         """

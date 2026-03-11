@@ -2,17 +2,23 @@
 Agent Cyber - Système immunitaire pour Agent Lucide.
 Surveille les erreurs, détecte les anomalies, met en quarantaine les outils défaillants,
 conserve une mémoire immunitaire longue et surveille l'homéostasie système.
+
+Corrections :
+- Injection de la boucle asyncio via set_loop() pour éviter les appels asynchrones dans le thread.
+- Toutes les publications sur event_bus sont synchrones.
+- Ajout de logs pour tracer la réception des événements.
+- Seuil de détection paramétrable (error_threshold).
+- Exclusion des erreurs utilisateur (application inexistante) de la quarantaine.
 """
 
 import asyncio
 import hashlib
-import time
-import threading
-from collections import defaultdict, deque
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Set
-from dataclasses import dataclass, field
 import json
+import threading
+import time
+from collections import defaultdict, deque
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Set
 
 import psutil
 
@@ -20,15 +26,15 @@ from app.agents.base_agent import BaseAgent
 from app.utils.logger import logger
 from app.utils.metrics import (
     cyber_errors_detected,
+    cyber_quarantine_actions,
     cyber_threats_shared,
-    cyber_immunity_updates,
-    cyber_quarantine_actions
 )
 
 
 @dataclass
 class ThreatSignature:
     """Signature d'une menace (erreur récurrente)."""
+
     id: str
     pattern: str
     first_seen: float
@@ -47,6 +53,14 @@ class CyberAgent(BaseAgent):
     Surveille les événements d'erreur, détecte les patterns anormaux,
     maintient une base de signatures de menaces, et peut mettre en quarantaine.
     """
+
+    # Patterns d'erreurs utilisateur à exclure de la quarantaine
+    EXCLUDED_FROM_QUARANTINE = [
+        "n'existe pas sur ce système",
+        "introuvable",
+        "not found",
+        "Unable to find application",
+    ]
 
     def __init__(self, llm_service, bus, event_bus, config: dict, memory_service=None):
         super().__init__("CyberAgent", llm_service, bus)
@@ -67,14 +81,16 @@ class CyberAgent(BaseAgent):
         self.error_history = deque(maxlen=1000)
 
         # Quarantaine : outil interdit temporairement
-        self.quarantine: Dict[str, float] = {}  # agent:tool -> expiration timestamp
+        # agent:tool -> expiration timestamp
+        self.quarantine: Dict[str, float] = {}
 
-        # Thread de surveillance périodique
+        # Thread de surveillance — démarré plus tard après injection de la boucle
         self._stop_event = threading.Event()
-        self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
-        self._thread.start()
+        self._thread: Optional[threading.Thread] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._started: bool = False
 
-        # Souscrire aux événements
+        # Souscrire aux événements (callbacks exécutés dans des threads de l'event_bus)
         self.event_bus.subscribe("tool.error", self._on_tool_error)
         self.event_bus.subscribe("agent.error", self._on_agent_error)
         self.event_bus.subscribe("system.anomaly", self._on_system_anomaly)
@@ -83,7 +99,20 @@ class CyberAgent(BaseAgent):
         if self.memory:
             self._load_historical_signatures()
 
-        logger.info("🛡️ Agent Cyber initialisé")
+        logger.info("🛡️ Agent Cyber initialisé (en attente de la boucle asyncio)")
+
+    def set_loop(self, loop: asyncio.AbstractEventLoop):
+        """
+        Injecte la boucle asyncio principale et démarre le thread de surveillance.
+        Cette méthode doit être appelée après le démarrage de la boucle, depuis le thread principal.
+        """
+        print("🔁 CYBER_AGENT.set_loop appelé")
+        self._loop = loop
+        if not self._started:
+            self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
+            self._thread.start()
+            self._started = True
+            logger.info("🔁 Agent Cyber : surveillance démarrée")
 
     def get_tools(self) -> list:
         return []
@@ -95,10 +124,13 @@ class CyberAgent(BaseAgent):
         return "Agent Cyber non destiné à un usage direct."
 
     # -----------------------------------------------------------------------
-    # Gestion des événements
+    # Gestion des événements (appelés depuis des threads de l'event_bus)
     # -----------------------------------------------------------------------
 
     def _on_tool_error(self, data: dict, event_id: str, source: str):
+        print(f"🛡️ CyberAgent a reçu tool.error: {data}")
+        logger.info(f"🛡️ CyberAgent a reçu tool.error: {data}")
+
         error_msg = data.get("error", "")
         agent = data.get("agent", "unknown")
         tool = data.get("tool", "unknown")
@@ -131,14 +163,11 @@ class CyberAgent(BaseAgent):
         cpu = data.get("cpu", 0)
         mem = data.get("memory", 0)
         if cpu > 80 or mem > 80:
-            # Publier un signal de throttling
-            asyncio.run_coroutine_threadsafe(
-                self.event_bus.publish(
-                    "system.throttle",
-                    {"cpu": cpu, "memory": mem, "reason": "high_load"},
-                    self.name
-                ),
-                asyncio.get_event_loop()
+            # Publier un signal de throttling (synchrone)
+            self.event_bus.publish(
+                "system.throttle",
+                {"cpu": cpu, "memory": mem, "reason": "high_load"},
+                self.name,
             )
             logger.warning(f"⚠️ Charge système élevée: CPU={cpu}%, Mémoire={mem}%")
 
@@ -165,7 +194,7 @@ class CyberAgent(BaseAgent):
                 last_seen=timestamp,
                 count=1,
                 affected_agents={agent},
-                severity=0.1
+                severity=0.1,
             )
             self.signatures[signature_id] = sig
 
@@ -173,17 +202,27 @@ class CyberAgent(BaseAgent):
         if self.memory and sig.count == 1:  # première fois
             self._check_historical_match(normalized, agent, tool, sig)
 
-        # Si le seuil est atteint, déclencher une alerte et éventuellement quarantaine
-        if sig.count >= self.error_threshold and sig.severity >= self.severity_threshold:
+        # Si le seuil est atteint, déclencher une alerte
+        if (
+            sig.count >= self.error_threshold
+            and sig.severity >= self.severity_threshold
+        ):
             self._trigger_alert(sig)
+            # Ne mettre en quarantaine que si la sévérité est très élevée
+            # et que l'erreur n'est pas une simple erreur utilisateur
             if sig.severity > 0.8:
                 self._quarantine_tool(agent, tool, sig)
 
     def _normalize_error(self, error_msg: str) -> str:
         import re
-        normalized = re.sub(r'\b\d+\b', '<NUM>', error_msg)
-        normalized = re.sub(r'/[^\s]+', '<PATH>', normalized)
-        normalized = re.sub(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', '<UUID>', normalized)
+
+        normalized = re.sub(r"\b\d+\b", "<NUM>", error_msg)
+        normalized = re.sub(r"/[^\s]+", "<PATH>", normalized)
+        normalized = re.sub(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+            "<UUID>",
+            normalized,
+        )
         return normalized
 
     def _compute_severity(self, sig: ThreatSignature) -> float:
@@ -193,30 +232,38 @@ class CyberAgent(BaseAgent):
         frequency = sig.count / max(age, 1) * 3600  # erreurs par heure
         spread = len(sig.affected_agents) / 5.0  # proportion arbitraire
 
-        severity = min(1.0, (frequency / 10) * 0.4 + (1 / (recency + 1)) * 0.3 + spread * 0.3)
+        severity = min(
+            1.0, (frequency / 10) * 0.4 + (1 / (recency + 1)) * 0.3 + spread * 0.3
+        )
         return severity
 
     def _trigger_alert(self, sig: ThreatSignature):
         logger.warning(f"🚨 Menace détectée: {sig.pattern} (sévérité {sig.severity:.2f})")
-        asyncio.run_coroutine_threadsafe(
-            self.event_bus.publish(
-                "cyber.threat",
-                {
-                    "signature_id": sig.id,
-                    "pattern": sig.pattern,
-                    "severity": sig.severity,
-                    "count": sig.count,
-                    "affected_agents": list(sig.affected_agents),
-                    "solution": sig.solution
-                },
-                self.name
-            ),
-            asyncio.get_event_loop()
+        # Publication synchrone
+        self.event_bus.publish(
+            "cyber.threat",
+            {
+                "signature_id": sig.id,
+                "pattern": sig.pattern,
+                "severity": sig.severity,
+                "count": sig.count,
+                "affected_agents": list(sig.affected_agents),
+                "solution": sig.solution,
+            },
+            self.name,
         )
         cyber_threats_shared.inc()
 
     def _quarantine_tool(self, agent: str, tool: str, sig: ThreatSignature):
-        """Met un outil en quarantaine pour une durée déterminée."""
+        """
+        Met un outil en quarantaine pour une durée déterminée,
+        sauf s'il s'agit d'une erreur utilisateur banale.
+        """
+        # Ne pas mettre en quarantaine pour des erreurs utilisateur normales
+        if any(excl in sig.pattern for excl in self.EXCLUDED_FROM_QUARANTINE):
+            logger.debug(f"Quarantaine ignorée pour erreur utilisateur: {sig.pattern}")
+            return
+
         key = f"{agent}:{tool}"
         expire = time.time() + self.quarantine_duration
         with self._lock:
@@ -225,14 +272,11 @@ class CyberAgent(BaseAgent):
         logger.error(f"⛔ Outil {key} mis en quarantaine jusqu'à {time.ctime(expire)}")
         cyber_quarantine_actions.labels(agent=agent, tool=tool).inc()
 
-        # Publier un événement pour informer les autres agents
-        asyncio.run_coroutine_threadsafe(
-            self.event_bus.publish(
-                "cyber.quarantine",
-                {"agent": agent, "tool": tool, "until": expire},
-                self.name
-            ),
-            asyncio.get_event_loop()
+        # Publication synchrone
+        self.event_bus.publish(
+            "cyber.quarantine",
+            {"agent": agent, "tool": tool, "until": expire},
+            self.name,
         )
 
     # -----------------------------------------------------------------------
@@ -245,7 +289,9 @@ class CyberAgent(BaseAgent):
             return
         try:
             # On cherche des souvenirs avec le tag "cyber_signature"
-            results = self.memory.remember("cyber_signature", n_results=50, min_similarity=0.6)
+            results = self.memory.remember(
+                "cyber_signature", n_results=50, min_similarity=0.6
+            )
             for res in results:
                 metadata = res.get("metadata", {})
                 if metadata.get("type") == "cyber_signature":
@@ -259,7 +305,7 @@ class CyberAgent(BaseAgent):
                         affected_agents=set(sig_data["affected_agents"]),
                         severity=sig_data["severity"],
                         resolved=True,  # archivée
-                        solution=sig_data.get("solution")
+                        solution=sig_data.get("solution"),
                     )
                     with self._lock:
                         self.signatures[sig.id] = sig
@@ -267,7 +313,9 @@ class CyberAgent(BaseAgent):
         except Exception as e:
             logger.error(f"Erreur chargement historique: {e}")
 
-    def _check_historical_match(self, normalized: str, agent: str, tool: str, current_sig: ThreatSignature):
+    def _check_historical_match(
+        self, normalized: str, agent: str, tool: str, current_sig: ThreatSignature
+    ):
         """Vérifie si une erreur actuelle correspond à une signature archivée."""
         if not self.memory:
             return
@@ -279,8 +327,12 @@ class CyberAgent(BaseAgent):
                 if metadata.get("type") == "cyber_signature":
                     old_sig = json.loads(metadata.get("data", "{}"))
                     if old_sig.get("pattern") == normalized:
-                        current_sig.solution = old_sig.get("solution", "Solution archivée disponible")
-                        logger.info(f"🔁 Correspondance historique trouvée pour {normalized}")
+                        current_sig.solution = old_sig.get(
+                            "solution", "Solution archivée disponible"
+                        )
+                        logger.info(
+                            f"🔁 Correspondance historique trouvée pour {normalized}"
+                        )
                         break
         except Exception as e:
             logger.error(f"Erreur recherche historique: {e}")
@@ -298,18 +350,18 @@ class CyberAgent(BaseAgent):
                 "count": sig.count,
                 "affected_agents": list(sig.affected_agents),
                 "severity": sig.severity,
-                "solution": sig.solution or "Inconnue"
+                "solution": sig.solution or "Inconnue",
             }
             self.memory.add_episode(
                 query=f"cyber_signature:{sig.id}",
                 response=json.dumps(data),
-                metadata={"type": "cyber_signature", "pattern": sig.pattern}
+                metadata={"type": "cyber_signature", "pattern": sig.pattern},
             )
         except Exception as e:
             logger.error(f"Erreur archivage signature: {e}")
 
     # -----------------------------------------------------------------------
-    # Boucle de surveillance périodique
+    # Boucle de surveillance périodique (exécutée dans un thread)
     # -----------------------------------------------------------------------
 
     def _monitor_loop(self):
@@ -360,7 +412,9 @@ class CyberAgent(BaseAgent):
                 agent, tool = key.split(":", 1)
                 found = False
                 for sig in self.signatures.values():
-                    if agent in sig.affected_agents and sig.pattern in " ".join([e[3] for e in recent]):
+                    if agent in sig.affected_agents and sig.pattern in " ".join(
+                        [e[3] for e in recent]
+                    ):
                         found = True
                         break
                 if not found:
@@ -371,7 +425,7 @@ class CyberAgent(BaseAgent):
                         last_seen=now,
                         count=count,
                         affected_agents={agent},
-                        severity=0.6
+                        severity=0.6,
                     )
                     with self._lock:
                         self.signatures[sig.id] = sig
@@ -382,13 +436,9 @@ class CyberAgent(BaseAgent):
         cpu = psutil.cpu_percent(interval=0.5)
         mem = psutil.virtual_memory().percent
         if cpu > 70 or mem > 80:
-            asyncio.run_coroutine_threadsafe(
-                self.event_bus.publish(
-                    "system.anomaly",
-                    {"cpu": cpu, "memory": mem},
-                    self.name
-                ),
-                asyncio.get_event_loop()
+            # Publication synchrone
+            self.event_bus.publish(
+                "system.anomaly", {"cpu": cpu, "memory": mem}, self.name
             )
 
     # -----------------------------------------------------------------------
@@ -405,7 +455,7 @@ class CyberAgent(BaseAgent):
                     "count": sig.count,
                     "affected_agents": list(sig.affected_agents),
                     "last_seen": sig.last_seen,
-                    "quarantined": sig.quarantined
+                    "quarantined": sig.quarantined,
                 }
                 for sig in self.signatures.values()
                 if not sig.resolved and sig.severity >= self.severity_threshold
@@ -415,9 +465,11 @@ class CyberAgent(BaseAgent):
         with self._lock:
             return {
                 "total_signatures": len(self.signatures),
-                "active_threats": len([s for s in self.signatures.values() if not s.resolved]),
+                "active_threats": len(
+                    [s for s in self.signatures.values() if not s.resolved]
+                ),
                 "errors_tracked": len(self.error_history),
-                "quarantine_count": len(self.quarantine)
+                "quarantine_count": len(self.quarantine),
             }
 
     def stop(self):

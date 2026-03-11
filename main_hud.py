@@ -1,118 +1,71 @@
 #!/usr/bin/env python3
-# main_hud.py - Point d'entrée HUD avec gestion des environnements
+"""
+Point d'entrée principal avec interface HUD native.
+Version avec boucle asyncio dans un thread dédié et HUD dans le thread principal.
+"""
 
+import asyncio
+import threading
 import sys
-import os
-import subprocess
-import atexit
-import signal
 import time
-import argparse
-import shutil
 from pathlib import Path
 
-# Ajouter le répertoire parent au path
+# Ajouter le chemin du projet pour les imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from app.core.config import Config
 from app.core.engine import LucidEngine
-from app.api.telegram_bot import TelegramBot
 from app.ui.hud_native import run_hud
-from app.utils.logger import logger
 
+# Événement pour signaler que l'engine est prêt
+engine_ready = threading.Event()
+engine_instance = None
 
-def start_api():
-    """Lance l'API de recherche locale en arrière-plan."""
-    python_exe = sys.executable
-    api_process = subprocess.Popen(
-        [python_exe, "-m", "uvicorn", "search_api.main:app", "--port", "8000"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
-    time.sleep(2)  # Laisser le temps à l'API de démarrer
-    return api_process
+def asyncio_thread():
+    """Fonction exécutée dans le thread asyncio."""
+    global engine_instance
+    try:
+        # Créer une nouvelle boucle pour ce thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
+        # Charger la configuration
+        config = Config.load()
+        print("✅ Configuration chargée dans le thread asyncio")
 
-def cleanup(api_process):
-    """Nettoie le processus API à la sortie."""
-    if api_process.poll() is None:
-        api_process.terminate()
-        api_process.wait()
+        # Créer l'engine
+        engine = LucidEngine(config)
 
+        # Définir la boucle pour l'engine
+        engine.set_loop(loop)
+
+        # Rendre l'engine disponible pour l'autre thread
+        engine_instance = engine
+        engine_ready.set()
+
+        # Exécuter la boucle asyncio
+        loop.run_forever()
+    except Exception as e:
+        print(f"❌ Erreur dans le thread asyncio: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        loop.close()
 
 def main():
-    parser = argparse.ArgumentParser(description="Agent Lucide HUD")
-    parser.add_argument('--config', default='config.yaml', help='Fichier de configuration à utiliser')
-    parser.add_argument('--reset', action='store_true', help='Efface toutes les données persistantes avant de démarrer')
-    args = parser.parse_args()
+    """Point d'entrée principal."""
+    # Démarrer le thread asyncio
+    t = threading.Thread(target=asyncio_thread, daemon=True)
+    t.start()
 
-    # Chargement de la configuration
-    config_path = args.config
-    if not os.path.exists(config_path):
-        print(f"❌ Fichier de configuration introuvable : {config_path}")
+    # Attendre que l'engine soit prêt
+    if not engine_ready.wait(timeout=10):
+        print("❌ Timeout en attendant l'engine")
         sys.exit(1)
 
-    try:
-        cfg = Config.load(config_path)
-        cfg.validate()
-    except Exception as e:
-        print(f"❌ Erreur de configuration : {e}")
-        sys.exit(1)
-
-    # Si reset est demandé, effacer les dossiers de données persistantes
-    if args.reset:
-        print("🧹 Réinitialisation des données persistantes...")
-        data_dir = Path(cfg.app.data_dir)
-        dirs_to_clear = [
-            data_dir / "episodic_memory",
-            data_dir / "cache",
-            Path(cfg.rag.chroma_path) if cfg.rag.chroma_path else None
-        ]
-        for d in dirs_to_clear:
-            if d and d.exists():
-                shutil.rmtree(d)
-                print(f"   Supprimé : {d}")
-        print("✅ Données réinitialisées.")
-
-    # Créer les dossiers nécessaires
-    data_dir = Path(cfg.app.data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
-    Path(cfg.app.logs_dir).mkdir(parents=True, exist_ok=True)
-
-    logger.info("Démarrage de l'agent (HUD) avec config: %s", config_path)
-
-    # Lancer l'API (optionnelle)
-    api_process = start_api()
-    atexit.register(cleanup, api_process)
-    signal.signal(signal.SIGTERM, lambda sig, frame: cleanup(api_process))
-
-    # Initialisation du moteur
-    try:
-        engine = LucidEngine(cfg)
-    except Exception as e:
-        logger.error(f"Erreur lors de l'initialisation du moteur : {e}")
-        sys.exit(1)
-
-    # Démarrer le bot Telegram si le token est configuré
-    if cfg.telegram.bot_token:
-        if cfg.telegram.webhook_base:
-            webhook_url = f"{cfg.telegram.webhook_base}/webhook/{cfg.telegram.bot_token}"
-        else:
-            logger.warning("⚠️ webhook_base non configuré, le bot Telegram ne pourra pas recevoir de messages sans ngrok.")
-            webhook_url = None
-
-        if webhook_url:
-            bot = TelegramBot(engine, cfg.telegram.bot_token, webhook_url, port=8002)
-            bot.set_webhook()
-            bot.start()
-        else:
-            logger.warning("⚠️ Bot Telegram désactivé : webhook_base manquant.")
-    else:
-        logger.info("ℹ️ Token Telegram non fourni, bot désactivé.")
-
-    # Lancer le HUD
-    run_hud()
-
+    print("🚀 Lancement de l'interface HUD dans le thread principal")
+    # run_hud est synchrone et bloque jusqu'à la fermeture
+    run_hud(engine_instance)
 
 if __name__ == "__main__":
     main()

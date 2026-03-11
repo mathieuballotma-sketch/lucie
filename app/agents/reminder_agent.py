@@ -4,18 +4,22 @@ Utilise la validation Pydantic pour les paramètres des outils.
 """
 
 import subprocess
-import re
-import json
 from datetime import datetime
+
 from pydantic import BaseModel, Field
+
 from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
 
 
 class ReminderAgentCreateReminderContract(BaseModel):
     title: str = Field(..., description="Titre du rappel")
-    date: str = Field(None, description="Date au format YYYY-MM-DD", pattern=r"^\d{4}-\d{2}-\d{2}$")
-    time: str = Field(None, description="Heure au format HH:MM", pattern=r"^\d{2}:\d{2}$")
+    date: str = Field(
+        None, description="Date au format YYYY-MM-DD", pattern=r"^\d{4}-\d{2}-\d{2}$"
+    )
+    time: str = Field(
+        None, description="Heure au format HH:MM", pattern=r"^\d{2}:\d{2}$"
+    )
     notes: str = Field("", description="Notes ou description supplémentaires")
 
 
@@ -35,11 +39,14 @@ class ReminderAgent(BaseAgent):
             )
         ]
 
-    async def _tool_create_reminder(self, title: str, date: str = None, time: str = None, notes: str = "") -> str:
+    async def _tool_create_reminder(
+        self, title: str, date: str = None, time: str = None, notes: str = ""
+    ) -> str:
         """Crée un rappel via AppleScript."""
+
         # Échappement pour AppleScript
         def escape(s):
-            return s.replace('\\', '\\\\').replace('"', '\\"').replace('\n', ' ')
+            return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
 
         title_escaped = escape(title)
         notes_escaped = escape(notes)
@@ -49,14 +56,16 @@ class ReminderAgent(BaseAgent):
         if date and time:
             try:
                 dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
-                due_script = f"set due date of last reminder to date \"{dt.strftime('%d/%m/%Y %H:%M')}\""
-            except:
+                due_script = f"set due date of last reminder to date \"{
+                    dt.strftime('%d/%m/%Y %H:%M')}\""
+            except BaseException:
                 due_script = ""
         elif date:
             try:
                 dt = datetime.strptime(date, "%Y-%m-%d")
-                due_script = f"set due date of last reminder to date \"{dt.strftime('%d/%m/%Y')}\""
-            except:
+                due_script = f"set due date of last reminder to date \"{
+                    dt.strftime('%d/%m/%Y')}\""
+            except BaseException:
                 due_script = ""
 
         # Script principal
@@ -67,13 +76,19 @@ tell application "Reminders"
 end tell
 """
         try:
-            result = subprocess.run(['osascript', '-e', applescript], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                ["osascript", "-e", applescript],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
             if result.returncode == 0:
                 logger.info(f"Rappel créé : {title}")
                 return f"✅ Rappel créé : {title}"
             else:
                 logger.error(f"Erreur AppleScript: {result.stderr}")
-                return f"Erreur lors de la création du rappel : {result.stderr}"
+                return f"Erreur lors de la création du rappel : {
+                    result.stderr}"
         except subprocess.TimeoutExpired:
             return "Erreur: Timeout lors de la création du rappel"
         except Exception as e:
@@ -83,8 +98,15 @@ end tell
     def can_handle(self, query: str) -> bool:
         q = query.lower().strip()
         keywords = [
-            "rappel", "reminder", "rappelle", "n'oublie pas", "pense à",
-            "mes moi un rappel", "crée un rappel", "ajoute un rappel", "programme un rappel"
+            "rappel",
+            "reminder",
+            "rappelle",
+            "n'oublie pas",
+            "pense à",
+            "mes moi un rappel",
+            "crée un rappel",
+            "ajoute un rappel",
+            "programme un rappel",
         ]
         return any(kw in q for kw in keywords)
 
@@ -108,7 +130,9 @@ Réponds uniquement avec le JSON.
                 date = data.get("date")
                 time_str = data.get("time")
                 notes = data.get("notes", "")
-                return self._tool_create_reminder(title=title, date=date, time=time_str, notes=notes)
+                return self._tool_create_reminder(
+                    title=title, date=date, time=time_str, notes=notes
+                )
             else:
                 return self._tool_create_reminder(title=query)
         except Exception as e:

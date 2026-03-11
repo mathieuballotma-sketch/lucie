@@ -3,13 +3,14 @@ Agent d'extraction de texte de l'écran via accessibilité macOS ou OCR.
 Utilise la validation Pydantic pour les outils.
 """
 
-import time
-import threading
 import subprocess
 import tempfile
-from PIL import Image
+import time
+
 import pytesseract
+from PIL import Image
 from pydantic import BaseModel, Field
+
 from ...agents.base_agent import BaseAgent, Tool
 from ...utils.logger import logger
 from ...utils.metrics import record_tool_execution
@@ -17,6 +18,7 @@ from ...utils.metrics import record_tool_execution
 try:
     import AppKit
     import ApplicationServices
+
     FOUND_APPKIT = True
 except ImportError:
     FOUND_APPKIT = False
@@ -26,9 +28,11 @@ except ImportError:
 class TextExtractorAgentGetScreenTextContract(BaseModel):
     pass
 
+
 class TextExtractorAgentGetTextAtPositionContract(BaseModel):
     x: int = Field(None, description="Coordonnée X")
     y: int = Field(None, description="Coordonnée Y")
+
 
 class TextExtractorAgentGetUiElementInfoContract(BaseModel):
     pass
@@ -53,7 +57,9 @@ class TextExtractorAgent(BaseAgent):
             return False
         trusted = ApplicationServices.AXIsProcessTrusted()
         if not trusted:
-            logger.warning("⚠️ Accessibilité non autorisée. L'agent utilisera l'OCR si configuré.")
+            logger.warning(
+                "⚠️ Accessibilité non autorisée. L'agent utilisera l'OCR si configuré."
+            )
             return False
         return True
 
@@ -61,7 +67,7 @@ class TextExtractorAgent(BaseAgent):
         return [
             Tool(
                 name="get_screen_text",
-                description="Récupère tout le texte visible à l'écran (ou de l'application active).",
+                description="Récupère tout le texte visible à l'écran (ou de l'application active).",  # noqa: E501
                 contract=TextExtractorAgentGetScreenTextContract,
             ),
             Tool(
@@ -73,18 +79,19 @@ class TextExtractorAgent(BaseAgent):
                 name="get_ui_element_info",
                 description="Récupère des informations sur l'élément d'interface sous la souris.",
                 contract=TextExtractorAgentGetUiElementInfoContract,
-            )
+            ),
         ]
 
     async def _tool_get_screen_text(self, **kwargs) -> str:
         import time
+
         start = time.time()
         try:
             result = self._capture_text()
             duration = time.time() - start
             record_tool_execution(self.name, "get_screen_text", duration, error=False)
             return result
-        except Exception as e:
+        except Exception:
             duration = time.time() - start
             record_tool_execution(self.name, "get_screen_text", duration, error=True)
             raise
@@ -135,7 +142,9 @@ class TextExtractorAgent(BaseAgent):
                 if text:
                     return text
 
-            err, windows = ApplicationServices.AXUIElementCopyAttributeValue(app_ref, "AXWindows", None)
+            err, windows = ApplicationServices.AXUIElementCopyAttributeValue(
+                app_ref, "AXWindows", None
+            )
             if err == 0 and windows:
                 all_text = []
                 for win in windows:
@@ -160,7 +169,9 @@ class TextExtractorAgent(BaseAgent):
             ApplicationServices.kAXSelectedTextAttribute,
         ]
         for attr in text_attrs:
-            err, val = ApplicationServices.AXUIElementCopyAttributeValue(element, attr, None)
+            err, val = ApplicationServices.AXUIElementCopyAttributeValue(
+                element, attr, None
+            )
             if err == 0 and isinstance(val, str) and val.strip():
                 parts.append(val.strip())
                 break
@@ -169,17 +180,17 @@ class TextExtractorAgent(BaseAgent):
         )
         if err == 0 and children:
             for child in children:
-                child_text = self._extract_all_text(child, depth+1, max_depth)
+                child_text = self._extract_all_text(child, depth + 1, max_depth)
                 if child_text:
                     parts.append(child_text)
         return "\n".join(parts).strip()
 
     def _ocr_screen(self):
         try:
-            with tempfile.NamedTemporaryFile(suffix='.png') as tmp:
-                subprocess.run(['screencapture', '-x', tmp.name], check=True)
+            with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+                subprocess.run(["screencapture", "-x", tmp.name], check=True)
                 img = Image.open(tmp.name)
-                text = pytesseract.image_to_string(img, lang='fra+eng').strip()
+                text = pytesseract.image_to_string(img, lang="fra+eng").strip()
                 return text or None
         except Exception as e:
             logger.debug(f"Erreur OCR: {e}")

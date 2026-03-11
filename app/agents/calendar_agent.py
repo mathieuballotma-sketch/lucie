@@ -2,12 +2,13 @@
 import datetime
 import json
 import re
+
 from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
 
 try:
     import EventKit
-    from PyObjCTools import AppHelper
+
     EKEventStore = EventKit.EKEventStore
     EKEvent = EventKit.EKEvent
     EKAlarm = EventKit.EKAlarm
@@ -20,15 +21,18 @@ except ImportError:
     HAS_EVENTKIT = False
     logger.error("❌ EventKit non disponible. Installez pyobjc-framework-EventKit")
 
+
 def datetime_to_nsdate(dt):
     from Foundation import NSDate
+
     timestamp = dt.timestamp()
     return NSDate.dateWithTimeIntervalSince1970_(timestamp)
 
+
 def nsdate_to_datetime(nsdate):
-    from Foundation import NSDate
     timestamp = nsdate.timeIntervalSince1970()
     return datetime.datetime.fromtimestamp(timestamp)
+
 
 class CalendarAgent(BaseAgent):
     """
@@ -47,8 +51,11 @@ class CalendarAgent(BaseAgent):
 
     def _setup_eventkit(self):
         self.store = EKEventStore.alloc().init()
-        self.store.requestAccessToEntityType_completion_(EventKit.EKEntityTypeEvent, lambda granted, error: None)
+        self.store.requestAccessToEntityType_completion_(
+            EventKit.EKEntityTypeEvent, lambda granted, error: None
+        )
         import time
+
         time.sleep(1)
         self.default_calendar = self.store.defaultCalendarForNewEvents()
         logger.info("📅 Agent calendrier initialisé")
@@ -63,10 +70,10 @@ class CalendarAgent(BaseAgent):
                     "properties": {
                         "date": {
                             "type": "string",
-                            "description": "Date au format YYYY-MM-DD ou 'aujourd'hui', 'demain'"
+                            "description": "Date au format YYYY-MM-DD ou 'aujourd'hui', 'demain'",
                         }
-                    }
-                }
+                    },
+                },
             ),
             Tool(
                 name="add_event",
@@ -74,13 +81,25 @@ class CalendarAgent(BaseAgent):
                 parameters={
                     "type": "object",
                     "properties": {
-                        "title": {"type": "string", "description": "Titre de l'événement"},
-                        "date": {"type": "string", "description": "Date et heure au format YYYY-MM-DD HH:MM"},
-                        "duration": {"type": "integer", "description": "Durée en minutes (défaut: 60)"},
-                        "location": {"type": "string", "description": "Lieu (optionnel)"}
+                        "title": {
+                            "type": "string",
+                            "description": "Titre de l'événement",
+                        },
+                        "date": {
+                            "type": "string",
+                            "description": "Date et heure au format YYYY-MM-DD HH:MM",
+                        },
+                        "duration": {
+                            "type": "integer",
+                            "description": "Durée en minutes (défaut: 60)",
+                        },
+                        "location": {
+                            "type": "string",
+                            "description": "Lieu (optionnel)",
+                        },
                     },
-                    "required": ["title", "date"]
-                }
+                    "required": ["title", "date"],
+                },
             ),
             Tool(
                 name="delete_event",
@@ -88,29 +107,45 @@ class CalendarAgent(BaseAgent):
                 parameters={
                     "type": "object",
                     "properties": {
-                        "title": {"type": "string", "description": "Titre de l'événement à supprimer"}
+                        "title": {
+                            "type": "string",
+                            "description": "Titre de l'événement à supprimer",
+                        }
                     },
-                    "required": ["title"]
-                }
-            )
+                    "required": ["title"],
+                },
+            ),
         ]
 
     def _tool_list_events(self, date: str = "aujourd'hui") -> str:
         return self._list_events(date)
 
-    def _tool_add_event(self, title: str, date: str, duration: int = 60, location: str = "") -> str:
+    def _tool_add_event(
+        self, title: str, date: str, duration: int = 60, location: str = ""
+    ) -> str:
         return self._add_event(title, date, duration, location)
 
     def _tool_delete_event(self, title: str) -> str:
         return self._delete_event(title)
 
     def can_handle(self, query: str) -> bool:
-        keywords = ["calendrier", "agenda", "rendez-vous", "événement", "event", "calendar", "rdv", "réunion"]
+        keywords = [
+            "calendrier",
+            "agenda",
+            "rendez-vous",
+            "événement",
+            "event",
+            "calendar",
+            "rdv",
+            "réunion",
+        ]
         return any(kw in query.lower() for kw in keywords)
 
     def handle(self, query: str) -> str:
         # Utilise le LLM pour interpréter la demande et appeler l'outil
-        tools_desc = "\n".join([f"- {t.name}: {t.description}" for t in self.get_tools()])
+        tools_desc = "\n".join(
+            [f"- {t.name}: {t.description}" for t in self.get_tools()]
+        )
         prompt = f"""
 Tu es un assistant qui gère le calendrier. Voici la demande : "{query}"
 
@@ -124,7 +159,7 @@ Si la demande n'est pas claire, réponds {{"tool": "unknown"}}.
         try:
             response = self.ask_llm(prompt)
             cleaned = response.strip().replace("```json", "").replace("```", "").strip()
-            match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+            match = re.search(r"\{.*\}", cleaned, re.DOTALL)
             if match:
                 data = json.loads(match.group())
                 tool = data.get("tool")
@@ -144,14 +179,16 @@ Si la demande n'est pas claire, réponds {{"tool": "unknown"}}.
             start = datetime.datetime(today.year, today.month, today.day, 0, 0, 0)
             end = start + datetime.timedelta(days=1)
         elif date_str in ["demain", "tomorrow"]:
-            start = datetime.datetime(today.year, today.month, today.day, 0, 0, 0) + datetime.timedelta(days=1)
+            start = datetime.datetime(
+                today.year, today.month, today.day, 0, 0, 0
+            ) + datetime.timedelta(days=1)
             end = start + datetime.timedelta(days=1)
         else:
             try:
                 d = datetime.datetime.strptime(date_str, "%Y-%m-%d")
                 start = datetime.datetime(d.year, d.month, d.day, 0, 0, 0)
                 end = start + datetime.timedelta(days=1)
-            except:
+            except BaseException:
                 return "Format de date non reconnu."
         start_ns = datetime_to_nsdate(start)
         end_ns = datetime_to_nsdate(end)
@@ -170,7 +207,9 @@ Si la demande n'est pas claire, réponds {{"tool": "unknown"}}.
             result += f"- {title} de {start_date} à {end_date} ({location})\n"
         return result
 
-    def _add_event(self, title: str, date_str: str, duration: int, location: str) -> str:
+    def _add_event(
+        self, title: str, date_str: str, duration: int, location: str
+    ) -> str:
         if not self.store:
             return "Calendrier non disponible."
         try:

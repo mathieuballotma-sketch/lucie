@@ -1,10 +1,13 @@
 # app/agents/file_agent.py
-import os
-import shutil
 import json
+import os
+import re
+import shutil
 from pathlib import Path
+
 from app.agents.base_agent import BaseAgent
 from app.utils.logger import logger
+
 
 class FileAgent(BaseAgent):
     """
@@ -21,7 +24,17 @@ class FileAgent(BaseAgent):
         """
         Détecte si la requête concerne des fichiers.
         """
-        keywords = ["fichier", "dossier", "copie", "déplace", "supprime", "liste", "renomme", "backup", "sauvegarde"]
+        keywords = [
+            "fichier",
+            "dossier",
+            "copie",
+            "déplace",
+            "supprime",
+            "liste",
+            "renomme",
+            "backup",
+            "sauvegarde",
+        ]
         return any(kw in query.lower() for kw in keywords)
 
     def handle(self, query: str) -> str:
@@ -63,31 +76,34 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
                 decision = json.loads(cleaned)
             except json.JSONDecodeError:
                 # Si le parsing échoue, on tente d'extraire un JSON avec une regex simple
-                import re
-                match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+                match = re.search(r"\{.*\}", cleaned, re.DOTALL)
                 if match:
                     decision = json.loads(match.group())
                 else:
-                    # Fallback : on considère que la réponse est un texte et on essaie de deviner l'action
+                    # Fallback : on considère que la réponse est un texte et on
+                    # essaie de deviner l'action
                     logger.warning(f"Réponse non JSON reçue: {cleaned[:100]}")
-                    # On peut essayer une approche basée sur des mots-clés
+                    # Approche basée sur des mots-clés
                     if "liste" in query.lower() or "list" in query.lower():
                         decision = {"action": "list", "params": {}}
                     elif "copie" in query.lower() or "copy" in query.lower():
                         # Extraction basique (à améliorer)
-                        decision = {"action": "copy", "params": {"source": "", "destination": ""}}
+                        decision = {
+                            "action": "copy",
+                            "params": {"source": "", "destination": ""},
+                        }
                     else:
                         return "Désolé, je n'ai pas compris votre demande. Pouvez-vous reformuler ?"
-            
+
             action = decision.get("action")
             params = decision.get("params", {})
-            
+
             if action == "unknown":
                 return "Je n'ai pas compris quelle action sur les fichiers vous voulez effectuer."
-            
+
             # Exécuter l'action
             return self.do_action(action, params)
-            
+
         except Exception as e:
             logger.error(f"Erreur dans FileAgent.handle: {e}")
             return f"Erreur lors du traitement: {str(e)}"
@@ -117,11 +133,11 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
                 return f"Le dossier {path} n'existe pas."
             if not p.is_dir():
                 return f"{path} n'est pas un dossier."
-            
+
             files = list(p.iterdir())
             if not files:
                 return f"Le dossier {path} est vide."
-            
+
             result = f"Contenu de {path}:\n"
             for f in files:
                 if f.is_dir():
@@ -138,15 +154,15 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
         try:
             src = Path(source).expanduser().resolve()
             dst = Path(dest).expanduser().resolve()
-            
+
             if not src.exists():
                 return f"Le fichier source {source} n'existe pas."
             if src.is_dir():
-                return f"La copie de dossiers n'est pas encore supportée."
-            
+                return f"La copie de dossiers n'est pas encore supportée."  # noqa: F541
+
             # Créer le dossier de destination si nécessaire
             dst.parent.mkdir(parents=True, exist_ok=True)
-            
+
             shutil.copy2(src, dst)
             logger.info(f"Fichier copié: {src} -> {dst}")
             return f"✅ Fichier copié avec succès vers {dest}"
@@ -158,10 +174,10 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
         try:
             src = Path(source).expanduser().resolve()
             dst = Path(dest).expanduser().resolve()
-            
+
             if not src.exists():
                 return f"Le fichier source {source} n'existe pas."
-            
+
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(src), str(dst))
             logger.info(f"Fichier déplacé: {src} -> {dst}")
@@ -176,9 +192,9 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
             if not p.exists():
                 return f"Le fichier {path} n'existe pas."
             if p.is_dir():
-                return f"La suppression de dossiers n'est pas autorisée (trop risqué)."
-            
-            os.remove(p)
+                return "La suppression de dossiers n'est pas autorisée (trop risqué)."  # noqa: E501
+
+            os.remove(p)  # noqa: E501  # noqa: E501
             logger.info(f"Fichier supprimé: {p}")
             return f"✅ Fichier supprimé: {path}"
         except Exception as e:
@@ -189,10 +205,10 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
         try:
             old_path = Path(old).expanduser().resolve()
             new_path = Path(new).expanduser().resolve()
-            
+
             if not old_path.exists():
                 return f"Le fichier {old} n'existe pas."
-            
+
             old_path.rename(new_path)
             logger.info(f"Fichier renommé: {old} -> {new}")
             return f"✅ Fichier renommé: {new}"

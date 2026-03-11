@@ -1,11 +1,13 @@
 import threading
-import uuid
 import time
-from typing import Dict, List, Callable, Any, Optional
+import uuid
 from collections import defaultdict
+from typing import Any, Callable, Dict, List, Optional
+
 from ...utils.logger import get_logger
 
 logger = get_logger(__name__)
+
 
 class EventBus:
     """
@@ -42,12 +44,16 @@ class EventBus:
                     threading.Thread(
                         target=self._safe_callback,
                         args=(callback, event_type, data, event_id, source),
-                        daemon=True
+                        daemon=True,
                     ).start()
                 except Exception as e:
-                    logger.error(f"Erreur lors du lancement du callback pour {event_type}: {e}")
+                    logger.error(
+                        f"Erreur lors du lancement du callback pour {event_type}: {e}"
+                    )
 
-    def _safe_callback(self, callback: Callable, event_type: str, data: Any, event_id: str, source: str):
+    def _safe_callback(
+        self, callback: Callable, event_type: str, data: Any, event_id: str, source: str
+    ):
         """Exécute un callback en capturant les exceptions."""
         try:
             callback(data, event_id, source)
@@ -67,7 +73,9 @@ class EventBus:
             if callback in self.subscribers[event_type]:
                 self.subscribers[event_type].remove(callback)
 
-    def request(self, request_type: str, data: Any = None, timeout: float = 5.0) -> Optional[Any]:
+    def request(
+        self, request_type: str, data: Any = None, timeout: float = 5.0
+    ) -> Optional[Any]:
         """
         Envoie une requête et attend une réponse.
         La réponse doit être publiée sur 'response.{request_type}' avec le même request_id.
@@ -81,7 +89,9 @@ class EventBus:
                 response_event.set()
 
         self.subscribe(f"response.{request_type}", response_handler)
-        self.publish(f"request.{request_type}", {'request_id': request_id, 'data': data})
+        self.publish(
+            f"request.{request_type}", {"request_id": request_id, "data": data}
+        )
 
         success = response_event.wait(timeout=timeout)
         self.unsubscribe(f"response.{request_type}", response_handler)

@@ -1,11 +1,11 @@
-import os
-import base64
 import keyring
 from cryptography.fernet import Fernet
+
 from ..utils.logger import logger
 
 SERVICE_NAME = "com.agentlucide.crypto"
 KEYRING_USERNAME = "master_key"
+
 
 class CryptoManager:
     def __init__(self):
@@ -15,7 +15,7 @@ class CryptoManager:
 
     def _get_or_create_key(self) -> bytes:
         stored_key = keyring.get_password(SERVICE_NAME, KEYRING_USERNAME)
-        
+
         if stored_key:
             # Fernet attend des bytes, keyring rend une string
             return stored_key.encode()
@@ -23,7 +23,9 @@ class CryptoManager:
             # Générer une clé Fernet (déjà en base64 url-safe)
             new_key = Fernet.generate_key().decode()
             keyring.set_password(SERVICE_NAME, KEYRING_USERNAME, new_key)
-            logger.info("🔐 Nouvelle clé de chiffrement maîtresse stockée dans le Trousseau macOS.")
+            logger.info(
+                "🔐 Nouvelle clé de chiffrement maîtresse stockée dans le Trousseau macOS."
+            )
             return new_key.encode()
 
     def encrypt(self, data: bytes) -> bytes:

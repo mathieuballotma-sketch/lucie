@@ -7,12 +7,13 @@ Utilise la mémoire épisodique et les documents indexés pour extraire :
 - Objectifs de vie (déduits des notes)
 """
 
-import time
 import threading
-import numpy as np
+import time
 from collections import Counter
+from typing import Dict, List
+
+import numpy as np
 from sklearn.cluster import KMeans
-from typing import List, Dict, Any, Optional
 
 from app.agents.base_agent import BaseAgent
 from app.memory import MemoryService
@@ -27,7 +28,14 @@ class ProfileAgent(BaseAgent):
     pour mettre à jour le profil régulièrement.
     """
 
-    def __init__(self, llm_service, bus, memory_service: MemoryService, rag_service: RAGService, config: dict):
+    def __init__(
+        self,
+        llm_service,
+        bus,
+        memory_service: MemoryService,
+        rag_service: RAGService,
+        config: dict,
+    ):
         super().__init__("ProfileAgent", llm_service, bus)
         self.memory = memory_service
         self.rag = rag_service
@@ -38,7 +46,7 @@ class ProfileAgent(BaseAgent):
             "themes": [],
             "activity_peaks": [],
             "goals": [],
-            "last_updated": 0
+            "last_updated": 0,
         }
 
         self._lock = threading.RLock()
@@ -73,7 +81,8 @@ class ProfileAgent(BaseAgent):
             logger.info("👤 Mise à jour du profil utilisateur...")
 
             # Pour l'instant, on n'a pas de méthode get_recent_episodes dans MemoryService.
-            # On utilise un échantillon vide, mais on pourra améliorer plus tard.
+            # On utilise un échantillon vide, mais on pourra améliorer plus
+            # tard.
             interactions = []
 
             vocab = self._extract_vocabulary(interactions)
@@ -95,20 +104,74 @@ class ProfileAgent(BaseAgent):
         """Analyse les textes pour trouver les mots et expressions caractéristiques."""
         texts = []
         for item in interactions:
-            texts.append(item.get('query', ''))
-            texts.append(item.get('response', ''))
-        full_text = ' '.join(texts).lower()
+            texts.append(item.get("query", ""))
+            texts.append(item.get("response", ""))
+        full_text = " ".join(texts).lower()
 
         words = full_text.split()
         word_counts = Counter(words)
 
         # Stopwords basiques
-        common_words = {'le', 'la', 'les', 'de', 'du', 'et', 'un', 'une', 'des', 'pour', 'dans',
-                        'ce', 'cet', 'cette', 'ces', 'mon', 'ton', 'son', 'notre', 'votre', 'leur',
-                        'je', 'tu', 'il', 'elle', 'nous', 'vous', 'ils', 'elles', 'qui', 'que',
-                        'quoi', 'dont', 'où', 'comment', 'pourquoi', 'est', 'sont', 'ai', 'as',
-                        'a', 'avons', 'avez', 'ont', 'être', 'avoir', 'faire', 'dire', 'voir',
-                        'savoir', 'pouvoir', 'vouloir', 'mais', 'ou', 'donc', 'car', 'ni', 'or'}
+        common_words = {
+            "le",
+            "la",
+            "les",
+            "de",
+            "du",
+            "et",
+            "un",
+            "une",
+            "des",
+            "pour",
+            "dans",
+            "ce",
+            "cet",
+            "cette",
+            "ces",
+            "mon",
+            "ton",
+            "son",
+            "notre",
+            "votre",
+            "leur",
+            "je",
+            "tu",
+            "il",
+            "elle",
+            "nous",
+            "vous",
+            "ils",
+            "elles",
+            "qui",
+            "que",
+            "quoi",
+            "dont",
+            "où",
+            "comment",
+            "pourquoi",
+            "est",
+            "sont",
+            "ai",
+            "as",
+            "a",
+            "avons",
+            "avez",
+            "ont",
+            "être",
+            "avoir",
+            "faire",
+            "dire",
+            "voir",
+            "savoir",
+            "pouvoir",
+            "vouloir",
+            "mais",
+            "ou",
+            "donc",
+            "car",
+            "ni",
+            "or",
+        }
 
         # Filtrer les mots
         filtered = {}
@@ -119,7 +182,7 @@ class ProfileAgent(BaseAgent):
         significant_words = Counter(filtered).most_common(20)
 
         # Bigrammes
-        bigrams = [' '.join(words[i:i+2]) for i in range(len(words)-1)]
+        bigrams = [" ".join(words[i:i + 2]) for i in range(len(words) - 1)]
         bigram_counts = Counter(bigrams)
         filtered_bigrams = {}
         for bigram, count in bigram_counts.items():
@@ -127,13 +190,10 @@ class ProfileAgent(BaseAgent):
                 filtered_bigrams[bigram] = count
         significant_bigrams = Counter(filtered_bigrams).most_common(10)
 
-        return {
-            "words": significant_words,
-            "bigrams": significant_bigrams
-        }
+        return {"words": significant_words, "bigrams": significant_bigrams}
 
     def _extract_themes(self, interactions: List[Dict]) -> List[Dict]:
-        queries = [item['query'] for item in interactions if 'query' in item]
+        queries = [item["query"] for item in interactions if "query" in item]
         if len(queries) < 10:
             return []
 
@@ -146,7 +206,7 @@ class ProfileAgent(BaseAgent):
         n_clusters = min(5, len(queries) // 5)
         if n_clusters < 2:
             return []
-        kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init='auto')
+        kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init="auto")
         labels = kmeans.fit_predict(X)
 
         themes = []
@@ -155,15 +215,17 @@ class ProfileAgent(BaseAgent):
             if len(indices) == 0:
                 continue
             cluster_queries = [queries[idx] for idx in indices]
-            words = ' '.join(cluster_queries).lower().split()
+            words = " ".join(cluster_queries).lower().split()
             word_counts = Counter(words)
             common = [w for w, c in word_counts.most_common(5) if len(w) > 3]
-            themes.append({
-                "id": i,
-                "keywords": common,
-                "count": len(indices),
-                "sample_queries": cluster_queries[:3]
-            })
+            themes.append(
+                {
+                    "id": i,
+                    "keywords": common,
+                    "count": len(indices),
+                    "sample_queries": cluster_queries[:3],
+                }
+            )
         return themes
 
     def _analyze_activity_peaks(self) -> List[int]:
@@ -172,7 +234,7 @@ class ProfileAgent(BaseAgent):
 
     def _infer_goals(self) -> List[str]:
         recent = self.memory.working.get_recent(n=10)
-        recent_queries = [item['query'] for item in recent if 'query' in item]
+        recent_queries = [item["query"] for item in recent if "query" in item]
         if not recent_queries:
             return []
 
@@ -185,7 +247,7 @@ class ProfileAgent(BaseAgent):
         """
         try:
             response = self.ask_llm(prompt, model="balanced")
-            goals = [line.strip('- ') for line in response.split('\n') if line.strip()]
+            goals = [line.strip("- ") for line in response.split("\n") if line.strip()]
             return goals[:3]
         except Exception as e:
             logger.error(f"Erreur lors de l'inférence des objectifs: {e}")

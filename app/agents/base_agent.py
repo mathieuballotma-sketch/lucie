@@ -1,6 +1,8 @@
 """
 BaseAgent - Classe de base pour tous les agents.
-v3 : ajout de ask_llm_async, implémentation par défaut de handle et publication d'erreurs.
+v4 : validation Pydantic, levée d'exceptions structurées, publication d'erreurs.
+Ajout d'un print immédiat pour tracer l'entrée dans execute_tool.
+Correction : _publish_error n'utilise plus await (event_bus.publish est synchrone).
 """
 
 import asyncio
@@ -8,11 +10,13 @@ import inspect
 import json
 import re
 import time
+import sys
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
 
 from pydantic import BaseModel, ValidationError
 
+from ..utils.errors import ToolValidationError, ToolExecutionError, ToolNotFoundError
 from ..utils.logger import logger
 from ..utils.metrics import tool_execution_duration, tool_execution_errors
 
@@ -61,13 +65,18 @@ class BaseAgent(ABC):
         return self._tools_cache.get(name)
 
     async def execute_tool(self, tool_name: str, parameters: Dict[str, Any]) -> str:
+        # Print immédiat pour tracer l'entrée
+        print(f"🟢 EXECUTE_TOOL DEBUT: {tool_name}")
+        sys.stdout.flush()
+        logger.info(f"🛠️ execute_tool: {tool_name} avec params {parameters}")
+
         start = time.time()
         tool = self._get_tool_by_name(tool_name)
         if not tool:
             msg = f"Outil '{tool_name}' non trouvé dans {self.name}"
             logger.error(msg)
             tool_execution_errors.labels(agent=self.name, tool=tool_name).inc()
-            return f"Erreur: {msg}"
+            raise ToolNotFoundError(tool_name)
 
         try:
             validated = tool.validate(parameters)
@@ -76,14 +85,21 @@ class BaseAgent(ABC):
             msg = f"Paramètres invalides [{tool_name}]: {e}"
             logger.error(msg)
             tool_execution_errors.labels(agent=self.name, tool=tool_name).inc()
-            return f"Erreur de validation: {msg}"
+            # Convertir l'erreur de validation en suggestion lisible
+            errors = e.errors()
+            suggestions = []
+            for err in errors:
+                loc = ".".join(str(x) for x in err["loc"])
+                suggestions.append(f"Le champ '{loc}' : {err['msg']}")
+            suggestion = " ".join(suggestions) if suggestions else "Vérifiez les paramètres fournis."
+            raise ToolValidationError(msg, suggestion=suggestion)
 
         method_name = f"_tool_{tool_name}"
         if not hasattr(self, method_name):
             msg = f"Méthode '{method_name}' non implémentée dans {self.name}"
             logger.error(msg)
             tool_execution_errors.labels(agent=self.name, tool=tool_name).inc()
-            return f"Erreur: {msg}"
+            raise ToolExecutionError(msg, suggestion="L'outil est défini mais pas implémenté.")
 
         method = getattr(self, method_name)
         params = validated.dict(exclude_none=True)
@@ -101,14 +117,15 @@ class BaseAgent(ABC):
             duration = time.time() - start
             logger.error(f"Erreur exécution [{tool_name}]: {e}")
             tool_execution_errors.labels(agent=self.name, tool=tool_name).inc()
-            # Publier l'erreur sur le bus d'événements
-            asyncio.create_task(self._publish_error(tool_name, str(e)))
-            return f"Erreur lors de l'exécution: {str(e)}"
+            # Publier l'erreur sur le bus d'événements (synchrone)
+            self._publish_error(tool_name, str(e))
+            # Relancer une exception structurée
+            raise ToolExecutionError(f"Erreur lors de l'exécution: {str(e)}")
 
-    async def _publish_error(self, tool: str, error: str):
-        """Publie une erreur d'outil sur le bus d'événements."""
+    def _publish_error(self, tool: str, error: str):
+        """Publie une erreur d'outil sur le bus d'événements (synchrone)."""
         if self.event_bus:
-            await self.event_bus.publish(
+            self.event_bus.publish(
                 "tool.error",
                 {"agent": self.name, "tool": tool, "error": error},
                 self.name

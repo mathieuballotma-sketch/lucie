@@ -3,11 +3,11 @@ Moteur de consolidation : apprentissage à partir des retours utilisateur.
 Permet d'ajuster les poids ou de marquer les souvenirs comme importants.
 """
 
-import time
 import threading
-from typing import Optional
-from .episodic_memory import EpisodicMemory
+import time
+
 from ..utils.logger import logger
+from .episodic_memory import EpisodicMemory
 
 
 class ConsolidationEngine:

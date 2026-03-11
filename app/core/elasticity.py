@@ -4,16 +4,20 @@ Surveille les ressources système et ajuste dynamiquement la consommation.
 Utilise une moyenne glissante pour lisser les pics de charge.
 """
 
-import psutil
 import threading
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Callable, Dict, Any, List
+from typing import Any, Callable, Dict, List
+
+import psutil
+
 from ..utils.logger import logger
 from ..utils.metrics import (
-    system_load_cpu, system_load_memory,
-    system_load_battery, system_thermal_pressure
+    system_load_battery,
+    system_load_cpu,
+    system_load_memory,
+    system_thermal_pressure,
 )
 
 
@@ -38,11 +42,12 @@ class ElasticityEngine:
         self._listeners: List[Callable[[SystemLoad], None]] = []
         self.current_load = SystemLoad(0, 0, None, False, 0)
 
-        # Mapping des profils vers les noms de modèles réels (à surcharger par le cortex)
+        # Mapping des profils vers les noms de modèles réels (à surcharger par
+        # le cortex)
         self.model_mapping = {
             "speed": config.get("speed_model", "qwen2.5:3b"),
             "balanced": config.get("balanced_model", "qwen2.5:7b"),
-            "quality": config.get("quality_model", "qwen2.5:14b")
+            "quality": config.get("quality_model", "qwen2.5:14b"),
         }
 
         # Pour la moyenne glissante de la charge CPU (5 échantillons)
@@ -119,7 +124,15 @@ class ElasticityEngine:
                 temps = psutil.sensors_temperatures()
                 # Chercher la température CPU sur différents capteurs macOS
                 cpu_temp = None
-                for key in ['cpu_thermal', 'TC0P', 'Tp0', 'Tp01', 'Tp05', 'Tp0H', 'Tp0P']:
+                for key in [
+                    "cpu_thermal",
+                    "TC0P",
+                    "Tp0",
+                    "Tp01",
+                    "Tp05",
+                    "Tp0H",
+                    "Tp0P",
+                ]:
                     if key in temps and temps[key]:
                         cpu_temp = temps[key][0].current
                         break
@@ -149,7 +162,9 @@ class ElasticityEngine:
     def get_recommended_profile(self) -> str:
         """Retourne le profil recommandé : 'speed', 'balanced' ou 'quality'."""
         load = self.current_load
-        if load.thermal_pressure >= 2 or (load.on_battery and load.battery_percent and load.battery_percent < 20):
+        if load.thermal_pressure >= 2 or (
+            load.on_battery and load.battery_percent and load.battery_percent < 20
+        ):
             return "speed"
         elif load.cpu_percent > 60 or load.memory_percent > 80:
             return "balanced"

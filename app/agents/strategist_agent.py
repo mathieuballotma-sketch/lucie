@@ -4,8 +4,8 @@ Tourne périodiquement et publie ses suggestions sur le bus d'événements.
 Version avec deux modes : quick (rapide, peu de données) et deep (complet).
 """
 
-import asyncio
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 from app.agents.base_agent import BaseAgent
@@ -15,13 +15,19 @@ from app.utils.metrics import strategist_suggestions_total
 
 class SuggestionContract(BaseModel):
     """Contrat pour une suggestion d'automatisation."""
+
     title: str = Field(..., description="Titre court de la suggestion")
     description: str = Field(..., description="Description détaillée")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Niveau de confiance (0-1)")
-    category: str = Field("productivity", description="Catégorie (productivity, organization, information, etc.)")
+    category: str = Field(
+        "productivity",
+        description="Catégorie (productivity, organization, information, etc.)",
+    )
     cron_expression: Optional[str] = Field(None, description="Expression cron si tâche récurrente")
     query: Optional[str] = Field(None, description="Requête à exécuter pour la tâche")
-    suggested_trigger: Optional[str] = Field(None, description="Description textuelle du déclencheur")
+    suggested_trigger: Optional[str] = Field(
+        None, description="Description textuelle du déclencheur"
+    )
     suggested_action: Optional[str] = Field(None, description="Description textuelle de l'action")
 
 
@@ -51,13 +57,14 @@ class StrategistAgent(BaseAgent):
     async def run_periodic_review(self, mode: str = "balanced"):
         """
         Lance l'analyse stratégique.
-        mode: "quick" (analyse rapide, peu de données), "deep" (analyse complète), "balanced" (compromis).
+        mode: "quick" (analyse rapide, peu de données), "deep" (analyse complète), "balanced" (compromis).  # noqa: E501
         """
         logger.info(f"🔍 Lancement de l'analyse stratégique (mode {mode})...")
         suggestions = await self._analyze(mode)
         for sug in suggestions:
             await self._publish_suggestion(sug)
-        logger.info(f"✅ Analyse terminée, {len(suggestions)} suggestion(s) publiée(s)")
+        logger.info(f"✅ Analyse terminée, {
+                len(suggestions)} suggestion(s) publiée(s)")
 
     async def _analyze(self, mode: str = "balanced") -> List[Dict[str, Any]]:
         """
@@ -81,13 +88,13 @@ class StrategistAgent(BaseAgent):
             temperature = 0.6
 
         prompt = f"""
-[Rôle] Tu es un stratège personnel. Ton objectif est d'augmenter la productivité de l'utilisateur en proposant des automatisations et des rappels.
+[Rôle] Tu es un stratège personnel. Ton objectif est d'augmenter la productivité de l'utilisateur en proposant des automatisations et des rappels.  # noqa: E501
 [Contexte] Voici l'activité récente de l'utilisateur :
 {working_context}
 [Expériences similaires] Voici des souvenirs de stratégies passées :
 {similar}
-[Consignes] Analyse ce contexte. Identifie des tâches qui pourraient être automatisées (par exemple, ouvrir certaines applications à heures fixes, envoyer des rappels, rechercher des informations périodiquement). Propose des idées concrètes.
-[Format de sortie] Réponds avec un JSON contenant une liste d'objets, chacun avec les champs suivants :
+[Consignes] Analyse ce contexte. Identifie des tâches qui pourraient être automatisées (par exemple, ouvrir certaines applications à heures fixes, envoyer des rappels, rechercher des informations périodiquement). Propose des idées concrètes.  # noqa: E501
+[Format de sortie] Réponds avec un JSON contenant une liste d'objets, chacun avec les champs suivants :  # noqa: E501  # noqa: E501
 - title: titre court
 - description: description détaillée
 - confidence: nombre entre 0 et 1
@@ -112,9 +119,7 @@ Si aucune idée, retourne [].
 """
         try:
             response = await self.ask_llm_async(
-                prompt,
-                temperature=temperature,
-                max_tokens=max_tokens
+                prompt, temperature=temperature, max_tokens=max_tokens
             )
             data = self.extract_json_from_response(response)
             if isinstance(data, list):
@@ -130,9 +135,7 @@ Si aucune idée, retourne [].
         """Publie une suggestion sur le bus d'événements et incrémente une métrique."""
         try:
             await self.event_bus.publish(
-                event_type="strategist.suggestion",
-                data=suggestion,
-                source=self.name
+                event_type="strategist.suggestion", data=suggestion, source=self.name
             )
             logger.info(f"💡 Suggestion publiée: {suggestion.get('title')}")
             strategist_suggestions_total.labels(category=suggestion.get("category", "other")).inc()

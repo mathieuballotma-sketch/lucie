@@ -5,7 +5,7 @@ Client P2P asynchrone avec TLS.
 import asyncio
 import json
 import ssl
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from app.utils.logger import logger
 
@@ -18,11 +18,14 @@ class P2PClient:
     def _create_ssl_context(self):
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         context.load_verify_locations(self.certfile)
-        # Désactiver la vérification du hostname pour les tests, mais en prod il faudrait l'activer
+        # Désactiver la vérification du hostname pour les tests, mais en prod
+        # il faudrait l'activer
         context.check_hostname = False
         return context
 
-    async def send_message(self, host: str, port: int, message: Dict[str, Any]) -> Optional[Dict]:
+    async def send_message(
+        self, host: str, port: int, message: Dict[str, Any]
+    ) -> Optional[Dict]:
         """Envoie un message à un pair et attend une réponse (optionnelle)."""
         try:
             reader, writer = await asyncio.open_connection(

@@ -5,15 +5,19 @@ Met à jour une jauge Prometheus avec l'utilisation mémoire RSS.
 
 import threading
 import time
+
 import psutil
-from .metrics import memory_usage_bytes
+
 from ..utils.logger import logger
+from .metrics import memory_usage_bytes
+
 
 def monitor_memory(interval: int = 60):
     """
     Fonction à exécuter dans un thread pour surveiller la mémoire.
     Met à jour la jauge memory_usage_bytes toutes les `interval` secondes.
     """
+
     def _run():
         while True:
             try:

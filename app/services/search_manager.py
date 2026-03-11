@@ -1,12 +1,14 @@
-import time
-import random
 import hashlib
-import httpx
-from typing import List, Dict, Any, Optional, Callable
+import time
+from typing import Callable, Dict, List
+
 from ..utils.logger import logger
 
+
 class SearchEngine:
-    def __init__(self, name: str, search_func: Callable, cooldown: int = 60, max_retries: int = 3):
+    def __init__(
+        self, name: str, search_func: Callable, cooldown: int = 60, max_retries: int = 3
+    ):
         self.name = name
         self.search_func = search_func
         self.cooldown = cooldown
@@ -20,7 +22,9 @@ class SearchEngine:
         self.last_failure = time.time()
         if self.failures >= self.max_retries:
             self.is_available = False
-            logger.warning(f"🔴 Moteur {self.name} temporairement désactivé après {self.failures} échecs")
+            logger.warning(f"🔴 Moteur {
+                    self.name} temporairement désactivé après {
+                    self.failures} échecs")
 
     def mark_success(self):
         self.failures = 0
@@ -36,6 +40,7 @@ class SearchEngine:
             return False
         return True
 
+
 class SearchManager:
     def __init__(self, cache_ttl: int = 300):
         self.engines: List[SearchEngine] = []
@@ -43,7 +48,9 @@ class SearchManager:
         self.cache_ttl = cache_ttl
         self.last_engine_index = -1
 
-    def add_engine(self, name: str, search_func: Callable, cooldown: int = 60, max_retries: int = 3):
+    def add_engine(
+        self, name: str, search_func: Callable, cooldown: int = 60, max_retries: int = 3
+    ):
         self.engines.append(SearchEngine(name, search_func, cooldown, max_retries))
 
     def _get_cache_key(self, query: str) -> str:
@@ -76,7 +83,8 @@ class SearchManager:
         except Exception as e:
             logger.error(f"❌ Erreur avec {engine.name}: {e}")
             engine.mark_failure()
-            return self.search(query, max_results)  # récursif mais limité par le nombre de moteurs
+            # récursif mais limité par le nombre de moteurs
+            return self.search(query, max_results)
 
     def clear_cache(self):
         self.cache.clear()

@@ -5,7 +5,9 @@ Permet de stocker et récupérer un contexte partagé de manière thread-safe.
 
 import threading
 import time
+
 from ...utils.logger import logger
+
 
 class SynapseBus:
     """
@@ -30,7 +32,8 @@ class SynapseBus:
             self._context = text
             self._last_update = time.time()
             self._update_count += 1
-            logger.debug(f"BUS: mise à jour (ancien: {old_len}, nouveau: {len(text)})")
+            logger.debug(f"BUS: mise à jour (ancien: {old_len}, nouveau: {
+                    len(text)})")
 
     def get_context(self) -> str:
         """
@@ -46,7 +49,9 @@ class SynapseBus:
         Retourne l'infini si jamais mis à jour.
         """
         with self._lock:
-            return time.time() - self._last_update if self._last_update else float('inf')
+            return (
+                time.time() - self._last_update if self._last_update else float("inf")
+            )
 
     def is_fresh(self, max_age: float = 15.0) -> bool:
         """
@@ -63,5 +68,5 @@ class SynapseBus:
             return {
                 "age": self.get_age(),
                 "update_count": self._update_count,
-                "context_length": len(self._context)
+                "context_length": len(self._context),
             }

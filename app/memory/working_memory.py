@@ -3,10 +3,11 @@ Mémoire de travail : buffer circulaire contenant le contexte récent de la conv
 Accessible par tous les agents pour maintenir une cohérence.
 """
 
+import threading
 import time
 from collections import deque
-from typing import List, Dict, Any, Optional
-import threading
+from typing import Dict, List, Optional
+
 from ..utils.metrics import set_working_memory_size
 
 
@@ -27,12 +28,14 @@ class WorkingMemory:
         Met à jour la métrique de taille.
         """
         with self._lock:
-            self._buffer.append({
-                'query': query,
-                'response': response,
-                'timestamp': time.time(),
-                'metadata': metadata or {}
-            })
+            self._buffer.append(
+                {
+                    "query": query,
+                    "response": response,
+                    "timestamp": time.time(),
+                    "metadata": metadata or {},
+                }
+            )
             set_working_memory_size(len(self._buffer))
 
     def get_recent(self, n: Optional[int] = None) -> List[Dict]:
@@ -58,7 +61,7 @@ class WorkingMemory:
                 lines.append(f"--- Échange {i} ---")
                 lines.append(f"Utilisateur: {item['query']}")
                 lines.append(f"Assistant: {item['response']}")
-                if include_metadata and item['metadata']:
+                if include_metadata and item["metadata"]:
                     lines.append(f"Métadonnées: {item['metadata']}")
                 lines.append("")
 
@@ -74,7 +77,6 @@ class WorkingMemory:
         """Statistiques."""
         with self._lock:
             return {
-                'capacity': self.capacity,
-                'current_size': len(self._buffer),
+                "capacity": self.capacity,
+                "current_size": len(self._buffer),
             }
-    

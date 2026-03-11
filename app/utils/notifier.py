@@ -1,14 +1,16 @@
-import AppKit
-import Foundation
 import subprocess
-import os
+
+import AppKit
+
 from .logger import logger
 
 try:
     import UserNotifications
+
     HAS_UN = True
 except ImportError:
     HAS_UN = False
+
 
 def send_notification(title: str, message: str, filepath: str = None):
     """
@@ -21,21 +23,24 @@ def send_notification(title: str, message: str, filepath: str = None):
     else:
         _send_via_ns(title, message, filepath)
 
+
 def _send_via_un(title: str, message: str, filepath: str = None):
     """Utilise UNUserNotificationCenter (moderne)."""
     center = UserNotifications.UNUserNotificationCenter.currentNotificationCenter()
-    
+
     def check_auth(granted, error):
         if not granted:
-            logger.warning("Notifications UN non autorisées, fallback sur NSUserNotification")
+            logger.warning(
+                "Notifications UN non autorisées, fallback sur NSUserNotification"
+            )
             _send_via_ns(title, message, filepath)
             return
-        
+
         content = UserNotifications.UNMutableNotificationContent.alloc().init()
         content.setTitle_(title)
         content.setBody_(message)
         content.setSound_(UserNotifications.UNNotificationSound.defaultSound())
-        
+
         if filepath:
             content.setUserInfo_({"filepath": filepath, "action": "open_file"})
             action = UserNotifications.UNNotificationAction.actionWithIdentifier_title_options_(
@@ -46,16 +51,16 @@ def _send_via_un(title: str, message: str, filepath: str = None):
             )
             center.setNotificationCategories_([category])
             content.setCategoryIdentifier_("OPEN_CATEGORY")
-        
+
         request = UserNotifications.UNNotificationRequest.requestWithIdentifier_content_trigger_(
             f"notif_{title}_{message[:20]}", content, None
         )
         center.addNotificationRequest_withCompletionHandler_(request, lambda err: None)
 
     center.requestAuthorizationWithOptions_completionHandler_(
-        3,  # UNAuthorizationOptionAlert + UNAuthorizationOptionSound
-        check_auth
+        3, check_auth  # UNAuthorizationOptionAlert + UNAuthorizationOptionSound
     )
+
 
 def _send_via_ns(title: str, message: str, filepath: str = None):
     """Fallback sur NSUserNotification (ancien)."""
@@ -64,7 +69,7 @@ def _send_via_ns(title: str, message: str, filepath: str = None):
         notification.setTitle_(title)
         notification.setInformativeText_(message)
         notification.setSoundName_("NSUserNotificationDefaultSoundName")
-        
+
         if filepath:
             notification.setActionButtonTitle_("Ouvrir")
             notification.setUserInfo_({"filepath": filepath, "action": "open_file"})
@@ -78,12 +83,13 @@ def _send_via_ns(title: str, message: str, filepath: str = None):
         logger.warning(f"Échec notification NSUserNotification: {e}")
         _send_via_osascript(title, message, filepath)
 
+
 def _send_via_osascript(title: str, message: str, filepath: str = None):
     """Ultime fallback avec osascript."""
     try:
         script = f'display notification "{message}" with title "{title}" sound name "default"'
         if filepath:
             script += f' subtitle "Cliquez pour ouvrir"'
-        subprocess.run(['osascript', '-e', script], capture_output=True, timeout=5)
+        subprocess.run(["osascript", "-e", script], capture_output=True, timeout=5)
     except Exception as e:
         logger.error(f"Impossible d'envoyer la notification même avec osascript: {e}")

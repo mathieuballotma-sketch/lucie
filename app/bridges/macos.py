@@ -1,12 +1,12 @@
 # app/bridges/macos.py
-import time
 from PyQt5.QtCore import QTimer
+
 
 def apply_max_level_and_behavior(window):
     """Applique le niveau maximum et le comportement de collection. Retourne True si réussi."""
     try:
         import AppKit
-        import objc
+
         MAX_LEVEL = 2147483647
         wid = int(window.winId())
         native_window = None
@@ -21,10 +21,12 @@ def apply_max_level_and_behavior(window):
             native_window.setBackgroundColor_(AppKit.NSColor.clearColor())
             # Comportement pour être sur tous les espaces et au-dessus
             behavior = (
-                AppKit.NSWindowCollectionBehaviorCanJoinAllSpaces |   # rejoindre tous les espaces
-                AppKit.NSWindowCollectionBehaviorStationary |          # ne bouge pas avec l'espace
-                AppKit.NSWindowCollectionBehaviorIgnoresCycle |       # ignore le cycle de fenêtres
-                2048                                                   # NSWindowCollectionBehaviorFullScreenAuxiliary
+                AppKit.NSWindowCollectionBehaviorCanJoinAllSpaces  # rejoindre tous les espaces
+                | AppKit.NSWindowCollectionBehaviorStationary  # ne bouge pas avec l'espace
+                | AppKit.NSWindowCollectionBehaviorIgnoresCycle  # ignore le cycle de fenêtres
+                |
+                # NSWindowCollectionBehaviorFullScreenAuxiliary
+                2048
             )
             native_window.setCollectionBehavior_(behavior)
             print("✅ Niveau max et comportement appliqués.")
@@ -36,12 +38,14 @@ def apply_max_level_and_behavior(window):
         print(f"❌ Erreur: {e}")
         return False
 
+
 def start_level_watchdog(window, interval=1000):
     """
     Watchdog qui tente d'appliquer niveau et comportement à chaque cycle,
     jusqu'à succès, puis continue de vérifier.
     """
     success = False
+
     def check_and_restore():
         nonlocal success
         try:

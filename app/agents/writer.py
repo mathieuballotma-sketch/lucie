@@ -1,20 +1,23 @@
 # app/actions/writer.py
 import os
-from docx import Document
-from ..utils.logger import logger
 import subprocess
+
 import AppKit
-import Foundation
+from docx import Document
+
+from ..utils.logger import logger
+
 
 class WriterAgent:
     def __init__(self, output_dir: str):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
-        logger.info(f"📄 WriterAgent initialisé, répertoire de sortie : {self.output_dir}")
+        logger.info(f"📄 WriterAgent initialisé, répertoire de sortie : {
+                self.output_dir}")
 
     def create_word_document(self, title: str, content: str) -> str:
         try:
-            filename = title.replace(' ', '_').replace('/', '_').replace('\\', '_')
+            filename = title.replace(" ", "_").replace("/", "_").replace("\\", "_")
             if not filename:
                 filename = "document"
             filepath = os.path.join(self.output_dir, f"{filename}.docx")
@@ -28,9 +31,7 @@ class WriterAgent:
 
             # Notification interactive
             self._send_notification(
-                title="Document créé",
-                message=f"{filename}.docx",
-                filepath=filepath
+                title="Document créé", message=f"{filename}.docx", filepath=filepath
             )
 
             return f"✅ Document Word créé : {filename}.docx (une notification a été envoyée)"
@@ -50,13 +51,14 @@ class WriterAgent:
 
             # Planifier la notification immédiatement
             centre = AppKit.NSUserNotificationCenter.defaultUserNotificationCenter()
-            centre.setDelegate_(AppKit.NSApp().delegate())  # Le délégué est l'AppDelegate
+            # Le délégué est l'AppDelegate
+            centre.setDelegate_(AppKit.NSApp().delegate())
             centre.scheduleNotification_(notification)
         except Exception as e:
             logger.warning(f"Impossible d'envoyer la notification interactive : {e}")
             # Fallback sur notification simple
             try:
                 script = f'display notification "{message}" with title "{title}"'
-                subprocess.run(['osascript', '-e', script], capture_output=True)
-            except:
+                subprocess.run(["osascript", "-e", script], capture_output=True)
+            except BaseException:
                 pass

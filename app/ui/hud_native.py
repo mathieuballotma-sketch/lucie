@@ -1,37 +1,43 @@
 # app/ui/hud_native.py
 
-import objc
-from PyObjCTools import AppHelper
-import AppKit
-import Quartz
-import Foundation
-import threading
-import sys
-import subprocess
 import os
+import subprocess
+import sys
+import threading
 import time
-from ..core.engine import LucidEngine
+
+import AppKit
+import Foundation
+import objc
+import Quartz
+from PyObjCTools import AppHelper
+
 from ..core.config import Config
+from ..core.engine import LucidEngine
 
 print("📦 Chargement du module hud_native")
 
 WINDOW_W = 420
 WINDOW_H = 460
 CORNER_R = 24.0
-PADDING  = 16
+PADDING = 16
 HEADER_H = 56
-INPUT_H  = 38
+INPUT_H = 38
 STATUS_H = 16
-ALPHA    = 0.75
+ALPHA = 0.75
+
 
 def ns_color(r, g, b, a=1.0):
     return AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(r, g, b, a)
 
+
 def ns_white(w, a=1.0):
     return AppKit.NSColor.colorWithCalibratedWhite_alpha_(w, a)
 
+
 def make_rect(x, y, w, h):
     return AppKit.NSMakeRect(x, y, w, h)
+
 
 class DraggableView(AppKit.NSView):
     def initWithFrame_(self, frame):
@@ -60,8 +66,10 @@ class DraggableView(AppKit.NSView):
     def isOpaque(self):
         return False
 
+
 class ThinkingIndicatorView(AppKit.NSView):
     """Indicateur animé (point qui pulse)"""
+
     def initWithFrame_(self, frame):
         self = objc.super(ThinkingIndicatorView, self).initWithFrame_(frame)
         if self is not None:
@@ -78,12 +86,13 @@ class ThinkingIndicatorView(AppKit.NSView):
         anim.setToValue_(1.4)
         anim.setDuration_(0.8)
         anim.setAutoreverses_(True)
-        anim.setRepeatCount_(float('inf'))
+        anim.setRepeatCount_(float("inf"))
         self.layer().addAnimation_forKey_(anim, "pulse")
 
     def stopAnimating(self):
         self.layer().removeAllAnimations()
         self.layer().setBackgroundColor_(ns_white(1.0, 0.2).CGColor())
+
 
 class HUDWindow(AppKit.NSPanel):
     def init(self):
@@ -91,11 +100,11 @@ class HUDWindow(AppKit.NSPanel):
             100,
             AppKit.NSScreen.mainScreen().frame().size.height - WINDOW_H - 100,
             WINDOW_W,
-            WINDOW_H
+            WINDOW_H,
         )
         style = (
-            AppKit.NSWindowStyleMaskBorderless |
-            AppKit.NSWindowStyleMaskNonactivatingPanel
+            AppKit.NSWindowStyleMaskBorderless
+            | AppKit.NSWindowStyleMaskNonactivatingPanel
         )
         self = objc.super(HUDWindow, self).initWithContentRect_styleMask_backing_defer_(
             rect, style, AppKit.NSBackingStoreBuffered, False
@@ -108,20 +117,28 @@ class HUDWindow(AppKit.NSPanel):
         self.setHidesOnDeactivate_(False)
         self.setLevel_(Quartz.kCGFloatingWindowLevel + 1)
         self.setCollectionBehavior_(
-            AppKit.NSWindowCollectionBehaviorCanJoinAllSpaces     |
-            AppKit.NSWindowCollectionBehaviorFullScreenAuxiliary  |
-            AppKit.NSWindowCollectionBehaviorStationary           |
-            AppKit.NSWindowCollectionBehaviorIgnoresCycle
+            AppKit.NSWindowCollectionBehaviorCanJoinAllSpaces
+            | AppKit.NSWindowCollectionBehaviorFullScreenAuxiliary
+            | AppKit.NSWindowCollectionBehaviorStationary
+            | AppKit.NSWindowCollectionBehaviorIgnoresCycle
         )
         self.setOpaque_(False)
         self.setBackgroundColor_(AppKit.NSColor.clearColor())
         self.setAlphaValue_(ALPHA)
         self.setHasShadow_(True)
 
-        self._is_dragging  = False
+        self._is_dragging = False
         self._is_processing = False
         self._processing_start_time = 0
         self.engine = None  # sera injecté plus tard
+
+        # Variables pour le streaming de réponse
+        self._streaming_text = ""
+        self._streaming_index = 0
+        self._streaming_timer = None
+        self._streaming_sender = ""
+        self._streaming_full_text = ""
+        self._streaming_range = None  # plage (début, fin) du message en cours
 
         self._setup_ui()
         self._setup_space_observer()
@@ -202,15 +219,15 @@ class HUDWindow(AppKit.NSPanel):
 
         # Label de statut "En cours de réflexion"
         self._thinking_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(indicator_x + indicator_size + 8, WINDOW_H - HEADER_H + 16, 140, 22)
+            make_rect(
+                indicator_x + indicator_size + 8, WINDOW_H - HEADER_H + 16, 140, 22
+            )
         )
         self._thinking_label.setStringValue_("")
         self._thinking_label.setEditable_(False)
         self._thinking_label.setBezeled_(False)
         self._thinking_label.setDrawsBackground_(False)
-        self._thinking_label.setFont_(
-            AppKit.NSFont.systemFontOfSize_(11)
-        )
+        self._thinking_label.setFont_(AppKit.NSFont.systemFontOfSize_(11))
         self._thinking_label.setTextColor_(ns_white(0.7, 0.8))
         self._thinking_label.setAlphaValue_(0.0)
         content.addSubview_(self._thinking_label)
@@ -280,7 +297,7 @@ class HUDWindow(AppKit.NSPanel):
         self._input.setEditable_(True)
         self._input.setSelectable_(True)
         self._input.setTarget_(self)
-        self._input.setAction_('sendQuery:')
+        self._input.setAction_("sendQuery:")
         content.addSubview_(self._input)
 
         # Bouton d'envoi
@@ -294,7 +311,7 @@ class HUDWindow(AppKit.NSPanel):
             AppKit.NSFont.systemFontOfSize_weight_(16, AppKit.NSFontWeightLight)
         )
         self._send_btn.setTarget_(self)
-        self._send_btn.setAction_('sendQuery:')
+        self._send_btn.setAction_("sendQuery:")
         attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(
             "↗", {AppKit.NSForegroundColorAttributeName: ns_white(0.8, 0.7)}
         )
@@ -331,14 +348,18 @@ class HUDWindow(AppKit.NSPanel):
 
     def _start_typing_monitor(self):
         """Lance le timer de surveillance de la frappe."""
+
         def check_text():
             current = self._input.stringValue()
             if current != self._last_text:
                 self._last_text = current
-                threading.Thread(target=self._send_to_predictor, args=(current,), daemon=True).start()
+                threading.Thread(
+                    target=self._send_to_predictor, args=(current,), daemon=True
+                ).start()
             self._typing_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-                0.5, self, 'typingTimerFired:', None, False
+                0.5, self, "typingTimerFired:", None, False
             )
+
         check_text()
 
     @objc.IBAction
@@ -347,24 +368,31 @@ class HUDWindow(AppKit.NSPanel):
         current = self._input.stringValue()
         if current != self._last_text:
             self._last_text = current
-            threading.Thread(target=self._send_to_predictor, args=(current,), daemon=True).start()
+            threading.Thread(
+                target=self._send_to_predictor, args=(current,), daemon=True
+            ).start()
         # Relancer le timer
         self._typing_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            0.5, self, 'typingTimerFired:', None, False
+            0.5, self, "typingTimerFired:", None, False
         )
 
     def _send_to_predictor(self, text: str):
         """Envoie le texte partiel au prédicteur (via l'engine)."""
-        if hasattr(self, 'engine') and self.engine and hasattr(self.engine, 'predictor'):
-            self.engine.predictor.update_partial_input(text)
+        if (
+            hasattr(self, "engine")
+            and self.engine
+            and hasattr(self.engine, "cortex")
+            and hasattr(self.engine.cortex, "predictor")
+        ):
+            self.engine.cortex.predictor.update_partial_input(text)
 
     def _setup_space_observer(self):
         nc = AppKit.NSWorkspace.sharedWorkspace().notificationCenter()
         nc.addObserver_selector_name_object_(
             self,
-            'spaceDidChange:',
+            "spaceDidChange:",
             AppKit.NSWorkspaceActiveSpaceDidChangeNotification,
-            None
+            None,
         )
         print("👂 Observateur d'espace configuré")
 
@@ -375,7 +403,7 @@ class HUDWindow(AppKit.NSPanel):
 
     def _setup_watchdog(self):
         self._watchdog = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            2.0, self, 'watchdogTick:', None, True
+            2.0, self, "watchdogTick:", None, True
         )
         AppKit.NSRunLoop.currentRunLoop().addTimer_forMode_(
             self._watchdog, AppKit.NSRunLoopCommonModes
@@ -407,7 +435,8 @@ class HUDWindow(AppKit.NSPanel):
         print("📝 Appel de append_message_safe pour utilisateur")
         self.append_message_safe("Toi", query, user=True)
 
-        # Mise à jour de l'UI : point orange, message "Réflexion..." et indicateur qui pulse
+        # Mise à jour de l'UI : point orange, message "Réflexion..." et
+        # indicateur qui pulse
         self._set_status("●", ns_color(1.0, 0.6, 0.0), "Réflexion…")
         self._send_btn.setEnabled_(False)
         self._thinking_indicator.startAnimating()
@@ -421,8 +450,11 @@ class HUDWindow(AppKit.NSPanel):
         print(f"🧵 Thread _process_query démarré pour: '{query}'")
         try:
             # Afficher un message de début de réflexion
-            AppHelper.callAfter(self.append_message_safe, "Agent", "Je réfléchis...", False)
-            time.sleep(0.5)  # Petite pause pour que l'utilisateur voie le message
+            AppHelper.callAfter(
+                self.append_message_safe, "Agent", "Je réfléchis...", False
+            )
+            # Petite pause pour que l'utilisateur voie le message
+            time.sleep(0.5)
 
             print("Appel de self.engine.process...")
             response, latency = self.engine.process(query, use_rag=True)
@@ -432,65 +464,130 @@ class HUDWindow(AppKit.NSPanel):
                 response = "(Aucune réponse générée)"
                 print("⚠️ Réponse vide, message par défaut utilisé")
 
-            # Afficher la réponse dans le HUD
-            AppHelper.callAfter(self.append_message_safe, "Agent", response, False)
-
-            # Si la réponse indique une action, on peut ajouter un message contextuel
-            if "✅ Application" in response:
-                AppHelper.callAfter(self.append_message_safe, "Agent", "L'application est maintenant ouverte. Je peux taper du texte si vous le souhaitez.", False)
-            elif "✅ Texte tapé" in response:
-                AppHelper.callAfter(self.append_message_safe, "Agent", "Le texte a été saisi avec succès.", False)
-
-            # Finaliser l'interface
-            AppHelper.callAfter(self._on_response_ui_ready, latency)
+            # Lancer le streaming de la réponse
+            AppHelper.callAfter(self._start_streaming, "Agent", response, False)
 
         except Exception as e:
             print(f"❌ Exception dans _process_query: {e}")
             import traceback
+
             traceback.print_exc()
-            AppHelper.callAfter(self._on_response, f"Erreur : {e}", None)
+            AppHelper.callAfter(self._on_response_error, f"Erreur : {e}")
 
-    @objc.python_method
-    def _on_response(self, text, latency):
-        # Cette méthode est conservée pour compatibilité, mais on utilise maintenant _on_response_ui_ready
-        self.append_message_safe("IA", text, user=False)
-        self._thinking_indicator.stopAnimating()
-        self._thinking_label.setAlphaValue_(0.0)
+    def _start_streaming(self, sender, full_text, user=False):
+        """Démarre le streaming caractère par caractère."""
+        if self._streaming_timer is not None:
+            self._streaming_timer.invalidate()
+            self._streaming_timer = None
 
-        if latency is not None:
+        self._streaming_sender = sender
+        self._streaming_full_text = full_text
+        self._streaming_text = ""
+        self._streaming_index = 0
+        self._streaming_range = None  # sera calculé au premier tick
+
+        # Ajouter un message vide pour le sender
+        self.append_message_safe(sender, "", user)
+
+        # Lancer le timer
+        self._streaming_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            0.03, self, "streamingTimerFired:", None, True
+        )
+
+    @objc.IBAction
+    def streamingTimerFired_(self, timer):
+        if self._streaming_index >= len(self._streaming_full_text):
+            timer.invalidate()
+            self._streaming_timer = None
+            self._is_processing = False
+            latency = time.time() - self._processing_start_time
+            self._thinking_indicator.stopAnimating()
+            self._thinking_label.setAlphaValue_(0.0)
             self._latency_label.setStringValue_(f"{latency:.2f}s")
             self._set_status("●", ns_color(0.2, 0.9, 0.4), "Prêt")
-        else:
-            self._set_status("●", ns_color(1.0, 0.2, 0.2), "Erreur")
+            self._send_btn.setEnabled_(True)
+            self._is_dragging = False
+            print("✅ Interface prête")
+            return
+
+        char = self._streaming_full_text[self._streaming_index]
+        self._streaming_text += char
+        self._streaming_index += 1
+
+        storage = self._text_view.textStorage()
+
+        # Si on n'a pas encore la plage, on la calcule en cherchant le dernier message
+        if self._streaming_range is None:
+            full_string = storage.string()
+            # Trouver la position du dernier message (après le dernier saut de ligne)
+            last_newline = full_string.rfind("\n")
+            if last_newline != -1:
+                # Le dernier message commence après ce saut de ligne
+                start = last_newline + 1
+                end = len(full_string)
+                self._streaming_range = (start, end)
+
+        if self._streaming_range is None:
+            # Cas improbable : pas de message, on annule
+            return
+
+        start, end = self._streaming_range
+
+        # Construire le nouveau message complet (sender + texte courant)
+        sender_attrs = {
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
+                11, AppKit.NSFontWeightLight
+            ),
+            AppKit.NSForegroundColorAttributeName: ns_color(0.7, 1.0, 0.7, 0.9),  # vert pour l'agent
+        }
+        msg_attrs = {
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12),
+            AppKit.NSForegroundColorAttributeName: ns_white(0.92, 0.9),
+        }
+        new_attributed = AppKit.NSMutableAttributedString.alloc().init()
+        new_attributed.appendAttributedString_(
+            AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                f"{self._streaming_sender}\n", sender_attrs
+            )
+        )
+        new_attributed.appendAttributedString_(
+            AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                f"{self._streaming_text}\n", msg_attrs
+            )
+        )
+
+        # Remplacer la plage
+        storage.replaceCharactersInRange_withAttributedString_(
+            Foundation.NSMakeRange(start, end - start), new_attributed
+        )
+
+        # Mettre à jour la plage pour le prochain tick (la nouvelle longueur)
+        new_len = len(new_attributed.string())
+        self._streaming_range = (start, start + new_len)
+
+        self._text_view.setNeedsDisplay_(True)
+        # Scroll en bas
+        total_len = len(storage.string())
+        self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(total_len, 0))
+
+    def _on_response_error(self, error_text):
+        """Gère une erreur pendant la réponse."""
+        self.append_message_safe("Agent", error_text, False)
+        self._thinking_indicator.stopAnimating()
+        self._thinking_label.setAlphaValue_(0.0)
+        self._set_status("●", ns_color(1.0, 0.2, 0.2), "Erreur")
         self._send_btn.setEnabled_(True)
         self._is_processing = False
         self._is_dragging = False
-        print("✅ _on_response terminé")
-
-    @objc.python_method
-    def _on_response_ui_ready(self, latency):
-        """Met à jour l'interface après la réponse."""
-        self._thinking_indicator.stopAnimating()
-        self._thinking_label.setAlphaValue_(0.0)
-        if latency is not None:
-            self._latency_label.setStringValue_(f"{latency:.2f}s")
-            self._set_status("●", ns_color(0.2, 0.9, 0.4), "Prêt")
-        else:
-            self._set_status("●", ns_color(1.0, 0.2, 0.2), "Erreur")
-        self._send_btn.setEnabled_(True)
-        self._is_processing = False
-        self._is_dragging = False
-        print("✅ Interface prête")
 
     @objc.python_method
     def append_message_safe(self, sender, text, user=True):
         """Ajoute un message en garantissant l'exécution sur le main thread."""
         import threading
+
         if threading.current_thread().name != "MainThread":
             self.performSelectorOnMainThread_withObject_waitUntilDone_(
-                self._append_message_on_main,
-                (sender, text, user),
-                False
+                self._append_message_on_main, (sender, text, user), False
             )
         else:
             self._append_message_on_main((sender, text, user))
@@ -501,15 +598,14 @@ class HUDWindow(AppKit.NSPanel):
         sender, text, user = args
         print(f"📝 _append_message_on_main: {sender} -> '{text[:60]}…'")
         storage = self._text_view.textStorage()
-        current = self._text_view.string()
+        current = storage.string()
         prefix = "\n" if current else ""
         sender_attrs = {
             AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
                 11, AppKit.NSFontWeightLight
             ),
             AppKit.NSForegroundColorAttributeName: (
-                ns_color(0.6, 0.8, 1.0, 0.9) if user
-                else ns_color(0.7, 1.0, 0.7, 0.9)
+                ns_color(0.6, 0.8, 1.0, 0.9) if user else ns_color(0.7, 1.0, 0.7, 0.9)
             ),
         }
         msg_attrs = {
@@ -530,7 +626,7 @@ class HUDWindow(AppKit.NSPanel):
         storage.appendAttributedString_(full)
         self._text_view.setNeedsDisplay_(True)
         self._text_view.displayIfNeeded()
-        end = len(self._text_view.string())
+        end = storage.length()
         self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(end, 0))
         scrollView = self._text_view.enclosingScrollView()
         if scrollView:
@@ -545,22 +641,23 @@ class HUDWindow(AppKit.NSPanel):
         self._status_text.setStringValue_(label)
 
     def close(self):
-        if hasattr(self, '_watchdog') and self._watchdog:
+        if hasattr(self, "_watchdog") and self._watchdog:
             self._watchdog.invalidate()
         nc = AppKit.NSWorkspace.sharedWorkspace().notificationCenter()
         nc.removeObserver_(self)
         objc.super(HUDWindow, self).close()
 
+
 class AppDelegate(AppKit.NSObject):
+    def initWithEngine_(self, engine):
+        self = objc.super(AppDelegate, self).init()
+        if self is not None:
+            self.engine = engine
+        return self
+
     def applicationDidFinishLaunching_(self, notification):
         print("🚀 Application lancée")
         try:
-            self.config = Config()
-            print("✅ Config chargée")
-
-            self.engine = LucidEngine(self.config)
-            print("✅ Engine initialisé")
-
             self.window = HUDWindow.alloc().init()
             self.window.engine = self.engine
             print("✅ Fenêtre créée, engine injecté")
@@ -569,7 +666,7 @@ class AppDelegate(AppKit.NSObject):
             self.window.orderFrontRegardless()
             self.window.display()
 
-            if hasattr(self.window, '_input'):
+            if hasattr(self.window, "_input"):
                 self.window.makeFirstResponder_(self.window._input)
                 print("🎯 Focus donné au champ de saisie")
             else:
@@ -583,6 +680,7 @@ class AppDelegate(AppKit.NSObject):
         except Exception as e:
             print(f"❌ Erreur initialisation : {e}")
             import traceback
+
             traceback.print_exc()
             sys.exit(1)
 
@@ -591,26 +689,33 @@ class AppDelegate(AppKit.NSObject):
         if user_info and user_info.get("action") == "open_file":
             filepath = user_info.get("filepath")
             if filepath and os.path.exists(filepath):
-                subprocess.run(['open', filepath])
+                subprocess.run(["open", filepath])
                 print(f"📂 Ouverture du fichier : {filepath}")
             else:
                 print(f"⚠️ Fichier introuvable : {filepath}")
 
     def applicationWillTerminate_(self, notification):
         print("👋 Arrêt de l'application")
-        if hasattr(self, 'engine'):
+        if hasattr(self, "engine"):
             self.engine.stop()
 
-def run_hud():
+
+def run_hud(engine=None):
     print("🚀 Lancement de run_hud")
     app = AppKit.NSApplication.sharedApplication()
     app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
 
-    delegate = AppDelegate.alloc().init()
+    if engine is None:
+        # Fallback pour compatibilité
+        config = Config()
+        engine = LucidEngine(config)
+
+    delegate = AppDelegate.alloc().initWithEngine_(engine)
     app.setDelegate_(delegate)
 
     print("✅ Démarrage du runloop")
     AppHelper.runEventLoop()
+
 
 if __name__ == "__main__":
     run_hud()

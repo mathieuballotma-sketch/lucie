@@ -3,10 +3,11 @@ Service de mémoire unifié : expose les deux mémoires (épisodique et travail)
 et orchestre leur interaction.
 """
 
-from typing import Optional, Dict, List
+from typing import Dict, List, Optional
+
+from ..utils.logger import logger
 from .episodic_memory import EpisodicMemory
 from .working_memory import WorkingMemory
-from ..utils.logger import logger
 
 
 class MemoryService:
@@ -19,7 +20,9 @@ class MemoryService:
         self.working = working_memory
         logger.info("🧠 Service mémoire initialisé")
 
-    def remember(self, query: str, n_results: int = 3, min_similarity: float = 0.7) -> List[Dict]:
+    def remember(
+        self, query: str, n_results: int = 3, min_similarity: float = 0.7
+    ) -> List[Dict]:
         """
         Récupère des souvenirs épisodiques similaires à la requête.
         """
@@ -31,7 +34,9 @@ class MemoryService:
         """
         self.episodic.add(query, response, metadata)
 
-    def add_to_working(self, query: str, response: str, metadata: Optional[Dict] = None):
+    def add_to_working(
+        self, query: str, response: str, metadata: Optional[Dict] = None
+    ):
         """
         Ajoute une interaction à la mémoire de travail.
         """
@@ -46,6 +51,6 @@ class MemoryService:
     def get_stats(self) -> dict:
         """Statistiques combinées."""
         return {
-            'episodic': self.episodic.get_stats(),
-            'working': self.working.get_stats(),
+            "episodic": self.episodic.get_stats(),
+            "working": self.working.get_stats(),
         }

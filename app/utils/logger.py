@@ -1,14 +1,15 @@
 import logging
 import sys
-from pathlib import Path
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
 
 def setup_logger(
     name: str = "agent_lucide",
     level: int = logging.DEBUG,
     log_file: Path = None,
     max_bytes: int = 10_485_760,  # 10 Mo
-    backup_count: int = 5
+    backup_count: int = 5,
 ) -> logging.Logger:
     """
     Configure et retourne un logger avec sortie console et éventuellement fichier.
@@ -22,8 +23,8 @@ def setup_logger(
 
     # Format détaillé incluant le nom du module et la fonction
     formatter = logging.Formatter(
-        '%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s | %(filename)s:%(lineno)d | %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        "%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s | %(filename)s:%(lineno)d | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     # Handler console
@@ -37,7 +38,7 @@ def setup_logger(
         log_file = Path(log_file)
         log_file.parent.mkdir(parents=True, exist_ok=True)
         file_handler = RotatingFileHandler(
-            log_file, maxBytes=max_bytes, backupCount=backup_count, encoding='utf-8'
+            log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
         )
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
@@ -45,8 +46,10 @@ def setup_logger(
 
     return logger
 
+
 # Logger par défaut (sans fichier)
 logger = setup_logger()
+
 
 def get_logger(name: str = None) -> logging.Logger:
     """Retourne un logger avec un nom spécifique (sous-hiérarchie)."""

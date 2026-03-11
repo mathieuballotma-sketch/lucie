@@ -5,24 +5,26 @@ Version optimisée avec cache exact pour les plans.
 
 import hashlib
 import pickle
-import time
 import threading
-from pathlib import Path
-from typing import Optional, Tuple, Dict, List, Any
+import time
 from collections import OrderedDict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 import faiss
 
 from ..utils.logger import logger
 from ..utils.metrics import (
-    record_cache_hit, record_cache_miss,
-    record_plan_cache_hit, record_plan_cache_miss
+    record_cache_hit,
+    record_cache_miss,
+    record_plan_cache_hit,
+    record_plan_cache_miss,
 )
 
 # Tentative d'import de SentenceTransformer, optionnel
 try:
     from sentence_transformers import SentenceTransformer
+
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
@@ -49,7 +51,7 @@ class PromptCache:
         self.dimension = 384  # dimension par défaut pour all-MiniLM-L6-v2
         if SENTENCE_TRANSFORMERS_AVAILABLE:
             try:
-                self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+                self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
                 self.dimension = self.embedder.get_sentence_embedding_dimension()
             except Exception as e:
                 logger.error(f"Erreur chargement SentenceTransformer: {e}")
@@ -73,11 +75,23 @@ class PromptCache:
         self._load_exact_plan_cache()
 
         # Statistiques
-        self.stats = {'hits_exact': 0, 'hits_vector': 0, 'misses': 0, 'evictions': 0,
-                      'plan_hits_exact': 0, 'plan_hits_vector': 0, 'plan_misses': 0}
+        self.stats = {
+            "hits_exact": 0,
+            "hits_vector": 0,
+            "misses": 0,
+            "evictions": 0,
+            "plan_hits_exact": 0,
+            "plan_hits_vector": 0,
+            "plan_misses": 0,
+        }
 
         self._lock = threading.RLock()
-        logger.info(f"✅ PromptCache optimisé initialisé ({len(self.exact_cache)} exactes, {len(self.exact_plan_cache)} plans exacts, {self.index.ntotal} vectorielles)")
+        logger.info(f"✅ PromptCache optimisé initialisé ({
+                len(
+                    self.exact_cache)} exactes, {
+                len(
+                    self.exact_plan_cache)} plans exacts, {
+                        self.index.ntotal} vectorielles)")
 
     # ----------------------------------------------------------------------
     # Gestion de l'index FAISS
@@ -89,7 +103,7 @@ class PromptCache:
             self.index = faiss.IndexFlatIP(self.dimension)  # Similarité cosinus
 
         if self.metadata_path.exists():
-            with open(self.metadata_path, 'rb') as f:
+            with open(self.metadata_path, "rb") as f:
                 self.metadata = pickle.load(f)  # Liste de dicts
         else:
             self.metadata = []
@@ -98,7 +112,7 @@ class PromptCache:
         with self._lock:
             try:
                 faiss.write_index(self.index, str(self.index_path))
-                with open(self.metadata_path, 'wb') as f:
+                with open(self.metadata_path, "wb") as f:
                     pickle.dump(self.metadata, f)
             except Exception as e:
                 logger.error(f"Erreur sauvegarde index: {e}")
@@ -109,7 +123,7 @@ class PromptCache:
     def _load_exact_cache(self):
         if self.exact_cache_path.exists():
             try:
-                with open(self.exact_cache_path, 'rb') as f:
+                with open(self.exact_cache_path, "rb") as f:
                     data = pickle.load(f)
                     for key, (resp, ts, acc) in data.items():
                         self.exact_cache[key] = (resp, ts, acc)
@@ -120,7 +134,7 @@ class PromptCache:
     def _save_exact_cache(self):
         with self._lock:
             try:
-                with open(self.exact_cache_path, 'wb') as f:
+                with open(self.exact_cache_path, "wb") as f:
                     pickle.dump(dict(self.exact_cache), f)
             except Exception as e:
                 logger.error(f"Erreur sauvegarde cache exact: {e}")
@@ -131,7 +145,7 @@ class PromptCache:
     def _load_exact_plan_cache(self):
         if self.exact_plan_cache_path.exists():
             try:
-                with open(self.exact_plan_cache_path, 'rb') as f:
+                with open(self.exact_plan_cache_path, "rb") as f:
                     data = pickle.load(f)
                     for key, (plan, ts, acc) in data.items():
                         self.exact_plan_cache[key] = (plan, ts, acc)
@@ -142,7 +156,7 @@ class PromptCache:
     def _save_exact_plan_cache(self):
         with self._lock:
             try:
-                with open(self.exact_plan_cache_path, 'wb') as f:
+                with open(self.exact_plan_cache_path, "wb") as f:
                     pickle.dump(dict(self.exact_plan_cache), f)
             except Exception as e:
                 logger.error(f"Erreur sauvegarde cache exact plans: {e}")
@@ -152,14 +166,16 @@ class PromptCache:
         with self._lock:
             if len(self.exact_cache) <= self.max_size:
                 return
-            sorted_keys = sorted(self.access_count.keys(), key=lambda k: self.access_count[k])
+            sorted_keys = sorted(
+                self.access_count.keys(), key=lambda k: self.access_count[k]
+            )
             to_remove = len(self.exact_cache) - self.max_size
             for key in sorted_keys[:to_remove]:
                 if key in self.exact_cache:
                     del self.exact_cache[key]
                 if key in self.access_count:
                     del self.access_count[key]
-                self.stats['evictions'] += 1
+                self.stats["evictions"] += 1
             logger.debug(f"🧹 Éviction de {to_remove} entrées de cache exact")
 
     def _evict_plan_if_needed(self):
@@ -167,14 +183,16 @@ class PromptCache:
         with self._lock:
             if len(self.exact_plan_cache) <= self.max_size:
                 return
-            sorted_keys = sorted(self.plan_access_count.keys(), key=lambda k: self.plan_access_count[k])
+            sorted_keys = sorted(
+                self.plan_access_count.keys(), key=lambda k: self.plan_access_count[k]
+            )
             to_remove = len(self.exact_plan_cache) - self.max_size
             for key in sorted_keys[:to_remove]:
                 if key in self.exact_plan_cache:
                     del self.exact_plan_cache[key]
                 if key in self.plan_access_count:
                     del self.plan_access_count[key]
-                self.stats['evictions'] += 1
+                self.stats["evictions"] += 1
             logger.debug(f"🧹 Éviction de {to_remove} plans exacts")
 
     def _get_exact_key(self, prompt: str, system: str, model: str) -> str:
@@ -184,63 +202,85 @@ class PromptCache:
     # ----------------------------------------------------------------------
     # API publique pour les réponses
     # ----------------------------------------------------------------------
-    def get(self, prompt: str, system: str = "", model: str = "auto", similarity_threshold: float = 0.95) -> Optional[str]:
+    def get(
+        self,
+        prompt: str,
+        system: str = "",
+        model: str = "auto",
+        similarity_threshold: float = 0.95,
+    ) -> Optional[str]:
         exact_key = self._get_exact_key(prompt, system, model)
         with self._lock:
             if exact_key in self.exact_cache:
                 response, timestamp, acc = self.exact_cache[exact_key]
                 self.access_count[exact_key] = acc + 1
-                self.stats['hits_exact'] += 1
+                self.stats["hits_exact"] += 1
                 record_cache_hit("exact")
                 logger.debug(f"🎯 Cache exact trouvé")
                 return response
 
         # Si le cache vectoriel n'est pas disponible, on s'arrête là
         if not SENTENCE_TRANSFORMERS_AVAILABLE or self.embedder is None:
-            self.stats['misses'] += 1
+            self.stats["misses"] += 1
             record_cache_miss("vector")
             return None
 
         if self.index.ntotal == 0:
-            self.stats['misses'] += 1
+            self.stats["misses"] += 1
             record_cache_miss("vector")
             return None
 
-        query_embedding = self.embedder.encode([prompt]).astype('float32')
+        query_embedding = self.embedder.encode([prompt]).astype("float32")
         scores, indices = self.index.search(query_embedding, k=3)
         if scores[0][0] > similarity_threshold:
             meta_idx = indices[0][0]
             if 0 <= meta_idx < len(self.metadata):
                 entry = self.metadata[meta_idx]
-                if entry.get('type') == 'response' and (model == 'auto' or entry.get('model') == model):
-                    cached_response = entry['response']
-                    self.stats['hits_vector'] += 1
+                if entry.get("type") == "response" and (
+                    model == "auto" or entry.get("model") == model
+                ):
+                    cached_response = entry["response"]
+                    self.stats["hits_vector"] += 1
                     record_cache_hit("vector")
-                    logger.debug(f"🎯 Cache vectoriel trouvé (score: {scores[0][0]:.3f})")
+                    logger.debug(f"🎯 Cache vectoriel trouvé (score: {
+                            scores[0][0]:.3f})")
                     self.put(prompt, system, model, cached_response, from_vector=True)
                     return cached_response
 
-        self.stats['misses'] += 1
+        self.stats["misses"] += 1
         record_cache_miss("vector")
         return None
 
-    def put(self, prompt: str, system: str, model: str, response: str, from_vector: bool = False):
+    def put(
+        self,
+        prompt: str,
+        system: str,
+        model: str,
+        response: str,
+        from_vector: bool = False,
+    ):
         with self._lock:
             exact_key = self._get_exact_key(prompt, system, model)
             self.exact_cache[exact_key] = (response, time.time(), 1)
             self.access_count[exact_key] = 1
             self._evict_if_needed()
 
-            if not from_vector and SENTENCE_TRANSFORMERS_AVAILABLE and self.embedder is not None:
-                embedding = self.embedder.encode([prompt]).astype('float32')
+            if (
+                not from_vector
+                and SENTENCE_TRANSFORMERS_AVAILABLE
+                and self.embedder is not None
+            ):
+                embedding = self.embedder.encode([prompt]).astype("float32")
                 self.index.add(embedding)
-                self.metadata.append({
-                    'prompt': prompt,
-                    'response': response,
-                    'model': model,
-                    'timestamp': time.time(),
-                    'type': 'response'
-                })
+                self.metadata.append(
+                    {
+                        "prompt": prompt,
+                        "response": response,
+                        "model": model,
+                        "timestamp": time.time(),
+                        "type": "response",
+                    }
+                )
 
             if len(self.metadata) % 100 == 0:
                 self._save_index()
@@ -249,27 +289,33 @@ class PromptCache:
     # ----------------------------------------------------------------------
     # API pour les plans d'actions
     # ----------------------------------------------------------------------
-    def get_plan(self, query: str, similarity_threshold: float = 0.75) -> Optional[List[Dict[str, Any]]]:
+    def get_plan(
+        self, query: str, similarity_threshold: float = 0.75
+    ) -> Optional[List[Dict[str, Any]]]:
         # D'abord, vérifier le cache exact
         exact_key = hashlib.md5(query.encode()).hexdigest()
         with self._lock:
             if exact_key in self.exact_plan_cache:
                 plan, timestamp, acc = self.exact_plan_cache[exact_key]
                 self.plan_access_count[exact_key] = acc + 1
-                self.stats['plan_hits_exact'] += 1
+                self.stats["plan_hits_exact"] += 1
                 record_plan_cache_hit()
                 logger.debug(f"📋 Plan exact trouvé")
                 return plan
 
-        if not SENTENCE_TRANSFORMERS_AVAILABLE or self.embedder is None or self.index.ntotal == 0:
-            self.stats['plan_misses'] += 1
+        if (
+            not SENTENCE_TRANSFORMERS_AVAILABLE
+            or self.embedder is None
+            or self.index.ntotal == 0
+        ):
+            self.stats["plan_misses"] += 1
             record_plan_cache_miss()
             return None
 
-        query_embedding = self.embedder.encode([query]).astype('float32')
+        query_embedding = self.embedder.encode([query]).astype("float32")
         scores, indices = self.index.search(query_embedding, k=5)
         if scores[0][0] < similarity_threshold:
-            self.stats['plan_misses'] += 1
+            self.stats["plan_misses"] += 1
             record_plan_cache_miss()
             return None
 
@@ -279,34 +325,43 @@ class PromptCache:
             meta_idx = indices[0][i]
             if 0 <= meta_idx < len(self.metadata):
                 entry = self.metadata[meta_idx]
-                if entry.get('type') == 'plan':
-                    plan = entry['plan']
+                if entry.get("type") == "plan":
+                    plan = entry["plan"]
                     # Mettre en cache exact
                     self.put_plan(query, plan, from_vector=True)
-                    self.stats['plan_hits_vector'] += 1
+                    self.stats["plan_hits_vector"] += 1
                     record_plan_cache_hit()
-                    logger.debug(f"📋 Plan vectoriel trouvé (score: {score:.3f})")
+                    logger.debug(f"📋 Plan vectoriel trouvé (score: {
+                            score:.3f})")
                     return plan
-        self.stats['plan_misses'] += 1
+        self.stats["plan_misses"] += 1
         record_plan_cache_miss()
         return None
 
-    def put_plan(self, query: str, plan: List[Dict[str, Any]], from_vector: bool = False):
+    def put_plan(
+        self, query: str, plan: List[Dict[str, Any]], from_vector: bool = False
+    ):
         with self._lock:
             exact_key = hashlib.md5(query.encode()).hexdigest()
             self.exact_plan_cache[exact_key] = (plan, time.time(), 1)
             self.plan_access_count[exact_key] = 1
             self._evict_plan_if_needed()
 
-            if not from_vector and SENTENCE_TRANSFORMERS_AVAILABLE and self.embedder is not None:
-                embedding = self.embedder.encode([query]).astype('float32')
+            if (
+                not from_vector
+                and SENTENCE_TRANSFORMERS_AVAILABLE
+                and self.embedder is not None
+            ):
+                embedding = self.embedder.encode([query]).astype("float32")
                 self.index.add(embedding)
-                self.metadata.append({
-                    'prompt': query,
-                    'plan': plan,
-                    'timestamp': time.time(),
-                    'type': 'plan'
-                })
+                self.metadata.append(
+                    {
+                        "prompt": query,
+                        "plan": plan,
+                        "timestamp": time.time(),
+                        "type": "plan",
+                    }
+                )
                 if len(self.metadata) % 100 == 0:
                     self._save_index()
                     self._save_exact_plan_cache()
@@ -328,19 +383,36 @@ class PromptCache:
                     del self.access_count[key]
             if to_delete:
                 self._save_exact_cache()
-                logger.info(f"🧹 {len(to_delete)} entrées exactes expirées supprimées")
+                logger.info(f"🧹 {
+                        len(to_delete)} entrées exactes expirées supprimées")
 
     def get_stats(self) -> dict:
-        total = self.stats['hits_exact'] + self.stats['hits_vector'] + self.stats['misses']
-        hit_rate = (self.stats['hits_exact'] + self.stats['hits_vector']) / total * 100 if total else 0
-        plan_total = self.stats['plan_hits_exact'] + self.stats['plan_hits_vector'] + self.stats['plan_misses']
-        plan_hit_rate = (self.stats['plan_hits_exact'] + self.stats['plan_hits_vector']) / plan_total * 100 if plan_total else 0
+        total = (
+            self.stats["hits_exact"] + self.stats["hits_vector"] + self.stats["misses"]
+        )
+        hit_rate = (
+            (self.stats["hits_exact"] + self.stats["hits_vector"]) / total * 100
+            if total
+            else 0
+        )
+        plan_total = (
+            self.stats["plan_hits_exact"]
+            + self.stats["plan_hits_vector"]
+            + self.stats["plan_misses"]
+        )
+        plan_hit_rate = (
+            (self.stats["plan_hits_exact"] + self.stats["plan_hits_vector"])
+            / plan_total
+            * 100
+            if plan_total
+            else 0
+        )
         return {
             **self.stats,
-            'hit_rate': f"{hit_rate:.1f}%",
-            'plan_hit_rate': f"{plan_hit_rate:.1f}%",
-            'exact_entries': len(self.exact_cache),
-            'exact_plan_entries': len(self.exact_plan_cache),
-            'vector_entries': len(self.metadata),
-            'total_requests': total
+            "hit_rate": f"{hit_rate:.1f}%",
+            "plan_hit_rate": f"{plan_hit_rate:.1f}%",
+            "exact_entries": len(self.exact_cache),
+            "exact_plan_entries": len(self.exact_plan_cache),
+            "vector_entries": len(self.metadata),
+            "total_requests": total,
         }

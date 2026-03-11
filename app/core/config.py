@@ -4,12 +4,14 @@ Utilise des dataclasses pour une structure typée et validée.
 Charge la configuration depuis un fichier YAML.
 """
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any, Dict, Optional
+
 import yaml
-from typing import Optional, Dict, Any
-from ..utils.exceptions import ConfigError
+
 from ..utils import hardware as hw_utils  # ← alias pour éviter conflit
+from ..utils.exceptions import ConfigError
 
 
 @dataclass
@@ -36,12 +38,14 @@ class LLMConfig:
     retry_attempts: int = 2
     retry_delay: float = 1.0
     keep_alive: int = -1
-    models: Dict[str, ModelConfig] = field(default_factory=lambda: {
-        "speed": ModelConfig("qwen2.5:3b", 512, 0.3),
-        "balanced": ModelConfig("qwen2.5:7b", 1024, 0.5),
-        "quality": ModelConfig("qwen2.5:14b", 2048, 0.7),
-        "sentinel": ModelConfig("qwen2.5:0.5b", 256, 0.1),
-    })
+    models: Dict[str, ModelConfig] = field(
+        default_factory=lambda: {
+            "speed": ModelConfig("qwen2.5:3b", 512, 0.3),
+            "balanced": ModelConfig("qwen2.5:7b", 1024, 0.5),
+            "quality": ModelConfig("qwen2.5:14b", 2048, 0.7),
+            "sentinel": ModelConfig("qwen2.5:0.5b", 256, 0.1),
+        }
+    )
 
 
 @dataclass
@@ -181,163 +185,165 @@ class Config:
         if not path.exists():
             raise ConfigError(f"Fichier de configuration introuvable : {path}")
 
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
         hw_opt = hw_utils.get_optimized_config()  # ← utilisation de l'alias
 
         # App
-        app_data = data.get('app', {})
+        app_data = data.get("app", {})
         app = AppConfig(
-            name=app_data.get('name', 'Agent Lucide'),
-            version=app_data.get('version', '4.0'),
-            data_dir=Path(app_data.get('data_dir', './data')),
-            docs_dir=Path(app_data.get('docs_dir', './Lucid_Docs')),
-            logs_dir=Path(app_data.get('logs_dir', './logs')),
+            name=app_data.get("name", "Agent Lucide"),
+            version=app_data.get("version", "4.0"),
+            data_dir=Path(app_data.get("data_dir", "./data")),
+            docs_dir=Path(app_data.get("docs_dir", "./Lucid_Docs")),
+            logs_dir=Path(app_data.get("logs_dir", "./logs")),
         )
 
         # LLM
-        llm_data = data.get('llm', {})
-        models_data = llm_data.get('models', {})
+        llm_data = data.get("llm", {})
+        models_data = llm_data.get("models", {})
         models = {}
         for key, m in models_data.items():
             models[key] = ModelConfig(
-                name=m.get('name', f"qwen2.5:{key}"),
-                max_tokens=m.get('max_tokens', 2048),
-                temperature=m.get('temperature', 0.7),
+                name=m.get("name", f"qwen2.5:{key}"),
+                max_tokens=m.get("max_tokens", 2048),
+                temperature=m.get("temperature", 0.7),
             )
         if not models:
             models = LLMConfig.models
 
         llm = LLMConfig(
-            host=llm_data.get('host', 'http://localhost:11434'),
-            default_model=llm_data.get('default_model', hw_opt['llm']['default_model']),
-            timeout=llm_data.get('timeout', 60),
-            retry_attempts=llm_data.get('retry_attempts', 2),
-            retry_delay=llm_data.get('retry_delay', 1.0),
-            keep_alive=llm_data.get('keep_alive', -1),
+            host=llm_data.get("host", "http://localhost:11434"),
+            default_model=llm_data.get("default_model", hw_opt["llm"]["default_model"]),
+            timeout=llm_data.get("timeout", 60),
+            retry_attempts=llm_data.get("retry_attempts", 2),
+            retry_delay=llm_data.get("retry_delay", 1.0),
+            keep_alive=llm_data.get("keep_alive", -1),
             models=models,
         )
 
         # Audio
-        audio_data = data.get('audio', {})
+        audio_data = data.get("audio", {})
         audio = AudioConfig(
-            model_size=audio_data.get('model_size', 'small'),
-            device=audio_data.get('device', 'cpu'),
-            compute_type=audio_data.get('compute_type', 'int8'),
-            sample_rate=audio_data.get('sample_rate', 16000),
-            language=audio_data.get('language', 'fr'),
-            beam_size=audio_data.get('beam_size', 5),
-            temp_dir=Path(audio_data.get('temp_dir', './data/temp')),
-            recording_duration=audio_data.get('recording_duration', 5),
-            silence_threshold=audio_data.get('silence_threshold', 0.1),
+            model_size=audio_data.get("model_size", "small"),
+            device=audio_data.get("device", "cpu"),
+            compute_type=audio_data.get("compute_type", "int8"),
+            sample_rate=audio_data.get("sample_rate", 16000),
+            language=audio_data.get("language", "fr"),
+            beam_size=audio_data.get("beam_size", 5),
+            temp_dir=Path(audio_data.get("temp_dir", "./data/temp")),
+            recording_duration=audio_data.get("recording_duration", 5),
+            silence_threshold=audio_data.get("silence_threshold", 0.1),
         )
 
         # Vision
-        vision_data = data.get('vision', {})
+        vision_data = data.get("vision", {})
         vision = VisionConfig(
-            tesseract_cmd=vision_data.get('tesseract_cmd', '/opt/homebrew/bin/tesseract'),
-            use_ocr_fallback=vision_data.get('use_ocr_fallback', True),
-            min_text_length=vision_data.get('min_text_length', 50),
-            cache_duration=vision_data.get('cache_duration', 5),
-            crop_top=vision_data.get('crop_top', 100),
-            crop_bottom=vision_data.get('crop_bottom', 80),
-            max_chars=vision_data.get('max_chars', 3000),
-            interval=vision_data.get('interval', hw_opt['vision']['interval']),
+            tesseract_cmd=vision_data.get(
+                "tesseract_cmd", "/opt/homebrew/bin/tesseract"
+            ),
+            use_ocr_fallback=vision_data.get("use_ocr_fallback", True),
+            min_text_length=vision_data.get("min_text_length", 50),
+            cache_duration=vision_data.get("cache_duration", 5),
+            crop_top=vision_data.get("crop_top", 100),
+            crop_bottom=vision_data.get("crop_bottom", 80),
+            max_chars=vision_data.get("max_chars", 3000),
+            interval=vision_data.get("interval", hw_opt["vision"]["interval"]),
         )
 
         # RAG
-        rag_data = data.get('rag', {})
+        rag_data = data.get("rag", {})
         rag = RAGConfig(
-            chroma_path=Path(rag_data.get('chroma_path', './data/chroma')),
-            embedding_model=rag_data.get('embedding_model', 'all-MiniLM-L6-v2'),
-            chunk_size=rag_data.get('chunk_size', hw_opt['rag']['chunk_size']),
-            chunk_overlap=rag_data.get('chunk_overlap', 50),
-            max_sources=rag_data.get('max_sources', 5),
-            persist_directory=rag_data.get('persist_directory', './data/chroma'),
-            collection_name=rag_data.get('collection_name', 'documents'),
+            chroma_path=Path(rag_data.get("chroma_path", "./data/chroma")),
+            embedding_model=rag_data.get("embedding_model", "all-MiniLM-L6-v2"),
+            chunk_size=rag_data.get("chunk_size", hw_opt["rag"]["chunk_size"]),
+            chunk_overlap=rag_data.get("chunk_overlap", 50),
+            max_sources=rag_data.get("max_sources", 5),
+            persist_directory=rag_data.get("persist_directory", "./data/chroma"),
+            collection_name=rag_data.get("collection_name", "documents"),
         )
 
         # Actions
-        actions_data = data.get('actions', {})
+        actions_data = data.get("actions", {})
         actions = ActionsConfig(
-            notes_default_account=actions_data.get('notes_default_account', True),
-            reminders_default_list=actions_data.get('reminders_default_list', True),
-            word_output_dir=Path(actions_data.get('word_output_dir', './Lucid_Docs')),
-            allowed_apps=actions_data.get('allowed_apps', ["Notes", "Rappels", "Mail"]),
+            notes_default_account=actions_data.get("notes_default_account", True),
+            reminders_default_list=actions_data.get("reminders_default_list", True),
+            word_output_dir=Path(actions_data.get("word_output_dir", "./Lucid_Docs")),
+            allowed_apps=actions_data.get("allowed_apps", ["Notes", "Rappels", "Mail"]),
         )
 
         # UI
-        ui_data = data.get('ui', {})
-        colors_data = ui_data.get('colors', {})
+        ui_data = data.get("ui", {})
+        colors_data = ui_data.get("colors", {})
         colors = UIColor(
-            accent=colors_data.get('accent', '#007aff'),
-            success=colors_data.get('success', '#30d158'),
-            warning=colors_data.get('warning', '#ff9f0a'),
-            error=colors_data.get('error', '#ff453a'),
-            background_primary=colors_data.get('background_primary', '#1c1c1e'),
-            background_secondary=colors_data.get('background_secondary', '#2c2c2e'),
-            background_input=colors_data.get('background_input', '#3a3a3c'),
+            accent=colors_data.get("accent", "#007aff"),
+            success=colors_data.get("success", "#30d158"),
+            warning=colors_data.get("warning", "#ff9f0a"),
+            error=colors_data.get("error", "#ff453a"),
+            background_primary=colors_data.get("background_primary", "#1c1c1e"),
+            background_secondary=colors_data.get("background_secondary", "#2c2c2e"),
+            background_input=colors_data.get("background_input", "#3a3a3c"),
         )
         ui = UIConfig(
-            width=ui_data.get('width', 480),
-            height=ui_data.get('height', 630),
-            position_x=ui_data.get('position_x', 100),
-            position_y=ui_data.get('position_y', 100),
-            alpha=ui_data.get('alpha', 0.95),
-            font_family=ui_data.get('font_family', 'SF Pro Display'),
-            font_size=ui_data.get('font_size', 13),
+            width=ui_data.get("width", 480),
+            height=ui_data.get("height", 630),
+            position_x=ui_data.get("position_x", 100),
+            position_y=ui_data.get("position_y", 100),
+            alpha=ui_data.get("alpha", 0.95),
+            font_family=ui_data.get("font_family", "SF Pro Display"),
+            font_size=ui_data.get("font_size", 13),
             colors=colors,
         )
 
         # Hardware
-        hardware_data = data.get('hardware', {})
+        data.get("hardware", {})
         hardware = HardwareConfig(
-            profile=hw_opt['profile'],
-            chip=hw_opt['chip'],
-            ram_gb=hw_opt['ram_gb'],
+            profile=hw_opt["profile"],
+            chip=hw_opt["chip"],
+            ram_gb=hw_opt["ram_gb"],
         )
 
         # API Keys
-        api_keys_data = data.get('api_keys', {})
+        api_keys_data = data.get("api_keys", {})
         api_keys = ApiKeysConfig(
-            news_api_key=api_keys_data.get('news_api_key', ''),
-            telegram_bot_token=api_keys_data.get('telegram_bot_token', ''),
+            news_api_key=api_keys_data.get("news_api_key", ""),
+            telegram_bot_token=api_keys_data.get("telegram_bot_token", ""),
         )
 
         # Memory
-        memory_data = data.get('memory', {})
+        memory_data = data.get("memory", {})
         memory = MemoryConfig(
-            max_episodic=memory_data.get('max_episodic', 10000),
-            working_capacity=memory_data.get('working_capacity', 10),
-            auto_consolidate=memory_data.get('auto_consolidate', False),
-            consolidation_interval=memory_data.get('consolidation_interval', 3600),
+            max_episodic=memory_data.get("max_episodic", 10000),
+            working_capacity=memory_data.get("working_capacity", 10),
+            auto_consolidate=memory_data.get("auto_consolidate", False),
+            consolidation_interval=memory_data.get("consolidation_interval", 3600),
         )
 
         # Metrics
-        metrics_data = data.get('metrics', {})
+        metrics_data = data.get("metrics", {})
         metrics = MetricsConfig(
-            enabled=metrics_data.get('enabled', False),
-            port=metrics_data.get('port', 8001),
-            memory_interval=metrics_data.get('memory_interval', 60),
+            enabled=metrics_data.get("enabled", False),
+            port=metrics_data.get("port", 8001),
+            memory_interval=metrics_data.get("memory_interval", 60),
         )
 
         # Elasticity
-        elasticity_data = data.get('elasticity', {})
+        elasticity_data = data.get("elasticity", {})
         elasticity = ElasticityConfig(
-            base_workers=elasticity_data.get('base_workers', 3),
-            monitor_interval=elasticity_data.get('monitor_interval', 2),
-            speed_model=elasticity_data.get('speed_model', 'qwen2.5:3b'),
-            balanced_model=elasticity_data.get('balanced_model', 'qwen2.5:7b'),
-            quality_model=elasticity_data.get('quality_model', 'qwen2.5:14b'),
-            sentinel_model=elasticity_data.get('sentinel_model', 'qwen2.5:0.5b'),
+            base_workers=elasticity_data.get("base_workers", 3),
+            monitor_interval=elasticity_data.get("monitor_interval", 2),
+            speed_model=elasticity_data.get("speed_model", "qwen2.5:3b"),
+            balanced_model=elasticity_data.get("balanced_model", "qwen2.5:7b"),
+            quality_model=elasticity_data.get("quality_model", "qwen2.5:14b"),
+            sentinel_model=elasticity_data.get("sentinel_model", "qwen2.5:0.5b"),
         )
 
         # Telegram
-        telegram_data = data.get('telegram', {})
+        telegram_data = data.get("telegram", {})
         telegram = TelegramConfig(
-            bot_token=telegram_data.get('bot_token', ''),
-            webhook_base=telegram_data.get('webhook_base', ''),
+            bot_token=telegram_data.get("bot_token", ""),
+            webhook_base=telegram_data.get("webhook_base", ""),
         )
 
         return cls(
@@ -385,12 +391,17 @@ class Config:
 
         data = convert_paths(data)
 
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, allow_unicode=True, default_flow_style=False)
 
     def validate(self):
-        for d in [self.app.data_dir, self.app.docs_dir, self.app.logs_dir,
-                  self.audio.temp_dir, self.rag.chroma_path]:
+        for d in [
+            self.app.data_dir,
+            self.app.docs_dir,
+            self.app.logs_dir,
+            self.audio.temp_dir,
+            self.rag.chroma_path,
+        ]:
             try:
                 d.mkdir(parents=True, exist_ok=True)
             except Exception as e:
@@ -399,11 +410,17 @@ class Config:
         default = self.llm.default_model
         available = [m.name for m in self.llm.models.values()]
         if default not in available:
-            raise ConfigError(f"Le modèle par défaut '{default}' n'est pas dans la liste des modèles disponibles : {available}")
+            raise ConfigError(
+                f"Le modèle par défaut '{default}' n'est pas dans la liste des modèles disponibles : {available}"  # noqa: E501  # noqa: E501
+            )
 
         import shutil
+
         if not shutil.which(self.vision.tesseract_cmd):
-            print(f"⚠️ Tesseract introuvable : {self.vision.tesseract_cmd}. Installez-le avec 'brew install tesseract'")
+            print(
+                f"⚠️ Tesseract introuvable : {
+                    self.vision.tesseract_cmd}. Installez-le avec 'brew install tesseract'"
+            )
 
         return True
 

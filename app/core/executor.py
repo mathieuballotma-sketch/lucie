@@ -3,27 +3,25 @@ Gestionnaire de tâches asynchrones avec dépendances, persistance et métriques
 Permet d'exécuter des tâches en parallèle avec gestion des priorités et des dépendances.
 """
 
+import pickle
 import queue
 import threading
 import time
-import pickle
 import uuid
-from concurrent.futures import ThreadPoolExecutor, Future
-from typing import Dict, List, Any, Callable, Optional
-from dataclasses import dataclass, asdict
+from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from collections import defaultdict
+from typing import Any, Callable, Dict, List, Optional
+
 from ..utils.logger import logger
 from ..utils.metrics import (
-    active_tasks,
-    task_queue_size,
-    tasks_completed_total,
-    tasks_failed_total,
-    tasks_cancelled_total,
-    task_execution_duration,
     set_active_tasks,
     set_task_queue_size,
+    task_execution_duration,
+    tasks_cancelled_total,
+    tasks_completed_total,
+    tasks_failed_total,
 )
 
 
@@ -58,7 +56,12 @@ class Task:
 
 
 class TaskExecutor:
-    def __init__(self, max_workers: int = 3, persist_path: Path = None, retention_seconds: int = 3600):
+    def __init__(
+        self,
+        max_workers: int = 3,
+        persist_path: Path = None,
+        retention_seconds: int = 3600,
+    ):
         self.max_workers = max_workers
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self.task_queue = queue.PriorityQueue()
@@ -70,33 +73,37 @@ class TaskExecutor:
         self.last_persist = time.time()
         self.retention_seconds = retention_seconds
         self.metrics = {
-            'total_submitted': 0,
-            'total_completed': 0,
-            'total_failed': 0,
-            'total_cancelled': 0,
-            'avg_wait_time': 0.0,
-            'avg_execution_time': 0.0,
-            'queue_size_history': []
+            "total_submitted": 0,
+            "total_completed": 0,
+            "total_failed": 0,
+            "total_cancelled": 0,
+            "avg_wait_time": 0.0,
+            "avg_execution_time": 0.0,
+            "queue_size_history": [],
         }
         self._lock = threading.RLock()
         self._load_persisted_tasks()
         self._worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
         self._worker_thread.start()
         if self.persist_path is not None:
-            self._persist_thread = threading.Thread(target=self._persist_loop, daemon=True)
+            self._persist_thread = threading.Thread(
+                target=self._persist_loop, daemon=True
+            )
             self._persist_thread.start()
         self._cleanup_thread = threading.Thread(target=self._cleanup_loop, daemon=True)
         self._cleanup_thread.start()
-        logger.info(f"✅ TaskExecutor démarré avec {max_workers} workers, {len(self.tasks)} tâches restaurées, rétention={retention_seconds}s")
+        logger.info(f"✅ TaskExecutor démarré avec {max_workers} workers, {
+                len(
+                    self.tasks)} tâches restaurées, rétention={retention_seconds}s")
 
     def _load_persisted_tasks(self):
         if self.persist_path and self.persist_path.exists():
             try:
-                with open(self.persist_path, 'rb') as f:
+                with open(self.persist_path, "rb") as f:
                     data = pickle.load(f)
-                    tasks_dict = data.get('tasks', {})
+                    tasks_dict = data.get("tasks", {})
                     for task_id, task_dict in tasks_dict.items():
-                        task_dict['func'] = None
+                        task_dict["func"] = None
                         task = Task(**task_dict)
                         self.tasks[task_id] = task
                         self.futures[task_id] = Future()
@@ -107,7 +114,7 @@ class TaskExecutor:
                         elif task.status in [TaskStatus.PENDING, TaskStatus.RUNNING]:
                             task.status = TaskStatus.PENDING
                             self.task_queue.put((-task.priority, task_id))
-                    self.metrics = data.get('metrics', self.metrics)
+                    self.metrics = data.get("metrics", self.metrics)
                     logger.info(f"📦 {len(self.tasks)} tâches restaurées")
             except Exception as e:
                 logger.error(f"Erreur restauration tâches: {e}")
@@ -117,10 +124,14 @@ class TaskExecutor:
             serializable_tasks = {}
             for task_id, task in self.tasks.items():
                 task_dict = asdict(task)
-                task_dict.pop('func', None)
+                task_dict.pop("func", None)
                 serializable_tasks[task_id] = task_dict
-            data = {'tasks': serializable_tasks, 'metrics': self.metrics, 'timestamp': time.time()}
-            with open(self.persist_path, 'wb') as f:
+            data = {
+                "tasks": serializable_tasks,
+                "metrics": self.metrics,
+                "timestamp": time.time(),
+            }
+            with open(self.persist_path, "wb") as f:
                 pickle.dump(data, f)
             self.last_persist = time.time()
         except Exception as e:
@@ -141,14 +152,22 @@ class TaskExecutor:
             now = time.time()
             to_delete = []
             for task_id, task in self.tasks.items():
-                if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
-                    if task.completed_at and now - task.completed_at > self.retention_seconds:
+                if task.status in (
+                    TaskStatus.COMPLETED,
+                    TaskStatus.FAILED,
+                    TaskStatus.CANCELLED,
+                ):
+                    if (
+                        task.completed_at
+                        and now - task.completed_at > self.retention_seconds
+                    ):
                         to_delete.append(task_id)
                         self.futures.pop(task_id, None)
             for task_id in to_delete:
                 del self.tasks[task_id]
             if to_delete:
-                logger.debug(f"🧹 Nettoyage de {len(to_delete)} anciennes tâches")
+                logger.debug(f"🧹 Nettoyage de {
+                        len(to_delete)} anciennes tâches")
 
     def submit(self, task: Task, priority: Optional[int] = None) -> str:
         """
@@ -166,9 +185,12 @@ class TaskExecutor:
             self.tasks[task.id] = task
             self.futures[task.id] = Future()
             self.task_queue.put((-task.priority, task.id))
-            self.metrics['total_submitted'] += 1
+            self.metrics["total_submitted"] += 1
             set_task_queue_size(self.task_queue.qsize())
-            logger.debug(f"📤 Tâche soumise: {task.name} (id: {task.id}, priorité: {task.priority})")
+            logger.debug(f"📤 Tâche soumise: {
+                    task.name} (id: {
+                    task.id}, priorité: {
+                    task.priority})")
         return task.id
 
     def submit_batch(self, tasks: List[Task]) -> List[str]:
@@ -179,9 +201,9 @@ class TaskExecutor:
             try:
                 qsize = self.task_queue.qsize()
                 set_task_queue_size(qsize)
-                self.metrics['queue_size_history'].append(qsize)
-                if len(self.metrics['queue_size_history']) > 100:
-                    self.metrics['queue_size_history'].pop(0)
+                self.metrics["queue_size_history"].append(qsize)
+                if len(self.metrics["queue_size_history"]) > 100:
+                    self.metrics["queue_size_history"].pop(0)
 
                 priority, task_id = self.task_queue.get(timeout=1)
                 task = self.tasks.get(task_id)
@@ -202,10 +224,10 @@ class TaskExecutor:
                 wait_time = time.time() - task.created_at
                 task.status = TaskStatus.RUNNING
                 task.started_at = time.time()
-                self.metrics['avg_wait_time'] = (
-                    (self.metrics['avg_wait_time'] * self.metrics['total_completed'] + wait_time) /
-                    (self.metrics['total_completed'] + 1)
-                )
+                self.metrics["avg_wait_time"] = (
+                    self.metrics["avg_wait_time"] * self.metrics["total_completed"]
+                    + wait_time
+                ) / (self.metrics["total_completed"] + 1)
 
                 dep_results = []
                 if task.dependencies:
@@ -217,7 +239,9 @@ class TaskExecutor:
                             dep_results.append(None)
 
                 all_args = tuple(dep_results) + task.args
-                self.executor.submit(self._execute_task, task, future, *all_args, **task.kwargs)
+                self.executor.submit(
+                    self._execute_task, task, future, *all_args, **task.kwargs
+                )
 
                 set_active_tasks(len(self.futures))
 
@@ -228,29 +252,34 @@ class TaskExecutor:
 
     def _execute_task(self, task: Task, future: Future, *args, **kwargs):
         try:
-            if 'progress_callback' in kwargs:
-                kwargs['progress_callback'] = lambda p, m: self._update_progress(task.id, p, m)
+            if "progress_callback" in kwargs:
+                kwargs["progress_callback"] = lambda p, m: self._update_progress(
+                    task.id, p, m
+                )
             result = task.func(*args, **kwargs)
             task.result = result
             task.status = TaskStatus.COMPLETED
             task.completed_at = time.time()
             execution_time = task.completed_at - task.started_at
             with self._lock:
-                self.metrics['total_completed'] += 1
-                self.metrics['avg_execution_time'] = (
-                    (self.metrics['avg_execution_time'] * (self.metrics['total_completed'] - 1) + execution_time) /
-                    self.metrics['total_completed']
-                )
+                self.metrics["total_completed"] += 1
+                self.metrics["avg_execution_time"] = (
+                    self.metrics["avg_execution_time"]
+                    * (self.metrics["total_completed"] - 1)
+                    + execution_time
+                ) / self.metrics["total_completed"]
             tasks_completed_total.labels(task_name=task.name).inc()
             task_execution_duration.labels(task_name=task.name).observe(execution_time)
             future.set_result(result)
-            logger.info(f"✅ Tâche terminée: {task.name} ({execution_time:.2f}s)")
+            logger.info(f"✅ Tâche terminée: {
+                    task.name} ({
+                    execution_time:.2f}s)")
         except Exception as e:
             task.status = TaskStatus.FAILED
             task.error = str(e)
             task.completed_at = time.time()
             with self._lock:
-                self.metrics['total_failed'] += 1
+                self.metrics["total_failed"] += 1
             tasks_failed_total.labels(task_name=task.name).inc()
             future.set_exception(e)
             logger.error(f"❌ Tâche échouée: {task.name} - {e}")
@@ -267,7 +296,8 @@ class TaskExecutor:
         for dep_id in task.dependencies:
             dep_task = self.tasks.get(dep_id)
             if not dep_task:
-                logger.warning(f"Dépendance {dep_id} introuvable pour {task.id}")
+                logger.warning(f"Dépendance {dep_id} introuvable pour {
+                        task.id}")
                 continue
             if dep_task.status == TaskStatus.FAILED:
                 task.status = TaskStatus.FAILED
@@ -301,7 +331,7 @@ class TaskExecutor:
             future = self.futures.get(task_id)
             if task and task.status == TaskStatus.PENDING:
                 task.status = TaskStatus.CANCELLED
-                self.metrics['total_cancelled'] += 1
+                self.metrics["total_cancelled"] += 1
                 tasks_cancelled_total.labels(task_name=task.name).inc()
                 if future and not future.done():
                     future.set_exception(Exception("Tâche annulée"))
@@ -328,22 +358,34 @@ class TaskExecutor:
     def get_queue_stats(self) -> dict:
         with self._lock:
             return {
-                'pending': sum(1 for t in self.tasks.values() if t.status == TaskStatus.PENDING),
-                'running': sum(1 for t in self.tasks.values() if t.status == TaskStatus.RUNNING),
-                'completed': sum(1 for t in self.tasks.values() if t.status == TaskStatus.COMPLETED),
-                'failed': sum(1 for t in self.tasks.values() if t.status == TaskStatus.FAILED),
-                'cancelled': sum(1 for t in self.tasks.values() if t.status == TaskStatus.CANCELLED),
-                'paused': sum(1 for t in self.tasks.values() if t.status == TaskStatus.PAUSED),
-                'queue_size': self.task_queue.qsize(),
+                "pending": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.PENDING
+                ),
+                "running": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.RUNNING
+                ),
+                "completed": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.COMPLETED
+                ),
+                "failed": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.FAILED
+                ),
+                "cancelled": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.CANCELLED
+                ),
+                "paused": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.PAUSED
+                ),
+                "queue_size": self.task_queue.qsize(),
             }
 
     def get_stats(self) -> dict:
         with self._lock:
             return {
-                'metrics': self.metrics.copy(),
-                'queue': self.get_queue_stats(),
-                'workers': self.max_workers,
-                'persist_last': self.last_persist
+                "metrics": self.metrics.copy(),
+                "queue": self.get_queue_stats(),
+                "workers": self.max_workers,
+                "persist_last": self.last_persist,
             }
 
     def shutdown(self):

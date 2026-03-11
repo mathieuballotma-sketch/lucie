@@ -3,11 +3,13 @@ Agent spécialisé dans la recherche d'informations.
 Utilise la validation Pydantic pour les paramètres des outils.
 """
 
-import json
-import re
-import httpx
+import asyncio
 from typing import Optional
+
+import httpx
+import requests
 from pydantic import BaseModel, Field
+
 from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
 
@@ -16,14 +18,18 @@ class KnowledgeAgentWebSearchContract(BaseModel):
     query: str = Field(..., description="La requête de recherche")
     max_results: int = Field(3, description="Nombre maximum de résultats", ge=1, le=10)
 
+
 class KnowledgeAgentWikipediaSummaryContract(BaseModel):
     query: str = Field(..., description="Le titre ou sujet de l'article")
+
 
 class KnowledgeAgentWikipediaSearchContract(BaseModel):
     query: str = Field(..., description="La requête de recherche")
 
+
 class KnowledgeAgentArxivSearchContract(BaseModel):
     query: str = Field(..., description="La requête de recherche")
+
 
 class KnowledgeAgentNewsHeadlinesContract(BaseModel):
     query: str = Field(..., description="Sujet des actualités")
@@ -83,16 +89,17 @@ class KnowledgeAgent(BaseAgent):
             logger.info("Fallback sur DuckDuckGo direct")
             try:
                 # Supposons que web_search.search est synchrone, on le met dans un executor
-                import asyncio
                 loop = asyncio.get_event_loop()
-                results = await loop.run_in_executor(None, self.web_search.search, query, max_results)
+                results = await loop.run_in_executor(
+                    None, self.web_search.search, query, max_results
+                )
                 if not results:
                     return f"Aucun résultat web trouvé pour '{query}'."
                 output = f"Résultats web pour '{query}':\n"
                 for r in results:
-                    title = r.get('title', '')
-                    body = r.get('body', '')[:200]
-                    url = r.get('url', '')
+                    title = r.get("title", "")
+                    body = r.get("body", "")[:200]
+                    url = r.get("url", "")
                     output += f"- {title}\n  {body}...\n  ({url})\n\n"
                 return output
             except Exception as e:
@@ -120,8 +127,7 @@ class KnowledgeAgent(BaseAgent):
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(
-                    self.search_api_url,
-                    params={"q": query, "max_results": max_results}
+                    self.search_api_url, params={"q": query, "max_results": max_results}
                 )
                 if resp.status_code != 200:
                     logger.error(f"API recherche erreur {resp.status_code}")
@@ -132,10 +138,10 @@ class KnowledgeAgent(BaseAgent):
                     return f"Aucun résultat trouvé pour '{query}'."
                 output = f"Résultats web pour '{query}':\n"
                 for r in results:
-                    title = r.get('title', '')
-                    snippet = r.get('snippet', '')[:200]
-                    url = r.get('url', '')
-                    source = r.get('source', '')
+                    title = r.get("title", "")
+                    snippet = r.get("snippet", "")[:200]
+                    url = r.get("url", "")
+                    source = r.get("source", "")
                     output += f"- [{source}] {title}\n  {snippet}...\n  ({url})\n\n"
                 return output
         except Exception as e:
@@ -143,28 +149,48 @@ class KnowledgeAgent(BaseAgent):
             return None
 
     async def _wikipedia_summary(self, query: str) -> str:
-        import requests
         try:
             loop = asyncio.get_event_loop()
             # Essayer français
-            url = "https://fr.wikipedia.org/api/rest_v1/page/summary/" + requests.utils.quote(query)
-            resp = await loop.run_in_executor(None, lambda: requests.get(url, headers={"User-Agent": self.user_agent}, timeout=self.timeout))
+            url = (
+                "https://fr.wikipedia.org/api/rest_v1/page/summary/"
+                + requests.utils.quote(query)
+            )
+            resp = await loop.run_in_executor(
+                None,
+                lambda: requests.get(
+                    url, headers={"User-Agent": self.user_agent}, timeout=self.timeout
+                ),
+            )
             if resp.status_code == 200:
                 data = resp.json()
-                return f"Wikipédia (fr) : {data.get('extract', 'Pas de résumé disponible.')}"
+                return (
+                    "Wikipédia (fr) : "
+                    f"{data.get('extract', 'Pas de résumé disponible.')}"
+                )
             # Sinon anglais
-            url = "https://en.wikipedia.org/api/rest_v1/page/summary/" + requests.utils.quote(query)
-            resp = await loop.run_in_executor(None, lambda: requests.get(url, headers={"User-Agent": self.user_agent}, timeout=self.timeout))
+            url = (
+                "https://en.wikipedia.org/api/rest_v1/page/summary/"
+                + requests.utils.quote(query)
+            )
+            resp = await loop.run_in_executor(
+                None,
+                lambda: requests.get(
+                    url, headers={"User-Agent": self.user_agent}, timeout=self.timeout
+                ),
+            )
             if resp.status_code == 200:
                 data = resp.json()
-                return f"Wikipedia (en) : {data.get('extract', 'No summary available.')}"
+                return (
+                    "Wikipedia (en) : "
+                    f"{data.get('extract', 'No summary available.')}"
+                )
             return f"Impossible de trouver une page Wikipedia pour '{query}'."
         except Exception as e:
             logger.error(f"Erreur Wikipedia: {e}")
             return f"Erreur lors de l'appel à Wikipedia : {str(e)}"
 
     async def _wikipedia_search(self, query: str) -> str:
-        import requests
         try:
             loop = asyncio.get_event_loop()
             url = "https://fr.wikipedia.org/w/api.php"
@@ -173,9 +199,17 @@ class KnowledgeAgent(BaseAgent):
                 "list": "search",
                 "srsearch": query,
                 "format": "json",
-                "srlimit": self.max_results
+                "srlimit": self.max_results,
             }
-            resp = await loop.run_in_executor(None, lambda: requests.get(url, params=params, headers={"User-Agent": self.user_agent}, timeout=self.timeout))
+            resp = await loop.run_in_executor(
+                None,
+                lambda: requests.get(
+                    url,
+                    params=params,
+                    headers={"User-Agent": self.user_agent},
+                    timeout=self.timeout,
+                ),
+            )
             data = resp.json()
             results = data.get("query", {}).get("search", [])
             if not results:
@@ -189,17 +223,19 @@ class KnowledgeAgent(BaseAgent):
             return f"Erreur lors de la recherche Wikipedia : {str(e)}"
 
     async def _arxiv_search(self, query: str) -> str:
-        import requests
         import xml.etree.ElementTree as ET
+
         try:
             loop = asyncio.get_event_loop()
             url = "http://export.arxiv.org/api/query"
             params = {
                 "search_query": f"all:{query}",
                 "start": 0,
-                "max_results": self.max_results
+                "max_results": self.max_results,
             }
-            resp = await loop.run_in_executor(None, lambda: requests.get(url, params=params, timeout=self.timeout))
+            resp = await loop.run_in_executor(
+                None, lambda: requests.get(url, params=params, timeout=self.timeout)
+            )
             root = ET.fromstring(resp.text)
             ns = {"atom": "http://www.w3.org/2005/Atom"}
             entries = root.findall("atom:entry", ns)
@@ -218,7 +254,6 @@ class KnowledgeAgent(BaseAgent):
     async def _news_headlines(self, query: str) -> str:
         if not self.news_api_key:
             return "Clé API News non configurée."
-        import requests
         try:
             loop = asyncio.get_event_loop()
             url = "https://newsapi.org/v2/everything"
@@ -226,9 +261,11 @@ class KnowledgeAgent(BaseAgent):
                 "q": query,
                 "apiKey": self.news_api_key,
                 "pageSize": self.max_results,
-                "language": "fr"
+                "language": "fr",
             }
-            resp = await loop.run_in_executor(None, lambda: requests.get(url, params=params, timeout=self.timeout))
+            resp = await loop.run_in_executor(
+                None, lambda: requests.get(url, params=params, timeout=self.timeout)
+            )
             data = resp.json()
             if data.get("status") != "ok":
                 return f"Erreur NewsAPI : {data.get('message', 'inconnue')}"
@@ -248,22 +285,40 @@ class KnowledgeAgent(BaseAgent):
     # Logique de décision
     def can_handle(self, query: str) -> bool:
         q = query.lower()
-        doc_keywords = ["document word", "crée un document", "fais un document",
-                        "résumé word", "fais un résumé", "word document"]
+        doc_keywords = [
+            "document word",
+            "crée un document",
+            "fais un document",
+            "résumé word",
+            "fais un résumé",
+            "word document",
+        ]
         if any(kw in q for kw in doc_keywords):
             return False
         keywords = [
-            "recherche", "wikipédia", "actualité", "définition",
-            "information sur", "qu'est-ce que", "c'est quoi",
-            "news", "arxiv", "article", "savoir", "trouve",
-            "donne moi des infos", "explique"
+            "recherche",
+            "wikipédia",
+            "actualité",
+            "définition",
+            "information sur",
+            "qu'est-ce que",
+            "c'est quoi",
+            "news",
+            "arxiv",
+            "article",
+            "savoir",
+            "trouve",
+            "donne moi des infos",
+            "explique",
         ]
         return any(kw in q for kw in keywords)
 
     async def handle(self, query: str) -> str:
         q_lower = query.lower()
         # Cas spécial actualités sans clé API
-        if ("actualité" in q_lower or "actualités" in q_lower or "news" in q_lower) and not self.news_api_key:
+        if (
+            "actualité" in q_lower or "actualités" in q_lower or "news" in q_lower
+        ) and not self.news_api_key:
             if self.web_search:
                 logger.info("🔍 Utilisation de la recherche web pour les actualités")
                 results = await self._run_web_search(query, self.max_results)
@@ -276,7 +331,9 @@ class KnowledgeAgent(BaseAgent):
                 return "La recherche web n'est pas disponible pour les actualités."
 
         # Construction du prompt pour choisir l'outil
-        tools_desc = "\n".join([f"- {t.name}: {t.description}" for t in self.get_tools()])
+        tools_desc = "\n".join(
+            [f"- {t.name}: {t.description}" for t in self.get_tools()]
+        )
         prompt = f"""
 Tu es un assistant spécialisé dans la recherche d'informations. Voici la demande : "{query}"
 
@@ -306,7 +363,9 @@ Si aucun outil n'est pertinent, réponds {{"tool": "none"}}.
         if not self.web_search:
             return []
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.web_search.search, query, max_results)
+        return await loop.run_in_executor(
+            None, self.web_search.search, query, max_results
+        )
 
     async def _summarize_results(self, query: str, results: list) -> str:
         content = "\n".join([f"- {r['title']}: {r['body'][:200]}" for r in results])
@@ -315,4 +374,7 @@ Voici des résultats de recherche pour la requête "{query}" :
 {content}
 Fais un résumé concis et informatif de ces informations.
 """
+        return self.ask_llm(prompt)
+
+        # ... (tout le code existant, puis à la fin)
         return self.ask_llm(prompt)

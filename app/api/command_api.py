@@ -3,11 +3,12 @@
 API REST pour envoyer des commandes à Agent Lucide.
 """
 
+import threading
+from typing import Optional
+
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-import uvicorn
-import threading
 
 from ..core.engine import LucidEngine
 
@@ -54,6 +55,7 @@ class CommandAPI:
 
     def start(self):
         """Démarre le serveur API dans un thread séparé."""
+
         def run():
             uvicorn.run(self.app, host=self.host, port=self.port)
 

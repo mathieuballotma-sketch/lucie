@@ -3,18 +3,20 @@ Agent spécialisé dans la description d'images à l'écran.
 Utilise un modèle de vision-langage léger (moondream) si disponible.
 """
 
-import base64
 import subprocess
 import tempfile
+
 from ...agents.base_agent import BaseAgent, Tool
 from ...utils.logger import logger
 
 try:
-    import moondream as md
     MOONDREAM_AVAILABLE = True
 except ImportError:
     MOONDREAM_AVAILABLE = False
-    logger.warning("Module 'moondream' non disponible. L'agent ImageDescriber utilisera un fallback simple.")
+    logger.warning(
+        "Module 'moondream' non disponible. L'agent ImageDescriber utilisera un fallback simple."
+    )
+
 
 class ImageDescriberAgent(BaseAgent):
     """
@@ -39,11 +41,7 @@ class ImageDescriberAgent(BaseAgent):
             Tool(
                 name="describe_screen",
                 description="Décrit le contenu visuel général de l'écran (ce qu'on voit).",
-                parameters={
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                parameters={"type": "object", "properties": {}, "required": []},
             ),
             Tool(
                 name="describe_image_at_position",
@@ -51,11 +49,17 @@ class ImageDescriberAgent(BaseAgent):
                 parameters={
                     "type": "object",
                     "properties": {
-                        "x": {"type": "integer", "description": "Coordonnée X (optionnel)"},
-                        "y": {"type": "integer", "description": "Coordonnée Y (optionnel)"}
-                    }
-                }
-            )
+                        "x": {
+                            "type": "integer",
+                            "description": "Coordonnée X (optionnel)",
+                        },
+                        "y": {
+                            "type": "integer",
+                            "description": "Coordonnée Y (optionnel)",
+                        },
+                    },
+                },
+            ),
         ]
 
     def _tool_describe_screen(self) -> str:
@@ -66,10 +70,12 @@ class ImageDescriberAgent(BaseAgent):
 
     def _capture_screen(self) -> str:
         """Capture l'écran et retourne le chemin du fichier temporaire."""
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             tmp_path = tmp.name
         try:
-            subprocess.run(['screencapture', '-x', tmp_path], check=True, capture_output=True)
+            subprocess.run(
+                ["screencapture", "-x", tmp_path], check=True, capture_output=True
+            )
             return tmp_path
         except Exception as e:
             logger.error(f"Erreur capture écran: {e}")
@@ -86,7 +92,7 @@ class ImageDescriberAgent(BaseAgent):
                 # with open(img_path, "rb") as f:
                 #     image = md.Image(f.read())
                 # description = self.model.caption(image)["caption"]
-                description = "Description simulée : L'écran affiche plusieurs fenêtres, du texte et des icônes."
+                description = "Description simulée : L'écran affiche plusieurs fenêtres, du texte et des icônes."  # noqa: E501
                 return description
             except Exception as e:
                 logger.error(f"Erreur Moondream: {e}")
@@ -94,10 +100,11 @@ class ImageDescriberAgent(BaseAgent):
                     return f"Erreur de description: {e}"
 
         # Fallback simple
-        return "L'écran contient du texte et des éléments graphiques (description limitée par manque de modèle VLM)."
+        return "L'écran contient du texte et des éléments graphiques (description limitée par manque de modèle VLM)."  # noqa: E501
 
     def _describe_image_at_position(self, x=None, y=None):
-        # Pour l'instant, on ne capture qu'une région, mais c'est plus complexe.
+        # Pour l'instant, on ne capture qu'une région, mais c'est plus
+        # complexe.
         return "Fonction non implémentée."
 
     def can_handle(self, query: str) -> bool:

@@ -4,31 +4,36 @@ et SQLite pour stocker les métadonnées des chunks.
 Version avec gestion optionnelle de sentence-transformers.
 """
 
-import os
 import hashlib
 import pickle
 import sqlite3
 from pathlib import Path
-from typing import List, Dict, Optional, Generator
-import pymupdf  # fitz
+from typing import List, Optional
+
 import faiss
 import numpy as np
+import pymupdf  # fitz
+
+from ..utils.exceptions import IndexingError
 from ..utils.logger import get_logger
-from ..utils.exceptions import RAGError, IndexingError
 
 # Tentative d'import de SentenceTransformer
 try:
     from sentence_transformers import SentenceTransformer
+
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
-    get_logger(__name__).warning("sentence-transformers non disponible, le RAG sera désactivé.")
+    get_logger(__name__).warning(
+        "sentence-transformers non disponible, le RAG sera désactivé."
+    )
 
 logger = get_logger(__name__)
 
 
 class DummyEmbedder:
     """Embedder factice qui retourne un vecteur de zéros."""
+
     def __init__(self, dimension=384):
         self.dimension = dimension
 
@@ -54,7 +59,9 @@ class RAGService:
             try:
                 self.embedder = SentenceTransformer(config.embedding_model)
                 self.dimension = self.embedder.get_sentence_embedding_dimension()
-                logger.info(f"Embedder {config.embedding_model} chargé (dim={self.dimension})")
+                logger.info(f"Embedder {
+                        config.embedding_model} chargé (dim={
+                        self.dimension})")
             except Exception as e:
                 logger.error(f"Erreur chargement SentenceTransformer: {e}")
                 self.embedder = DummyEmbedder()
@@ -112,8 +119,8 @@ class RAGService:
 
     def _get_file_hash(self, path: Path) -> str:
         hasher = hashlib.md5()
-        with open(path, 'rb') as f:
-            for chunk in iter(lambda: f.read(65536), b''):
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()
 
@@ -124,7 +131,7 @@ class RAGService:
         step = self.chunk_size - self.chunk_overlap
         chunks = []
         for i in range(0, len(words), step):
-            chunk = ' '.join(words[i:i + self.chunk_size])
+            chunk = " ".join(words[i : i + self.chunk_size])
             chunks.append(chunk)
         return chunks
 
@@ -139,14 +146,16 @@ class RAGService:
             raise IndexingError(f"Erreur lecture PDF {path}: {e}")
 
     def _read_text(self, path: Path) -> str:
-        encodings = ['utf-8', 'latin-1', 'cp1252']
+        encodings = ["utf-8", "latin-1", "cp1252"]
         for enc in encodings:
             try:
-                with open(path, 'r', encoding=enc) as f:
+                with open(path, "r", encoding=enc) as f:
                     return f.read()
             except UnicodeDecodeError:
                 continue
-        raise IndexingError(f"Impossible de lire le fichier {path} avec les encodages essayés")
+        raise IndexingError(
+            f"Impossible de lire le fichier {path} avec les encodages essayés"
+        )
 
     def index_file(self, path: str) -> bool:
         """
@@ -166,7 +175,7 @@ class RAGService:
         # Vérifier si le fichier est déjà indexé avec le même hash
         cur = self.conn.execute(
             "SELECT id FROM chunks WHERE source=? AND hash=? LIMIT 1",
-            (str(path), file_hash)
+            (str(path), file_hash),
         )
         if cur.fetchone():
             logger.info(f"Fichier déjà indexé et inchangé: {path}")
@@ -177,7 +186,7 @@ class RAGService:
         self.conn.commit()
 
         # Lire le contenu
-        if path.suffix.lower() == '.pdf':
+        if path.suffix.lower() == ".pdf":
             text = self._read_pdf(path)
         else:
             text = self._read_text(path)
@@ -198,13 +207,16 @@ class RAGService:
         # Insertion dans SQLite et FAISS
         cur = self.conn.cursor()
         for i, (chunk, emb) in enumerate(zip(chunks, embeddings)):
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO chunks (source, chunk_index, total_chunks, hash, content)
                 VALUES (?, ?, ?, ?, ?)
-            """, (str(path), i, len(chunks), file_hash, chunk))
+            """,
+                (str(path), i, len(chunks), file_hash, chunk),
+            )
             chunk_id = cur.lastrowid
             # Ajouter à FAISS
-            self.index.add(np.array([emb]).astype('float32'))
+            self.index.add(np.array([emb]).astype("float32"))
             self.id_mapping.append(chunk_id)
 
         self.conn.commit()
@@ -223,16 +235,18 @@ class RAGService:
         Si l'embedder est factice, retourne 0.
         """
         if not SENTENCE_TRANSFORMERS_AVAILABLE:
-            logger.warning("Indexation de dossier désactivée : sentence-transformers manquant")
+            logger.warning(
+                "Indexation de dossier désactivée : sentence-transformers manquant"
+            )
             return 0
 
         path = Path(path)
         if not path.is_dir():
             raise IndexingError(f"Dossier invalide: {path}")
 
-        extensions = {'.pdf', '.txt', '.md', '.py', '.rst', '.csv', '.json', '.xml'}
+        extensions = {".pdf", ".txt", ".md", ".py", ".rst", ".csv", ".json", ".xml"}
         count = 0
-        for file_path in path.rglob('*'):
+        for file_path in path.rglob("*"):
             if file_path.is_file() and file_path.suffix.lower() in extensions:
                 try:
                     if self.index_file(str(file_path)):
@@ -259,7 +273,7 @@ class RAGService:
             return ""
 
         try:
-            q_emb = self.embedder.encode([question]).astype('float32')
+            q_emb = self.embedder.encode([question]).astype("float32")
         except Exception as e:
             logger.error(f"Erreur d'encodage: {e}")
             return ""
@@ -274,16 +288,19 @@ class RAGService:
             if idx == -1 or idx >= len(self.id_mapping):
                 continue
             chunk_id = self.id_mapping[idx]
-            cur = self.conn.execute("""
+            cur = self.conn.execute(
+                """
                 SELECT content, source, chunk_index, total_chunks
                 FROM chunks WHERE id=?
-            """, (chunk_id,))
+            """,
+                (chunk_id,),
+            )
             row = cur.fetchone()
             if row:
                 content, source, chunk_idx, total = row
                 source_name = Path(source).name
                 context_parts.append(
-                    f"[Source: {source_name} - Chunk {chunk_idx+1}/{total}]\n{content}"
+                    f"[Source: {source_name} - Chunk {chunk_idx + 1}/{total}]\n{content}"
                 )
 
         return "\n\n".join(context_parts)
@@ -319,10 +336,11 @@ class RAGService:
         else:
             contents = [row[1] for row in rows]
             ids = [row[0] for row in rows]
-            logger.info(f"Reconstruction de l'index FAISS avec {len(contents)} chunks...")
+            logger.info(f"Reconstruction de l'index FAISS avec {
+                    len(contents)} chunks...")
             embeddings = self.embedder.encode(contents, show_progress_bar=True)
             self.index = faiss.IndexFlatL2(self.dimension)
-            self.index.add(embeddings.astype('float32'))
+            self.index.add(embeddings.astype("float32"))
             self.id_mapping = ids
         faiss.write_index(self.index, str(self.index_path))
         with open(self.mapping_path, "wb") as f:

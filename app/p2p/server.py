@@ -5,13 +5,20 @@ Serveur P2P asynchrone avec TLS.
 import asyncio
 import json
 import ssl
-from typing import Callable, Optional
+from typing import Callable
 
 from app.utils.logger import logger
 
 
 class P2PServer:
-    def __init__(self, host: str, port: int, certfile: str, keyfile: str, message_handler: Callable):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        certfile: str,
+        keyfile: str,
+        message_handler: Callable,
+    ):
         self.host = host
         self.port = port
         self.certfile = certfile
@@ -27,10 +34,7 @@ class P2PServer:
 
     async def start(self):
         self.server = await asyncio.start_server(
-            self._handle_client,
-            self.host,
-            self.port,
-            ssl=self.ssl_context
+            self._handle_client, self.host, self.port, ssl=self.ssl_context
         )
         logger.info(f"🖥️ Serveur P2P démarré sur {self.host}:{self.port}")
 
@@ -40,8 +44,10 @@ class P2PServer:
             await self.server.wait_closed()
             logger.info("Serveur P2P arrêté")
 
-    async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        peer = writer.get_extra_info('peername')
+    async def _handle_client(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ):
+        peer = writer.get_extra_info("peername")
         logger.debug(f"Connexion entrante de {peer}")
         try:
             data = await reader.read(4096)

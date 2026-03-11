@@ -4,11 +4,17 @@ Permet d'interagir avec les modèles locaux, avec gestion des erreurs, retries,
 et option keep_alive pour maintenir le modèle en mémoire.
 """
 
-import ollama
 import time
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import ollama
+
+from ..utils.exceptions import (
+    LLMConnectionError,
+    LLMModelNotFoundError,
+    LLMTimeoutError,
+)
 from ..utils.logger import logger
-from ..utils.exceptions import LLMConnectionError, LLMTimeoutError, LLMModelNotFoundError
 
 
 class ProviderManager:
@@ -40,7 +46,9 @@ class ProviderManager:
 
         # Définir l'hôte pour la bibliothèque ollama
         ollama.host = self.host
-        logger.info(f"ProviderManager initialisé avec host {self.host}, keep_alive={self.keep_alive}")
+        logger.info(f"ProviderManager initialisé avec host {
+                self.host}, keep_alive={
+                self.keep_alive}")
 
         # Vérifier la connexion au démarrage
         self._test_connection()
@@ -52,20 +60,29 @@ class ProviderManager:
         """Vérifie que le serveur Ollama est accessible et que les modèles sont disponibles."""
         try:
             models = ollama.list()
-            models_available = [m['name'] for m in models.get('models', [])]
+            models_available = [m["name"] for m in models.get("models", [])]
             logger.info(f"✅ Ollama accessible. Modèles disponibles: {models_available}")
 
             default_model = self._select_model("auto")
             if default_model and default_model not in models_available:
-                logger.error(f"❌ Modèle par défaut '{default_model}' non trouvé. Téléchargez-le avec: ollama pull {default_model}")
+                logger.error(
+                    f"❌ Modèle par défaut '{default_model}' non trouvé. Téléchargez-le avec: ollama pull {default_model}"  # noqa: E501
+                )
             else:
                 logger.info(f"✅ Modèle par défaut '{default_model}' disponible.")
         except Exception as e:
             logger.error(f"❌ Impossible de se connecter à Ollama: {e}")
 
-    def generate(self, prompt: str, system: Optional[str] = None, priority: str = "auto",
-                 model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 512,
-                 timeout: Optional[float] = None) -> str:
+    def generate(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        priority: str = "auto",
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 512,
+        timeout: Optional[float] = None,
+    ) -> str:
         """
         Génère une réponse à partir d'un prompt.
 
@@ -76,7 +93,7 @@ class ProviderManager:
             model: Nom explicite du modèle (si fourni, écrase priority).
             temperature: Température pour la génération.
             max_tokens: Nombre maximum de tokens à générer.
-            timeout: Timeout spécifique pour cette requête (en secondes). Si None, utilise le timeout par défaut.
+            timeout: Timeout spécifique pour cette requête (en secondes). Si None, utilise le timeout par défaut.  # noqa: E501
         """
         start_time = time.time()
 
@@ -110,40 +127,43 @@ class ProviderManager:
         # Utiliser le timeout spécifié ou le timeout par défaut
         request_timeout = timeout if timeout is not None else self.timeout
 
-        logger.debug(f"Appel LLM - model: {model_name}, options: {options}, timeout: {request_timeout}s")
+        logger.debug(
+            f"Appel LLM - model: {model_name}, options: {options}, timeout: {request_timeout}s"
+        )
 
         # Tentatives avec retry
         for attempt in range(self.retry_attempts + 1):
             try:
-                # ollama.chat n'accepte pas directement de timeout, mais on peut utiliser le timeout de la session HTTP
-                # via un client personnalisé. Ici on suppose que la bibliothèque ollama utilise le timeout de session.
-                # Si ce n'est pas le cas, on peut utiliser asyncio.wait_for mais c'est plus complexe.
-                # Pour rester simple, on laisse le timeout géré par la bibliothèque (via le paramètre 'options' ? non)
-                # En pratique, ollama.chat n'a pas de paramètre timeout, mais on peut utiliser un client HTTP avec timeout.
-                # On va donc utiliser un timeout global via asyncio si on était asynchrone, mais ici on est synchrone.
-                # On va donc se contenter de logger le timeout demandé et espérer que la bibliothèque le respecte via la session.
-                response = ollama.chat(
-                    model=model_name,
-                    messages=messages,
-                    options=options
-                )
+                # ollama.chat n'accepte pas directement de timeout, mais on peut utiliser le timeout de la session HTTP  # noqa: E501
+                # via un client personnalisé. Ici on suppose que la bibliothèque ollama utilise le timeout de session.  # noqa: E501
+                # Si ce n'est pas le cas, on peut utiliser asyncio.wait_for mais c'est plus complexe.  # noqa: E501
+                # Pour rester simple, on laisse le timeout géré par la bibliothèque (via le paramètre 'options' ? non)  # noqa: E501
+                # En pratique, ollama.chat n'a pas de paramètre timeout, mais on peut utiliser un client HTTP avec timeout.  # noqa: E501
+                # On va donc utiliser un timeout global via asyncio si on était asynchrone, mais ici on est synchrone.  # noqa: E501
+                # On va donc se contenter de logger le timeout demandé et
+                # espérer que la bibliothèque le respecte via la session.
+                response = ollama.chat(model=model_name, messages=messages, options=options)
                 elapsed = time.time() - start_time
-                result = response['message']['content'].strip()
-                logger.debug(f"Réponse LLM reçue en {elapsed:.2f}s (modèle: {model_name})")
+                result = response["message"]["content"].strip()
+                logger.debug(f"Réponse LLM reçue en {
+                        elapsed:.2f}s (modèle: {model_name})")
                 if self._last_model != model_name:
-                    logger.info(f"Changement de modèle: {self._last_model} -> {model_name}")
+                    logger.info(f"Changement de modèle: {
+                            self._last_model} -> {model_name}")
                     self._last_model = model_name
                 return result if result else "[RÉPONSE VIDE]"
             except Exception as e:
-                logger.error(f"Tentative {attempt+1} échouée: {e}")
+                logger.error(f"Tentative {attempt + 1} échouée: {e}")
                 if attempt < self.retry_attempts:
-                    time.sleep(self.retry_delay * (2 ** attempt))
+                    time.sleep(self.retry_delay * (2**attempt))
                 else:
-                    error_msg = f"[ERREUR Ollama] {e}"
+                    f"[ERREUR Ollama] {e}"
                     if "not found" in str(e).lower():
                         raise LLMModelNotFoundError(f"Modèle '{model_name}' introuvable.")
                     elif "timeout" in str(e).lower():
-                        raise LLMTimeoutError(f"Timeout après {self.retry_attempts+1} tentatives.")
+                        raise LLMTimeoutError(f"Timeout après {
+                                self.retry_attempts +
+                                1} tentatives.")
                     else:
                         raise LLMConnectionError(f"Échec de communication: {e}")
 
@@ -151,10 +171,10 @@ class ProviderManager:
 
     def _get_model_name(self, model) -> str:
         """Extrait le nom du modèle à partir d'un objet ModelConfig ou d'une chaîne."""
-        if hasattr(model, 'name'):
+        if hasattr(model, "name"):
             return model.name
         elif isinstance(model, dict):
-            return model.get('name', '')
+            return model.get("name", "")
         else:
             return str(model)
 
@@ -179,7 +199,7 @@ class ProviderManager:
         """Retourne la liste des modèles disponibles sur le serveur Ollama."""
         try:
             response = ollama.list()
-            return [m['name'] for m in response.get('models', [])]
+            return [m["name"] for m in response.get("models", [])]
         except Exception as e:
             logger.error(f"Impossible de lister les modèles: {e}")
             return []
@@ -189,5 +209,5 @@ class ProviderManager:
         try:
             ollama.list()
             return True
-        except:
+        except BaseException:
             return False

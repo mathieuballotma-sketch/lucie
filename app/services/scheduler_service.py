@@ -4,11 +4,12 @@ Utilise APScheduler avec le scheduler asyncio dans un thread dédié.
 """
 
 import asyncio
-import threading
 import logging
+import threading
+from typing import Any, Callable, Coroutine, Optional
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from typing import Callable, Coroutine, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,9 @@ class SchedulerService:
         """Arrête proprement le scheduler et la boucle."""
         if self._loop and self._thread and self._thread.is_alive():
             # Shutdown du scheduler dans le thread de la boucle
-            future = asyncio.run_coroutine_threadsafe(self._shutdown_scheduler(), self._loop)
+            future = asyncio.run_coroutine_threadsafe(
+                self._shutdown_scheduler(), self._loop
+            )
             future.result(timeout=5)
 
             # Arrêter la boucle
@@ -75,7 +78,7 @@ class SchedulerService:
         cron_expr: str,
         job_id: str,
         args: list = None,
-        kwargs: dict = None
+        kwargs: dict = None,
     ):
         """
         Ajoute une tâche asynchrone avec une expression cron.
@@ -87,8 +90,7 @@ class SchedulerService:
         trigger = CronTrigger.from_crontab(cron_expr)
         # On doit ajouter le job dans le thread de la boucle
         asyncio.run_coroutine_threadsafe(
-            self._add_job_async(func, trigger, job_id, args, kwargs),
-            self._loop
+            self._add_job_async(func, trigger, job_id, args, kwargs), self._loop
         )
         logger.info(f"📅 Tâche cron ajoutée: {job_id} ({cron_expr})")
 
@@ -100,5 +102,5 @@ class SchedulerService:
             id=job_id,
             args=args or [],
             kwargs=kwargs or {},
-            replace_existing=True
+            replace_existing=True,
         )

@@ -1,8 +1,10 @@
 # app/agents/planner_agent.py
 import json
 import re
+
 from app.agents.base_agent import BaseAgent
 from app.utils.logger import logger
+
 
 class PlannerAgent(BaseAgent):
     """
@@ -13,13 +15,24 @@ class PlannerAgent(BaseAgent):
     def __init__(self, llm_service, bus, config):
         super().__init__("Planner", llm_service, bus)
         self.available_agents = config.get("agents", [])
-        logger.info(f"📋 Agent planificateur initialisé avec {len(self.available_agents)} agents disponibles")
+        logger.info(
+            f"📋 Agent planificateur initialisé avec {len(self.available_agents)} agents disponibles"
+        )
 
     def can_handle(self, query: str) -> bool:
         """Détecte si la requête nécessite une planification."""
         keywords = [
-            "automatise", "chaque jour", "tous les", "quand", "si", "planifie",
-            "programme", "répète", "quotidien", "hebdomadaire", "scénario"
+            "automatise",
+            "chaque jour",
+            "tous les",
+            "quand",
+            "si",
+            "planifie",
+            "programme",
+            "répète",
+            "quotidien",
+            "hebdomadaire",
+            "scénario",
         ]
         return any(kw in query.lower() for kw in keywords)
 
@@ -32,13 +45,17 @@ class PlannerAgent(BaseAgent):
         # Stocker le plan dans le bus (clé "current_plan")
         self.bus.set("current_plan", plan)
         logger.info(f"✅ Plan généré avec {len(plan.get('steps', []))} étapes")
-        return f"✅ Plan généré. Je vais l'exécuter maintenant."
+        return "✅ Plan généré. Je vais l'exécuter maintenant."
 
     def _generate_plan(self, query: str) -> dict:
         """
         Interroge le LLM pour obtenir un plan structuré en JSON.
         """
-        agents_list = ", ".join(self.available_agents) if self.available_agents else "aucun agent spécialisé (utiliser le LLM général)"
+        agents_list = (
+            ", ".join(self.available_agents)
+            if self.available_agents
+            else "aucun agent spécialisé (utiliser le LLM général)"
+        )
 
         prompt = f"""
 Tu es un expert en planification d'automatisations. Voici une demande utilisateur :
@@ -70,7 +87,9 @@ Si aucun agent n'est adapté, tu peux utiliser l'agent "general" qui correspond 
 Réponds uniquement avec le JSON, sans commentaire.
 """
         try:
-            response = self.ask_llm(prompt, system_prompt="Tu génères des plans d'automatisation en JSON.")
+            response = self.ask_llm(
+                prompt, system_prompt="Tu génères des plans d'automatisation en JSON."
+            )
             # Nettoyer la réponse
             cleaned = response.strip().replace("```json", "").replace("```", "").strip()
             # Essayer de parser le JSON
@@ -78,7 +97,7 @@ Réponds uniquement avec le JSON, sans commentaire.
                 plan = json.loads(cleaned)
             except json.JSONDecodeError:
                 # Tenter d'extraire avec regex
-                match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+                match = re.search(r"\{.*\}", cleaned, re.DOTALL)
                 if match:
                     plan = json.loads(match.group())
                 else:
