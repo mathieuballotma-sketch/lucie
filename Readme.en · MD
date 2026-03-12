@@ -25,28 +25,20 @@
 > Agent Lucie is a **personal project**, developed and maintained by **a single person**.
 > I handle everything alone — development, testing, bug fixes and architecture — all at the same time.
 
-What this means in practice:
-
 - ✅ The **decision-making brain** (Cortex, routing, fallback) works well
 - ✅ The **immune system** (CyberAgent, HealerAgent) is fully operational
-- ⚠️ **Computer control** (opening apps, typing text, organizing windows) is **under active development** — some actions may not work or behave unexpectedly depending on the application
+- ⚠️ **Computer control** is under active development — some actions may not work or behave unexpectedly
 - ⚠️ **Document generation** works but may produce imperfect results
 - 🔄 Fixes and improvements are made **every day**
 
 I prefer to be **completely honest** rather than oversell something unfinished.
-Thank you for your understanding — feel free to open an issue if you run into a problem! 🙏
+Feel free to open an issue if you run into a problem! 🙏
 
 ---
 
 ## 🎯 What is Agent Lucie?
 
 Agent Lucie is an AI assistant that runs **entirely on your Mac**, without sending any data to the internet. No subscription, no cloud, no dependency on OpenAI or Google.
-
-It can:
-- Control your computer via text or voice
-- Automatically generate Word documents
-- Remember your past conversations
-- **Actively protect your system** against malicious files
 
 ---
 
@@ -60,14 +52,22 @@ It can:
 | Intelligent fallback between paths | ✅ Stable |
 | LLM circuit breaker | ✅ Stable |
 
-### 🖥️ Computer control *(in development)*
-| Feature | Status |
-|---|---|
-| Open applications (Notes, Mail, Safari...) | ⚠️ In progress |
-| Type text | ⚠️ In progress |
-| Click, move mouse, take screenshots | ⚠️ In progress |
-| Organize windows (side by side, grid) | ⚠️ In progress |
-| Create reminders | ⚠️ In progress |
+### 🏗️ Agent structure — the first brick *(in development)*
+
+> **What you see here is just the beginning.**
+
+Access to Notes, Mail, Safari, Word and other applications is not an end in itself — it's the **foundation**. Each integrated application becomes an anchor point for a specialized agent capable, ultimately, of acting **in a fully autonomous way**, without human intervention.
+
+The final goal: you say what you want, and Agent Lucie handles it entirely — drafting and sending an email, creating a full report, organizing your day, monitoring your files — **while you do something else**.
+
+| Feature | Status | Vision |
+|---|---|---|
+| Open applications (Notes, Mail, Safari...) | ⚠️ In progress | 1st brick — access established |
+| Type text | ⚠️ In progress | Foundation for automated input |
+| Click, move mouse, take screenshots | ⚠️ In progress | Foundation for hands-free navigation |
+| Organize windows | ⚠️ In progress | Foundation for workspace management |
+| Create reminders | ⚠️ In progress | Foundation for autonomous time management |
+| **Full automation without intervention** | 🔮 Coming soon | The final goal |
 
 ### 🛡️ Digital immune system
 | Feature | Status |
@@ -88,18 +88,14 @@ It can:
 
 ## 🛡️ Digital immune system
 
-This is Agent Lucie's most original feature — a **real immune system** natively integrated into the assistant.
-
 ### 🔍 CyberAgent
-Continuously monitors internal system events. When a tool fails repeatedly, it calculates a severity score, triggers an alert, and can temporarily **quarantine** the failing tool — preventing error cascades.
+Continuously monitors internal system events. When a tool fails repeatedly, it calculates a severity score, triggers an alert, and can temporarily **quarantine** the failing tool.
 
 ### 🩺 HealerAgent
 Watches newly created or modified files. Uses a **malicious hash database** and **YARA rules** to detect threats. When a threat is detected:
 - The file is moved to `~/AgentLucide/quarantine/`
 - A **harmless decoy** is created in its place
 - Any access attempt to the decoy is tracked and reported
-
-Both agents communicate via the **Event Bus** for full defense orchestration.
 
 ---
 
@@ -118,13 +114,6 @@ Agent Lucie
 ---
 
 ## 🚀 Installation
-
-### Prerequisites
-- macOS 13+
-- Python 3.11+
-- [Ollama](https://ollama.com) installed
-
-### Steps
 
 ```bash
 # 1. Clone the project
@@ -145,19 +134,9 @@ python main.py
 ```
 
 ### ⚙️ Required macOS permissions
-
-In **System Settings > Privacy** :
 - ✅ Accessibility → allow Terminal
 - ✅ Automation → allow Terminal
 - ✅ Screen Recording → for screenshots
-
----
-
-## 🎥 Demo
-
-> 🎬 A demo video is in preparation.
-
-The `demos/` folder contains **Word documents automatically generated** by Agent Lucie.
 
 ---
 
@@ -172,21 +151,18 @@ The `demos/` folder contains **Word documents automatically generated** by Agent
 | Malware detection | YARA + hash signatures |
 | Metrics | Prometheus |
 | Async I/O | asyncio + aiofiles + aiosqlite |
-| P2P network | aiohttp |
 
 ---
 
 ## 👨‍💻 Author
 
 **Mathieu Bellot** — independent developer, 100% personal open-source project.
-
-I'm building Agent Lucie alone, with the conviction that AI should be **local, sovereign and accessible to everyone** — no subscription, no cloud, no privacy compromise.
+Building Agent Lucie alone, with the conviction that AI should be **local, sovereign and accessible to everyone**.
 
 ---
 
 ## ⚠️ Disclaimer
 
 This project manipulates applications, files and settings on your Mac.
-It is provided **as is**, without warranty of any kind.
-The author is not responsible for actions performed by the agent (emails sent, files modified, reminders created, etc.).
+Provided **as is**, without warranty of any kind.
 **Use at your own risk.**

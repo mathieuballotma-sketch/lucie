@@ -23,30 +23,19 @@
 ## 🚧 Aviso importante — proyecto en desarrollo
 
 > Agent Lucie es un **proyecto personal**, desarrollado y mantenido por **una sola persona**.
-> Me encargo de todo solo — desarrollo, pruebas, corrección de errores y arquitectura — todo al mismo tiempo.
 
-Lo que esto significa en la práctica:
-
-- ✅ El **cerebro de decisión** (Cortex, enrutamiento, fallback) funciona bien
-- ✅ El **sistema inmunológico** (CyberAgent, HealerAgent) está completamente operativo
-- ⚠️ El **control del ordenador** (abrir apps, escribir texto, organizar ventanas) está **en desarrollo activo** — algunas acciones pueden no funcionar o comportarse de forma inesperada
-- ⚠️ La **generación de documentos** funciona pero puede producir resultados imperfectos
+- ✅ El **cerebro de decisión** funciona bien
+- ✅ El **sistema inmunológico** está completamente operativo
+- ⚠️ El **control del ordenador** está en desarrollo activo — algunas acciones pueden no funcionar
 - 🔄 Se realizan correcciones y mejoras **cada día**
 
-Prefiero ser **completamente honesto** antes que vender algo inacabado.
-¡Gracias por su comprensión — no dude en abrir un issue si encuentra algún problema! 🙏
+¡Gracias por su comprensión! 🙏
 
 ---
 
 ## 🎯 ¿Qué es Agent Lucie?
 
-Agent Lucie es un asistente de IA que funciona **completamente en tu Mac**, sin enviar ningún dato a internet. Sin suscripción, sin nube, sin dependencia de OpenAI o Google.
-
-Es capaz de:
-- Controlar tu ordenador mediante texto o voz
-- Generar documentos Word automáticamente
-- Recordar tus conversaciones pasadas
-- **Proteger activamente tu sistema** contra archivos maliciosos
+Un asistente de IA que funciona **completamente en tu Mac**, sin enviar ningún dato a internet. Sin suscripción, sin nube, sin dependencia de OpenAI o Google.
 
 ---
 
@@ -57,17 +46,25 @@ Es capaz de:
 |---|---|
 | Cortex adaptativo — 9 rutas de ejecución | ✅ Estable |
 | Aprendizaje automático de enrutamiento | ✅ Estable |
-| Fallback inteligente entre rutas | ✅ Estable |
+| Fallback inteligente | ✅ Estable |
 | Circuit breaker LLM | ✅ Estable |
 
-### 🖥️ Control del ordenador *(en desarrollo)*
-| Funcionalidad | Estado |
-|---|---|
-| Abrir aplicaciones (Notes, Mail, Safari...) | ⚠️ En progreso |
-| Escribir texto | ⚠️ En progreso |
-| Clic, mover ratón, capturas de pantalla | ⚠️ En progreso |
-| Organizar ventanas (lado a lado, cuadrícula) | ⚠️ En progreso |
-| Crear recordatorios | ⚠️ En progreso |
+### 🏗️ Estructura de agentes — el primer ladrillo *(en desarrollo)*
+
+> **Lo que ves aquí es solo el comienzo.**
+
+El acceso a Notes, Mail, Safari, Word y otras aplicaciones no es un fin en sí mismo — es la **base**. Cada aplicación integrada se convierte en un punto de anclaje para un agente especializado capaz, en última instancia, de actuar **de forma totalmente autónoma**, sin intervención humana.
+
+El objetivo final: dices lo que quieres, y Agent Lucie lo gestiona completamente — redactar y enviar un email, crear un informe completo, organizar tu día — **mientras haces otra cosa**.
+
+| Funcionalidad | Estado | Visión |
+|---|---|---|
+| Abrir aplicaciones (Notes, Mail, Safari...) | ⚠️ En progreso | 1er ladrillo — acceso establecido |
+| Escribir texto | ⚠️ En progreso | Base para entrada automatizada |
+| Clic, ratón, capturas de pantalla | ⚠️ En progreso | Base para navegación autónoma |
+| Organizar ventanas | ⚠️ En progreso | Base para gestión del espacio de trabajo |
+| Crear recordatorios | ⚠️ En progreso | Base para gestión autónoma del tiempo |
+| **Automatización completa sin intervención** | 🔮 Próximamente | El objetivo final |
 
 ### 🛡️ Sistema inmunológico digital
 | Funcionalidad | Estado |
@@ -76,28 +73,6 @@ Es capaz de:
 | HealerAgent — escaneo YARA + cuarentena | ✅ Estable |
 | Señuelos activos | ✅ Estable |
 | Memoria inmunológica | ✅ Estable |
-
-### 🧠 Memoria y contexto
-| Funcionalidad | Estado |
-|---|---|
-| Memoria episódica (ChromaDB) | ✅ Estable |
-| Perfil de usuario | ✅ Estable |
-| Memory Manager | ✅ Estable |
-
----
-
-## 🛡️ Sistema inmunológico digital
-
-Esta es la característica más original de Agent Lucie — un **verdadero sistema inmunológico** integrado de forma nativa en el asistente.
-
-### 🔍 CyberAgent
-Monitorea continuamente los eventos internos del sistema. Cuando una herramienta falla repetidamente, calcula una puntuación de gravedad, activa una alerta y puede poner en **cuarentena temporal** la herramienta defectuosa.
-
-### 🩺 HealerAgent
-Vigila los archivos recién creados o modificados. Usa una **base de hash maliciosos** y **reglas YARA** para detectar amenazas. Cuando se detecta una amenaza:
-- El archivo se mueve a `~/AgentLucide/quarantine/`
-- Se crea un **señuelo inofensivo** en su lugar
-- Cualquier intento de acceso al señuelo es rastreado y reportado
 
 ---
 
@@ -109,7 +84,7 @@ Agent Lucie
 ├── 🤖 Agentes             — Computer, Document, Knowledge, Cyber, Healer, Reminder, Planner...
 ├── 💾 Memoria             — working memory + episódica (ChromaDB) + Memory Manager
 ├── ⚡ Event Bus           — comunicación entre agentes (sincrónico, thread-safe)
-├── 🛡️ Sistema inmune      — CyberAgent (detección) + HealerAgent (curación)
+├── 🛡️ Sistema inmune      — CyberAgent + HealerAgent
 └── 🔌 Proveedores         — Ollama (100% local)
 ```
 
@@ -118,50 +93,23 @@ Agent Lucie
 ## 🚀 Instalación
 
 ```bash
-# 1. Clonar el proyecto
 git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
 cd Agent-Lucie
-
-# 2. Instalar dependencias
 pip install -r requirements.txt
-
-# 3. Descargar modelos LLM
 ollama pull qwen2.5:0.5b
 ollama pull qwen2.5:3b
-ollama pull qwen2.5:7b
-ollama pull qwen2.5:14b  # opcional — requiere 24 GB de RAM
-
-# 4. Iniciar el agente
 python main.py
 ```
-
----
-
-## 🛠️ Stack tecnológico
-
-| Componente | Tecnología |
-|---|---|
-| LLM local | Ollama — qwen2.5 (0.5B → 14B) |
-| Memoria vectorial | ChromaDB |
-| Embeddings | sentence-transformers |
-| Control macOS | PyAutoGUI + AppleScript + NSWorkspace |
-| Detección de malware | YARA + firmas hash |
-| Métricas | Prometheus |
-| I/O asíncrona | asyncio + aiofiles + aiosqlite |
 
 ---
 
 ## 👨‍💻 Autor
 
 **Mathieu Bellot** — desarrollador independiente, proyecto personal 100% open-source.
-
-Construyo Agent Lucie solo, con la convicción de que la IA debe ser **local, soberana y accesible para todos**.
+Construyendo Agent Lucie solo, con la convicción de que la IA debe ser **local, soberana y accesible para todos**.
 
 ---
 
 ## ⚠️ Aviso legal
 
-Este proyecto manipula aplicaciones, archivos y configuraciones de tu Mac.
-Se proporciona **tal cual**, sin garantía de ningún tipo.
-El autor no es responsable de las acciones realizadas por el agente.
-**Úsalo bajo tu propia responsabilidad.**
+Proporcionado **tal cual**, sin garantía. **Úsalo bajo tu propia responsabilidad.**
