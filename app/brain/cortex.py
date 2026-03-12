@@ -2,8 +2,13 @@ from __future__ import annotations
 
 """
 Cortex central - Orchestrateur des agents et de la planification.
-Version avec learning routing, memory manager et planner.
-Corrections : alias "rappel", parsing amélioré dans _route_simple_action, appel asynchrone à add_episode.
+Version avec learning routing, memory manager, planner et creator agent.
+Incarne les lois universelles :
+- Moindre action : optimisation des chemins, cache, timeouts adaptatifs.
+- Homéostasie : gestion d'erreurs robuste, circuit breakers, quarantaine.
+- Évolution : apprentissage des performances, création de nouveaux agents.
+- Entropie : code modulaire, suppression des doublons, documentation.
+- Symbiose : communication via event_bus, intégration harmonieuse des composants.
 """
 
 import asyncio
@@ -26,6 +31,7 @@ from transformers import AutoModel, AutoTokenizer
 
 from app.agents.base_agent import BaseAgent
 from app.agents.computer_control_agent import ComputerControlAgent
+from app.agents.creator_agent import CreatorAgent
 from app.agents.document_agent import DocumentAgent
 from app.agents.knowledge_agent import KnowledgeAgent
 from app.agents.planner_agent import PlannerAgent
@@ -46,23 +52,6 @@ from ..utils.json_parser import JSONParseError, parse_json_safely
 from ..utils.logger import logger
 from ..utils.metrics import record_cortex_step
 
-from app.soul.identity import SoulIdentity
-from app.soul.memory import SoulMemory
-from app.soul.heartbeat import HeartbeatManager
-from app.agents.team_leader_agent import TeamLeaderAgent
-
-# Dans __init__ du FrontalCortex
-self.soul_identity = SoulIdentity()
-self.soul_memory = SoulMemory()
-self.heartbeat = HeartbeatManager(scheduler=self.scheduler)  # si scheduler accessible
-self.team_leader = TeamLeaderAgent(manager, bus, config)
-
-# Enregistrer les types d'agents pour le team leader
-self.team_leader.register_agent_class("ComputerControlAgent", ComputerControlAgent)
-self.team_leader.register_agent_class("DocumentAgent", DocumentAgent)
-self.team_leader.register_agent_class("ReminderAgent", ReminderAgent)
-# etc.
-
 _THREAD_FUTURE_TIMEOUT: float = 2.0
 
 
@@ -73,14 +62,16 @@ class EmbeddingClassifier:
     """
     Classifieur sémantique basé sur embeddings utilisant un modèle transformers.
     Supporte MPS avec nettoyage NaN.
+    Incarne le principe d'évolution : le classifieur est réentraînable et s'améliore avec les données.
     """
 
     QUERY_TYPES: List[str] = [
         "greeting", "action", "multi_action", "simple",
-        "complex", "mail", "safari", "arrange",
+        "complex", "mail", "safari", "arrange", "creation",  # <-- AJOUT
     ]
 
     TRAINING_EXAMPLES: List[Tuple[str, str]] = [
+        # ... (liste existante)
         ("bonjour", "greeting"), ("salut", "greeting"), ("hello", "greeting"),
         ("coucou", "greeting"), ("merci", "greeting"), ("au revoir", "greeting"),
         ("bye", "greeting"), ("hi", "greeting"), ("bonsoir", "greeting"),
@@ -123,6 +114,13 @@ class EmbeddingClassifier:
         ("organise les fenêtres côte à côte", "arrange"),
         ("disposition grille", "arrange"), ("mets les fenêtres en mosaïque", "arrange"),
         ("côte à côte", "arrange"), ("split screen", "arrange"),
+        # Nouveaux exemples pour la création d'agents
+        ("crée un agent météo", "creation"),
+        ("génère un agent qui surveille les prix", "creation"),
+        ("je veux créer un nouvel assistant", "creation"),
+        ("fabrique un agent pour mes rappels", "creation"),
+        ("développe un agent de recherche", "creation"),
+        ("crée un agent qui ouvre notes et écrit bonjour", "creation"),
     ]
 
     def __init__(
@@ -156,6 +154,7 @@ class EmbeddingClassifier:
             self._load_classifier_only()
 
     async def _ensure_loaded(self) -> None:
+        # Chargement paresseux du modèle (principe de moindre action)
         if self._model is not None:
             return
         if self._load_lock is None:
@@ -195,6 +194,7 @@ class EmbeddingClassifier:
             self._save()
 
     def _train_sync(self) -> None:
+        # Entraînement synchrone (une seule fois au démarrage)
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self._model = AutoModel.from_pretrained(self.model_name).to(self.device)
         self._model.eval()
@@ -212,6 +212,7 @@ class EmbeddingClassifier:
     def _mean_pooling(
         self, token_embeddings: torch.Tensor, attention_mask: torch.Tensor
     ) -> torch.Tensor:
+        # Pooling moyen (technique classique pour les embeddings)
         expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * expanded, 1) / torch.clamp(
             expanded.sum(1), min=1e-9
@@ -226,6 +227,7 @@ class EmbeddingClassifier:
             outputs = self._model(**encoded)
         emb = self._mean_pooling(outputs.last_hidden_state, encoded["attention_mask"])
         result = torch.nn.functional.normalize(emb, p=2, dim=1).cpu().numpy()
+        # Nettoyage des NaN (problème MPS) – homéostasie
         result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
         return result
 
@@ -253,7 +255,13 @@ class EmbeddingClassifier:
         return pred_label, confidence
 
     def _fallback(self, query: str) -> str:
+        # Fallback par mots-clés (principe de moindre action : éviter d'appeler le LLM pour ça)
         q = query.lower().strip()
+
+        # Détection de création d'agent
+        if any(kw in q for kw in ["crée un agent", "créer un agent", "génère un agent", "fabrique un agent"]):
+            return "creation"
+
         greetings = ["bonjour", "salut", "hello", "coucou", "merci", "au revoir", "bye", "hi"]
         if q in greetings or any(g in q for g in greetings):
             return "greeting"
@@ -277,6 +285,7 @@ class NanoPredictor:
     """
     Prédicteur temps réel : analyse le texte partiel toutes les 0.5 s et
     prépare une action candidate via le LLM nano (0.5B).
+    Incarne le principe de moindre action en anticipant les besoins.
     """
 
     def __init__(
@@ -436,6 +445,7 @@ class ActionSelector:
     """
     Sélecteur de chemin avec apprentissage par renforcement.
     Combine statistiques de performance et priorités statiques.
+    Incarne le principe d'évolution : apprend des succès/échecs pour affiner les choix futurs.
     """
 
     DEFAULT_PATH_PRIORITY: Dict[str, int] = {
@@ -448,6 +458,7 @@ class ActionSelector:
         "llm_speed": 7,
         "llm_balanced": 8,
         "plan_generation": 9,
+        "creation_agent": 10,  # <-- AJOUT (ordre par défaut, mais on utilise les priorités spécifiques)
     }
 
     TYPE_SPECIFIC_PRIORITY: Dict[str, Dict[str, int]] = {
@@ -459,6 +470,7 @@ class ActionSelector:
             "predicted_action": 12,
             "semantic_parsing": 13,
             "plan_generation": 14,
+            "creation_agent": 15,
         },
         "simple": {
             "llm_speed": 1,
@@ -470,6 +482,7 @@ class ActionSelector:
             "predicted_action": 7,
             "semantic_parsing": 8,
             "plan_generation": 9,
+            "creation_agent": 10,
         },
         "action": {
             "direct_action": 1,
@@ -481,6 +494,7 @@ class ActionSelector:
             "predicted_action": 7,
             "semantic_parsing": 8,
             "plan_generation": 9,
+            "creation_agent": 10,
         },
         "complex": {
             "llm_balanced": 1,
@@ -492,6 +506,7 @@ class ActionSelector:
             "direct_action": 7,
             "multi_action": 8,
             "predicted_action": 9,
+            "creation_agent": 10,
         },
         "mail": {
             "direct_action": 1,
@@ -503,6 +518,7 @@ class ActionSelector:
             "multi_action": 7,
             "predicted_action": 8,
             "llm_nano": 9,
+            "creation_agent": 10,
         },
         "safari": {
             "direct_action": 1,
@@ -514,6 +530,7 @@ class ActionSelector:
             "predicted_action": 7,
             "llm_nano": 8,
             "plan_generation": 9,
+            "creation_agent": 10,
         },
         "arrange": {
             "direct_action": 1,
@@ -525,6 +542,19 @@ class ActionSelector:
             "semantic_parsing": 7,
             "predicted_action": 8,
             "llm_nano": 9,
+            "creation_agent": 10,
+        },
+        "creation": {  # <-- NOUVEAU type
+            "creation_agent": 1,        # priorité max pour la création
+            "llm_balanced": 2,
+            "plan_generation": 3,
+            "llm_speed": 4,
+            "cache_response": 5,
+            "semantic_parsing": 6,
+            "llm_nano": 7,
+            "direct_action": 8,
+            "multi_action": 9,
+            "predicted_action": 10,
         },
     }
 
@@ -532,7 +562,7 @@ class ActionSelector:
         self.stats: Dict[str, Dict[str, PathStats]] = defaultdict(lambda: defaultdict(PathStats))
         self.paths: Dict[str, Dict[str, Any]] = {}
         self.classifier = classifier
-        self.epsilon = 0.05
+        self.epsilon = 0.05  # Exploration epsilon-greedy (équilibre exploration/exploitation)
 
     def register_path(self, path_id: str, func: Callable, description: str = "") -> None:
         self.paths[path_id] = {"func": func, "description": description}
@@ -545,6 +575,7 @@ class ActionSelector:
 
         type_stats = self.stats[query_type]
 
+        # Exploration epsilon-greedy
         if random.random() < self.epsilon:
             candidates = list(self.paths.keys())
             if len(candidates) > 3:
@@ -553,12 +584,16 @@ class ActionSelector:
             logger.debug(f"Exploration: choix aléatoire de {path_id}")
             return [(path_id, self.paths[path_id]["func"])]
 
+        # Sinon, tri par score décroissant
         def _score(pid: str) -> float:
             s = type_stats.get(pid)
             if s is None or s.count == 0:
+                # Pas de stats : utiliser la priorité statique
                 priority = self.TYPE_SPECIFIC_PRIORITY.get(query_type, {}).get(pid,
                             self.DEFAULT_PATH_PRIORITY.get(pid, 99))
+                # Convertir priorité en score (plus petit = meilleur)
                 return 1000 - priority
+            # Score = taux de succès / (temps moyen + epsilon)
             eps = 0.001
             return s.success_rate / (s.avg_time + eps)
 
@@ -580,6 +615,7 @@ class ActionSelector:
 class FrontalCortex:
     """
     Cortex frontal — Orchestrateur des agents et de la planification.
+    Intègre tous les principes universels.
     """
 
     SIMPLE_ACTIONS: Dict[str, Tuple[str, str]] = {
@@ -602,7 +638,7 @@ class FrontalCortex:
         "safari": "Safari", "mail": "Mail",
         "calendrier": "Calendar", "rappels": "Reminders",
         "reminders": "Reminders", "calendar": "Calendar",
-        "rappel": "Reminders",  # <-- AJOUT
+        "rappel": "Reminders",
     }
 
     def __init__(
@@ -625,6 +661,10 @@ class FrontalCortex:
         self.web_search = WebSearch() if config.get("web_search", True) else None
 
         self.executor = TaskExecutor(max_workers=3, persist_path=None)
+
+        # Répertoire pour les agents personnalisés (principe d'évolution)
+        self.custom_agents_dir = Path(config.get("custom_agents_dir", "./data/custom_agents"))
+        self.custom_agents_dir.mkdir(parents=True, exist_ok=True)
 
         self.agents: Dict[str, BaseAgent] = {}
         self._register_agents()
@@ -667,9 +707,10 @@ class FrontalCortex:
 
         self.planner.set_agents(self.agents)
 
-        logger.info(f"🧠 FrontalCortex initialisé avec {len(self.agents)} agents, memory manager et planner.")
+        logger.info(f"🧠 FrontalCortex initialisé avec {len(self.agents)} agents, memory manager, planner et creator agent.")
 
     def _register_agents(self) -> None:
+        """Instancie et enregistre tous les agents (principe de symbiose)."""
         agents_list: List[BaseAgent] = [
             ReminderAgent(self.manager, self.bus, {}),
             KnowledgeAgent(
@@ -683,12 +724,18 @@ class FrontalCortex:
             DocumentAgent(self.manager, self.bus, {"web_search": self.web_search}),
             TextExtractorAgent(self.manager, self.bus, self.config.get("vision", {})),
             ComputerControlAgent(self.manager, self.bus, {}),
+            # Ajout du CreatorAgent
+            CreatorAgent(
+                self.manager, self.bus, self.event_bus, self.config,
+                agents_dir=self.custom_agents_dir
+            ),
         ]
         for agent in agents_list:
             agent.event_bus = self.event_bus
             self.agents[agent.name] = agent
 
     def _register_paths(self) -> None:
+        """Déclare tous les chemins d'exécution (principe de moindre action)."""
         self.action_selector.register_path(
             "direct_action", self._execute_direct_action,
             "Exécution directe d'une action simple (mots-clés)",
@@ -725,8 +772,14 @@ class FrontalCortex:
             "plan_generation", self._generate_and_execute_plan,
             "Génération et exécution d'un plan via PlannerAgent",
         )
+        # Nouveau chemin pour la création d'agents
+        self.action_selector.register_path(
+            "creation_agent", self._execute_creation_agent,
+            "Création d'un nouvel agent via CreatorAgent",
+        )
 
     def _run_coro_sync(self, coro: Any, timeout: float = _THREAD_FUTURE_TIMEOUT) -> Any:
+        # Exécute une coroutine depuis un thread synchrone (utilisé pour les chemins synchrones)
         if self._loop is None:
             raise RuntimeError("Boucle asyncio non initialisée")
         future = asyncio.run_coroutine_threadsafe(coro, self._loop)
@@ -893,7 +946,6 @@ class FrontalCortex:
         self.prompt_cache.put(query, system, "balanced", response)
         if self.enable_memory:
             self.memory.add_to_working(query, response)
-            # Correction : lancer la coroutine add_episode sans bloquer
             if self._loop is not None:
                 asyncio.run_coroutine_threadsafe(
                     self.memory.add_episode(query, response, metadata={"latency": time.time()}),
@@ -926,6 +978,27 @@ class FrontalCortex:
             raise Exception("Le plan a pris trop de temps")
         return result
 
+    async def _execute_creation_agent(self, query: str) -> str:
+        """
+        Chemin dédié à la création d'agents.
+        Utilise le CreatorAgent pour générer un nouvel agent à partir de la description.
+        """
+        creator = self.agents.get("CreatorAgent")
+        if not creator:
+            raise Exception("CreatorAgent non disponible")
+        # Extraire la description (on retire le préfixe "crée un agent" etc.)
+        q = query.lower()
+        # Essayer plusieurs motifs
+        for prefix in ["crée un agent", "créer un agent", "génère un agent", "fabrique un agent"]:
+            if prefix in q:
+                description = q.split(prefix, 1)[1].strip()
+                if description:
+                    # Appeler l'outil create_agent du CreatorAgent
+                    result = await creator.execute_tool("create_agent", {"description": description})
+                    return result
+        # Fallback : si on n'a pas trouvé de préfixe, on passe la requête entière
+        return await creator.execute_tool("create_agent", {"description": query})
+
     def _safe_fallback(self, query: str) -> str:
         logger.warning("Utilisation du fallback sécurisé.")
         return "Désolé, je n'ai pas pu traiter votre demande."
@@ -937,7 +1010,7 @@ class FrontalCortex:
                 continue
             if tool_name == "open_application":
                 rest = q.replace(keyword, "").strip()
-                # S'arrêter au premier "et" ou "puis"
+                # S'arrêter au premier "et" ou "puis" (principe de moindre action)
                 match = re.search(r"^(.*?)(?:\s+(?:et|puis)\s+|$)", rest)
                 if match:
                     rest = match.group(1).strip()
@@ -1001,6 +1074,7 @@ class FrontalCortex:
         except Exception as exc:
             logger.error(f"Erreur stockage plan cache: {exc}")
 
+    # Méthodes de compatibilité (ancien système de planification, non utilisées)
     def _generate_plan_with_retry(self, query: str) -> Optional[List[Dict[str, Any]]]:
         return None
 
@@ -1025,6 +1099,10 @@ class FrontalCortex:
         system_prompt: Optional[str] = None,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
+        """
+        Point d'entrée principal du Cortex.
+        Incarne le principe de moindre action en testant les chemins du plus rapide au plus lent.
+        """
         self._loop = asyncio.get_running_loop()
 
         if not self._predictor_started:

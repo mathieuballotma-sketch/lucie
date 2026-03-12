@@ -2,7 +2,7 @@
 Moteur principal de l'application.
 Coordonne le cortex, les services, la mémoire et les agents.
 Intègre désormais l'agent Cyber, le réseau P2P simplifié, l'agent Healer,
-le Memory Manager et le Planner Agent.
+le Memory Manager, le Planner Agent et le Scheduler.
 Ajoute des souscripteurs pour les erreurs d'outils et les événements cyber.
 """
 
@@ -21,7 +21,7 @@ from app.brain.synapses.event_bus import EventBus
 from app.core.executor import TaskExecutor
 from app.services.prompt_cache import PromptCache
 from app.services.rag import RAGService
-from app.services.scheduler_service import SchedulerService
+from app.services.scheduler_service import SchedulerService  # Ajout
 from app.utils.circuit_breaker import CircuitBreaker
 from app.utils.crypto import CryptoManager
 
@@ -90,6 +90,10 @@ class LucidEngine:
         self.writer_agent = WriterAgent(str(config.actions.word_output_dir))
         self.action_router = ActionRouter(self.system_actions, self.writer_agent)
 
+        # Scheduler (pour les tâches périodiques et l'autonomie)
+        self.scheduler = SchedulerService()
+        self.scheduler.start()
+
         # Cortex
         self.cortex = FrontalCortex(
             manager=self.manager,
@@ -127,8 +131,7 @@ class LucidEngine:
         )
         self.profile_agent.start()
 
-        # Scheduler et Strategist
-        self.scheduler = SchedulerService()
+        # Strategist
         self.strategist = StrategistAgent(
             llm_service=self.manager,
             bus=self.bus,
@@ -136,7 +139,7 @@ class LucidEngine:
             memory_service=self.memory,
             config=asdict(config),
         )
-        self.scheduler.start()
+        # Planifier l'analyse stratégique toutes les heures
         self.scheduler.add_cron_job(
             func=self.strategist.run_periodic_review,
             cron_expr="0 * * * *",
@@ -172,6 +175,8 @@ class LucidEngine:
 
         # Planner Agent
         self.planner_agent = PlannerAgent(self.manager, self.bus, asdict(config))
+        # On lui donne accès à tous les agents
+        self.planner_agent.set_agents(self.cortex.agents)
 
         # Connecter l'event_bus aux agents du cortex
         for agent in self.cortex.agents.values():
@@ -193,13 +198,12 @@ class LucidEngine:
 
         # Réseau P2P
         if hasattr(config, "p2p") and config.p2p.enabled:
-            # Créer un objet Path pour le répertoire P2P
             data_dir_p2p = data_dir / "p2p"
             self.p2p_node = P2PNode(
                 config=asdict(config.p2p),
                 crypto=self.crypto,
                 event_bus=self.event_bus,
-                data_dir=data_dir_p2p  # <-- On passe un Path, pas un str
+                data_dir=data_dir_p2p
             )
             self.p2p_node.run_in_thread()
             self.event_bus.subscribe("cyber.threat", self._p2p_broadcast_threat)
