@@ -308,3 +308,6 @@ transformers>=4.30.0
 scikit-learn>=1.0.0
 numpy>=1.21.0
 json5>=0.9.14
+aiofiles
+yara-python
+psutil  # déjà présent

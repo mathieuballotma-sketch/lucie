@@ -1,109 +1,120 @@
-# app/agents/planner_agent.py
-import json
-import re
+"""
+Planner Agent - Planifie et exécute des tâches complexes en plusieurs étapes.
+"""
 
-from app.agents.base_agent import BaseAgent
+import json
+from typing import Dict, List, Any, Optional
+from pydantic import BaseModel, Field
+
+from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
+
+
+class PlanStep(BaseModel):
+    id: str = Field(..., description="Identifiant unique de l'étape")
+    agent: str = Field(..., description="Nom de l'agent à utiliser")
+    tool: str = Field(..., description="Nom de l'outil à exécuter")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Paramètres de l'outil")
+    description: str = Field(..., description="Description de l'étape")
+    depends_on: Optional[List[str]] = Field(None, description="IDs des étapes dont dépend cette étape")
 
 
 class PlannerAgent(BaseAgent):
     """
-    Agent spécialisé dans la planification de tâches complexes.
-    Reçoit une demande en langage naturel et génère un plan d'exécution JSON.
+    Agent capable de décomposer une requête complexe en un plan d'actions.
     """
 
-    def __init__(self, llm_service, bus, config):
-        super().__init__("Planner", llm_service, bus)
-        self.available_agents = config.get("agents", [])
-        logger.info(
-            f"📋 Agent planificateur initialisé avec {len(self.available_agents)} agents disponibles"
-        )
+    def __init__(self, llm_service, bus, config: dict):
+        super().__init__("PlannerAgent", llm_service, bus)
+        self.agents: Dict[str, BaseAgent] = {}  # Sera injecté par le cortex
+        self.max_steps = config.get("max_plan_steps", 5)
 
-    def can_handle(self, query: str) -> bool:
-        """Détecte si la requête nécessite une planification."""
-        keywords = [
-            "automatise",
-            "chaque jour",
-            "tous les",
-            "quand",
-            "si",
-            "planifie",
-            "programme",
-            "répète",
-            "quotidien",
-            "hebdomadaire",
-            "scénario",
-        ]
-        return any(kw in query.lower() for kw in keywords)
+    def set_agents(self, agents: Dict[str, BaseAgent]):
+        """Injecte la liste des agents disponibles."""
+        self.agents = agents
 
-    def handle(self, query: str) -> str:
-        """Génère un plan et le place dans le bus pour exécution."""
-        plan = self._generate_plan(query)
-        if not plan:
-            return "Je n'ai pas réussi à créer un plan pour cette demande."
+    def get_tools(self) -> list:
+        return []  # Pas d'outils exposés directement
 
-        # Stocker le plan dans le bus (clé "current_plan")
-        self.bus.set("current_plan", plan)
-        logger.info(f"✅ Plan généré avec {len(plan.get('steps', []))} étapes")
-        return "✅ Plan généré. Je vais l'exécuter maintenant."
-
-    def _generate_plan(self, query: str) -> dict:
+    async def create_plan(self, query: str) -> List[PlanStep]:
         """
-        Interroge le LLM pour obtenir un plan structuré en JSON.
+        Utilise le LLM pour générer un plan d'actions.
         """
-        agents_list = (
-            ", ".join(self.available_agents)
-            if self.available_agents
-            else "aucun agent spécialisé (utiliser le LLM général)"
+        agents_desc = "\n".join(
+            f"- {name}: {', '.join(t.name for t in agent.get_tools())}"
+            for name, agent in self.agents.items()
         )
+        prompt = f"""Tu es un planificateur d'actions. Pour la requête : "{query}", génère une liste d'étapes sous forme de JSON.
 
-        prompt = f"""
-Tu es un expert en planification d'automatisations. Voici une demande utilisateur :
-"{query}"
+Agents disponibles :
+{agents_desc}
 
-Les agents disponibles sont : {agents_list}.
+Chaque étape doit avoir :
+- id: string (ex: "1", "2")
+- agent: nom de l'agent
+- tool: nom de l'outil
+- parameters: dictionnaire des paramètres (optionnel)
+- description: description de l'étape
+- depends_on: liste des IDs des étapes dont dépend cette étape (optionnel)
 
-Génère un plan au format JSON avec la structure suivante :
-{{
-    "name": "nom de l'automatisation",
-    "trigger": {{
-        "type": "schedule" | "event" | "manual",
-        "details": {{}}  # par exemple pour schedule : "interval": "daily", "time": "20:00"
-    }},
-    "steps": [
-        {{
-            "step_id": 1,
-            "agent": "nom_agent",
-            "action": "action à effectuer",
-            "params": {{}},
-            "depends_on": []  # liste des step_id dont cette étape dépend
-        }},
-        ...
-    ]
-}}
-
-Le plan doit être réaliste et utilisable par les agents existants.
-Si aucun agent n'est adapté, tu peux utiliser l'agent "general" qui correspond au LLM par défaut.
-Réponds uniquement avec le JSON, sans commentaire.
+Réponds UNIQUEMENT avec le JSON, sous forme d'une liste. Exemple :
+[
+  {{
+    "id": "1",
+    "agent": "ComputerControlAgent",
+    "tool": "open_application",
+    "parameters": {{"app_name": "Notes"}},
+    "description": "Ouvrir l'application Notes"
+  }},
+  {{
+    "id": "2",
+    "agent": "ComputerControlAgent",
+    "tool": "type_text",
+    "parameters": {{"text": "Bonjour"}},
+    "description": "Taper le texte",
+    "depends_on": ["1"]
+  }}
+]
+Si la requête ne nécessite qu'une seule étape, retourne une liste avec un seul élément.
+Si la requête est impossible à planifier, retourne [].
 """
         try:
-            response = self.ask_llm(
-                prompt, system_prompt="Tu génères des plans d'automatisation en JSON."
-            )
-            # Nettoyer la réponse
-            cleaned = response.strip().replace("```json", "").replace("```", "").strip()
-            # Essayer de parser le JSON
-            try:
-                plan = json.loads(cleaned)
-            except json.JSONDecodeError:
-                # Tenter d'extraire avec regex
-                match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-                if match:
-                    plan = json.loads(match.group())
-                else:
-                    logger.error(f"Réponse non JSON reçue: {cleaned[:200]}")
-                    return None
-            return plan
+            response = await self.ask_llm_async(prompt, model="balanced", temperature=0.3, max_tokens=1024)
+            cleaned = response.strip()
+            # Extraire le JSON
+            if cleaned.startswith("```json"):
+                cleaned = cleaned[7:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            data = json.loads(cleaned)
+            if not isinstance(data, list):
+                logger.error(f"La réponse du planner n'est pas une liste: {data}")
+                return []
+            steps = [PlanStep(**step) for step in data]
+            if len(steps) > self.max_steps:
+                logger.warning(f"Plan trop long ({len(steps)} > {self.max_steps}), troncature")
+                steps = steps[:self.max_steps]
+            return steps
         except Exception as e:
-            logger.error(f"Erreur lors de la génération du plan : {e}")
-            return None
+            logger.error(f"Erreur lors de la création du plan: {e}")
+            return []
+
+    async def execute_plan(self, steps: List[PlanStep]) -> str:
+        """
+        Exécute un plan séquentiellement (ignorer les dépendances pour l'instant).
+        """
+        results = []
+        for step in steps:
+            agent = self.agents.get(step.agent)
+            if not agent:
+                results.append(f"❌ Étape {step.id}: Agent {step.agent} introuvable")
+                continue
+            try:
+                logger.info(f"Exécution de l'étape {step.id}: {step.description}")
+                result = await agent.execute_tool(step.tool, step.parameters)
+                results.append(f"✅ Étape {step.id}: {result}")
+            except Exception as e:
+                results.append(f"❌ Étape {step.id} échouée: {e}")
+                # Option : arrêter l'exécution
+                break
+        return "\n".join(results)

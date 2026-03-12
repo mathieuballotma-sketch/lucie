@@ -1,7 +1,7 @@
 """
 Moteur principal de l'application.
 Coordonne le cortex, les services, la mémoire et les agents.
-Intègre désormais l'agent Cyber et le réseau P2P simplifié.
+Intègre désormais l'agent Cyber, le réseau P2P simplifié, et l'agent Healer.
 Ajoute un souscripteur aux erreurs d'outils pour les logger.
 Ajoute des écouteurs pour les événements cyber.
 """
@@ -26,6 +26,7 @@ from app.utils.circuit_breaker import CircuitBreaker
 from app.utils.crypto import CryptoManager
 
 from ..agents.cyber_agent import CyberAgent
+from ..agents.healer_agent import HealerAgent   # <-- AJOUT
 from ..agents.profile_agent import ProfileAgent
 from ..agents.strategist_agent import StrategistAgent
 from ..core.config import Config
@@ -105,6 +106,9 @@ class LucidEngine:
                 "max_plan_retries": 1,
                 "retrain_classifier": False,
                 "enable_circuit_breaker": True,
+                "max_short_term": getattr(config.memory, "max_short_term", 5),
+                "max_long_term": getattr(config.memory, "max_long_term", 3),
+                "max_plan_steps": getattr(config.planner, "max_plan_steps", 5),
             },
         )
 
@@ -142,6 +146,24 @@ class LucidEngine:
             config=asdict(config),
             memory_service=self.memory,
         )
+
+        # Agent Healer
+        self.healer_agent = HealerAgent(
+            llm_service=self.manager,
+            bus=self.bus,
+            event_bus=self.event_bus,
+            config={
+                "quarantine_dir": "~/AgentLucide/quarantine",
+                "lures_dir": "~/AgentLucide/lures",
+                "auto_quarantine": True,
+                "stealth_mode": False,
+                "yara_rules_path": "~/.agent_lucide/yara_rules.yar",
+                "malicious_hashes_path": "~/.agent_lucide/malicious_hashes.txt",
+                "scan_threshold": 0.5,
+            },
+            memory_service=self.memory,
+        )
+
         # Connecter l'event_bus aux agents
         for agent in self.cortex.agents.values():
             agent.event_bus = self.event_bus
@@ -155,6 +177,10 @@ class LucidEngine:
         # Souscrire aux événements cyber
         self.event_bus.subscribe("cyber.threat", self._handle_cyber_threat)
         self.event_bus.subscribe("cyber.quarantine", self._handle_cyber_quarantine)
+
+        # Souscrire aux événements healer (optionnel)
+        self.event_bus.subscribe("healer.threat_detected", self._handle_healer_threat)
+        self.event_bus.subscribe("healer.file_quarantined", self._handle_healer_quarantine)
 
         # Réseau P2P
         if hasattr(config, "p2p") and config.p2p.enabled:
@@ -171,7 +197,7 @@ class LucidEngine:
         self._loop = None
 
         logger.info(
-            "✅ Moteur Lucide initialisé avec mémoire, élasticité, profil, scheduler, stratège, cyber et P2P"
+            "✅ Moteur Lucide initialisé avec mémoire, élasticité, profil, scheduler, stratège, cyber, healer et P2P"
         )
 
     def _init_llm(self):
@@ -192,9 +218,13 @@ class LucidEngine:
     def set_loop(self, loop: asyncio.AbstractEventLoop):
         """Définit la boucle asyncio principale (à appeler après le démarrage de la boucle)."""
         self._loop = loop
-        # Propager à l'agent cyber
+        # Propager à l'agent cyber et healer
         if hasattr(self, 'cyber_agent'):
             self.cyber_agent.set_loop(loop)
+        if hasattr(self, 'healer_agent'):
+            # Si HealerAgent a besoin de la boucle, ajouter une méthode set_loop similaire
+            # Pour l'instant, on ne fait rien
+            pass
 
     async def _process_async_core(
         self,
@@ -302,7 +332,6 @@ class LucidEngine:
         if cron and query:
             try:
                 from croniter import croniter
-
                 if not croniter.is_valid(cron):
                     logger.warning(f"Expression cron invalide: {cron}")
                     return
@@ -357,6 +386,22 @@ class LucidEngine:
 
         logger.error(f"⛔ QUARANTAINE - Outil {agent}:{tool} mis en quarantaine jusqu'à {until_str}")
 
+    def _handle_healer_threat(self, data, event_id, source):
+        """Callback pour les menaces détectées par Healer."""
+        filepath = data.get('filepath', '?')
+        threat_name = data.get('threat_name', 'inconnue')
+        severity = data.get('severity', 0)
+
+        logger.warning(f"🩺 HEALER - Menace détectée dans {filepath} : {threat_name} (sévérité {severity:.2f})")
+
+    def _handle_healer_quarantine(self, data, event_id, source):
+        """Callback pour les mises en quarantaine par Healer."""
+        original = data.get('original', '?')
+        quarantine = data.get('quarantine_path', '?')
+        threat = data.get('threat', 'inconnue')
+
+        logger.info(f"📦 HEALER - Fichier mis en quarantaine : {original} -> {quarantine} (menace: {threat})")
+
     async def _execute_scheduled_query(self, query: str):
         logger.info(f"⏰ Exécution programmée: {query}")
         try:
@@ -380,6 +425,9 @@ class LucidEngine:
             self.scheduler.stop()
         if hasattr(self, "cyber_agent"):
             self.cyber_agent.stop()
+        if hasattr(self, "healer_agent"):
+            # Si HealerAgent a une méthode stop, l'appeler
+            pass
         if hasattr(self, "p2p_node"):
             asyncio.run(self.p2p_node.stop())
         logger.info("Moteur arrêté.")
