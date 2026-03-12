@@ -5,6 +5,8 @@ Neutraliseur de menaces - Met en quarantaine et crée des leurres.
 import os
 import shutil
 import uuid
+import time  # <-- AJOUT
+import json
 from pathlib import Path
 from typing import Dict, Any, Optional
 import aiofiles
@@ -53,15 +55,19 @@ class ThreatNeutralizer:
 
     async def create_lure(self, original_path: str, threat_info: Dict[str, Any]) -> Path:
         """
-        Crée un fichier leurre inoffensif à l'emplacement d'origine.
+        Crée un fichier leurre inoffensif dans le répertoire des leurres.
         """
         src = Path(original_path)
-        lure_path = src
+        # Générer un nom unique pour le leurre
+        unique_id = uuid.uuid4().hex[:8]
+        lure_name = f"{unique_id}_{src.name}"
+        lure_path = self.lures_dir / lure_name
 
         # Contenu du leurre (par exemple, un message)
-        content = f"""Ce fichier a été neutralisé par Agent Lucide.
-Il s'agissait potentiellement d'une menace de type: {threat_info.get('type', 'inconnu')}.
-Si vous avez besoin du fichier original, veuillez consulter la quarantaine.
+        content = f"""Ce fichier est un leurre créé par Agent Lucide.
+Il a remplacé un fichier potentiellement malveillant: {src.name}
+Type de menace: {threat_info.get('type', 'inconnu')}
+Date de création: {time.ctime()}
 
 -- Agent Lucide, système immunitaire numérique
 """
@@ -69,6 +75,17 @@ Si vous avez besoin du fichier original, veuillez consulter la quarantaine.
         # Écrire le leurre
         async with aiofiles.open(lure_path, 'w') as f:
             await f.write(content)
+
+        # Enregistrer les métadonnées du leurre
+        meta_file = lure_path.with_suffix('.meta.json')
+        meta = {
+            "original_path": str(src),
+            "threat": threat_info,
+            "created": time.time(),
+            "type": "lure"
+        }
+        async with aiofiles.open(meta_file, 'w') as f:
+            await f.write(json.dumps(meta, indent=2))
 
         logger.info(f"Leurre créé: {lure_path}")
         return lure_path

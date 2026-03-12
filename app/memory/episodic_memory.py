@@ -1,223 +1,120 @@
 """
-Mémoire épisodique : stocke les interactions passées dans une base vectorielle.
-Permet de retrouver des souvenirs similaires pour enrichir le contexte.
-Utilise ChromaDB avec une politique d'éviction LRU (basée sur timestamp).
-Version avec gestion optionnelle de sentence-transformers et cache LRU.
+Mémoire épisodique - Stockage à long terme des interactions.
+Version asynchrone utilisant aiosqlite pour éviter de bloquer la boucle.
 """
 
-import hashlib
-import threading
+import json
 import time
-from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Dict, Any, Optional
+import aiosqlite
 
-import chromadb
-import numpy as np
-
-from ..utils.logger import logger
-
-# Tentative d'import de SentenceTransformer
-try:
-    from sentence_transformers import SentenceTransformer
-
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
-    logger.warning(
-        "sentence-transformers non disponible, la mémoire épisodique utilisera un embedding factice (recherche désactivée)."  # noqa: E501
-    )
-
-
-class DummyEmbedder:
-    """Embedder factice qui retourne un vecteur de zéros."""
-
-    def __init__(self):
-        self.dimension = 384  # dimension par défaut
-
-    def encode(self, texts, **kwargs):
-        if isinstance(texts, str):
-            return np.zeros(self.dimension)
-        return np.zeros((len(texts), self.dimension))
+from app.utils.logger import logger
 
 
 class EpisodicMemory:
     """
-    Mémoire épisodique à long terme.
-    Chaque souvenir contient : query, response, timestamp, metadata (satisfaction, etc.)
+    Stockage à long terme des épisodes (requêtes/réponses) dans une base SQLite.
+    Utilise aiosqlite pour les opérations asynchrones.
     """
 
-    def __init__(
-        self,
-        persist_directory: str = "./data/episodic_memory",
-        collection_name: str = "episodes",
-        embedding_model: str = "all-MiniLM-L6-v2",
-        max_entries: int = 10000,
-    ):
-        self.persist_directory = Path(persist_directory)
-        self.persist_directory.mkdir(parents=True, exist_ok=True)
-
-        # Choix de l'embedder
-        if SENTENCE_TRANSFORMERS_AVAILABLE:
-            try:
-                self.embedder = SentenceTransformer(embedding_model)
-                self.dimension = self.embedder.get_sentence_embedding_dimension()
-                logger.info(f"Embedder {embedding_model} chargé (dim={
-                        self.dimension})")
-            except Exception as e:
-                logger.error(f"Erreur chargement SentenceTransformer: {e}")
-                self.embedder = DummyEmbedder()
-                self.dimension = self.embedder.dimension
-        else:
-            self.embedder = DummyEmbedder()
-            self.dimension = self.embedder.dimension
-
+    def __init__(self, persist_directory: str, max_entries: int = 10000):
+        """
+        Args:
+            persist_directory: dossier où stocker la base de données
+            max_entries: nombre maximum d'entrées avant nettoyage
+        """
+        self.db_path = Path(persist_directory) / "episodic.db"
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.max_entries = max_entries
+        self._connection: Optional[aiosqlite.Connection] = None
 
-        # Initialisation ChromaDB
-        self.client = chromadb.PersistentClient(path=str(self.persist_directory))
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name, metadata={"hnsw:space": "cosine"}
-        )
-
-        self._lock = threading.RLock()
-
-        # Cache LRU pour les requêtes récentes
-        self.query_cache = OrderedDict()
-        self.cache_max_size = 20
-
-        logger.info(f"🧠 Mémoire épisodique initialisée avec {
-                self.collection.count()} souvenirs (embedder: {
-                'réel' if SENTENCE_TRANSFORMERS_AVAILABLE else 'factice'})")
-
-    def add(self, query: str, response: str, metadata: Optional[Dict] = None):
-        """
-        Ajoute une interaction dans la mémoire épisodique.
-        Se fait de manière asynchrone (via un thread) pour ne pas bloquer.
-        """
-
-        def _add():
-            with self._lock:
-                # Vérifier si le nombre d'entrées dépasse le max
-                current_count = self.collection.count()
-                if current_count >= self.max_entries:
-                    self._evict_oldest()
-
-                # Générer un ID unique
-                doc_id = hashlib.md5(f"{query}_{
-                        time.time()}".encode()).hexdigest()
-
-                # Métadonnées par défaut
-                meta = metadata or {}
-                meta["timestamp"] = time.time()
-                meta["query"] = query
-
-                # Calcul de l'embedding
-                embedding = self.embedder.encode(query).tolist()
-
-                # Ajouter à Chroma
-                self.collection.add(
-                    documents=[response],
-                    metadatas=[meta],
-                    ids=[doc_id],
-                    embeddings=[embedding],
+    async def _get_connection(self) -> aiosqlite.Connection:
+        """Retourne une connexion à la base, en la créant si nécessaire."""
+        if self._connection is None:
+            self._connection = await aiosqlite.connect(str(self.db_path))
+            # Activer les foreign keys et créer la table si elle n'existe pas
+            await self._connection.execute("PRAGMA foreign_keys = ON")
+            await self._connection.execute("""
+                CREATE TABLE IF NOT EXISTS episodes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp REAL NOT NULL,
+                    query TEXT NOT NULL,
+                    response TEXT NOT NULL,
+                    metadata TEXT
                 )
-                logger.debug(f"Souvenir ajouté: {query[:50]}...")
-
-        threading.Thread(target=_add, daemon=True).start()
-
-    def search(
-        self, query: str, n_results: int = 3, min_similarity: float = 0.7
-    ) -> List[Dict]:
-        """
-        Recherche des souvenirs similaires à la requête.
-        Retourne une liste de dict avec 'query', 'response', 'metadata', 'similarity'.
-        Si l'embedder est factice, retourne une liste vide (pas de recherche possible).
-        """
-        if not SENTENCE_TRANSFORMERS_AVAILABLE:
-            logger.debug("Recherche épisodique désactivée (embedder factice)")
-            return []
-
-        if self.collection.count() == 0:
-            return []
-
-        # Vérifier le cache
-        cache_key = hashlib.md5(query.encode()).hexdigest()
-        with self._lock:
-            if cache_key in self.query_cache:
-                logger.debug("Résultat mémoire trouvé en cache")
-                # Remettre l'élément à la fin (LRU)
-                self.query_cache.move_to_end(cache_key)
-                return self.query_cache[cache_key]
-
-        try:
-            # Encoder la requête
-            query_embedding = self.embedder.encode(query).tolist()
-
-            # Recherche dans Chroma
-            results = self.collection.query(
-                query_embeddings=[query_embedding],
-                n_results=n_results,
-                include=["documents", "metadatas", "distances"],
+            """)
+            # Créer un index sur timestamp pour les requêtes rapides
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_timestamp ON episodes(timestamp)"
             )
+            await self._connection.commit()
+        return self._connection
 
-            # Formater les résultats
-            memories = []
-            if results["documents"] and results["documents"][0]:
-                for i, doc in enumerate(results["documents"][0]):
-                    metadata = results["metadatas"][0][i]
-                    distance = results["distances"][0][i]
-                    similarity = 1 - distance
+    async def add_episode(self, query: str, response: str, metadata: Optional[Dict] = None) -> None:
+        """
+        Ajoute un épisode à la mémoire.
+        """
+        conn = await self._get_connection()
+        await conn.execute(
+            "INSERT INTO episodes (timestamp, query, response, metadata) VALUES (?, ?, ?, ?)",
+            (time.time(), query, response, json.dumps(metadata or {}))
+        )
+        await conn.commit()
+        # Nettoyer si nécessaire
+        await self._cleanup()
 
-                    if similarity >= min_similarity:
-                        memories.append(
-                            {
-                                "query": metadata.get("query", ""),
-                                "response": doc,
-                                "metadata": metadata,
-                                "similarity": similarity,
-                            }
-                        )
-
-            # Mettre en cache
-            with self._lock:
-                self.query_cache[cache_key] = memories
-                self.query_cache.move_to_end(cache_key)
-                if len(self.query_cache) > self.cache_max_size:
-                    self.query_cache.popitem(last=False)
-
-            return memories
-
-        except Exception as e:
-            logger.error(f"Erreur lors de la recherche épisodique: {e}")
-            return []
-
-    def _evict_oldest(self):
-        """Supprime le souvenir le plus ancien (par timestamp)"""
-        try:
-            all_data = self.collection.get(include=["metadatas"])
-            if not all_data["metadatas"]:
-                return
-
-            oldest_id = None
-            oldest_ts = float("inf")
-            for i, meta in enumerate(all_data["metadatas"]):
-                ts = meta.get("timestamp", 0)
-                if ts < oldest_ts:
-                    oldest_ts = ts
-                    oldest_id = all_data["ids"][i]
-
-            if oldest_id:
-                self.collection.delete(ids=[oldest_id])
-                logger.debug(
-                    f"Éviction du souvenir {oldest_id} (timestamp {oldest_ts})"
+    async def _cleanup(self) -> None:
+        """Supprime les entrées les plus anciennes si le nombre maximum est dépassé."""
+        conn = await self._get_connection()
+        cursor = await conn.execute("SELECT COUNT(*) FROM episodes")
+        count = (await cursor.fetchone())[0]
+        if count > self.max_entries:
+            to_delete = count - self.max_entries
+            await conn.execute(f"""
+                DELETE FROM episodes
+                WHERE id IN (
+                    SELECT id FROM episodes ORDER BY timestamp ASC LIMIT {to_delete}
                 )
-        except Exception as e:
-            logger.error(f"Erreur lors de l'éviction: {e}")
+            """)
+            await conn.commit()
+            logger.debug(f"Nettoyage de la mémoire épisodique: {to_delete} entrées supprimées")
 
-    def get_stats(self) -> dict:
-        """Retourne des statistiques sur la mémoire"""
-        return {
-            "count": self.collection.count(),
-            "max_entries": self.max_entries,
-        }
+    async def remember(self, query: str, n_results: int = 5, min_similarity: float = 0.0) -> List[Dict[str, Any]]:
+        """
+        Récupère les épisodes les plus récents (fallback simple).
+        Dans une version plus avancée, on pourrait utiliser un embedding pour la similarité.
+        """
+        conn = await self._get_connection()
+        cursor = await conn.execute(
+            "SELECT query, response, metadata, timestamp FROM episodes ORDER BY timestamp DESC LIMIT ?",
+            (n_results,)
+        )
+        rows = await cursor.fetchall()
+        results = []
+        for row in rows:
+            query_text, response_text, metadata_json, ts = row
+            results.append({
+                "query": query_text,
+                "response": response_text,
+                "metadata": json.loads(metadata_json),
+                "timestamp": ts,
+                "similarity": 1.0  # factice
+            })
+        return results
+
+    async def close(self) -> None:
+        """Ferme la connexion à la base de données."""
+        if self._connection:
+            await self._connection.close()
+            self._connection = None
+            logger.debug("Connexion à la mémoire épisodique fermée")
+
+    async def __aenter__(self):
+        """Support du contexte asynchrone."""
+        await self._get_connection()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Ferme la connexion à la sortie du contexte."""
+        await self.close()

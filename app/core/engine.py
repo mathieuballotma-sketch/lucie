@@ -1,9 +1,9 @@
 """
 Moteur principal de l'application.
 Coordonne le cortex, les services, la mémoire et les agents.
-Intègre désormais l'agent Cyber, le réseau P2P simplifié, et l'agent Healer.
-Ajoute un souscripteur aux erreurs d'outils pour les logger.
-Ajoute des écouteurs pour les événements cyber.
+Intègre désormais l'agent Cyber, le réseau P2P simplifié, l'agent Healer,
+le Memory Manager et le Planner Agent.
+Ajoute des souscripteurs pour les erreurs d'outils et les événements cyber.
 """
 
 import asyncio
@@ -26,12 +26,14 @@ from app.utils.circuit_breaker import CircuitBreaker
 from app.utils.crypto import CryptoManager
 
 from ..agents.cyber_agent import CyberAgent
-from ..agents.healer_agent import HealerAgent   # <-- AJOUT
+from ..agents.healer_agent import HealerAgent
 from ..agents.profile_agent import ProfileAgent
 from ..agents.strategist_agent import StrategistAgent
+from ..agents.planner_agent import PlannerAgent
 from ..core.config import Config
 from ..core.elasticity import ElasticityEngine
 from ..memory import ConsolidationEngine, EpisodicMemory, MemoryService, WorkingMemory
+from ..memory.memory_manager import MemoryManager
 from ..p2p.node import P2PNode
 from ..providers.manager import ProviderManager
 from ..utils.logger import logger
@@ -112,6 +114,9 @@ class LucidEngine:
             },
         )
 
+        # Memory Manager
+        self.memory_manager = MemoryManager(self.memory, asdict(config))
+
         # ProfileAgent
         self.profile_agent = ProfileAgent(
             llm_service=self.manager,
@@ -160,11 +165,15 @@ class LucidEngine:
                 "yara_rules_path": "~/.agent_lucide/yara_rules.yar",
                 "malicious_hashes_path": "~/.agent_lucide/malicious_hashes.txt",
                 "scan_threshold": 0.5,
+                "lure_ttl": 86400,
             },
             memory_service=self.memory,
         )
 
-        # Connecter l'event_bus aux agents
+        # Planner Agent
+        self.planner_agent = PlannerAgent(self.manager, self.bus, asdict(config))
+
+        # Connecter l'event_bus aux agents du cortex
         for agent in self.cortex.agents.values():
             agent.event_bus = self.event_bus
 
@@ -178,7 +187,7 @@ class LucidEngine:
         self.event_bus.subscribe("cyber.threat", self._handle_cyber_threat)
         self.event_bus.subscribe("cyber.quarantine", self._handle_cyber_quarantine)
 
-        # Souscrire aux événements healer (optionnel)
+        # Souscrire aux événements healer
         self.event_bus.subscribe("healer.threat_detected", self._handle_healer_threat)
         self.event_bus.subscribe("healer.file_quarantined", self._handle_healer_quarantine)
 
@@ -197,7 +206,7 @@ class LucidEngine:
         self._loop = None
 
         logger.info(
-            "✅ Moteur Lucide initialisé avec mémoire, élasticité, profil, scheduler, stratège, cyber, healer et P2P"
+            "✅ Moteur Lucide initialisé avec mémoire, élasticité, profil, scheduler, stratège, cyber, healer, planner et P2P"
         )
 
     def _init_llm(self):
@@ -218,13 +227,10 @@ class LucidEngine:
     def set_loop(self, loop: asyncio.AbstractEventLoop):
         """Définit la boucle asyncio principale (à appeler après le démarrage de la boucle)."""
         self._loop = loop
-        # Propager à l'agent cyber et healer
+        # Propager à l'agent cyber (qui a besoin de la boucle pour son thread)
         if hasattr(self, 'cyber_agent'):
             self.cyber_agent.set_loop(loop)
-        if hasattr(self, 'healer_agent'):
-            # Si HealerAgent a besoin de la boucle, ajouter une méthode set_loop similaire
-            # Pour l'instant, on ne fait rien
-            pass
+        # Le healer agent n'a pas besoin de la boucle pour l'instant
 
     async def _process_async_core(
         self,
@@ -426,8 +432,7 @@ class LucidEngine:
         if hasattr(self, "cyber_agent"):
             self.cyber_agent.stop()
         if hasattr(self, "healer_agent"):
-            # Si HealerAgent a une méthode stop, l'appeler
-            pass
+            asyncio.create_task(self.healer_agent.stop())
         if hasattr(self, "p2p_node"):
             asyncio.run(self.p2p_node.stop())
         logger.info("Moteur arrêté.")

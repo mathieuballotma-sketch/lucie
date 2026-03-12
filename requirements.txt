@@ -311,3 +311,5 @@ json5>=0.9.14
 aiofiles
 yara-python
 psutil  # déjà présent
+aiofiles
+sqlite3  # déjà inclus dans Python
