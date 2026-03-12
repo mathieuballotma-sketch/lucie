@@ -11,6 +11,13 @@
   <img src="https://img.shields.io/badge/Status-En%20développement-orange?style=for-the-badge"/>
 </p>
 
+<p align="center">
+  <a href="README.md">🇫🇷 Français</a> •
+  <a href="README.en.md">🇬🇧 English</a> •
+  <a href="README.zh.md">🇨🇳 中文</a> •
+  <a href="README.es.md">🇪🇸 Español</a>
+</p>
+
 ---
 
 ## 🚧 Avertissement important — projet en développement actif
@@ -22,7 +29,7 @@ Ce que ça signifie concrètement :
 
 - ✅ Le **cerveau décisionnel** (Cortex, routing, fallback) fonctionne bien
 - ✅ Le **système immunitaire** (CyberAgent, HealerAgent) est opérationnel
-- ⚠️ Le **contrôle de l'ordinateur** (ouvrir des apps, taper du texte, organiser les fenêtres) **est en cours de développement** — certaines actions peuvent ne pas fonctionner ou se comporter de manière inattendue selon les applications
+- ⚠️ Le **contrôle de l'ordinateur** est en cours de développement — certaines actions peuvent ne pas fonctionner ou se comporter de manière inattendue
 - ⚠️ La **génération de documents** fonctionne mais peut produire des résultats imparfaits
 - 🔄 Des corrections et améliorations sont apportées **chaque jour**
 
@@ -53,14 +60,22 @@ Il est capable de :
 | Fallback intelligent entre chemins | ✅ Stable |
 | Circuit breaker LLM | ✅ Stable |
 
-### 🖥️ Contrôle de l'ordinateur *(en développement)*
-| Fonctionnalité | État |
-|---|---|
-| Ouvrir des applications (Notes, Mail, Safari...) | ⚠️ En cours |
-| Taper du texte | ⚠️ En cours |
-| Clic, déplacement souris, capture d'écran | ⚠️ En cours |
-| Organiser les fenêtres (côte à côte, grille) | ⚠️ En cours |
-| Créer des rappels | ⚠️ En cours |
+### 🏗️ Structure des agents — la première brique *(en développement)*
+
+> **Ce que vous voyez ici n'est que le début.**
+
+L'accès à Notes, Mail, Safari, Word et aux autres applications n'est pas une fin en soi — c'est la **fondation**. Chaque application intégrée devient un point d'ancrage pour un agent spécialisé capable, à terme, d'agir **de façon totalement autonome**, sans intervention humaine.
+
+L'objectif final : vous dites ce que vous voulez, et Agent Lucie s'en occupe entièrement — rédiger et envoyer un email, créer un rapport complet, organiser votre journée, surveiller vos fichiers — **pendant que vous faites autre chose**.
+
+| Fonctionnalité | État | Vision |
+|---|---|---|
+| Ouvrir des applications (Notes, Mail, Safari...) | ⚠️ En cours | 1ère brique — accès établi |
+| Taper du texte | ⚠️ En cours | Base pour automatiser la saisie |
+| Clic, déplacement souris, capture d'écran | ⚠️ En cours | Base pour naviguer sans intervention |
+| Organiser les fenêtres | ⚠️ En cours | Base pour gérer l'espace de travail |
+| Créer des rappels | ⚠️ En cours | Base pour la gestion autonome du temps |
+| **Automatisation complète sans intervention** | 🔮 À venir | L'objectif final |
 
 ### 🛡️ Système immunitaire numérique
 | Fonctionnalité | État |

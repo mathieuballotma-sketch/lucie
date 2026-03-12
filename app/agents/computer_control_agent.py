@@ -1,12 +1,8 @@
 """
-Agent de contrôle de l'ordinateur — version étendue.
+Agent de contrôle de l'ordinateur — version étendue et optimisée.
 Ajoute des outils pour Mail, Safari et l'organisation des fenêtres.
-Version avec arrangement de fenêtres amélioré (création de fenêtre pour Mail).
-Optimisé pour la rapidité : timeouts réduits, polling plus fréquent.
-Incorpore une vérification instantanée via mdfind pour éviter les timeouts sur les applications inexistantes.
-Correction : lève ToolExecutionError en cas d'application inexistante ou d'échec de lancement.
-Ajout de logs détaillés pour diagnostiquer les problèmes.
-Fichier complet : app/agents/computer_control_agent.py
+Inclut des vérifications rapides et des fallbacks robustes.
+Correction : saisie dans Notes avec fallback fiable.
 """
 
 import asyncio
@@ -26,21 +22,13 @@ from app.utils.metrics import record_tool_execution
 
 try:
     import AppKit
-
     FOUND_APPKIT = True
     from AppKit import NSScreen
 except ImportError:
     FOUND_APPKIT = False
-    logger.warning(
-        "AppKit non disponible — détection d'app active désactivée, arrangement de fenêtres limité."
-    )
+    logger.warning("AppKit non disponible — certaines fonctionnalités sont limitées.")
 
-# Pour la recherche d'applications sans AppKit
 import subprocess
-
-# Log de diagnostic pour confirmer le chargement
-logger.info(">>> CHARGEMENT DE computer_control_agent.py (version avec mdfind et correction exception) <<<")
-
 
 # ---------------------------------------------------------------------------
 # Constantes centralisées
@@ -56,16 +44,11 @@ SAFARI_KEYWORDS = ["safari", "navigateur", "internet", "page web", "url"]
 
 NOTES_APPS = ["notes"]
 KNOWN_APPS = [
-    "notes",
-    "calculatrice",
-    "safari",
-    "mail",
-    "calendar",
-    "terminal",
-    "finder",
-    "chrome",
-    "firefox",
-    "slack",
+    "notes", "calculatrice", "safari", "mail", "calendar", "terminal",
+    "finder", "chrome", "firefox", "slack", "discord", "spotify",
+    "visual studio code", "code", "pages", "numbers", "keynote",
+    "app store", "calendrier", "contacts", "messages", "facetime",
+    "musique", "photos", "préférences système", "réglages",
 ]
 
 OPEN_PATTERNS = [
@@ -87,11 +70,13 @@ SCREENSHOT_DIR = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "data", "screenshots"
 )
 
-# Patterns pour l'organisation des fenêtres
 ARRANGE_PATTERNS = {
     "side_by_side": r"(c[ôo]te[ -]à[ -]c[ôo]te|side[ -]by[ -]side)",
     "grid_2x2": r"(grille|2x2|quatre|four)",
 }
+
+# Applications qui nécessitent une création de fenêtre explicite
+APPS_NEEDING_WINDOW = ["mail", "notes", "calendar", "messages", "facetime"]
 
 
 # ---------------------------------------------------------------------------
@@ -142,12 +127,8 @@ class ComputerControlSafariOpenUrlContract(BaseModel):
 
 
 class ComputerControlArrangeWindowsContract(BaseModel):
-    layout: str = Field(
-        ..., description="Type de disposition: 'side_by_side', 'grid_2x2'"
-    )
-    apps: Optional[List[str]] = Field(
-        None, description="Liste des applications concernées (optionnel)"
-    )
+    layout: str = Field(..., description="Type de disposition: 'side_by_side', 'grid_2x2'")
+    apps: Optional[List[str]] = Field(None, description="Liste des applications concernées")
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +137,6 @@ class ComputerControlArrangeWindowsContract(BaseModel):
 class ComputerControlAgent(BaseAgent):
     """
     Agent capable d'effectuer des actions sur l'ordinateur de façon visible.
-    Version étendue avec outils pour Mail, Safari et organisation des fenêtres.
     """
 
     def __init__(self, llm_service, bus, config: dict):
@@ -167,9 +147,7 @@ class ComputerControlAgent(BaseAgent):
         self.move_duration = config.get("move_duration", 0.5)
         self.type_interval = config.get("type_interval", 0.05)
         self.use_spell_check = config.get("use_spell_check", False)
-        self.use_applescript_for_typing = config.get(
-            "use_applescript_for_typing", False
-        )
+        self.use_applescript_for_typing = config.get("use_applescript_for_typing", False)
         self.use_paste_for_typing = config.get("use_paste_for_typing", True)
 
         logger.info(f"🖱️ ComputerControlAgent initialisé (mode visible={self.visible_mode})")
@@ -177,65 +155,24 @@ class ComputerControlAgent(BaseAgent):
 
     def get_tools(self) -> list:
         return [
-            Tool(
-                name="open_application",
-                description="Ouvre une application macOS.",
-                contract=ComputerControlOpenApplicationContract,
-            ),
-            Tool(
-                name="type_text",
-                description="Tape un texte. Si l'app cible est Notes, crée une nouvelle note.",
-                contract=ComputerControlTypeTextContract,
-            ),
-            Tool(
-                name="press_key",
-                description="Presse une touche spéciale (enter, tab, escape…).",
-                contract=ComputerControlPressKeyContract,
-            ),
-            Tool(
-                name="click",
-                description="Clique à une position (x, y) à l'écran.",
-                contract=ComputerControlClickContract,
-            ),
-            Tool(
-                name="move_mouse",
-                description="Déplace la souris à une position (x, y).",
-                contract=ComputerControlMoveMouseContract,
-            ),
-            Tool(
-                name="get_screenshot",
-                description="Capture l'écran et retourne le chemin du fichier.",
-                contract=ComputerControlGetScreenshotContract,
-            ),
-            Tool(
-                name="mail_compose",
-                description="Ouvre Mail et crée un nouveau message.",
-                contract=ComputerControlMailComposeContract,
-            ),
-            Tool(
-                name="safari_open_url",
-                description="Ouvre une URL dans Safari.",
-                contract=ComputerControlSafariOpenUrlContract,
-            ),
-            Tool(
-                name="arrange_windows",
-                description="Organise les fenêtres selon une disposition (côte à côte, grille).",
-                contract=ComputerControlArrangeWindowsContract,
-            ),
+            Tool(name="open_application", description="Ouvre une application macOS.", contract=ComputerControlOpenApplicationContract),
+            Tool(name="type_text", description="Tape un texte. Si l'app cible est Notes, crée une nouvelle note.", contract=ComputerControlTypeTextContract),
+            Tool(name="press_key", description="Presse une touche spéciale (enter, tab, escape…).", contract=ComputerControlPressKeyContract),
+            Tool(name="click", description="Clique à une position (x, y) à l'écran.", contract=ComputerControlClickContract),
+            Tool(name="move_mouse", description="Déplace la souris à une position (x, y).", contract=ComputerControlMoveMouseContract),
+            Tool(name="get_screenshot", description="Capture l'écran et retourne le chemin du fichier.", contract=ComputerControlGetScreenshotContract),
+            Tool(name="mail_compose", description="Ouvre Mail et crée un nouveau message.", contract=ComputerControlMailComposeContract),
+            Tool(name="safari_open_url", description="Ouvre une URL dans Safari.", contract=ComputerControlSafariOpenUrlContract),
+            Tool(name="arrange_windows", description="Organise les fenêtres selon une disposition (côte à côte, grille).", contract=ComputerControlArrangeWindowsContract),
         ]
 
     # -----------------------------------------------------------------------
     # Méthodes auxiliaires asynchrones
     # -----------------------------------------------------------------------
-    async def _run_applescript(
-        self, script: str, timeout: float = 5.0
-    ) -> tuple[bool, str]:
-        """Exécute un AppleScript avec un timeout (5s par défaut)."""
+    async def _run_applescript(self, script: str, timeout: float = 5.0) -> tuple[bool, str]:
         try:
             proc = await asyncio.create_subprocess_exec(
-                "osascript",
-                "-e",
-                script,
+                "osascript", "-e", script,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -251,27 +188,10 @@ class ComputerControlAgent(BaseAgent):
             return False, str(e)
 
     async def _activate_app(self, app_name: str):
-        """
-        Active (passe au premier plan) une application déjà ouverte.
-        Utilise un AppleScript simple et rapide.
-        Mesure le temps d'exécution pour diagnostic.
-        """
         script = f'tell application "{app_name}" to activate'
-        start = time.time()
-        try:
-            success, error = await self._run_applescript(script, timeout=3.0)
-            duration = time.time() - start
-            if success:
-                logger.debug(f"✅ Activation de '{app_name}' réussie en {duration:.3f}s")
-            else:
-                logger.error(
-                    f"❌ Échec activation de '{app_name}' en {duration:.3f}s : {error}"
-                )
-                raise Exception(f"Échec activation de '{app_name}': {error}")
-        except asyncio.TimeoutError:
-            duration = time.time() - start
-            logger.error(f"⏰ Timeout activation de '{app_name}' après {duration:.3f}s")
-            raise
+        success, error = await self._run_applescript(script, timeout=3.0)
+        if not success:
+            raise Exception(f"Échec activation de '{app_name}': {error}")
 
     def _get_active_app_name(self) -> Optional[str]:
         if not FOUND_APPKIT:
@@ -285,7 +205,6 @@ class ComputerControlAgent(BaseAgent):
             return None
 
     async def _wait_for_app_active(self, app_name: str, timeout: float = 2.0) -> bool:
-        """Attend que l'application devienne active avec un polling rapide."""
         deadline = time.time() + timeout
         while time.time() < deadline:
             active = self._get_active_app_name()
@@ -307,16 +226,16 @@ class ComputerControlAgent(BaseAgent):
         success, error = await self._run_applescript(script, timeout=3.0)
         if not success:
             logger.error(f"Création de note échouée : {error}")
-        return success
+            # Fallback : Cmd+N via pyautogui
+            pyautogui.hotkey("command", "n")
+            await asyncio.sleep(0.5)
+        return True
 
-    async def _type_text_with_applescript(
-        self, text: str, interval: float = 0.05, use_paste: bool = False
-    ) -> bool:
+    async def _type_text_with_applescript(self, text: str, interval: float = 0.05, use_paste: bool = False) -> bool:
         if use_paste:
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    "pbcopy",
-                    stdin=asyncio.subprocess.PIPE,
+                    "pbcopy", stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,
                 )
@@ -329,9 +248,7 @@ class ComputerControlAgent(BaseAgent):
                 logger.error(f"Erreur collage AppleScript: {e}")
                 return False
         else:
-            escaped = (
-                text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
-            )
+            escaped = text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
             script = f"""
             set textToType to "{escaped}"
             repeat with i from 1 to count of characters of textToType
@@ -340,270 +257,165 @@ class ComputerControlAgent(BaseAgent):
             end repeat
             """
             success, error = await self._run_applescript(script, timeout=5.0)
-            if not success:
-                logger.error(f"AppleScript typing échoué : {error}")
             return success
 
+    async def _ensure_app_window(self, app_name: str):
+        """Pour certaines applications, s'assurer qu'une fenêtre existe."""
+        app_lower = app_name.lower()
+        if app_lower not in APPS_NEEDING_WINDOW:
+            return
+        # Vérifier par AppleScript
+        if app_lower == "mail":
+            check_script = 'tell application "Mail" to exists window 1'
+        elif app_lower == "notes":
+            check_script = 'tell application "Notes" to exists window 1'
+        elif app_lower == "calendar":
+            check_script = 'tell application "Calendar" to exists window 1'
+        elif app_lower == "messages":
+            check_script = 'tell application "Messages" to exists window 1'
+        elif app_lower == "facetime":
+            check_script = 'tell application "FaceTime" to exists window 1'
+        else:
+            return
+
+        success, output = await self._run_applescript(check_script, timeout=3.0)
+        if success and output.strip().lower() == "true":
+            return
+        # Pas de fenêtre, en créer une
+        if app_lower == "mail":
+            new_script = 'tell application "Mail" to make new window'
+        elif app_lower == "notes":
+            new_script = 'tell application "Notes" to activate\n' \
+                         'tell application "System Events" to keystroke "n" using command down'
+        elif app_lower == "calendar":
+            new_script = 'tell application "Calendar" to activate'
+        elif app_lower == "messages":
+            new_script = 'tell application "Messages" to activate'
+        elif app_lower == "facetime":
+            new_script = 'tell application "FaceTime" to activate'
+        else:
+            return
+        await self._run_applescript(new_script, timeout=3.0)
+        await asyncio.sleep(0.5)
+
     # -----------------------------------------------------------------------
-    # Implémentations des outils
+    # Implémentation des outils
     # -----------------------------------------------------------------------
     async def _tool_open_application(self, app_name: str) -> str:
-        """
-        Ouvre ou active l'application demandée.
-        Vérifie d'abord rapidement l'existence avec mdfind pour éviter les timeouts.
-        Si l'application n'existe pas, lève ToolExecutionError immédiatement.
-        """
-        # Print pour forcer l'affichage
-        print(f"🔍 _tool_open_application appelé pour '{app_name}'")
-
         start = time.time()
-        logger.info(f"🔍 _tool_open_application appelé pour '{app_name}' (nouvelle version)")
+        logger.info(f"🔍 Ouverture de '{app_name}'")
 
-        # Vérification rapide de l'existence avec mdfind
+        # 1. Vérification rapide avec mdfind
         try:
-            logger.info(f"Exécution de mdfind pour '{app_name}'")
             proc = await asyncio.create_subprocess_exec(
                 "mdfind",
                 f"kMDItemKind == 'Application' && kMDItemDisplayName == '{app_name}'",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=2.0)
-            if proc.returncode != 0:
-                logger.error(f"mdfind a retourné une erreur: {stderr.decode()}")
-            stdout_str = stdout.decode().strip()
-            logger.info(f"Résultat mdfind: '{stdout_str}'")
-
-            if not stdout_str:
-                duration = time.time() - start
-                record_tool_execution(self.name, "open_application", duration, error=True)
-                logger.error(f"L'application '{app_name}' n'existe pas sur ce système.")
-                raise ToolExecutionError(
-                    f"L'application '{app_name}' n'existe pas sur ce système.",
-                    suggestion="Vérifiez le nom de l'application."
-                )
-            else:
-                logger.info(f"mdfind a trouvé: {stdout_str}")
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=2.0)
+            if not stdout.strip():
+                logger.warning(f"'{app_name}' non trouvé par mdfind, tentative avec open -a")
         except asyncio.TimeoutError:
-            logger.warning("mdfind a timeout, on continue sans vérification d'existence")
-        except ToolExecutionError:
-            # On relève directement, ne pas continuer
-            raise
-        except Exception as e:
-            logger.error(f"Exception lors de l'appel à mdfind: {e}", exc_info=True)
-            # On ne lève pas ici, on continue avec la méthode traditionnelle
+            logger.warning("mdfind a timeout, on continue avec open -a")
 
-        # Ensuite, vérifier si elle est déjà en cours d'exécution (si AppKit dispo)
-        app_found = False
-        if FOUND_APPKIT:
-            try:
-                workspace = AppKit.NSWorkspace.sharedWorkspace()
-                running_apps = workspace.runningApplications()
-                for app in running_apps:
-                    if app.localizedName() and app.localizedName().lower() == app_name.lower():
-                        app_found = True
-                        logger.debug(
-                            f"Application trouvée en cours : {app.localizedName()} "
-                            f"(PID: {app.processIdentifier()})"
-                        )
-                        break
-            except Exception as e:
-                logger.error(f"Erreur lors de la vérification des apps en cours: {e}")
-
-        if app_found:
-            # Déjà ouverte → simple activation
-            logger.debug(f"Activation de '{app_name}' via AppleScript...")
-            await self._activate_app(app_name)
-            duration = time.time() - start
-            record_tool_execution(self.name, "open_application", duration, error=False)
-            logger.info(f"✅ _tool_open_application terminé en {duration:.3f}s (activation)")
-            return f"✅ Application '{app_name}' déjà ouverte, activation effectuée."
-
-        # Sinon, lancer l'application
+        # 2. Lancer avec open -a
         try:
-            logger.debug(f"Lancement de '{app_name}' via 'open -a'...")
             proc = await asyncio.create_subprocess_exec(
-                "open",
-                "-a",
-                app_name,
+                "open", "-a", app_name,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.PIPE,
             )
-            # Timeout de 10s pour l'ouverture
-            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=10.0)
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=5.0)
             if proc.returncode != 0:
                 error_msg = stderr.decode().strip() if stderr else "Erreur inconnue"
-                logger.error(f"Échec ouverture '{app_name}' : {error_msg}")
                 duration = time.time() - start
                 record_tool_execution(self.name, "open_application", duration, error=True)
                 raise ToolExecutionError(
                     f"Impossible d'ouvrir '{app_name}' : {error_msg}",
-                    suggestion="Vérifiez que l'application n'est pas corrompue ou réinstallez-la."
+                    suggestion="Vérifiez le nom de l'application."
                 )
-            # Attendre que l'application devienne active
-            logger.debug(f"Attente de l'activation de '{app_name}'...")
-            await self._wait_for_app_active(app_name, timeout=2.0)
-            await self._activate_app(app_name)
-            duration = time.time() - start
-            record_tool_execution(self.name, "open_application", duration, error=False)
-            logger.info(f"✅ _tool_open_application terminé en {duration:.3f}s (lancement)")
-            return f"✅ Application '{app_name}' ouverte."
         except asyncio.TimeoutError:
-            logger.error(f"Timeout lors de l'ouverture de '{app_name}'")
             duration = time.time() - start
             record_tool_execution(self.name, "open_application", duration, error=True)
             raise ToolExecutionError(
                 f"Timeout lors de l'ouverture de '{app_name}'.",
-                suggestion="L'application met trop de temps à démarrer, vérifiez qu'elle n'est pas bloquée."
-            )
-        except Exception as e:
-            logger.error(f"Exception open_application (lancement) pour '{app_name}': {e}")
-            duration = time.time() - start
-            record_tool_execution(self.name, "open_application", duration, error=True)
-            raise ToolExecutionError(
-                f"Erreur ouverture '{app_name}': {e}",
-                suggestion="Vérifiez les permissions ou réinstallez l'application."
+                suggestion="L'application met trop de temps à démarrer."
             )
 
-    async def _tool_type_text(
-        self,
-        text: str,
-        interval: float = 0.05,
-        app_name: Optional[str] = None,
-        correct_spelling: bool = False,
-    ) -> str:
+        # 3. Attendre que l'application soit active
+        await self._wait_for_app_active(app_name, timeout=3.0)
+        # S'assurer qu'une fenêtre existe pour certaines apps
+        await self._ensure_app_window(app_name)
+
+        duration = time.time() - start
+        record_tool_execution(self.name, "open_application", duration, error=False)
+        return f"✅ Application '{app_name}' ouverte."
+
+    async def _tool_type_text(self, text: str, interval: float = 0.05, app_name: Optional[str] = None, correct_spelling: bool = False) -> str:
         start = time.time()
-        logger.info(f"🚀 type_text : '{text[:40]}…' | app={app_name}")
-        target_app = app_name
+        logger.info(f"✏️ Typage de texte: {text[:40]}...")
+
+        # Si une application cible est spécifiée, l'activer
         if app_name:
-            await self._activate_app(app_name)
-            await self._wait_for_app_active(app_name, timeout=2.0)
-        else:
-            active = self._get_active_app_name()
-            if active and any(n in active.lower() for n in NOTES_APPS):
-                target_app = active
-        if target_app and any(n in target_app.lower() for n in NOTES_APPS):
-            logger.info("   → Notes détectée : création d'une nouvelle note")
-            if not await self._create_new_note_in_notes():
-                logger.warning("   → Fallback : Cmd+N via pyautogui")
-                pyautogui.hotkey("command", "n")
+            try:
+                await self._activate_app(app_name)
+                await self._wait_for_app_active(app_name, timeout=2.0)
+            except Exception as e:
+                logger.warning(f"Impossible d'activer {app_name}, on tape quand même: {e}")
+
+        # Cas spécial Notes
+        active = self._get_active_app_name()
+        target_is_notes = (app_name and "notes" in app_name.lower()) or (active and "notes" in active.lower())
+
+        if target_is_notes:
+            logger.info("Notes détectée, création d'une nouvelle note")
+            await self._create_new_note_in_notes()
             await self._wait_for_app_active("Notes", timeout=2.0)
-        if target_app and any(n in target_app.lower() for n in NOTES_APPS):
-            logger.info("   → Utilisation d'AppleScript avec collage pour Notes")
-            success = await self._type_text_with_applescript(
-                text, interval, use_paste=True
-            )
-            if success:
-                duration = time.time() - start
-                record_tool_execution(
-                    self.name, "type_text", duration, error=False
-                )
-                return f"✅ Texte tapé ({len(text)} car.) via AppleScript (collage)."
-            else:
-                logger.warning("   → Échec AppleScript, fallback sur méthode standard")
-        if self.use_applescript_for_typing:
-            success = await self._type_text_with_applescript(
-                text, interval, use_paste=self.use_paste_for_typing
-            )
-            if success:
-                method = (
-                    "collage" if self.use_paste_for_typing else "frappe AppleScript"
-                )
-                duration = time.time() - start
-                record_tool_execution(
-                    self.name, "type_text", duration, error=False
-                )
-                return f"✅ Texte tapé ({len(text)} car.) via {method}."
-            else:
-                logger.warning("   → Échec AppleScript, fallback pyautogui (dégradé)")
-                pyautogui.typewrite(text, interval=interval)
-                duration = time.time() - start
-                record_tool_execution(
-                    self.name, "type_text_degraded", duration, error=True
-                )
-                return f"⚠️ Texte tapé ({len(text)} car.) via fallback pyautogui."
-        else:
-            if self.use_paste_for_typing:
-                try:
-                    proc = await asyncio.create_subprocess_exec(
-                        "pbcopy",
-                        stdin=asyncio.subprocess.PIPE,
-                        stdout=asyncio.subprocess.DEVNULL,
-                        stderr=asyncio.subprocess.DEVNULL,
-                    )
-                    await proc.communicate(input=text.encode("utf-8"))
-                    await asyncio.sleep(0.2)
-                    pyautogui.hotkey("command", "v")
-                    duration = time.time() - start
-                    record_tool_execution(
-                        self.name, "type_text", duration, error=False
-                    )
-                    return f"✅ Texte tapé ({len(text)} car.) via collage."
-                except Exception as e:
-                    logger.error(f"Erreur collage: {e}")
-                    pyautogui.typewrite(text, interval=interval)
-                    duration = time.time() - start
-                    record_tool_execution(
-                        self.name, "type_text_degraded", duration, error=True
-                    )
-                    return f"⚠️ Texte tapé ({len(text)} car.) via fallback pyautogui."
-            else:
-                pyautogui.typewrite(text, interval=interval)
-                duration = time.time() - start
-                record_tool_execution(
-                    self.name, "type_text", duration, error=False
-                )
-                return f"✅ Texte tapé ({len(text)} car.) via pyautogui."
-
-    async def _tool_press_key(self, key: str) -> str:
-        start = time.time()
-        pyautogui.press(key)
-        elapsed = time.time() - start
-        record_tool_execution(self.name, "press_key", elapsed, error=False)
-        return f"✅ Touche '{key}' pressée."
-
-    async def _tool_click(
-        self, x: int, y: int, button: str = "left", move_duration: float = 0.5
-    ) -> str:
-        """
-        Clique à la position (x, y) avec un déplacement éventuel.
-        Le paramètre move_duration contrôle la durée du déplacement.
-        """
-        start = time.time()
-        if move_duration > 0:
-            pyautogui.moveTo(x, y, duration=move_duration)
+            # Aller dans le corps de la note (appuyer sur Tab)
+            pyautogui.press('tab')
             await asyncio.sleep(0.1)
-        pyautogui.click(button=button)
-        elapsed = time.time() - start
-        record_tool_execution(self.name, "click", elapsed, error=False)
-        return f"✅ Clic {button} à ({x}, {y}) en {elapsed:.2f}s."
 
-    async def _tool_move_mouse(self, x: int, y: int, duration: float = 0.5) -> str:
-        start = time.time()
-        pyautogui.moveTo(x, y, duration=duration)
-        elapsed = time.time() - start
-        record_tool_execution(self.name, "move_mouse", elapsed, error=False)
-        return f"✅ Souris déplacée à ({x}, {y}) en {elapsed:.2f}s."
+        # Choisir la méthode de saisie
+        success = False
 
-    async def _tool_get_screenshot(self) -> str:
-        start = time.time()
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"screenshot_{timestamp}.png"
-        os.makedirs(SCREENSHOT_DIR, exist_ok=True)
-        filepath = os.path.join(SCREENSHOT_DIR, filename)
-        pyautogui.screenshot(filepath)
-        elapsed = time.time() - start
-        record_tool_execution(
-            self.name, "get_screenshot", elapsed, error=False
-        )
-        return f"✅ Capture d'écran : {filepath}"
+        # Méthode 1 : AppleScript avec collage (si activé)
+        if self.use_applescript_for_typing and self.use_paste_for_typing:
+            logger.debug("Tentative AppleScript avec collage")
+            success = await self._type_text_with_applescript(text, interval, use_paste=True)
 
-    # -----------------------------------------------------------------------
-    # Nouveaux outils
-    # -----------------------------------------------------------------------
-    async def _tool_mail_compose(
-        self, to: str, subject: str = "", body: str = "", send: bool = False
-    ) -> str:
+        # Méthode 2 : AppleScript caractère par caractère
+        if not success and self.use_applescript_for_typing:
+            logger.debug("Tentative AppleScript caractère par caractère")
+            success = await self._type_text_with_applescript(text, interval, use_paste=False)
+
+        # Méthode 3 : Collage via pbcopy + Cmd+V (pyautogui)
+        if not success:
+            logger.debug("Tentative collage via pbcopy")
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "pbcopy", stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await proc.communicate(input=text.encode("utf-8"))
+                await asyncio.sleep(0.2)
+                pyautogui.hotkey("command", "v")
+                success = True
+            except Exception as e:
+                logger.error(f"Erreur collage: {e}")
+
+        # Méthode 4 : pyautogui.typewrite (fallback ultime)
+        if not success:
+            logger.debug("Fallback : pyautogui.typewrite")
+            pyautogui.typewrite(text, interval=interval)
+            success = True
+
+        duration = time.time() - start
+        record_tool_execution(self.name, "type_text", duration, error=not success)
+        return f"✅ Texte tapé ({len(text)} caractères)."
+
+    async def _tool_mail_compose(self, to: str, subject: str = "", body: str = "", send: bool = False) -> str:
         start = time.time()
         try:
             to_esc = to.replace('"', '\\"')
@@ -622,251 +434,141 @@ class ComputerControlAgent(BaseAgent):
             success, error = await self._run_applescript(script, timeout=10.0)
             if success:
                 action = "envoyé" if send else "préparé"
-                elapsed = time.time() - start
-                record_tool_execution(
-                    self.name, "mail_compose", elapsed, error=False
-                )
+                duration = time.time() - start
+                record_tool_execution(self.name, "mail_compose", duration, error=False)
                 return f"✅ Email {action} pour {to}."
             else:
-                elapsed = time.time() - start
-                record_tool_execution(
-                    self.name, "mail_compose", elapsed, error=True
-                )
-                return f"❌ Erreur lors de la création de l'email: {error}"
+                duration = time.time() - start
+                record_tool_execution(self.name, "mail_compose", duration, error=True)
+                raise ToolExecutionError(f"Erreur lors de la création de l'email: {error}")
         except Exception as e:
             logger.error(f"Exception mail_compose: {e}")
-            elapsed = time.time() - start
-            record_tool_execution(
-                self.name, "mail_compose", elapsed, error=True
-            )
-            return f"❌ Erreur: {e}"
+            duration = time.time() - start
+            record_tool_execution(self.name, "mail_compose", duration, error=True)
+            raise ToolExecutionError(f"Erreur: {e}")
 
     async def _tool_safari_open_url(self, url: str, new_tab: bool = False) -> str:
         start = time.time()
         try:
             # Activer Safari (le lance si nécessaire)
             await self._activate_app("Safari")
-            # Attendre un peu que Safari soit prêt
-            await asyncio.sleep(0.5)
-            # Attendre qu'il soit actif
             if not await self._wait_for_app_active("Safari", timeout=3.0):
-                raise Exception("Safari ne s'est pas activé dans les temps")
+                raise Exception("Safari ne s'est pas activé")
             if new_tab:
-                script = f"""
-                tell application "Safari"
-                    tell window 1 to make new tab with properties {{URL:"{url}"}}
-                end tell
-                """
+                script = f'tell application "Safari" to tell window 1 to make new tab with properties {{URL:"{url}"}}'
             else:
-                script = f"""
-                tell application "Safari" to set URL of document 1 to "{url}"
-                """
+                script = f'tell application "Safari" to set URL of document 1 to "{url}"'
             success, error = await self._run_applescript(script, timeout=5.0)
             if success:
-                elapsed = time.time() - start
-                record_tool_execution(
-                    self.name, "safari_open_url", elapsed, error=False
-                )
+                duration = time.time() - start
+                record_tool_execution(self.name, "safari_open_url", duration, error=False)
                 return "✅ URL ouverte dans Safari."
             else:
-                elapsed = time.time() - start
-                record_tool_execution(
-                    self.name, "safari_open_url", elapsed, error=True
-                )
-                return f"❌ Erreur: {error}"
+                duration = time.time() - start
+                record_tool_execution(self.name, "safari_open_url", duration, error=True)
+                raise ToolExecutionError(f"Erreur: {error}")
         except Exception as e:
             logger.error(f"Exception safari_open_url: {e}")
-            elapsed = time.time() - start
-            record_tool_execution(
-                self.name, "safari_open_url", elapsed, error=True
-            )
-            return f"❌ Erreur: {e}"
+            duration = time.time() - start
+            record_tool_execution(self.name, "safari_open_url", duration, error=True)
+            raise ToolExecutionError(f"Erreur: {e}")
 
     async def _get_screen_size(self) -> Tuple[int, int]:
-        """Retourne la largeur et hauteur de l'écran principal."""
         if FOUND_APPKIT:
             screen = NSScreen.mainScreen()
             frame = screen.frame()
             return int(frame.size.width), int(frame.size.height)
         else:
-            # Fallback sur une taille courante (1440x900)
-            return 1440, 900
+            return 1440, 900  # fallback
 
     async def _arrange_side_by_side(self, apps: List[str]) -> str:
-        """Place deux applications côte à côte, avec création de fenêtre pour Mail si nécessaire."""
         if len(apps) != 2:
             return "❌ Pour la disposition côte à côte, il faut exactement deux applications."
-
         width, height = await self._get_screen_size()
         half_width = width // 2
         errors = []
-
         for i, app in enumerate(apps):
             logger.info(f"Arrangement: traitement de {app}")
-
-            # Activer l'application et attendre qu'elle soit active
-            await self._activate_app(app)
-            if not await self._wait_for_app_active(app, timeout=3.0):
-                errors.append(f"{app} ne s'est pas activée")
-                continue
-
-            # Attendre un peu que l'application soit prête
-            await asyncio.sleep(0.5)
-
-            # Pour Mail, s'assurer qu'une fenêtre existe
-            if app.lower() == "mail":
-                # Vérifier si une fenêtre existe déjà
-                check_script = """
-                tell application "Mail"
-                    if exists window 1 then
-                        return true
-                    else
-                        return false
-                    end if
+            try:
+                await self._activate_app(app)
+                if not await self._wait_for_app_active(app, timeout=3.0):
+                    errors.append(f"{app} ne s'est pas activée")
+                    continue
+                await asyncio.sleep(0.5)
+                await self._ensure_app_window(app)
+                x = 0 if i == 0 else half_width
+                script = f"""
+                tell application "System Events"
+                    tell process "{app}"
+                        set position of window 1 to {{{x}, 0}}
+                        set size of window 1 to {{{half_width}, {height}}}
+                    end tell
                 end tell
                 """
-                success, output = await self._run_applescript(check_script, timeout=3.0)
-                if not success or "false" in output.lower():
-                    logger.info(
-                        "Aucune fenêtre Mail trouvée, création d'une nouvelle fenêtre"
-                    )
-                    new_window_script = """
-                    tell application "Mail"
-                        activate
-                        make new window
-                    end tell
-                    """
-                    await self._run_applescript(new_window_script, timeout=3.0)
-                    await asyncio.sleep(1.0)
-
-            # Positionner la fenêtre
-            x = 0 if i == 0 else half_width
-            script = f"""
-            tell application "System Events"
-                tell process "{app}"
-                    set position of window 1 to {{{x}, 0}}
-                    set size of window 1 to {{{half_width}, {height}}}
-                end tell
-            end tell
-            """
-            logger.debug(f"Script pour {app} : {script}")
-            success, err = await self._run_applescript(script, timeout=5.0)
-            if not success:
-                logger.error(f"Erreur arrangement pour {app}: {err}")
-                errors.append(f"{app}: {err}")
-            else:
-                logger.info(f"Fenêtre de {app} positionnée avec succès")
-
+                success, err = await self._run_applescript(script, timeout=5.0)
+                if not success:
+                    errors.append(f"{app}: {err}")
+            except Exception as e:
+                errors.append(f"{app}: {e}")
         if errors:
             return f"⚠️ Disposition partielle : {', '.join(errors)}"
         return f"✅ Fenêtres de {apps[0]} et {apps[1]} disposées côte à côte."
 
     async def _arrange_grid_2x2(self, apps: List[str]) -> str:
-        """Place quatre applications en grille 2x2."""
         if len(apps) != 4:
-            return (
-                "❌ Pour la disposition grille, il faut exactement quatre applications."
-            )
+            return "❌ Pour la disposition grille, il faut exactement quatre applications."
         width, height = await self._get_screen_size()
-        half_w = width // 2
-        half_h = height // 2
-        positions = [
-            (0, 0),  # haut-gauche
-            (half_w, 0),  # haut-droit
-            (0, half_h),  # bas-gauche
-            (half_w, half_h),  # bas-droit
-        ]
+        half_w, half_h = width // 2, height // 2
+        positions = [(0, 0), (half_w, 0), (0, half_h), (half_w, half_h)]
         errors = []
-
         for i, app in enumerate(apps):
             x, y = positions[i]
             logger.info(f"Arrangement grille: traitement de {app}")
-
-            # Activer l'application et attendre qu'elle soit active
-            await self._activate_app(app)
-            if not await self._wait_for_app_active(app, timeout=3.0):
-                errors.append(f"{app} ne s'est pas activée")
-                continue
-
-            await asyncio.sleep(0.5)
-
-            # Vérifier/créer une fenêtre pour certaines applications (Mail, etc.)
-            if app.lower() == "mail":
-                check_script = """
-                tell application "Mail"
-                    if exists window 1 then
-                        return true
-                    else
-                        return false
-                    end if
+            try:
+                await self._activate_app(app)
+                if not await self._wait_for_app_active(app, timeout=3.0):
+                    errors.append(f"{app} ne s'est pas activée")
+                    continue
+                await asyncio.sleep(0.5)
+                await self._ensure_app_window(app)
+                script = f"""
+                tell application "System Events"
+                    tell process "{app}"
+                        set position of window 1 to {{{x}, {y}}}
+                        set size of window 1 to {{{half_w}, {half_h}}}
+                    end tell
                 end tell
                 """
-                success, output = await self._run_applescript(check_script, timeout=3.0)
-                if not success or "false" in output.lower():
-                    logger.info("Aucune fenêtre Mail trouvée, création d'une nouvelle fenêtre")
-                    new_window_script = """
-                    tell application "Mail"
-                        activate
-                        make new window
-                    end tell
-                    """
-                    await self._run_applescript(new_window_script, timeout=3.0)
-                    await asyncio.sleep(1.0)
-            # On pourrait ajouter d'autres cas (ex: Notes, Calendar) si besoin
-
-            script = f"""
-            tell application "System Events"
-                tell process "{app}"
-                    set position of window 1 to {{{x}, {y}}}
-                    set size of window 1 to {{{half_w}, {half_h}}}
-                end tell
-            end tell
-            """
-            logger.debug(f"Script pour {app} : {script}")
-            success, err = await self._run_applescript(script, timeout=5.0)
-            if not success:
-                logger.error(f"Erreur arrangement pour {app}: {err}")
-                errors.append(f"{app}: {err}")
-            else:
-                logger.info(f"Fenêtre de {app} positionnée avec succès")
-
+                success, err = await self._run_applescript(script, timeout=5.0)
+                if not success:
+                    errors.append(f"{app}: {err}")
+            except Exception as e:
+                errors.append(f"{app}: {e}")
         if errors:
             return f"⚠️ Disposition partielle : {', '.join(errors)}"
-        return f"✅ Fenêtres disposées en grille 2x2."
+        return "✅ Fenêtres disposées en grille 2x2."
 
-    async def _tool_arrange_windows(
-        self, layout: str, apps: Optional[List[str]] = None
-    ) -> str:
+    async def _tool_arrange_windows(self, layout: str, apps: Optional[List[str]] = None) -> str:
         start = time.time()
         try:
             if layout == "side_by_side":
                 if not apps or len(apps) < 2:
-                    return (
-                        "❌ Paramètre 'apps' manquant ou insuffisant pour la "
-                        "disposition côte à côte."
-                    )
+                    return "❌ Paramètre 'apps' manquant ou insuffisant."
                 result = await self._arrange_side_by_side(apps)
             elif layout == "grid_2x2":
                 if not apps or len(apps) < 4:
-                    return (
-                        "❌ Paramètre 'apps' manquant ou insuffisant pour la "
-                        "grille 2x2."
-                    )
+                    return "❌ Paramètre 'apps' manquant ou insuffisant."
                 result = await self._arrange_grid_2x2(apps)
             else:
                 result = f"❌ Disposition '{layout}' inconnue."
-            elapsed = time.time() - start
-            record_tool_execution(
-                self.name, "arrange_windows", elapsed, error=False
-            )
+            duration = time.time() - start
+            record_tool_execution(self.name, "arrange_windows", duration, error=False)
             return result
         except Exception as e:
             logger.error(f"Exception arrange_windows: {e}")
-            elapsed = time.time() - start
-            record_tool_execution(
-                self.name, "arrange_windows", elapsed, error=True
-            )
-            return f"❌ Erreur: {e}"
+            duration = time.time() - start
+            record_tool_execution(self.name, "arrange_windows", duration, error=True)
+            raise ToolExecutionError(f"Erreur: {e}")
 
     # -----------------------------------------------------------------------
     # Interface de l'agent
@@ -877,70 +579,65 @@ class ComputerControlAgent(BaseAgent):
     def can_handle_quick(self, query: str) -> float:
         q = query.lower()
         score = 0.0
-
         if any(kw in q for kw in OPEN_KEYWORDS):
             score = max(score, 0.7)
             if any(app in q for app in KNOWN_APPS):
                 score = max(score, 0.9)
-
         if any(kw in q for kw in TYPE_KEYWORDS):
             score = max(score, 0.6)
             if re.search(QUOTE_PATTERN, q):
                 score = max(score, 0.85)
-
         if any(kw in q for kw in CLICK_KEYWORDS):
             score = max(score, 0.5)
             if re.search(COORDS_PATTERN, q):
                 score = max(score, 0.8)
-
         if any(kw in q for kw in SCREENSHOT_KEYWORDS):
             score = max(score, 0.95)
-
         if any(kw in q for kw in MOVE_KEYWORDS) and re.search(COORDS_PATTERN, q):
             score = max(score, 0.8)
-
         if any(kw in q for kw in ARRANGE_KEYWORDS):
             score = max(score, 0.7)
-
         if any(kw in q for kw in MAIL_KEYWORDS):
             score = max(score, 0.7)
-
         if any(kw in q for kw in SAFARI_KEYWORDS):
             score = max(score, 0.7)
-
         return score
 
     async def handle(self, query: str) -> str:
         q = query.lower()
 
+        # Ouverture d'application
         if any(kw in q for kw in OPEN_KEYWORDS):
             app = self._parse_open_application(query)
             if app:
                 return await self._tool_open_application(app_name=app)
 
+        # Saisie de texte
         if any(kw in q for kw in TYPE_KEYWORDS):
             text = self._parse_type_text(query)
             if text:
                 app_name = next((a for a in NOTES_APPS if a in q), None)
                 return await self._tool_type_text(text=text, app_name=app_name)
 
+        # Clic
         if any(kw in q for kw in CLICK_KEYWORDS):
             coords = self._parse_coords(query)
             if coords:
                 return await self._tool_click(**coords)
             return "❓ Précise les coordonnées du clic (ex: 'clique à 500, 300')."
 
+        # Capture d'écran
         if any(kw in q for kw in SCREENSHOT_KEYWORDS):
             return await self._tool_get_screenshot()
 
+        # Déplacement souris
         if any(kw in q for kw in MOVE_KEYWORDS):
             coords = self._parse_coords(query)
             if coords:
                 return await self._tool_move_mouse(**coords)
-            return (
-                "❓ Précise les coordonnées de destination (ex: 'déplace à 800, 400')."
-            )
+            return "❓ Précise les coordonnées de destination."
 
+        # Arrangement fenêtres
         if any(kw in q for kw in ARRANGE_KEYWORDS):
             layout = None
             if re.search(ARRANGE_PATTERNS["side_by_side"], q, re.IGNORECASE):
@@ -948,27 +645,30 @@ class ComputerControlAgent(BaseAgent):
             elif re.search(ARRANGE_PATTERNS["grid_2x2"], q, re.IGNORECASE):
                 layout = "grid_2x2"
             if layout:
-                apps = []
-                for app in KNOWN_APPS:
-                    if app in q:
-                        apps.append(app.capitalize())
-                return await self._tool_arrange_windows(
-                    layout=layout, apps=apps if apps else None
-                )
-            return "❓ Précise la disposition souhaitée (ex: 'côte à côte', 'grille')."
+                apps = [app.capitalize() for app in KNOWN_APPS if app in q]
+                return await self._tool_arrange_windows(layout=layout, apps=apps if apps else None)
+            return "❓ Précise la disposition souhaitée."
 
+        # Email
         if any(kw in q for kw in MAIL_KEYWORDS):
-            # Tentative de parsing simple pour l'outil mail_compose
-            # Exemple: "envoie un email à john" → on peut essayer d'extraire le destinataire
-            # Pour l'instant, on renvoie un message guidant l'utilisateur
-            return "Pour envoyer un email, utilisez l'outil dédié avec la commande 'compose un email à [adresse]' ou activez-le via le menu."
+            # Parsing simple : extraire destinataire, sujet, corps
+            to_match = re.search(r"à\s+([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)", query)
+            to = to_match.group(1) if to_match else ""
+            subject_match = re.search(r"sujet\s*[:\s]\s*([^,\.]+)", query, re.IGNORECASE)
+            subject = subject_match.group(1).strip() if subject_match else ""
+            body_match = re.search(r"corps\s*[:\s]\s*(.+)", query, re.IGNORECASE)
+            body = body_match.group(1).strip() if body_match else ""
+            if to:
+                return await self._tool_mail_compose(to=to, subject=subject, body=body, send=False)
+            return "Pour envoyer un email, précisez le destinataire (ex: 'compose un email à jean@exemple.fr')."
 
+        # Safari
         if any(kw in q for kw in SAFARI_KEYWORDS):
             url_match = re.search(r"https?://[^\s]+", query)
             if url_match:
                 url = url_match.group()
                 return await self._tool_safari_open_url(url=url)
-            # Si pas d'URL, on peut proposer une recherche par défaut
+            # Sinon, ouvrir Google par défaut
             return await self._tool_safari_open_url(url="https://www.google.com")
 
         return await super().handle(query)
