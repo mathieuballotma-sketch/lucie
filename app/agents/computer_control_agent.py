@@ -2,7 +2,7 @@
 Agent de contrôle de l'ordinateur — version étendue et optimisée.
 Ajoute des outils pour Mail, Safari et l'organisation des fenêtres.
 Inclut des vérifications rapides et des fallbacks robustes.
-Correction : saisie dans Notes avec fallback fiable.
+Correction : saisie dans Notes avec focus sur le corps.
 """
 
 import asyncio
@@ -29,6 +29,7 @@ except ImportError:
     logger.warning("AppKit non disponible — certaines fonctionnalités sont limitées.")
 
 import subprocess
+
 
 # ---------------------------------------------------------------------------
 # Constantes centralisées
@@ -231,6 +232,16 @@ class ComputerControlAgent(BaseAgent):
             await asyncio.sleep(0.5)
         return True
 
+    async def _focus_note_body(self):
+        """Met le focus dans le corps de la note (après l'avoir ouverte)."""
+        # Attendre que Notes soit actif
+        await self._wait_for_app_active("Notes", timeout=2.0)
+        # Appuyer sur Tab pour aller dans le corps
+        pyautogui.press('tab')
+        await asyncio.sleep(0.2)
+        # Optionnel : un clic pour être sûr (à ajuster selon la position)
+        # pyautogui.click(x=200, y=200)
+
     async def _type_text_with_applescript(self, text: str, interval: float = 0.05, use_paste: bool = False) -> bool:
         if use_paste:
             try:
@@ -371,10 +382,7 @@ class ComputerControlAgent(BaseAgent):
         if target_is_notes:
             logger.info("Notes détectée, création d'une nouvelle note")
             await self._create_new_note_in_notes()
-            await self._wait_for_app_active("Notes", timeout=2.0)
-            # Aller dans le corps de la note (appuyer sur Tab)
-            pyautogui.press('tab')
-            await asyncio.sleep(0.1)
+            await self._focus_note_body()  # <-- mise au point dans le corps
 
         # Choisir la méthode de saisie
         success = False

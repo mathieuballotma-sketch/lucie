@@ -4,7 +4,7 @@ from __future__ import annotations
 Cortex central - Orchestrateur des agents et de la planification.
 Version avec learning routing, memory manager et planner.
 Conserve tous les chemins originaux et ajoute les améliorations.
-Corrigé : _enrich_query synchrone, appels à add_episode, etc.
+Corrigé : priorités pour mail et safari (direct_action en tête).
 """
 
 import asyncio
@@ -51,7 +51,7 @@ _THREAD_FUTURE_TIMEOUT: float = 2.0
 
 
 # =============================================================================
-# Classifieur sémantique (version complète)
+# Classifieur sémantique
 # =============================================================================
 class EmbeddingClassifier:
     """
@@ -478,12 +478,12 @@ class ActionSelector:
             "predicted_action": 9,
         },
         "mail": {
-            "llm_balanced": 1,
-            "plan_generation": 2,
-            "llm_speed": 3,
-            "cache_response": 4,
-            "semantic_parsing": 5,
-            "direct_action": 6,
+            "direct_action": 1,          # priorité max pour ouverture simple
+            "llm_balanced": 2,
+            "plan_generation": 3,
+            "llm_speed": 4,
+            "cache_response": 5,
+            "semantic_parsing": 6,
             "multi_action": 7,
             "predicted_action": 8,
             "llm_nano": 9,
@@ -881,7 +881,6 @@ class FrontalCortex:
         self.prompt_cache.put(query, system, "balanced", response)
         if self.enable_memory:
             self.memory.add_to_working(query, response)
-            # Correction : add_episode au lieu de add
             self.memory.add_episode(query, response, metadata={"latency": time.time()})
         return response
 
@@ -954,7 +953,6 @@ class FrontalCortex:
         return min(estimated, self.base_plan_timeout * 2)
 
     def _enrich_query(self, query: str) -> str:
-        """Enrichit la requête avec le contexte mémoire (synchrone)."""
         if self.enable_memory:
             ctx = self.memory.get_working_context(n=3)
             if ctx:
@@ -980,7 +978,7 @@ class FrontalCortex:
         except Exception as exc:
             logger.error(f"Erreur stockage plan cache: {exc}")
 
-    # Méthodes de compatibilité (ancien système de planification, non utilisées)
+    # Méthodes de compatibilité
     def _generate_plan_with_retry(self, query: str) -> Optional[List[Dict[str, Any]]]:
         return None
 
