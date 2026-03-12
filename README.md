@@ -36,7 +36,7 @@ Je fais tout mon possible pour rendre Agent Lucie aussi professionnel et agréab
 - ❌ **Contrôle vocal** — pas encore disponible, prévu dans une prochaine version
 - 🔄 Des corrections sont apportées **chaque jour**
 
-Merci pour votre patience et votre compréhension. N'hésitez pas à ouvrir une issue ! 🙏
+Merci pour votre patience. N'hésitez pas à ouvrir une issue ! 🙏
 
 ---
 
@@ -50,6 +50,8 @@ Il est capable de :
 - Se souvenir de vos conversations
 - **Protéger activement votre système** contre les fichiers malveillants
 - Apprendre de vos habitudes et s'améliorer avec le temps
+
+> 🌍 **Vision à long terme** : Agent Lucie est aujourd'hui optimisé pour macOS, mais l'objectif est de le rendre accessible à **tous les systèmes** (Windows, Linux) grâce à un réseau P2P qui permettra de partager la puissance de calcul entre utilisateurs — pour que l'IA locale soit accessible à tous, même sans hardware puissant.
 
 ---
 
@@ -115,30 +117,33 @@ Scrute les nouveaux fichiers créés ou modifiés. Utilise une base de **hash ma
 
 ## 🗺️ Roadmap
 
-> La vision à long terme : un **écosystème IA complet**, capable d'apprendre, de déléguer et de collaborer — 100% local et souverain.
+> La vision à long terme : un **écosystème IA complet**, accessible à tous — 100% local, souverain, et partagé.
 
 ### ✅ Déjà en place
 - Cortex adaptatif multi-chemins
 - Système immunitaire (CyberAgent + HealerAgent)
 - Mémoire épisodique
-- Ouverture d'applications macOS
+- Ouverture d'applications macOS (Notes, Mail, Safari, Word)
 
 ### 🔧 Court terme
 - Correction de l'écriture dans les applications
 - Intégrations étendues — Calendrier, Messages, Fichiers
 - Planification parallèle multi-agents
+- Apprentissage des habitudes utilisateur
 
 ### 🚀 Moyen terme
-- **Contrôle vocal** — WhisperAI local
+- **Contrôle vocal** — WhisperAI local, parler à l'agent naturellement
 - **Vision** — analyser images, captures d'écran, PDFs
-- **Mémoire sémantique** — graphe de connaissances
+- **Mémoire sémantique** — graphe de connaissances (relations, projets, événements)
 - **Proactivité** — l'agent suggère des actions sans qu'on lui demande
 
-### 🌍 Long terme
+### 🌍 Long terme — la grande vision
+- **Support multi-plateforme** — macOS aujourd'hui, Windows et Linux demain
+- **Réseau P2P** — partager la puissance de calcul entre utilisateurs pour rendre l'IA locale accessible à tous, même sans hardware puissant
 - **CreatorAgent** — générer des agents spécialisés à la demande
 - **Place de marché** — partager, échanger ou vendre ses agents
-- **Collaboration multi-agents** — des agents qui se délèguent des tâches
-- **Chiffrement de la mémoire** — zones privées inaccessibles
+- **Collaboration multi-agents** — des agents qui se délèguent des tâches entre eux
+- **Chiffrement de la mémoire** — zones privées inaccessibles même à l'agent
 
 ---
 
@@ -151,6 +156,7 @@ Agent Lucie
 ├── 💾 Mémoire             — working memory + épisodique (ChromaDB) + Memory Manager
 ├── ⚡ Event Bus           — communication inter-agents (synchrone, thread-safe)
 ├── 🛡️ Système immunitaire — CyberAgent (détection) + HealerAgent (guérison)
+├── 🌐 Réseau P2P          — partage de puissance entre instances (en développement)
 └── 🔌 Providers           — Ollama (100% local)
 ```
 
