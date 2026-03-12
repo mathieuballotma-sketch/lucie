@@ -169,7 +169,11 @@ class CyberAgent(BaseAgent):
             self.signatures[signature_id] = sig
 
         if self.memory and sig.count == 1:
-            self._check_historical_match(normalized, agent, tool, sig)
+            # Créer une tâche asynchrone pour ne pas bloquer le thread
+            asyncio.run_coroutine_threadsafe(
+                self._check_historical_match(normalized, agent, tool, sig),
+                self._loop
+            )
 
         if sig.count >= self.error_threshold and sig.severity >= self.severity_threshold:
             self._trigger_alert(sig)
@@ -234,13 +238,13 @@ class CyberAgent(BaseAgent):
         )
 
     # -----------------------------------------------------------------------
-    # Mémoire immunitaire longue
+    # Mémoire immunitaire longue (asynchrone)
     # -----------------------------------------------------------------------
-    def _load_historical_signatures(self):
+    async def _load_historical_signatures(self):
         if not self.memory:
             return
         try:
-            results = self.memory.remember(
+            results = await self.memory.remember(
                 "cyber_signature", n_results=50, min_similarity=0.6
             )
             for res in results:
@@ -264,13 +268,13 @@ class CyberAgent(BaseAgent):
         except Exception as e:
             logger.error(f"Erreur chargement historique: {e}")
 
-    def _check_historical_match(
+    async def _check_historical_match(
         self, normalized: str, agent: str, tool: str, current_sig: ThreatSignature
     ):
         if not self.memory:
             return
         try:
-            results = self.memory.remember(normalized, n_results=3, min_similarity=0.8)
+            results = await self.memory.remember(normalized, n_results=3, min_similarity=0.8)
             for res in results:
                 metadata = res.get("metadata", {})
                 if metadata.get("type") == "cyber_signature":
@@ -298,10 +302,15 @@ class CyberAgent(BaseAgent):
                 "severity": sig.severity,
                 "solution": sig.solution or "Inconnue",
             }
-            self.memory.add_episode(
-                query=f"cyber_signature:{sig.id}",
-                response=json.dumps(data),
-                metadata={"type": "cyber_signature", "pattern": sig.pattern},
+            # Note : add_episode est asynchrone, mais on est dans un thread
+            # On lance une tâche asynchrone
+            asyncio.run_coroutine_threadsafe(
+                self.memory.add_episode(
+                    query=f"cyber_signature:{sig.id}",
+                    response=json.dumps(data),
+                    metadata={"type": "cyber_signature", "pattern": sig.pattern},
+                ),
+                self._loop
             )
         except Exception as e:
             logger.error(f"Erreur archivage signature: {e}")

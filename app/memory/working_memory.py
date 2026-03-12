@@ -1,82 +1,50 @@
 """
-Mémoire de travail : buffer circulaire contenant le contexte récent de la conversation.
-Accessible par tous les agents pour maintenir une cohérence.
+Working Memory - Mémoire à court terme (dernières interactions).
 """
 
-import threading
-import time
 from collections import deque
-from typing import Dict, List, Optional
-
-from ..utils.metrics import set_working_memory_size
+from typing import List, Tuple
 
 
 class WorkingMemory:
     """
-    Mémoire de travail à court terme.
-    Stocke les dernières interactions (requête + réponse) avec timestamp.
+    Stocke les dernières interactions utilisateur pour fournir un contexte court terme.
     """
 
     def __init__(self, capacity: int = 10):
         self.capacity = capacity
-        self._buffer = deque(maxlen=capacity)
-        self._lock = threading.RLock()
+        self.history: deque = deque(maxlen=capacity)
 
-    def add(self, query: str, response: str, metadata: Optional[Dict] = None):
-        """
-        Ajoute une interaction dans la mémoire de travail.
-        Met à jour la métrique de taille.
-        """
-        with self._lock:
-            self._buffer.append(
-                {
-                    "query": query,
-                    "response": response,
-                    "timestamp": time.time(),
-                    "metadata": metadata or {},
-                }
-            )
-            set_working_memory_size(len(self._buffer))
+    def add(self, query: str, response: str):
+        """Ajoute une interaction à l'historique."""
+        self.history.append((query, response))
 
-    def get_recent(self, n: Optional[int] = None) -> List[Dict]:
+    def get_context(self, n: int = 5) -> str:
         """
-        Récupère les n dernières interactions (par défaut toutes).
+        Retourne les n dernières interactions sous forme de chaîne formatée.
         """
-        with self._lock:
-            if n is None:
-                return list(self._buffer)
-            return list(self._buffer)[-n:]
-
-    def get_context_text(self, n: int = 5, include_metadata: bool = False) -> str:
-        """
-        Génère un texte formaté du contexte récent pour injection dans les prompts.
-        """
-        with self._lock:
-            recent = list(self._buffer)[-n:]
-            if not recent:
-                return ""
-
-            lines = []
-            for i, item in enumerate(recent, 1):
-                lines.append(f"--- Échange {i} ---")
-                lines.append(f"Utilisateur: {item['query']}")
-                lines.append(f"Assistant: {item['response']}")
-                if include_metadata and item["metadata"]:
-                    lines.append(f"Métadonnées: {item['metadata']}")
-                lines.append("")
-
-            return "\n".join(lines)
+        if not self.history:
+            return ""
+        # Prendre les n dernières (ou moins si pas assez)
+        recent = list(self.history)[-n:]
+        lines = []
+        for i, (q, r) in enumerate(recent, 1):
+            lines.append(f"{i}. Utilisateur: {q}")
+            lines.append(f"   Assistant: {r}")
+        return "\n".join(lines)
 
     def clear(self):
-        """Vide la mémoire de travail."""
-        with self._lock:
-            self._buffer.clear()
-            set_working_memory_size(0)
+        """Efface l'historique."""
+        self.history.clear()
 
-    def get_stats(self) -> dict:
-        """Statistiques."""
-        with self._lock:
-            return {
-                "capacity": self.capacity,
-                "current_size": len(self._buffer),
-            }
+    def get_last_query(self) -> str:
+        """Retourne la dernière requête utilisateur."""
+        if self.history:
+            return self.history[-1][0]
+        return ""
+
+    def get_last_response(self) -> str:
+        """Retourne la dernière réponse de l'assistant."""
+        if self.history:
+            return self.history[-1][1]
+        return ""

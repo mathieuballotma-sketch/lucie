@@ -4,6 +4,7 @@ from __future__ import annotations
 Cortex central - Orchestrateur des agents et de la planification.
 Version avec learning routing, memory manager et planner.
 Conserve tous les chemins originaux et ajoute les améliorations.
+Corrigé : _enrich_query synchrone, appels à add_episode, etc.
 """
 
 import asyncio
@@ -45,8 +46,6 @@ from ..utils.errors import ToolError
 from ..utils.json_parser import JSONParseError, parse_json_safely
 from ..utils.logger import logger
 from ..utils.metrics import record_cortex_step
-
-# NOTE [P4] : app/brain/action_selector.py est un doublon — à supprimer.
 
 _THREAD_FUTURE_TIMEOUT: float = 2.0
 
@@ -882,6 +881,7 @@ class FrontalCortex:
         self.prompt_cache.put(query, system, "balanced", response)
         if self.enable_memory:
             self.memory.add_to_working(query, response)
+            # Correction : add_episode au lieu de add
             self.memory.add_episode(query, response, metadata={"latency": time.time()})
         return response
 
@@ -954,10 +954,11 @@ class FrontalCortex:
         return min(estimated, self.base_plan_timeout * 2)
 
     def _enrich_query(self, query: str) -> str:
+        """Enrichit la requête avec le contexte mémoire (synchrone)."""
         if self.enable_memory:
-            ctx = self.memory_manager.get_context("default", query)
+            ctx = self.memory.get_working_context(n=3)
             if ctx:
-                return f"{ctx}\n\nRequête actuelle: {query}"
+                return f"Contexte récent:\n{ctx}\n\n{query}"
         return query
 
     def _build_agents_description(self) -> str:
