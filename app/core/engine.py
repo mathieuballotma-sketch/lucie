@@ -193,11 +193,15 @@ class LucidEngine:
 
         # Réseau P2P
         if hasattr(config, "p2p") and config.p2p.enabled:
+            # Créer un objet Path pour le répertoire P2P
+            data_dir_p2p = data_dir / "p2p"
             self.p2p_node = P2PNode(
-                config=asdict(config.p2p), crypto=self.crypto, event_bus=self.event_bus
+                config=asdict(config.p2p),
+                crypto=self.crypto,
+                event_bus=self.event_bus,
+                data_dir=data_dir_p2p  # <-- On passe un Path, pas un str
             )
             self.p2p_node.run_in_thread()
-            # Connecter l'agent cyber au P2P pour diffuser les menaces
             self.event_bus.subscribe("cyber.threat", self._p2p_broadcast_threat)
         else:
             self.p2p_node = None
@@ -227,10 +231,10 @@ class LucidEngine:
     def set_loop(self, loop: asyncio.AbstractEventLoop):
         """Définit la boucle asyncio principale (à appeler après le démarrage de la boucle)."""
         self._loop = loop
-        # Propager à l'agent cyber (qui a besoin de la boucle pour son thread)
         if hasattr(self, 'cyber_agent'):
             self.cyber_agent.set_loop(loop)
-        # Le healer agent n'a pas besoin de la boucle pour l'instant
+        if hasattr(self, 'healer_agent'):
+            self.healer_agent.set_loop(loop)
 
     async def _process_async_core(
         self,
@@ -238,7 +242,6 @@ class LucidEngine:
         system_prompt: Optional[str] = None,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
-        """Cœur asynchrone de process, appelé depuis le thread via run_coroutine_threadsafe."""
         return await self.cortex.think(
             query,
             system_prompt=system_prompt,
@@ -252,15 +255,11 @@ class LucidEngine:
         use_rag: bool = True,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
-        """
-        Version synchrone destinée à être appelée depuis un thread.
-        Utilise run_coroutine_threadsafe avec la boucle stockée.
-        """
         start = time.time()
         logger.info(f"⚙️ Engine.process() - Requête: {query[:50]}...")
 
         if use_rag:
-            self.rag.query(query)  # synchrone
+            self.rag.query(query)
 
         if self._loop is None:
             raise RuntimeError("La boucle asyncio n'a pas été définie. Appeler set_loop() d'abord.")
@@ -271,10 +270,8 @@ class LucidEngine:
         )
 
         try:
-            # Timeout réduit à 30s (au lieu de 60)
             raw_response, _ = future.result(timeout=30)
         except Exception as e:
-            # Annuler la future pour éviter qu'elle continue en arrière-plan
             future.cancel()
             logger.error(f"Erreur après circuit breaker: {e}")
             return f"Erreur de communication avec le LLM: {e}", time.time() - start
@@ -298,14 +295,11 @@ class LucidEngine:
         use_rag: bool = True,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
-        """
-        Version asynchrone pour être appelée directement depuis une coroutine.
-        """
         start = time.time()
         logger.info(f"⚙️ Engine.process_async() - Requête: {query[:50]}...")
 
         if use_rag:
-            self.rag.query(query)  # synchrone, à améliorer éventuellement
+            self.rag.query(query)
 
         try:
             raw_response, _ = await self._process_async_core(query, system_prompt, allow_web_search)
@@ -354,10 +348,6 @@ class LucidEngine:
             logger.debug("Suggestion sans cron/query, ignorée")
 
     def _handle_tool_error(self, data, event_id, source):
-        """
-        Callback pour les événements tool.error.
-        Logge l'erreur de manière structurée.
-        """
         tool = data.get("tool")
         agent = data.get("agent")
         code = data.get("code", "UNKNOWN")
@@ -371,7 +361,6 @@ class LucidEngine:
             logger.info(f"💡 Suggestion: {suggestion}")
 
     def _handle_cyber_threat(self, data, event_id, source):
-        """Callback pour les alertes de menace cyber."""
         pattern = data.get('pattern', 'inconnue')
         severity = data.get('severity', 0)
         count = data.get('count', 0)
@@ -384,7 +373,6 @@ class LucidEngine:
             logger.info(f"   Solution suggérée : {solution}")
 
     def _handle_cyber_quarantine(self, data, event_id, source):
-        """Callback pour les mises en quarantaine."""
         agent = data.get('agent', '?')
         tool = data.get('tool', '?')
         until = data.get('until', 0)
@@ -393,7 +381,6 @@ class LucidEngine:
         logger.error(f"⛔ QUARANTAINE - Outil {agent}:{tool} mis en quarantaine jusqu'à {until_str}")
 
     def _handle_healer_threat(self, data, event_id, source):
-        """Callback pour les menaces détectées par Healer."""
         filepath = data.get('filepath', '?')
         threat_name = data.get('threat_name', 'inconnue')
         severity = data.get('severity', 0)
@@ -401,7 +388,6 @@ class LucidEngine:
         logger.warning(f"🩺 HEALER - Menace détectée dans {filepath} : {threat_name} (sévérité {severity:.2f})")
 
     def _handle_healer_quarantine(self, data, event_id, source):
-        """Callback pour les mises en quarantaine par Healer."""
         original = data.get('original', '?')
         quarantine = data.get('quarantine_path', '?')
         threat = data.get('threat', 'inconnue')
@@ -417,7 +403,6 @@ class LucidEngine:
             logger.error(f"❌ Erreur exécution programmée: {e}")
 
     async def _p2p_broadcast_threat(self, data, event_id, source):
-        """Relaye une menace de l'agent cyber vers le réseau P2P."""
         if self.p2p_node:
             await self.p2p_node.broadcast_threat(data)
 

@@ -33,6 +33,10 @@ class PlannerAgent(BaseAgent):
         """Injecte la liste des agents disponibles."""
         self.agents = agents
 
+    def can_handle(self, query: str) -> bool:
+        """Le planner ne gère pas directement les requêtes utilisateur."""
+        return False
+
     def get_tools(self) -> list:
         return []  # Pas d'outils exposés directement
 

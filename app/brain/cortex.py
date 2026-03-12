@@ -52,7 +52,7 @@ _THREAD_FUTURE_TIMEOUT: float = 2.0
 
 
 # =============================================================================
-# Classifieur sémantique (inchangé sauf correction MPS)
+# Classifieur sémantique (version complète)
 # =============================================================================
 class EmbeddingClassifier:
     """
@@ -66,7 +66,6 @@ class EmbeddingClassifier:
     ]
 
     TRAINING_EXAMPLES: List[Tuple[str, str]] = [
-        # ... (liste complète, identique à celle d'origine, avec les nouveaux exemples pour actions composées)
         ("bonjour", "greeting"), ("salut", "greeting"), ("hello", "greeting"),
         ("coucou", "greeting"), ("merci", "greeting"), ("au revoir", "greeting"),
         ("bye", "greeting"), ("hi", "greeting"), ("bonsoir", "greeting"),
@@ -254,9 +253,10 @@ class EmbeddingClassifier:
         if any(kw in q for kw in ["explique", "décris", "comment", "pourquoi", "raconte", "défini", "c'est quoi", "qu'est-ce que"]):
             return "complex"
         return "simple" if len(q.split()) < 5 else "complex"
-    
-    # =============================================================================
-# Prédicteur temps réel (NanoPredictor) – inchangé
+
+
+# =============================================================================
+# Prédicteur temps réel (NanoPredictor)
 # =============================================================================
 class NanoPredictor:
     """
@@ -565,7 +565,7 @@ class ActionSelector:
 
 
 # =============================================================================
-# Cortex frontal (début)
+# Cortex frontal
 # =============================================================================
 class FrontalCortex:
     """
@@ -618,12 +618,9 @@ class FrontalCortex:
         self.agents: Dict[str, BaseAgent] = {}
         self._register_agents()
 
-        # Memory Manager (nouveau)
         self.memory_manager = MemoryManager(memory_service, config)
 
-        # Planner Agent (nouveau)
         self.planner = PlannerAgent(manager, bus, config)
-        # Les agents seront injectés après enregistrement
 
         self.default_system = "Tu es un assistant IA utile, amical et concis."
         self.base_plan_timeout: float = config.get("plan_timeout", 30.0)
@@ -657,13 +654,11 @@ class FrontalCortex:
         self.action_selector = ActionSelector(self.classifier)
         self._register_paths()
 
-        # Injecter les agents dans le planner
         self.planner.set_agents(self.agents)
 
         logger.info(f"🧠 FrontalCortex initialisé avec {len(self.agents)} agents, memory manager et planner.")
 
     def _register_agents(self) -> None:
-        """Instancie et enregistre tous les agents (avec injection de event_bus)."""
         agents_list: List[BaseAgent] = [
             ReminderAgent(self.manager, self.bus, {}),
             KnowledgeAgent(
@@ -683,7 +678,6 @@ class FrontalCortex:
             self.agents[agent.name] = agent
 
     def _register_paths(self) -> None:
-        """Déclare tous les chemins d'exécution."""
         self.action_selector.register_path(
             "direct_action", self._execute_direct_action,
             "Exécution directe d'une action simple (mots-clés)",
@@ -720,45 +714,332 @@ class FrontalCortex:
             "plan_generation", self._generate_and_execute_plan,
             "Génération et exécution d'un plan via PlannerAgent",
         )
-        """
-Memory Manager - Gère le contexte utilisateur en combinant mémoire court terme et long terme.
-"""
 
-from typing import Optional
-from app.memory import MemoryService
-from app.utils.logger import logger
+    def _run_coro_sync(self, coro: Any, timeout: float = _THREAD_FUTURE_TIMEOUT) -> Any:
+        if self._loop is None:
+            raise RuntimeError("Boucle asyncio non initialisée")
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            future.cancel()
+            logger.error(f"Timeout dans _run_coro_sync après {timeout}s")
+            raise
+        except Exception as e:
+            logger.error(f"Exception dans _run_coro_sync: {e}", exc_info=True)
+            raise
 
+    def _get_nano_system(self) -> str:
+        return (
+            "Tu es un assistant personnel local, amical et direct. "
+            "Tu réponds en français, de façon concise (1-3 phrases max). "
+            "Tu peux aider sur tous les sujets du quotidien."
+        )
 
-class MemoryManager:
-    def __init__(self, memory_service: MemoryService, config: dict):
-        self.memory = memory_service
-        self.max_short_term = config.get("max_short_term", 5)
-        self.max_long_term = config.get("max_long_term", 3)
+    async def _execute_direct_action(self, query: str) -> str:
+        route = self._route_simple_action(query)
+        if route:
+            agent_name, action = route
+            agent = self.agents.get(agent_name)
+            if agent:
+                logger.debug(f"🔧 Exécution directe : {agent_name}.{action['tool']}")
+                try:
+                    result: str = await agent.execute_tool(action["tool"], action["parameters"])
+                except Exception as e:
+                    logger.error(f"Erreur dans direct_action: {e}")
+                    raise
+                if result.startswith("❌"):
+                    raise Exception(f"L'outil a retourné une erreur: {result}")
+                return result
+        raise Exception("Aucune action directe trouvée")
 
-    async def get_context(self, user_id: str, query: str) -> str:
-        """
-        Récupère le contexte pertinent pour la requête.
-        Args:
-            user_id: identifiant de l'utilisateur (pour future extension multi-utilisateur)
-            query: requête actuelle
-        Returns:
-            Chaîne de contexte formatée
-        """
-        context_parts = []
+    async def _execute_multi_action(self, query: str) -> str:
+        parts = re.split(r"\s+(et|puis)\s+", query, flags=re.IGNORECASE)
+        results: List[str] = []
+        for part in parts:
+            part = part.strip()
+            if not part or part.lower() in ("et", "puis"):
+                continue
+            route = self._route_simple_action(part)
+            if not route:
+                raise Exception(f"Impossible de traiter la sous-action: {part}")
+            agent_name, action = route
+            agent = self.agents.get(agent_name)
+            if not agent:
+                raise Exception(f"Agent {agent_name} introuvable")
+            try:
+                result = await asyncio.wait_for(
+                    agent.execute_tool(action["tool"], action["parameters"]),
+                    timeout=5.0
+                )
+            except asyncio.TimeoutError:
+                raise Exception(f"Timeout sur l'étape '{part}'")
+            if result.startswith("❌"):
+                raise Exception(f"Échec de la sous-action: {result}")
+            results.append(result)
+        if results:
+            return "\n".join(results)
+        raise Exception("Aucune action multiple trouvée")
 
-        # Mémoire à court terme (dernières interactions)
-        short_term = self.memory.get_working_context(n=self.max_short_term)
-        if short_term:
-            context_parts.append(f"Conversation récente:\n{short_term}")
+    def _execute_predicted_action(self, query: str) -> str:
+        prediction = self._run_coro_sync(self.predictor.get_prediction(), timeout=1.0)
+        if not prediction:
+            raise Exception("Aucune prédiction disponible")
+        agent_name = prediction.get("agent")
+        tool_name = prediction.get("tool")
+        params = prediction.get("parameters", {})
+        if not agent_name or not tool_name:
+            raise Exception("Prédiction incomplète")
+        agent = self.agents.get(agent_name)
+        if not agent:
+            raise Exception(f"Agent {agent_name} inconnu")
+        result = self._run_coro_sync(agent.execute_tool(tool_name, params))
+        if result.startswith("❌"):
+            raise Exception(f"Échec de l'action prédite: {result}")
+        return result
 
-        # Mémoire à long terme (souvenirs similaires)
-        long_term_results = self.memory.remember(query, n_results=self.max_long_term)
-        if long_term_results:
-            memories = []
-            for res in long_term_results:
-                # On suppose que chaque résultat a une clé 'response' ou 'content'
-                response = res.get('response') or res.get('content') or str(res)
-                memories.append(response)
-            context_parts.append(f"Souvenirs pertinents:\n" + "\n".join(memories))
+    def _execute_semantic_parsing(self, query: str) -> str:
+        tools_desc = [
+            f"- {name}.{tool.name}: {tool.description}"
+            for name, agent in self.agents.items()
+            for tool in agent.get_tools()
+        ]
+        tools_str = "\n".join(tools_desc)
+        prompt = (
+            f"Tu es un assistant qui traduit des demandes en actions JSON.\n"
+            f"Outils disponibles :\n{tools_str}\n\n"
+            f'Demande : "{query}"\n\n'
+            f"Génère une liste JSON d'actions. Réponds uniquement avec le JSON."
+        )
+        try:
+            model_name = self.model_mapping.get("nano", "qwen2.5:0.5b")
+            response = self.manager.generate(
+                prompt=prompt, system="", model=model_name,
+                temperature=0.1, max_tokens=512, timeout=3.0,
+            )
+            cleaned = response.strip()
+            try:
+                actions = parse_json_safely(cleaned, expected_type=list)
+            except JSONParseError:
+                match = re.search(r"(\[.*\])", cleaned, re.DOTALL)
+                if not match:
+                    raise Exception("Impossible de parser la réponse")
+                actions = parse_json_safely(match.group(1), expected_type=list)
 
-        return "\n\n".join(context_parts) if context_parts else ""
+            if not actions:
+                raise Exception("Aucune action générée")
+
+            results: List[str] = []
+            for act in actions:
+                agent_name = act.get("agent")
+                tool_name = act.get("tool")
+                params = act.get("parameters", {})
+                agent = self.agents.get(agent_name)
+                if not agent:
+                    raise Exception(f"Agent {agent_name} inconnu")
+                result = self._run_coro_sync(agent.execute_tool(tool_name, params))
+                if result.startswith("❌"):
+                    raise Exception(f"Échec de l'action {tool_name}: {result}")
+                results.append(result)
+            return "\n".join(results)
+        except Exception as exc:
+            raise Exception(f"Échec parsing sémantique: {exc}") from exc
+
+    def _get_cached_response(self, query: str) -> str:
+        systems = [self._get_nano_system(), self.default_system]
+        for system in systems:
+            cached = self.prompt_cache.get(query, system=system, model="balanced")
+            if cached:
+                return cached
+        raise Exception("Cache miss")
+
+    def _call_llm(self, query: str, model_profile: str) -> str:
+        model_name = self.model_mapping.get(model_profile)
+        if not model_name:
+            raise Exception(f"Profil de modèle inconnu: {model_profile}")
+
+        enriched = self._enrich_query(query)
+        word_count = len(query.split())
+        timeout = min(5.0 * (1 + word_count / 50), 30.0)
+
+        if model_profile == "nano":
+            system = self._get_nano_system()
+        else:
+            system = self.default_system
+
+        def _generate() -> str:
+            return self.manager.generate(
+                prompt=enriched, system=system,
+                model=model_name, temperature=0.5, max_tokens=256, timeout=timeout,
+            )
+
+        response: str = (
+            self._llm_circuit_breaker.call(_generate)
+            if self._llm_circuit_breaker is not None
+            else _generate()
+        )
+
+        self.prompt_cache.put(query, system, "balanced", response)
+        if self.enable_memory:
+            self.memory.add_to_working(query, response)
+            self.memory.add_episode(query, response, metadata={"latency": time.time()})
+        return response
+
+    async def _generate_and_execute_plan(self, query: str) -> str:
+        plan_dicts = self._get_cached_plan(query)
+        if plan_dicts:
+            from app.agents.planner_agent import PlanStep
+            steps = [PlanStep(**step) for step in plan_dicts]
+        else:
+            steps = await self.planner.create_plan(query)
+            if not steps:
+                raise Exception("Impossible de générer un plan")
+            plan_dicts = [step.dict() for step in steps]
+            self._cache_plan(query, plan_dicts)
+
+        timeout = self._get_dynamic_timeout(query, plan_needed=True)
+        try:
+            result = await asyncio.wait_for(
+                self.planner.execute_plan(steps),
+                timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout lors de l'exécution du plan")
+            raise Exception("Le plan a pris trop de temps")
+        return result
+
+    def _safe_fallback(self, query: str) -> str:
+        logger.warning("Utilisation du fallback sécurisé.")
+        return "Désolé, je n'ai pas pu traiter votre demande."
+
+    def _route_simple_action(self, query: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+        q = query.lower()
+        for keyword, (agent_name, tool_name) in self.SIMPLE_ACTIONS.items():
+            if keyword not in q:
+                continue
+            if tool_name == "open_application":
+                rest = q.replace(keyword, "").strip()
+                if rest.startswith(("et", "puis")):
+                    continue
+                rest = re.sub(r'^["\'](.*)["\']$', r"\1", rest)
+                normalized = self.APP_ALIASES.get(rest.lower())
+                if normalized:
+                    rest = normalized
+                return agent_name, {"tool": tool_name, "parameters": {"app_name": rest}}
+            elif tool_name == "type_text":
+                pattern = r"\b" + re.escape(keyword) + r'\s*"([^"]+)"'
+                m = re.search(pattern, query, re.IGNORECASE)
+                text = m.group(1) if m else query.replace(keyword, "", 1).strip()
+                if text.lower().startswith(("et", "puis")):
+                    return None
+                app_m = re.search(r"(?:dans|sur)\s+([a-zA-Z]+)", q, re.IGNORECASE)
+                params: Dict[str, Any] = {"text": text}
+                if app_m:
+                    params["app_name"] = app_m.group(1)
+                return agent_name, {"tool": tool_name, "parameters": params}
+            elif tool_name == "click":
+                m = re.search(r"(\d+)[,\s]+(\d+)", query)
+                if m:
+                    return agent_name, {
+                        "tool": tool_name,
+                        "parameters": {"x": int(m.group(1)), "y": int(m.group(2))},
+                    }
+            elif tool_name == "get_screenshot":
+                return agent_name, {"tool": tool_name, "parameters": {}}
+        return None
+
+    def _get_dynamic_timeout(self, query: str, plan_needed: bool) -> float:
+        base = self.base_plan_timeout if plan_needed else 5.0
+        estimated = base * (1 + len(query.split()) / 100)
+        return min(estimated, self.base_plan_timeout * 2)
+
+    def _enrich_query(self, query: str) -> str:
+        if self.enable_memory:
+            ctx = self.memory_manager.get_context("default", query)
+            if ctx:
+                return f"{ctx}\n\nRequête actuelle: {query}"
+        return query
+
+    def _build_agents_description(self) -> str:
+        return "\n".join(
+            f"- {name}: {', '.join(t.name for t in agent.get_tools())}"
+            for name, agent in self.agents.items()
+        )
+
+    def _get_cached_plan(self, query: str) -> Optional[List[Dict[str, Any]]]:
+        try:
+            return self.prompt_cache.get_plan(query, similarity_threshold=0.75)
+        except Exception as exc:
+            logger.error(f"Erreur récupération plan cache: {exc}")
+            return None
+
+    def _cache_plan(self, query: str, plan: List[Dict[str, Any]]) -> None:
+        try:
+            self.prompt_cache.put_plan(query, plan)
+        except Exception as exc:
+            logger.error(f"Erreur stockage plan cache: {exc}")
+
+    # Méthodes de compatibilité (ancien système de planification, non utilisées)
+    def _generate_plan_with_retry(self, query: str) -> Optional[List[Dict[str, Any]]]:
+        return None
+
+    def _generate_plan(self, query: str) -> Optional[List[Dict[str, Any]]]:
+        return None
+
+    def _validate_plan(self, plan: List[Dict[str, Any]]) -> bool:
+        return True
+
+    def _execute_plan(self, plan: List[Dict[str, Any]], query: str, timeout: float = 30.0) -> str:
+        return ""
+
+    def _execute_step(self, *args: Any) -> str:
+        return ""
+
+    def _synthesize(self, query: str, results: List[str]) -> str:
+        return "\n".join(results)
+
+    async def think(
+        self,
+        query: str,
+        system_prompt: Optional[str] = None,
+        allow_web_search: bool = True,
+    ) -> Tuple[str, float]:
+        self._loop = asyncio.get_running_loop()
+
+        if not self._predictor_started:
+            self.predictor.start(self._loop)
+            self._predictor_started = True
+
+        start = time.time()
+        logger.info(f"🧠 think() — Requête: {query[:60]}…")
+
+        paths = await self.action_selector.get_paths_for_query(query)
+        logger.info(f"⚡ Ordre des chemins: {[p[0] for p in paths]}")
+
+        last_error: Optional[Exception] = None
+        for path_id, path_func in paths:
+            try:
+                if asyncio.iscoroutinefunction(path_func):
+                    response = await path_func(query)
+                else:
+                    response = path_func(query)
+                duration = time.time() - start
+                self.action_selector.record_success(query, path_id, duration)
+                record_cortex_step(path_id, duration)
+                logger.info(f"✅ Chemin '{path_id}' réussi en {duration:.3f}s")
+                return response, duration
+            except Exception as exc:
+                logger.warning(f"⚠️  Chemin '{path_id}' échoué: {exc}")
+                self.action_selector.record_failure(query, path_id)
+                last_error = exc
+
+        logger.error(f"Tous les chemins ont échoué.")
+        response = self._safe_fallback(query)
+        duration = time.time() - start
+        record_cortex_step("safe_fallback", duration)
+        return response, duration
+
+    async def stop(self) -> None:
+        await self.predictor.stop()
+        self.executor.shutdown()
+        logger.info("🛑 Cortex arrêté.")

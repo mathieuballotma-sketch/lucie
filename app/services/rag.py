@@ -74,8 +74,7 @@ class RAGService:
         # Paramètres
         self.chunk_size = config.chunk_size
         self.chunk_overlap = config.chunk_overlap
-        self.max_sources = config.max_sources
-
+        self.max_sources = getattr(config, 'max_sources', 3)
         # Initialisation FAISS
         self._init_faiss()
 

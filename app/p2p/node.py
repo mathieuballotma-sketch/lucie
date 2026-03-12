@@ -1,204 +1,104 @@
 """
-Nœud P2P simplifié avec serveur et client TLS.
-Gère la liste des pairs, la découverte, la diffusion.
+Module P2P simplifié pour le partage de signatures de menaces.
+Version modifiée pour utiliser un fichier simple au lieu de CryptoManager.
 """
 
 import asyncio
 import json
-import threading
-import time
-from dataclasses import dataclass
+import uuid
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Any, Optional
 
-from app.utils.crypto import CryptoManager
+import aiohttp
+from aiohttp import web
+
 from app.utils.logger import logger
-
-from .client import P2PClient
-from .server import P2PServer
-
-
-@dataclass
-class Peer:
-    """Représente un pair du réseau."""
-
-    peer_id: str
-    host: str
-    port: int
-    last_seen: float
-    reputation: float = 1.0
 
 
 class P2PNode:
-    def __init__(self, config: dict, crypto: CryptoManager, event_bus, data_dir: Path):
+    """
+    Nœud P2P pour échanger des signatures de menaces avec d'autres instances.
+    """
+
+    def __init__(self, config: dict, crypto: Any, event_bus: Any, data_dir: Path):
         self.config = config
-        self.crypto = crypto
+        self.crypto = crypto  # Non utilisé dans cette version simplifiée
         self.event_bus = event_bus
         self.data_dir = data_dir
-        self.enabled = config.get("enabled", False)
-        self.port = config.get("port", 9000)
-        self.host = config.get("host", "0.0.0.0")
-        self.bootstrap_peers = config.get("bootstrap_peers", [])
-        self.certfile = str(data_dir / "cert.pem")
-        self.keyfile = str(data_dir / "key.pem")
+        self.data_dir.mkdir(parents=True, exist_ok=True)
 
-        # Générer ou charger l'identifiant unique du nœud
+        self.port = config.get("port", 9000)
+        self.bootstrap_peers = config.get("bootstrap_peers", [])
+        self.peers = set(self.bootstrap_peers)
         self.node_id = self._get_or_create_node_id()
 
-        self.server: Optional[P2PServer] = None
-        self.client = P2PClient(self.certfile)
-        self.peers: Dict[str, Peer] = {}
-        self._lock = threading.RLock()
-        self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self.app = web.Application()
+        self.app.router.add_post("/threat", self._handle_threat)
+        self.app.router.add_get("/peers", self._handle_get_peers)
+        self.runner = None
+        self.site = None
 
-        logger.info(f"🔑 Nœud P2P initialisé avec ID: {self.node_id}")
+        logger.info(f"🌐 Nœud P2P initialisé avec ID {self.node_id} sur le port {self.port}")
 
     def _get_or_create_node_id(self) -> str:
-        """Récupère ou génère un identifiant unique pour ce nœud."""
-        key = "p2p_node_id"
-        stored = self.crypto.get(key)
-        if stored:
-            return stored.decode()
+        """Récupère ou crée un identifiant unique pour ce nœud."""
+        id_file = self.data_dir / "node_id.txt"
+        if id_file.exists():
+            return id_file.read_text().strip()
         else:
-            import uuid
-
-            new_id = str(uuid.uuid4())[:8]
-            self.crypto.store(key, new_id.encode())
-            return new_id
-
-    async def start(self):
-        if not self.enabled:
-            logger.info("P2P désactivé")
-            return
-        if self._running:
-            return
-        self._running = True
-
-        # Démarrer le serveur
-        self.server = P2PServer(
-            host=self.host,
-            port=self.port,
-            certfile=self.certfile,
-            keyfile=self.keyfile,
-            message_handler=self._handle_message,
-        )
-        await self.server.start()
-
-        # Se connecter aux pairs d'amorçage
-        for peer_str in self.bootstrap_peers:
-            await self._connect_to_bootstrap(peer_str)
-
-        # Lancer la boucle de maintenance
-        asyncio.create_task(self._maintenance_loop())
-
-        logger.info("🌐 Nœud P2P démarré")
-
-    async def stop(self):
-        self._running = False
-        if self.server:
-            await self.server.stop()
-        logger.info("Nœud P2P arrêté")
-
-    async def _connect_to_bootstrap(self, peer_str: str):
-        """Connecte à un pair d'amorçage (format host:port)."""
-        try:
-            host, port_str = peer_str.split(":")
-            port = int(port_str)
-            # Envoyer un message d'identification
-            msg = {"type": "ident", "node_id": self.node_id, "timestamp": time.time()}
-            response = await self.client.send_message(host, port, msg)
-            if response and response.get("type") == "ident_ack":
-                peer_id = response.get("node_id")
-                if peer_id:
-                    with self._lock:
-                        self.peers[peer_id] = Peer(
-                            peer_id=peer_id, host=host, port=port, last_seen=time.time()
-                        )
-                    logger.info(f"✅ Connecté au pair {peer_id} ({host}:{port})")
-        except Exception as e:
-            logger.error(f"Échec de connexion au bootstrap {peer_str}: {e}")
-
-    async def _handle_message(
-        self, message: dict, peer_addr: tuple, writer: asyncio.StreamWriter
-    ):
-        """Gère les messages entrants."""
-        msg_type = message.get("type")
-        logger.debug(f"Message reçu de {peer_addr}: {msg_type}")
-
-        if msg_type == "ident":
-            # Répondre avec notre identité
-            response = {
-                "type": "ident_ack",
-                "node_id": self.node_id,
-                "timestamp": time.time(),
-            }
-            writer.write(json.dumps(response).encode())
-            await writer.drain()
-            # Ajouter le pair à la liste
-            peer_id = message.get("node_id")
-            if peer_id:
-                host, port = peer_addr
-                with self._lock:
-                    self.peers[peer_id] = Peer(
-                        peer_id=peer_id, host=host, port=port, last_seen=time.time()
-                    )
-                logger.info(f"✅ Nouveau pair {peer_id} ({host}:{port})")
-
-        elif msg_type == "threat":
-            # Relayer la menace à l'agent cyber via le bus
-            signature = message.get("signature", {})
-            await self.event_bus.publish("network.threat", signature, "p2p")
-            logger.info(f"📡 Menace reçue du réseau")  # noqa: F541
-
-        elif msg_type == "ping":
-            # Répondre pong
-            response = {"type": "pong", "timestamp": time.time()}
-            writer.write(json.dumps(response).encode())
-            await writer.drain()
-
-        else:
-            logger.warning(f"Type de message inconnu: {msg_type}")
-
-    async def broadcast_threat(self, signature: dict):
-        """Diffuse une signature de menace à tous les pairs connectés."""
-        msg = {
-            "type": "threat",
-            "signature": signature,
-            "sender": self.node_id,
-            "timestamp": time.time(),
-        }
-        with self._lock:
-            peers = list(self.peers.values())
-        for peer in peers:
-            await self.client.send_message(peer.host, peer.port, msg)
-        logger.info(f"📢 Menace diffusée à {len(peers)} pairs")
-
-    async def _maintenance_loop(self):
-        """Boucle de maintenance : ping périodique, nettoyage des pairs morts."""
-        while self._running:
-            await asyncio.sleep(60)
-            now = time.time()
-            with self._lock:
-                # Nettoyer les pairs silencieux depuis > 10 minutes
-                to_remove = []
-                for peer_id, peer in self.peers.items():
-                    if now - peer.last_seen > 600:
-                        to_remove.append(peer_id)
-                for peer_id in to_remove:
-                    del self.peers[peer_id]
-                if to_remove:
-                    logger.debug(f"Nettoyage de {
-                            len(to_remove)} pairs inactifs")
+            node_id = str(uuid.uuid4())
+            id_file.write_text(node_id)
+            return node_id
 
     def run_in_thread(self):
-        """Lance le nœud dans un thread séparé."""
-        if not self.enabled:
-            return
-
-        def _run():
-            asyncio.run(self.start())
-
-        self._thread = threading.Thread(target=_run, daemon=True)
+        """Démarre le serveur web dans un thread séparé."""
+        import threading
+        self._thread = threading.Thread(target=self._run_server, daemon=True)
         self._thread.start()
-        logger.info("🧵 Thread P2P démarré")
+
+    def _run_server(self):
+        """Exécute le serveur asyncio dans une boucle dédiée."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self._start())
+        loop.run_forever()
+
+    async def _start(self):
+        self.runner = web.AppRunner(self.app)
+        await self.runner.setup()
+        self.site = web.TCPSite(self.runner, '0.0.0.0', self.port)
+        await self.site.start()
+        logger.info(f"🚀 Serveur P2P démarré sur le port {self.port}")
+
+    async def _handle_threat(self, request):
+        """Reçoit une menace d'un autre nœud."""
+        data = await request.json()
+        logger.info(f"📥 Réception d'une menace depuis {request.remote}: {data.get('pattern', '?')}")
+        # Publier sur l'event bus local
+        self.event_bus.publish("cyber.threat", data, "p2p")
+        return web.Response(text="OK")
+
+    async def _handle_get_peers(self, request):
+        """Retourne la liste des pairs connus."""
+        return web.json_response(list(self.peers))
+
+    async def broadcast_threat(self, threat_data: Dict[str, Any]):
+        """Diffuse une menace à tous les pairs connus."""
+        for peer in self.peers:
+            try:
+                url = f"http://{peer}/threat"
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, json=threat_data, timeout=2) as resp:
+                        if resp.status == 200:
+                            logger.debug(f"Menace envoyée à {peer}")
+                        else:
+                            logger.warning(f"Échec envoi à {peer} (status {resp.status})")
+            except Exception as e:
+                logger.warning(f"Erreur envoi à {peer}: {e}")
+
+    async def stop(self):
+        if self.site:
+            await self.site.stop()
+        if self.runner:
+            await self.runner.shutdown()
+        logger.info("Nœud P2P arrêté")

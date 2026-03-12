@@ -1,6 +1,7 @@
 """
 Mémoire épisodique - Stockage à long terme des interactions.
 Version asynchrone utilisant aiosqlite pour éviter de bloquer la boucle.
+Ajout d'une méthode search() pour compatibilité avec l'ancien code.
 """
 
 import json
@@ -33,7 +34,6 @@ class EpisodicMemory:
         """Retourne une connexion à la base, en la créant si nécessaire."""
         if self._connection is None:
             self._connection = await aiosqlite.connect(str(self.db_path))
-            # Activer les foreign keys et créer la table si elle n'existe pas
             await self._connection.execute("PRAGMA foreign_keys = ON")
             await self._connection.execute("""
                 CREATE TABLE IF NOT EXISTS episodes (
@@ -44,7 +44,6 @@ class EpisodicMemory:
                     metadata TEXT
                 )
             """)
-            # Créer un index sur timestamp pour les requêtes rapides
             await self._connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_timestamp ON episodes(timestamp)"
             )
@@ -61,7 +60,6 @@ class EpisodicMemory:
             (time.time(), query, response, json.dumps(metadata or {}))
         )
         await conn.commit()
-        # Nettoyer si nécessaire
         await self._cleanup()
 
     async def _cleanup(self) -> None:
@@ -103,6 +101,14 @@ class EpisodicMemory:
             })
         return results
 
+    # Méthode de compatibilité pour l'ancien code qui utilise search()
+    async def search(self, query: str, n_results: int = 5, min_similarity: float = 0.0) -> List[Dict[str, Any]]:
+        """
+        Ancien nom pour remember. Redirige vers remember avec un avertissement.
+        """
+        logger.warning("search() est déprécié, utilisez remember() à la place.")
+        return await self.remember(query, n_results, min_similarity)
+
     async def close(self) -> None:
         """Ferme la connexion à la base de données."""
         if self._connection:
@@ -111,10 +117,8 @@ class EpisodicMemory:
             logger.debug("Connexion à la mémoire épisodique fermée")
 
     async def __aenter__(self):
-        """Support du contexte asynchrone."""
         await self._get_connection()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Ferme la connexion à la sortie du contexte."""
         await self.close()

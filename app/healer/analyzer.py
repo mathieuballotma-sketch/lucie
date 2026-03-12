@@ -1,5 +1,6 @@
 """
 Analyseur de menaces - Classe et analyse les menaces détectées.
+Version simplifiée pour éviter les erreurs d'attribut.
 """
 
 import json
@@ -15,6 +16,7 @@ class ThreatAnalyzer:
     def __init__(self, config: dict, memory_service=None):
         self.config = config
         self.memory = memory_service
+        print(f"Analyzer initialisé avec memory = {self.memory}")  # Pour débogage
 
     async def analyze(self, filepath: str, scan_result: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -46,11 +48,18 @@ class ThreatAnalyzer:
 
         # Chercher une solution dans la mémoire épisodique
         if self.memory and threat_info["signature"]:
-            results = self.memory.remember(threat_info["signature"], n_results=1, min_similarity=0.9)
-            if results:
-                metadata = results[0].get("metadata", {})
-                if metadata.get("type") == "threat_solution":
-                    threat_info["solution"] = metadata.get("solution")
-                    threat_info["name"] = metadata.get("threat_name", threat_info["name"])
+            try:
+                print(f"Analyzer: appel de remember avec signature {threat_info['signature']}")
+                # Correction : ajout de await
+                results = await self.memory.remember(threat_info["signature"], n_results=1, min_similarity=0.9)
+                print(f"Analyzer: résultats = {results}")
+                if results:
+                    metadata = results[0].get("metadata", {})
+                    if metadata.get("type") == "threat_solution":
+                        threat_info["solution"] = metadata.get("solution")
+                        threat_info["name"] = metadata.get("threat_name", threat_info["name"])
+            except Exception as e:
+                print(f"Analyzer: erreur lors de remember: {e}")
+                logger.error(f"Erreur mémoire dans analyzer: {e}")
 
         return threat_info
