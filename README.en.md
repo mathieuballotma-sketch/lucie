@@ -1,14 +1,14 @@
 # 🧠 Agent Lucie
 
-> **Asistente de IA local, soberano y multi-agente — 100% sin conexión en macOS.**
-> Sistema inmunológico digital integrado que detecta, neutraliza y aprende de las amenazas.
+> **Local, sovereign, multi-agent AI assistant — 100% offline on macOS.**
+> Built-in digital immune system that detects, neutralizes and learns from threats.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
   <img src="https://img.shields.io/badge/macOS-13+-000000?style=for-the-badge&logo=apple&logoColor=white"/>
   <img src="https://img.shields.io/badge/Ollama-local-74aa9c?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Licencia-MIT-yellow?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Estado-En%20desarrollo-orange?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/Status-Active%20Development-orange?style=for-the-badge"/>
 </p>
 
 <p align="center">
@@ -20,96 +20,149 @@
 
 ---
 
-## 🚧 Aviso importante — proyecto en desarrollo
+## 🚧 Important notice — work in progress
 
-> Agent Lucie es un **proyecto personal**, desarrollado y mantenido por **una sola persona**.
+> Agent Lucie is a **personal project**, developed and maintained by **a single person**.
+> I handle everything alone — development, testing, bug fixes and architecture — all at the same time.
 
-- ✅ El **cerebro de decisión** funciona bien
-- ✅ El **sistema inmunológico** está completamente operativo
-- ⚠️ El **control del ordenador** está en desarrollo activo — algunas acciones pueden no funcionar
-- 🔄 Se realizan correcciones y mejoras **cada día**
+- ✅ The **decision-making brain** (Cortex, routing, fallback) works well
+- ✅ The **immune system** (CyberAgent, HealerAgent) is fully operational
+- ⚠️ **Computer control** is under active development — some actions may not work or behave unexpectedly
+- ⚠️ **Document generation** works but may produce imperfect results
+- 🔄 Fixes and improvements are made **every day**
 
-¡Gracias por su comprensión! 🙏
-
----
-
-## 🎯 ¿Qué es Agent Lucie?
-
-Un asistente de IA que funciona **completamente en tu Mac**, sin enviar ningún dato a internet. Sin suscripción, sin nube, sin dependencia de OpenAI o Google.
+I prefer to be **completely honest** rather than oversell something unfinished.
+Feel free to open an issue if you run into a problem! 🙏
 
 ---
 
-## ✨ Funcionalidades
+## 🎯 What is Agent Lucie?
 
-### 🤖 Cerebro de decisión
-| Funcionalidad | Estado |
+Agent Lucie is an AI assistant that runs **entirely on your Mac**, without sending any data to the internet. No subscription, no cloud, no dependency on OpenAI or Google.
+
+---
+
+## ✨ Features
+
+### 🤖 Decision-making brain
+| Feature | Status |
 |---|---|
-| Cortex adaptativo — 9 rutas de ejecución | ✅ Estable |
-| Aprendizaje automático de enrutamiento | ✅ Estable |
-| Fallback inteligente | ✅ Estable |
-| Circuit breaker LLM | ✅ Estable |
+| Adaptive Cortex — 9 execution paths | ✅ Stable |
+| Automatic routing learning | ✅ Stable |
+| Intelligent fallback between paths | ✅ Stable |
+| LLM circuit breaker | ✅ Stable |
 
-### 🏗️ Estructura de agentes — el primer ladrillo *(en desarrollo)*
+### 🏗️ Agent structure — the first brick *(in development)*
 
-> **Lo que ves aquí es solo el comienzo.**
+> **What you see here is just the beginning.**
 
-El acceso a Notes, Mail, Safari, Word y otras aplicaciones no es un fin en sí mismo — es la **base**. Cada aplicación integrada se convierte en un punto de anclaje para un agente especializado capaz, en última instancia, de actuar **de forma totalmente autónoma**, sin intervención humana.
+Access to Notes, Mail, Safari, Word and other applications is not an end in itself — it's the **foundation**. Each integrated application becomes an anchor point for a specialized agent capable, ultimately, of acting **in a fully autonomous way**, without human intervention.
 
-El objetivo final: dices lo que quieres, y Agent Lucie lo gestiona completamente — redactar y enviar un email, crear un informe completo, organizar tu día — **mientras haces otra cosa**.
+The final goal: you say what you want, and Agent Lucie handles it entirely — drafting and sending an email, creating a full report, organizing your day, monitoring your files — **while you do something else**.
 
-| Funcionalidad | Estado | Visión |
+| Feature | Status | Vision |
 |---|---|---|
-| Abrir aplicaciones (Notes, Mail, Safari...) | ⚠️ En progreso | 1er ladrillo — acceso establecido |
-| Escribir texto | ⚠️ En progreso | Base para entrada automatizada |
-| Clic, ratón, capturas de pantalla | ⚠️ En progreso | Base para navegación autónoma |
-| Organizar ventanas | ⚠️ En progreso | Base para gestión del espacio de trabajo |
-| Crear recordatorios | ⚠️ En progreso | Base para gestión autónoma del tiempo |
-| **Automatización completa sin intervención** | 🔮 Próximamente | El objetivo final |
+| Open applications (Notes, Mail, Safari...) | ⚠️ In progress | 1st brick — access established |
+| Type text | ⚠️ In progress | Foundation for automated input |
+| Click, move mouse, take screenshots | ⚠️ In progress | Foundation for hands-free navigation |
+| Organize windows | ⚠️ In progress | Foundation for workspace management |
+| Create reminders | ⚠️ In progress | Foundation for autonomous time management |
+| **Full automation without intervention** | 🔮 Coming soon | The final goal |
 
-### 🛡️ Sistema inmunológico digital
-| Funcionalidad | Estado |
+### 🛡️ Digital immune system
+| Feature | Status |
 |---|---|
-| CyberAgent — detección de anomalías | ✅ Estable |
-| HealerAgent — escaneo YARA + cuarentena | ✅ Estable |
-| Señuelos activos | ✅ Estable |
-| Memoria inmunológica | ✅ Estable |
+| CyberAgent — anomaly detection | ✅ Stable |
+| HealerAgent — YARA scan + quarantine | ✅ Stable |
+| Active decoys | ✅ Stable |
+| Immune memory | ✅ Stable |
+
+### 🧠 Memory & context
+| Feature | Status |
+|---|---|
+| Episodic memory (ChromaDB) | ✅ Stable |
+| User profile | ✅ Stable |
+| Memory Manager | ✅ Stable |
 
 ---
 
-## 🏗️ Arquitectura
+## 🛡️ Digital immune system
+
+### 🔍 CyberAgent
+Continuously monitors internal system events. When a tool fails repeatedly, it calculates a severity score, triggers an alert, and can temporarily **quarantine** the failing tool.
+
+### 🩺 HealerAgent
+Watches newly created or modified files. Uses a **malicious hash database** and **YARA rules** to detect threats. When a threat is detected:
+- The file is moved to `~/AgentLucide/quarantine/`
+- A **harmless decoy** is created in its place
+- Any access attempt to the decoy is tracked and reported
+
+---
+
+## 🏗️ Architecture
 
 ```
 Agent Lucie
-├── 🧠 Cortex              — orquestador principal (9 rutas, learning router)
-├── 🤖 Agentes             — Computer, Document, Knowledge, Cyber, Healer, Reminder, Planner...
-├── 💾 Memoria             — working memory + episódica (ChromaDB) + Memory Manager
-├── ⚡ Event Bus           — comunicación entre agentes (sincrónico, thread-safe)
-├── 🛡️ Sistema inmune      — CyberAgent + HealerAgent
-└── 🔌 Proveedores         — Ollama (100% local)
+├── 🧠 Cortex              — main orchestrator (9 paths, learning router)
+├── 🤖 Agents              — Computer, Document, Knowledge, Cyber, Healer, Reminder, Planner...
+├── 💾 Memory              — working memory + episodic (ChromaDB) + Memory Manager
+├── ⚡ Event Bus           — inter-agent communication (synchronous, thread-safe)
+├── 🛡️ Immune system       — CyberAgent (detection) + HealerAgent (healing)
+└── 🔌 Providers           — Ollama (100% local)
 ```
 
 ---
 
-## 🚀 Instalación
+## 🚀 Installation
 
 ```bash
+# 1. Clone the project
 git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
 cd Agent-Lucie
+
+# 2. Install dependencies
 pip install -r requirements.txt
+
+# 3. Download LLM models
 ollama pull qwen2.5:0.5b
 ollama pull qwen2.5:3b
+ollama pull qwen2.5:7b
+ollama pull qwen2.5:14b  # optional — requires 24 GB RAM
+
+# 4. Launch the agent
 python main.py
 ```
 
----
-
-## 👨‍💻 Autor
-
-**Mathieu Bellot** — desarrollador independiente, proyecto personal 100% open-source.
-Construyendo Agent Lucie solo, con la convicción de que la IA debe ser **local, soberana y accesible para todos**.
+### ⚙️ Required macOS permissions
+- ✅ Accessibility → allow Terminal
+- ✅ Automation → allow Terminal
+- ✅ Screen Recording → for screenshots
 
 ---
 
-## ⚠️ Aviso legal
+## 🛠️ Tech stack
 
-Proporcionado **tal cual**, sin garantía. **Úsalo bajo tu propia responsabilidad.**
+| Component | Technology |
+|---|---|
+| Local LLM | Ollama — qwen2.5 (0.5B → 14B) |
+| Vector memory | ChromaDB |
+| Embeddings | sentence-transformers |
+| macOS control | PyAutoGUI + AppleScript + NSWorkspace |
+| Malware detection | YARA + hash signatures |
+| Metrics | Prometheus |
+| Async I/O | asyncio + aiofiles + aiosqlite |
+
+---
+
+## 👨‍💻 Author
+
+**Mathieu Bellot** — independent developer, 100% personal open-source project.
+Building Agent Lucie alone, with the conviction that AI should be **local, sovereign and accessible to everyone**.
+
+---
+
+## ⚠️ Disclaimer
+
+This project manipulates applications, files and settings on your Mac.
+Provided **as is**, without warranty of any kind.
+**Use at your own risk.**

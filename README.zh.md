@@ -1,14 +1,14 @@
 # 🧠 Agent Lucie
 
-> **Asistente de IA local, soberano y multi-agente — 100% sin conexión en macOS.**
-> Sistema inmunológico digital integrado que detecta, neutraliza y aprende de las amenazas.
+> **本地、自主、多智能体AI助手 — 在macOS上100%离线运行。**
+> 内置数字免疫系统，可检测、中和并学习威胁。
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
   <img src="https://img.shields.io/badge/macOS-13+-000000?style=for-the-badge&logo=apple&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Ollama-local-74aa9c?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Licencia-MIT-yellow?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Estado-En%20desarrollo-orange?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/Ollama-本地-74aa9c?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/许可证-MIT-yellow?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/状态-积极开发中-orange?style=for-the-badge"/>
 </p>
 
 <p align="center">
@@ -20,77 +20,77 @@
 
 ---
 
-## 🚧 Aviso importante — proyecto en desarrollo
+## 🚧 重要声明 — 项目开发中
 
-> Agent Lucie es un **proyecto personal**, desarrollado y mantenido por **una sola persona**.
+> Agent Lucie 是一个**个人项目**，由**一个人**独自开发和维护。
 
-- ✅ El **cerebro de decisión** funciona bien
-- ✅ El **sistema inmunológico** está completamente operativo
-- ⚠️ El **control del ordenador** está en desarrollo activo — algunas acciones pueden no funcionar
-- 🔄 Se realizan correcciones y mejoras **cada día**
+- ✅ **决策大脑**运行良好
+- ✅ **免疫系统**完全运行
+- ⚠️ **电脑控制**正在积极开发中 — 某些操作可能无法正常工作
+- 🔄 **每天**都在进行修复和改进
 
-¡Gracias por su comprensión! 🙏
-
----
-
-## 🎯 ¿Qué es Agent Lucie?
-
-Un asistente de IA que funciona **completamente en tu Mac**, sin enviar ningún dato a internet. Sin suscripción, sin nube, sin dependencia de OpenAI o Google.
+感谢您的理解！🙏
 
 ---
 
-## ✨ Funcionalidades
+## 🎯 什么是 Agent Lucie？
 
-### 🤖 Cerebro de decisión
-| Funcionalidad | Estado |
+完全在您的Mac上运行的AI助手，不向互联网发送任何数据。无需订阅，无需云端，不依赖 OpenAI 或 Google。
+
+---
+
+## ✨ 功能特性
+
+### 🤖 决策大脑
+| 功能 | 状态 |
 |---|---|
-| Cortex adaptativo — 9 rutas de ejecución | ✅ Estable |
-| Aprendizaje automático de enrutamiento | ✅ Estable |
-| Fallback inteligente | ✅ Estable |
-| Circuit breaker LLM | ✅ Estable |
+| 自适应 Cortex — 9条执行路径 | ✅ 稳定 |
+| 自动路由学习 | ✅ 稳定 |
+| 智能路径回退 | ✅ 稳定 |
+| LLM 断路器 | ✅ 稳定 |
 
-### 🏗️ Estructura de agentes — el primer ladrillo *(en desarrollo)*
+### 🏗️ 智能体结构 — 第一块砖 *(开发中)*
 
-> **Lo que ves aquí es solo el comienzo.**
+> **您现在看到的只是开始。**
 
-El acceso a Notes, Mail, Safari, Word y otras aplicaciones no es un fin en sí mismo — es la **base**. Cada aplicación integrada se convierte en un punto de anclaje para un agente especializado capaz, en última instancia, de actuar **de forma totalmente autónoma**, sin intervención humana.
+访问 Notes、Mail、Safari、Word 等应用程序本身不是目的 — 它是**基础**。每个集成的应用程序都成为专业智能体的锚点，最终能够**完全自主地行动**，无需人工干预。
 
-El objetivo final: dices lo que quieres, y Agent Lucie lo gestiona completamente — redactar y enviar un email, crear un informe completo, organizar tu día — **mientras haces otra cosa**.
+最终目标：您说出您想要的，Agent Lucie 完全处理 — 起草并发送电子邮件、创建完整报告、整理您的一天 — **同时您做其他事情**。
 
-| Funcionalidad | Estado | Visión |
+| 功能 | 状态 | 愿景 |
 |---|---|---|
-| Abrir aplicaciones (Notes, Mail, Safari...) | ⚠️ En progreso | 1er ladrillo — acceso establecido |
-| Escribir texto | ⚠️ En progreso | Base para entrada automatizada |
-| Clic, ratón, capturas de pantalla | ⚠️ En progreso | Base para navegación autónoma |
-| Organizar ventanas | ⚠️ En progreso | Base para gestión del espacio de trabajo |
-| Crear recordatorios | ⚠️ En progreso | Base para gestión autónoma del tiempo |
-| **Automatización completa sin intervención** | 🔮 Próximamente | El objetivo final |
+| 打开应用程序（Notes、Mail、Safari...） | ⚠️ 进行中 | 第1块砖 — 建立访问 |
+| 输入文本 | ⚠️ 进行中 | 自动输入基础 |
+| 点击、移动鼠标、截图 | ⚠️ 进行中 | 自主导航基础 |
+| 整理窗口 | ⚠️ 进行中 | 工作空间管理基础 |
+| 创建提醒 | ⚠️ 进行中 | 自主时间管理基础 |
+| **无干预完全自动化** | 🔮 即将推出 | 最终目标 |
 
-### 🛡️ Sistema inmunológico digital
-| Funcionalidad | Estado |
+### 🛡️ 数字免疫系统
+| 功能 | 状态 |
 |---|---|
-| CyberAgent — detección de anomalías | ✅ Estable |
-| HealerAgent — escaneo YARA + cuarentena | ✅ Estable |
-| Señuelos activos | ✅ Estable |
-| Memoria inmunológica | ✅ Estable |
+| CyberAgent — 异常检测 | ✅ 稳定 |
+| HealerAgent — YARA扫描 + 隔离 | ✅ 稳定 |
+| 主动诱饵 | ✅ 稳定 |
+| 免疫记忆 | ✅ 稳定 |
 
 ---
 
-## 🏗️ Arquitectura
+## 🏗️ 架构
 
 ```
 Agent Lucie
-├── 🧠 Cortex              — orquestador principal (9 rutas, learning router)
-├── 🤖 Agentes             — Computer, Document, Knowledge, Cyber, Healer, Reminder, Planner...
-├── 💾 Memoria             — working memory + episódica (ChromaDB) + Memory Manager
-├── ⚡ Event Bus           — comunicación entre agentes (sincrónico, thread-safe)
-├── 🛡️ Sistema inmune      — CyberAgent + HealerAgent
-└── 🔌 Proveedores         — Ollama (100% local)
+├── 🧠 Cortex              — 主协调器（9条路径，学习路由器）
+├── 🤖 智能体              — Computer, Document, Knowledge, Cyber, Healer, Reminder, Planner...
+├── 💾 记忆                — 工作记忆 + 情节记忆（ChromaDB）+ 记忆管理器
+├── ⚡ 事件总线            — 智能体间通信（同步，线程安全）
+├── 🛡️ 免疫系统            — CyberAgent（检测）+ HealerAgent（治愈）
+└── 🔌 提供者              — Ollama（100%本地）
 ```
 
 ---
 
-## 🚀 Instalación
+## 🚀 安装
 
 ```bash
 git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
@@ -103,13 +103,13 @@ python main.py
 
 ---
 
-## 👨‍💻 Autor
+## 👨‍💻 作者
 
-**Mathieu Bellot** — desarrollador independiente, proyecto personal 100% open-source.
-Construyendo Agent Lucie solo, con la convicción de que la IA debe ser **local, soberana y accesible para todos**.
+**Mathieu Bellot** — 独立开发者，100%个人开源项目。
+独自构建 Agent Lucie，坚信AI应该是**本地的、自主的、人人可用的**。
 
 ---
 
-## ⚠️ Aviso legal
+## ⚠️ 免责声明
 
-Proporcionado **tal cual**, sin garantía. **Úsalo bajo tu propia responsabilidad.**
+**按原样**提供，不提供任何保证。**使用风险自负。**
