@@ -2,7 +2,7 @@
 Agent de contrôle de l'ordinateur — version étendue et optimisée.
 Ajoute des outils pour Mail, Safari et l'organisation des fenêtres.
 Inclut des vérifications rapides et des fallbacks robustes.
-Correction : saisie dans Notes avec focus sur le corps.
+Correction : saisie dans Notes sans collage, alias pour rappel.
 """
 
 import asyncio
@@ -50,6 +50,7 @@ KNOWN_APPS = [
     "visual studio code", "code", "pages", "numbers", "keynote",
     "app store", "calendrier", "contacts", "messages", "facetime",
     "musique", "photos", "préférences système", "réglages",
+    "reminders", "rappel",  # <-- AJOUT
 ]
 
 OPEN_PATTERNS = [
@@ -234,13 +235,9 @@ class ComputerControlAgent(BaseAgent):
 
     async def _focus_note_body(self):
         """Met le focus dans le corps de la note (après l'avoir ouverte)."""
-        # Attendre que Notes soit actif
         await self._wait_for_app_active("Notes", timeout=2.0)
-        # Appuyer sur Tab pour aller dans le corps
         pyautogui.press('tab')
         await asyncio.sleep(0.2)
-        # Optionnel : un clic pour être sûr (à ajuster selon la position)
-        # pyautogui.click(x=200, y=200)
 
     async def _type_text_with_applescript(self, text: str, interval: float = 0.05, use_paste: bool = False) -> bool:
         if use_paste:
@@ -271,11 +268,9 @@ class ComputerControlAgent(BaseAgent):
             return success
 
     async def _ensure_app_window(self, app_name: str):
-        """Pour certaines applications, s'assurer qu'une fenêtre existe."""
         app_lower = app_name.lower()
         if app_lower not in APPS_NEEDING_WINDOW:
             return
-        # Vérifier par AppleScript
         if app_lower == "mail":
             check_script = 'tell application "Mail" to exists window 1'
         elif app_lower == "notes":
@@ -292,7 +287,6 @@ class ComputerControlAgent(BaseAgent):
         success, output = await self._run_applescript(check_script, timeout=3.0)
         if success and output.strip().lower() == "true":
             return
-        # Pas de fenêtre, en créer une
         if app_lower == "mail":
             new_script = 'tell application "Mail" to make new window'
         elif app_lower == "notes":
@@ -316,7 +310,6 @@ class ComputerControlAgent(BaseAgent):
         start = time.time()
         logger.info(f"🔍 Ouverture de '{app_name}'")
 
-        # 1. Vérification rapide avec mdfind
         try:
             proc = await asyncio.create_subprocess_exec(
                 "mdfind",
@@ -330,7 +323,6 @@ class ComputerControlAgent(BaseAgent):
         except asyncio.TimeoutError:
             logger.warning("mdfind a timeout, on continue avec open -a")
 
-        # 2. Lancer avec open -a
         try:
             proc = await asyncio.create_subprocess_exec(
                 "open", "-a", app_name,
@@ -354,9 +346,7 @@ class ComputerControlAgent(BaseAgent):
                 suggestion="L'application met trop de temps à démarrer."
             )
 
-        # 3. Attendre que l'application soit active
         await self._wait_for_app_active(app_name, timeout=3.0)
-        # S'assurer qu'une fenêtre existe pour certaines apps
         await self._ensure_app_window(app_name)
 
         duration = time.time() - start
@@ -367,7 +357,6 @@ class ComputerControlAgent(BaseAgent):
         start = time.time()
         logger.info(f"✏️ Typage de texte: {text[:40]}...")
 
-        # Si une application cible est spécifiée, l'activer
         if app_name:
             try:
                 await self._activate_app(app_name)
@@ -375,49 +364,46 @@ class ComputerControlAgent(BaseAgent):
             except Exception as e:
                 logger.warning(f"Impossible d'activer {app_name}, on tape quand même: {e}")
 
-        # Cas spécial Notes
         active = self._get_active_app_name()
         target_is_notes = (app_name and "notes" in app_name.lower()) or (active and "notes" in active.lower())
 
         if target_is_notes:
             logger.info("Notes détectée, création d'une nouvelle note")
             await self._create_new_note_in_notes()
-            await self._focus_note_body()  # <-- mise au point dans le corps
-
-        # Choisir la méthode de saisie
-        success = False
-
-        # Méthode 1 : AppleScript avec collage (si activé)
-        if self.use_applescript_for_typing and self.use_paste_for_typing:
-            logger.debug("Tentative AppleScript avec collage")
-            success = await self._type_text_with_applescript(text, interval, use_paste=True)
-
-        # Méthode 2 : AppleScript caractère par caractère
-        if not success and self.use_applescript_for_typing:
-            logger.debug("Tentative AppleScript caractère par caractère")
+            await self._focus_note_body()
+            # Pour Notes, on évite le collage qui peut afficher une barre
             success = await self._type_text_with_applescript(text, interval, use_paste=False)
-
-        # Méthode 3 : Collage via pbcopy + Cmd+V (pyautogui)
-        if not success:
-            logger.debug("Tentative collage via pbcopy")
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    "pbcopy", stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL,
-                )
-                await proc.communicate(input=text.encode("utf-8"))
-                await asyncio.sleep(0.2)
-                pyautogui.hotkey("command", "v")
+            if not success:
+                logger.warning("AppleScript a échoué, fallback pyautogui")
+                pyautogui.typewrite(text, interval=interval)
                 success = True
-            except Exception as e:
-                logger.error(f"Erreur collage: {e}")
-
-        # Méthode 4 : pyautogui.typewrite (fallback ultime)
-        if not success:
-            logger.debug("Fallback : pyautogui.typewrite")
-            pyautogui.typewrite(text, interval=interval)
-            success = True
+        else:
+            # Logique standard pour les autres applications
+            success = False
+            if self.use_applescript_for_typing and self.use_paste_for_typing:
+                logger.debug("Tentative AppleScript avec collage")
+                success = await self._type_text_with_applescript(text, interval, use_paste=True)
+            if not success and self.use_applescript_for_typing:
+                logger.debug("Tentative AppleScript caractère par caractère")
+                success = await self._type_text_with_applescript(text, interval, use_paste=False)
+            if not success:
+                logger.debug("Tentative collage via pbcopy")
+                try:
+                    proc = await asyncio.create_subprocess_exec(
+                        "pbcopy", stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.DEVNULL,
+                        stderr=asyncio.subprocess.DEVNULL,
+                    )
+                    await proc.communicate(input=text.encode("utf-8"))
+                    await asyncio.sleep(0.2)
+                    pyautogui.hotkey("command", "v")
+                    success = True
+                except Exception as e:
+                    logger.error(f"Erreur collage: {e}")
+            if not success:
+                logger.debug("Fallback : pyautogui.typewrite")
+                pyautogui.typewrite(text, interval=interval)
+                success = True
 
         duration = time.time() - start
         record_tool_execution(self.name, "type_text", duration, error=not success)
@@ -458,7 +444,6 @@ class ComputerControlAgent(BaseAgent):
     async def _tool_safari_open_url(self, url: str, new_tab: bool = False) -> str:
         start = time.time()
         try:
-            # Activer Safari (le lance si nécessaire)
             await self._activate_app("Safari")
             if not await self._wait_for_app_active("Safari", timeout=3.0):
                 raise Exception("Safari ne s'est pas activé")
@@ -487,7 +472,7 @@ class ComputerControlAgent(BaseAgent):
             frame = screen.frame()
             return int(frame.size.width), int(frame.size.height)
         else:
-            return 1440, 900  # fallback
+            return 1440, 900
 
     async def _arrange_side_by_side(self, apps: List[str]) -> str:
         if len(apps) != 2:
@@ -614,38 +599,32 @@ class ComputerControlAgent(BaseAgent):
     async def handle(self, query: str) -> str:
         q = query.lower()
 
-        # Ouverture d'application
         if any(kw in q for kw in OPEN_KEYWORDS):
             app = self._parse_open_application(query)
             if app:
                 return await self._tool_open_application(app_name=app)
 
-        # Saisie de texte
         if any(kw in q for kw in TYPE_KEYWORDS):
             text = self._parse_type_text(query)
             if text:
                 app_name = next((a for a in NOTES_APPS if a in q), None)
                 return await self._tool_type_text(text=text, app_name=app_name)
 
-        # Clic
         if any(kw in q for kw in CLICK_KEYWORDS):
             coords = self._parse_coords(query)
             if coords:
                 return await self._tool_click(**coords)
             return "❓ Précise les coordonnées du clic (ex: 'clique à 500, 300')."
 
-        # Capture d'écran
         if any(kw in q for kw in SCREENSHOT_KEYWORDS):
             return await self._tool_get_screenshot()
 
-        # Déplacement souris
         if any(kw in q for kw in MOVE_KEYWORDS):
             coords = self._parse_coords(query)
             if coords:
                 return await self._tool_move_mouse(**coords)
             return "❓ Précise les coordonnées de destination."
 
-        # Arrangement fenêtres
         if any(kw in q for kw in ARRANGE_KEYWORDS):
             layout = None
             if re.search(ARRANGE_PATTERNS["side_by_side"], q, re.IGNORECASE):
@@ -657,9 +636,7 @@ class ComputerControlAgent(BaseAgent):
                 return await self._tool_arrange_windows(layout=layout, apps=apps if apps else None)
             return "❓ Précise la disposition souhaitée."
 
-        # Email
         if any(kw in q for kw in MAIL_KEYWORDS):
-            # Parsing simple : extraire destinataire, sujet, corps
             to_match = re.search(r"à\s+([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)", query)
             to = to_match.group(1) if to_match else ""
             subject_match = re.search(r"sujet\s*[:\s]\s*([^,\.]+)", query, re.IGNORECASE)
@@ -670,13 +647,11 @@ class ComputerControlAgent(BaseAgent):
                 return await self._tool_mail_compose(to=to, subject=subject, body=body, send=False)
             return "Pour envoyer un email, précisez le destinataire (ex: 'compose un email à jean@exemple.fr')."
 
-        # Safari
         if any(kw in q for kw in SAFARI_KEYWORDS):
             url_match = re.search(r"https?://[^\s]+", query)
             if url_match:
                 url = url_match.group()
                 return await self._tool_safari_open_url(url=url)
-            # Sinon, ouvrir Google par défaut
             return await self._tool_safari_open_url(url="https://www.google.com")
 
         return await super().handle(query)

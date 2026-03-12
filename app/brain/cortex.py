@@ -3,8 +3,7 @@ from __future__ import annotations
 """
 Cortex central - Orchestrateur des agents et de la planification.
 Version avec learning routing, memory manager et planner.
-Conserve tous les chemins originaux et ajoute les améliorations.
-Corrigé : priorités pour mail et safari (direct_action en tête).
+Corrections : alias "rappel", parsing amélioré dans _route_simple_action, appel asynchrone à add_episode.
 """
 
 import asyncio
@@ -46,6 +45,23 @@ from ..utils.errors import ToolError
 from ..utils.json_parser import JSONParseError, parse_json_safely
 from ..utils.logger import logger
 from ..utils.metrics import record_cortex_step
+
+from app.soul.identity import SoulIdentity
+from app.soul.memory import SoulMemory
+from app.soul.heartbeat import HeartbeatManager
+from app.agents.team_leader_agent import TeamLeaderAgent
+
+# Dans __init__ du FrontalCortex
+self.soul_identity = SoulIdentity()
+self.soul_memory = SoulMemory()
+self.heartbeat = HeartbeatManager(scheduler=self.scheduler)  # si scheduler accessible
+self.team_leader = TeamLeaderAgent(manager, bus, config)
+
+# Enregistrer les types d'agents pour le team leader
+self.team_leader.register_agent_class("ComputerControlAgent", ComputerControlAgent)
+self.team_leader.register_agent_class("DocumentAgent", DocumentAgent)
+self.team_leader.register_agent_class("ReminderAgent", ReminderAgent)
+# etc.
 
 _THREAD_FUTURE_TIMEOUT: float = 2.0
 
@@ -478,7 +494,7 @@ class ActionSelector:
             "predicted_action": 9,
         },
         "mail": {
-            "direct_action": 1,          # priorité max pour ouverture simple
+            "direct_action": 1,
             "llm_balanced": 2,
             "plan_generation": 3,
             "llm_speed": 4,
@@ -516,7 +532,7 @@ class ActionSelector:
         self.stats: Dict[str, Dict[str, PathStats]] = defaultdict(lambda: defaultdict(PathStats))
         self.paths: Dict[str, Dict[str, Any]] = {}
         self.classifier = classifier
-        self.epsilon = 0.05  # 5% d'exploration
+        self.epsilon = 0.05
 
     def register_path(self, path_id: str, func: Callable, description: str = "") -> None:
         self.paths[path_id] = {"func": func, "description": description}
@@ -529,7 +545,6 @@ class ActionSelector:
 
         type_stats = self.stats[query_type]
 
-        # Exploration epsilon-greedy
         if random.random() < self.epsilon:
             candidates = list(self.paths.keys())
             if len(candidates) > 3:
@@ -538,16 +553,12 @@ class ActionSelector:
             logger.debug(f"Exploration: choix aléatoire de {path_id}")
             return [(path_id, self.paths[path_id]["func"])]
 
-        # Sinon, tri par score décroissant
         def _score(pid: str) -> float:
             s = type_stats.get(pid)
             if s is None or s.count == 0:
-                # Pas de stats : utiliser la priorité statique
                 priority = self.TYPE_SPECIFIC_PRIORITY.get(query_type, {}).get(pid,
                             self.DEFAULT_PATH_PRIORITY.get(pid, 99))
-                # Convertir priorité en score (plus petit = meilleur)
                 return 1000 - priority
-            # Score = taux de succès / (temps moyen + epsilon)
             eps = 0.001
             return s.success_rate / (s.avg_time + eps)
 
@@ -591,6 +602,7 @@ class FrontalCortex:
         "safari": "Safari", "mail": "Mail",
         "calendrier": "Calendar", "rappels": "Reminders",
         "reminders": "Reminders", "calendar": "Calendar",
+        "rappel": "Reminders",  # <-- AJOUT
     }
 
     def __init__(
@@ -881,7 +893,14 @@ class FrontalCortex:
         self.prompt_cache.put(query, system, "balanced", response)
         if self.enable_memory:
             self.memory.add_to_working(query, response)
-            self.memory.add_episode(query, response, metadata={"latency": time.time()})
+            # Correction : lancer la coroutine add_episode sans bloquer
+            if self._loop is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self.memory.add_episode(query, response, metadata={"latency": time.time()}),
+                    self._loop
+                )
+            else:
+                logger.warning("Boucle asyncio non disponible pour ajouter l'épisode")
         return response
 
     async def _generate_and_execute_plan(self, query: str) -> str:
@@ -918,7 +937,11 @@ class FrontalCortex:
                 continue
             if tool_name == "open_application":
                 rest = q.replace(keyword, "").strip()
-                if rest.startswith(("et", "puis")):
+                # S'arrêter au premier "et" ou "puis"
+                match = re.search(r"^(.*?)(?:\s+(?:et|puis)\s+|$)", rest)
+                if match:
+                    rest = match.group(1).strip()
+                if not rest:
                     continue
                 rest = re.sub(r'^["\'](.*)["\']$', r"\1", rest)
                 normalized = self.APP_ALIASES.get(rest.lower())
@@ -978,7 +1001,6 @@ class FrontalCortex:
         except Exception as exc:
             logger.error(f"Erreur stockage plan cache: {exc}")
 
-    # Méthodes de compatibilité
     def _generate_plan_with_retry(self, query: str) -> Optional[List[Dict[str, Any]]]:
         return None
 
