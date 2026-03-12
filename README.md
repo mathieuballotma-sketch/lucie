@@ -1,153 +1,131 @@
-🧠 Agent Lucie
+cat > README.md << 'READMEEOF'
+# 🧠 Agent Lucie
 
-Assistant IA local, souverain et multi-agents — fonctionne 100% hors-ligne sur macOS.
-Système immunitaire intégré : détecte, neutralise et apprend des menaces.
-https://img.shields.io/badge/Python-3.11+-blue
-https://img.shields.io/badge/macOS-13+-black
-https://img.shields.io/badge/Ollama-local-green
-https://img.shields.io/badge/License-MIT-yellow
+> Assistant IA local, souverain et multi-agents — 100% hors-ligne sur macOS.
+> Doté d'un système immunitaire numérique intégré.
 
-✨ Fonctionnalités actuelles
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-13+-000000?style=flat-square&logo=apple&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-local-74aa9c?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
+![Status](https://img.shields.io/badge/Status-En%20développement%20actif-brightgreen?style=flat-square)
 
-🤖 Cœur intelligent
+---
 
-🧠 Cortex décisionnel – 9 chemins d’exécution adaptatifs (direct, LLM, cache, planification…)
-📈 Apprentissage automatique – le routeur choisit le chemin le plus rapide et fiable en fonction de l’expérience
-🔁 Fallback intelligent – si un chemin échoue, le suivant est automatiquement tenté
-🖥️ Contrôle de l’ordinateur
+## 🎯 En bref
 
-🚀 Ouvre des applications – Notes, Word, Mail, Safari, etc. (vérification instantanée, plus de timeout)
-📝 Tape du texte – avec support spécial pour Notes (nouvelle note automatique)
-🖱️ Clique, déplace la souris, prend des captures d’écran
-📐 Organise les fenêtres – côte à côte, grille 2×2
-🛡️ Système immunitaire numérique
+Agent Lucie est un assistant IA personnel qui tourne **entièrement sur votre Mac**, sans envoyer la moindre donnée sur internet. Il contrôle votre ordinateur, génère des documents, se souvient de vos conversations — et protège activement votre système contre les menaces.
 
-🔍 CyberAgent – surveille les erreurs, détecte les anomalies, met en quarantaine les outils défaillants
-🩺 HealerAgent – scanne les fichiers suspects (hash, règles YARA), les isole et crée des leurres inoffensifs
-🧬 Mémoire immunitaire – conserve les signatures des menaces pour une détection plus rapide
-🎭 Leurres – les fichiers malveillants sont remplacés par des leurres qui tracent toute tentative d’accès
-🧹 Nettoyage automatique – les leurres trop vieux sont supprimés
-🧠 Mémoire et contexte
+---
 
-💾 Mémoire épisodique – se souvient des conversations passées
-🔗 Memory Manager – combine mémoire courte et longue pour enrichir les requêtes
-👤 Profil utilisateur – apprend vos préférences
-⚡ Performance & robustesse
+## ✨ Fonctionnalités
 
-🚦 Timeouts réduits – une application inexistante est détectée en < 0,5 s (plus d’attente de 10 s)
-🔁 Circuit breaker – protège contre les appels LLM défaillants
-📊 Métriques Prometheus – pour superviser le système
-🔌 Technologies utilisées
+### 🤖 Cerveau décisionnel
+- **Cortex adaptatif** — 9 chemins d'exécution, choisit automatiquement le plus rapide
+- **Apprentissage continu** — s'améliore à chaque requête
+- **Fallback intelligent** — si un chemin échoue, le suivant est tenté automatiquement
 
-Ollama – modèles LLM locaux (0.5B à 14B)
-ChromaDB – mémoire vectorielle
-sentence-transformers – embeddings sémantiques
-PyAutoGUI + AppleScript – contrôle macOS
-YARA – détection de malwares par règles
-aiosqlite / aiofiles – tout est asynchrone
-🏗️ Architecture
+### 🖥️ Contrôle de l'ordinateur
+- Ouvre des applications — Notes, Word, Mail, Safari... en moins de 0.5s
+- Tape du texte, clique, déplace la souris, capture l'écran
+- Organise les fenêtres (côte à côte, grille 2×2)
+- Crée des rappels et gère le calendrier
 
-text
+### 📝 Génération de documents
+- Crée des fichiers Word automatiquement avec résumés
+- Génère des synthèses à partir de contenus existants
+
+### 🛡️ Système immunitaire numérique
+- **CyberAgent** — surveille les erreurs, détecte les anomalies, met en quarantaine les outils défaillants
+- **HealerAgent** — scanne les fichiers suspects (hash + règles YARA), les isole et crée des leurres
+- **Mémoire immunitaire** — apprend de chaque menace pour détecter plus vite la prochaine
+- **Leurres actifs** — les fichiers malveillants sont remplacés par des pièges traçables
+
+### 🧠 Mémoire & contexte
+- Mémoire épisodique (ChromaDB) — se souvient des conversations passées
+- Profil utilisateur — apprend vos préférences au fil du temps
+
+---
+
+## 🏗️ Architecture
+```
 Agent Lucie
-├── 🧠 Cortex              – orchestrateur principal (9 chemins, learning router)
-├── 🤖 Agents              – Computer, Document, Knowledge, Cyber, Healer, Reminder, Planner...
-├── 💾 Mémoire             – working memory + épisodique (ChromaDB) + Memory Manager
-├── ⚡ Event Bus           – communication inter-agents (synchrone, thread‑safe)
-├── 🛡️ Système immunitaire – CyberAgent (détection) + HealerAgent (guérison)
-└── 🔌 Providers           – Ollama (local)
-🚀 Installation
+├── 🧠 Cortex              — orchestrateur (9 chemins, learning router)
+├── 🤖 Agents              — Computer, Document, Cyber, Healer, Reminder, Planner...
+├── 💾 Mémoire             — working memory + épisodique (ChromaDB)
+├── ⚡ Event Bus           — communication inter-agents (thread-safe)
+├── 🛡️ Système immunitaire — CyberAgent + HealerAgent
+└── 🔌 Providers           — Ollama (100% local)
+```
 
-1. Cloner le projet
+---
 
-bash
+## 🚀 Installation
+
+### Prérequis
+- macOS 13+
+- Python 3.11+
+- [Ollama](https://ollama.com) installé
+
+### Étapes
+```bash
+# 1. Cloner le projet
 git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
 cd Agent-Lucie
-2. Installer les dépendances
 
-bash
+# 2. Installer les dépendances
 pip install -r requirements.txt
-Si vous utilisez pip, le fichier requirements.txt contient notamment :
 
-text
-aiofiles
-aiosqlite
-yara-python
-aiohttp
-joblib
-numpy
-torch
-scikit-learn
-sentence-transformers
-chromadb
-pyautogui
-pydantic
-pyobjc
-psutil
-prometheus_client
-pyyaml
-croniter
-3. Installer Ollama
-
-Téléchargez et installez Ollama, puis récupérez les modèles :
-
-bash
+# 3. Télécharger les modèles LLM
 ollama pull qwen2.5:0.5b
 ollama pull qwen2.5:3b
 ollama pull qwen2.5:7b
-ollama pull qwen2.5:14b   # optionnel
-4. Préparer l’environnement de quarantaine (optionnel)
+ollama pull qwen2.5:14b  # optionnel — nécessite 24GB RAM
 
-bash
-mkdir -p ~/AgentLucide/{quarantine,lures}
-echo "4e759e4a97b455eefc133845fd61610539e448a2a3e809b03808a641f71e917e" >> ~/.agent_lucide/malicious_hashes.txt
-5. Lancer l’agent
-
-bash
+# 4. Lancer l'agent
 python main.py
-⚙️ Prérequis macOS
+```
 
-Important – Autoriser l’accès dans Réglages Système :
+### ⚙️ Autorisation macOS requise
 
-Confidentialité > Accessibilité → autoriser Terminal (ou votre émulateur)
-Confidentialité > Automatisation → autoriser Terminal
-(optionnel) Pour le contrôle de l’écran, autoriser l’enregistrement d’écran si nécessaire
-🎥 Démonstration
+Dans **Réglages Système > Confidentialité** :
+- ✅ Accessibilité → autoriser Terminal
+- ✅ Automatisation → autoriser Terminal
+- ✅ Enregistrement d'écran → si vous utilisez les captures
 
-🎬 Une vidéo de démonstration est en préparation. Elle montrera :
+---
 
-L’ouverture instantanée d’applications
-La détection d’un fichier malveillant
-La mise en quarantaine et la création d’un leurre
-Le système immunitaire en action
-📁 Dossiers importants
+## 🎥 Démonstration
 
-~/AgentLucide/quarantine/ – fichiers malveillants isolés
-~/AgentLucide/lures/ – leurres créés (traçables)
-./data/ – mémoire épisodique, cache, index RAG
-./Lucid_Docs/ – documents générés
-🛠️ Stack technique détaillée
+> 🎬 Vidéo de démonstration en préparation.
 
-Python 3.11+ – asyncio, threading
-Ollama – modèles LLM locaux
-ChromaDB – mémoire vectorielle
-sentence-transformers – embeddings sémantiques
-PyAutoGUI + AppleScript – contrôle macOS
-YARA – détection de malwares
-Prometheus – métriques
-aiohttp – serveur P2P intégré
-aiosqlite / aiofiles – I/O non bloquante
-🤝 Contribution
+Le dossier `demos/` contient des documents Word générés automatiquement par Agent Lucie.
 
-Les contributions sont les bienvenues !
-Consultez le fichier CONTRIBUTING.md pour plus de détails.
+---
 
-👨‍💻 Auteur
+## 🛠️ Stack technique
 
-Mathieu Bellot – projet personnel open-source
-GitHub
+| Composant | Technologie |
+|---|---|
+| LLM local | Ollama (qwen2.5 0.5B → 14B) |
+| Mémoire vectorielle | ChromaDB |
+| Embeddings | sentence-transformers |
+| Contrôle macOS | PyAutoGUI + AppleScript |
+| Détection malwares | YARA |
+| Métriques | Prometheus |
+| I/O asynchrone | asyncio + aiofiles + aiosqlite |
 
-⚠️ Disclaimer
+---
 
-Ce projet manipule des applications, fichiers et réglages de votre Mac.
-Il est fourni en l’état, sans garantie. L’auteur n’est pas responsable des actions effectuées par l’agent (emails envoyés, fichiers modifiés, rappels créés, etc.). Utilisez-le à vos propres risques.
+## 👨‍💻 Auteur
 
+**Mathieu Bellot** — projet personnel open-source
+Construit avec passion pour démocratiser l'IA locale et souveraine.
+
+---
+
+## ⚠️ Disclaimer
+
+Ce projet manipule des applications et fichiers de votre Mac.
+Utilisez-le à vos propres risques — l'auteur n'est pas responsable des actions effectuées par l'agent.
+READMEEOF
