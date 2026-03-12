@@ -23,16 +23,20 @@
 ## 🚧 Avertissement important — projet en développement actif
 
 > Agent Lucie est un projet **personnel**, développé et maintenu par **une seule personne**.
-> Je travaille dessus seul, en gérant à la fois le développement, les tests, les corrections de bugs et l'architecture — tout en même temps.
+> Je gère simultanément le développement, les tests, la correction de bugs, l'architecture et la documentation — tout seul, en parallèle.
 
-- ✅ Le **cerveau décisionnel** (Cortex, routing, fallback) fonctionne bien
-- ✅ Le **système immunitaire** (CyberAgent, HealerAgent) est opérationnel
-- ⚠️ Le **contrôle de l'ordinateur** est en cours de développement — certaines actions peuvent ne pas fonctionner
-- ⚠️ La **génération de documents** fonctionne mais peut produire des résultats imparfaits
-- 🔄 Des corrections et améliorations sont apportées **chaque jour**
+Je fais tout mon possible pour rendre Agent Lucie aussi professionnel et agréable à utiliser que possible, mais certaines fonctionnalités sont encore imparfaites. Je préfère être **totalement transparent** plutôt que de promettre quelque chose d'inachevé.
 
-Je préfère être **totalement honnête** plutôt que de survendre quelque chose d'inachevé.
-N'hésitez pas à ouvrir une issue si vous rencontrez un problème ! 🙏
+**État actuel honnête :**
+
+- ✅ Le **cerveau décisionnel** (Cortex, routing, fallback) — stable et fonctionnel
+- ✅ Le **système immunitaire** (CyberAgent, HealerAgent) — opérationnel
+- ✅ **Ouvrir des applications** — Notes, Mail, Safari, Word fonctionnent
+- ⚠️ **Écrire dans les applications** — en cours de correction, peut être instable
+- ❌ **Contrôle vocal** — pas encore disponible, prévu dans une prochaine version
+- 🔄 Des corrections sont apportées **chaque jour**
+
+Merci pour votre patience et votre compréhension. N'hésitez pas à ouvrir une issue ! 🙏
 
 ---
 
@@ -41,7 +45,7 @@ N'hésitez pas à ouvrir une issue si vous rencontrez un problème ! 🙏
 Agent Lucie est un assistant IA qui tourne **entièrement sur votre Mac**, sans envoyer la moindre donnée sur internet. Pas d'abonnement, pas de cloud, pas de dépendance à OpenAI ou Google.
 
 Il est capable de :
-- Contrôler votre ordinateur par texte ou voix
+- Ouvrir vos applications (Notes, Mail, Safari, Word...)
 - Générer des documents Word automatiquement
 - Se souvenir de vos conversations
 - **Protéger activement votre système** contre les fichiers malveillants
@@ -59,22 +63,23 @@ Il est capable de :
 | Fallback intelligent entre chemins | ✅ Stable |
 | Circuit breaker LLM | ✅ Stable |
 
-### 🏗️ Structure des agents — la première brique *(en développement)*
+### 🏗️ Structure des agents — la première brique
 
 > **Ce que vous voyez ici n'est que le début.**
 
-L'accès à Notes, Mail, Safari, Word et aux autres applications n'est pas une fin en soi — c'est la **fondation**. Chaque application intégrée devient un point d'ancrage pour un agent spécialisé capable, à terme, d'agir **de façon totalement autonome**, sans intervention humaine.
+L'accès à Notes, Mail, Safari et Word n'est pas une fin en soi — c'est la **fondation**. Chaque application intégrée devient un point d'ancrage pour un agent spécialisé capable, à terme, d'agir **de façon totalement autonome**, sans intervention humaine.
 
-L'objectif final : vous dites ce que vous voulez, et Agent Lucie s'en occupe entièrement — rédiger et envoyer un email, créer un rapport complet, organiser votre journée — **pendant que vous faites autre chose**.
+L'objectif final : vous dites ce que vous voulez, et Agent Lucie s'en occupe entièrement — pendant que vous faites autre chose.
 
-| Fonctionnalité | État | Vision |
+| Fonctionnalité | État | Note |
 |---|---|---|
-| Ouvrir des applications (Notes, Mail, Safari...) | ⚠️ En cours | 1ère brique — accès établi |
-| Taper du texte | ⚠️ En cours | Base pour automatiser la saisie |
-| Clic, déplacement souris, capture d'écran | ⚠️ En cours | Base pour naviguer sans intervention |
-| Organiser les fenêtres | ⚠️ En cours | Base pour gérer l'espace de travail |
-| Créer des rappels | ⚠️ En cours | Base pour la gestion autonome du temps |
-| **Automatisation complète sans intervention** | 🔮 À venir | L'objectif final |
+| Ouvrir Notes, Mail, Safari, Word | ✅ Fonctionnel | Stable |
+| Écrire dans les applications | ⚠️ En correction | Peut être instable |
+| Capture d'écran | ⚠️ En cours | Partiel |
+| Organiser les fenêtres | ⚠️ En cours | Partiel |
+| Créer des rappels | ⚠️ En cours | Partiel |
+| Contrôle vocal | ❌ Pas encore | Prévu prochainement |
+| **Automatisation complète** | 🔮 À venir | L'objectif final |
 
 ### 🛡️ Système immunitaire numérique
 | Fonctionnalité | État |
@@ -110,31 +115,30 @@ Scrute les nouveaux fichiers créés ou modifiés. Utilise une base de **hash ma
 
 ## 🗺️ Roadmap
 
-> La vision à long terme d'Agent Lucie : devenir un **écosystème IA complet**, capable d'apprendre, de déléguer et de collaborer — tout en restant 100% local et souverain.
+> La vision à long terme : un **écosystème IA complet**, capable d'apprendre, de déléguer et de collaborer — 100% local et souverain.
 
 ### ✅ Déjà en place
 - Cortex adaptatif multi-chemins
 - Système immunitaire (CyberAgent + HealerAgent)
 - Mémoire épisodique
-- Contrôle basique de macOS
+- Ouverture d'applications macOS
 
 ### 🔧 Court terme
-- Intégrations étendues — Calendrier, Messages, Fichiers, Terminal
-- Planification parallèle — plusieurs agents travaillent simultanément
-- Apprentissage des habitudes utilisateur
+- Correction de l'écriture dans les applications
+- Intégrations étendues — Calendrier, Messages, Fichiers
+- Planification parallèle multi-agents
 
 ### 🚀 Moyen terme
-- **Mémoire sémantique** — graphe de connaissances (relations entre personnes, projets, événements)
-- **Reconnaissance vocale** — WhisperAI local pour parler à l'agent
+- **Contrôle vocal** — WhisperAI local
 - **Vision** — analyser images, captures d'écran, PDFs
+- **Mémoire sémantique** — graphe de connaissances
 - **Proactivité** — l'agent suggère des actions sans qu'on lui demande
 
 ### 🌍 Long terme
 - **CreatorAgent** — générer des agents spécialisés à la demande
 - **Place de marché** — partager, échanger ou vendre ses agents
-- **Collaboration multi-agents** — des agents qui se parlent et se délèguent des tâches
-- **Chiffrement de la mémoire** — zones privées inaccessibles à l'agent
-- **Honeypots dynamiques** — pièges avancés pour les intrus
+- **Collaboration multi-agents** — des agents qui se délèguent des tâches
+- **Chiffrement de la mémoire** — zones privées inaccessibles
 
 ---
 
