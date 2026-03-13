@@ -279,6 +279,70 @@ Si la requête est impossible à planifier, retourne [].
             logger.error(f"Circuit breaker échec: {e}")
             return None
 
+    async def decompose(self, query: str) -> List[Dict[str, str]]:
+        """
+        Décompose une tâche complexe en 2-4 étapes simples.
+        Retourne : [{"agent": "...", "instruction": "..."}, ...]
+        """
+        agents_desc = "\n".join(f"- {name}" for name in self.agents.keys())
+        prompt = f"""Tu es un planificateur. Décompose cette tâche en 2-4 étapes séquentielles.
+
+Tâche : "{query}"
+
+Agents disponibles :
+{agents_desc}
+
+Règles :
+- Chaque étape utilise UN agent
+- Le résultat de l'étape N est transmis à l'étape N+1
+- 2 à 4 étapes maximum
+- L'instruction doit être claire et autonome
+
+Réponds UNIQUEMENT avec un JSON :
+[
+  {{"agent": "NomAgent", "instruction": "Ce que l'agent doit faire"}},
+  {{"agent": "NomAgent2", "instruction": "Ce que l'agent doit faire ensuite"}}
+]"""
+
+        try:
+            response = await self._call_llm(prompt, self.plan_model)
+            if not response:
+                response = await self._call_llm(prompt, self.plan_fallback_model)
+            if not response:
+                return []
+
+            cleaned = response.strip()
+            if cleaned.startswith("```json"):
+                cleaned = cleaned[7:]
+            if cleaned.startswith("```"):
+                cleaned = cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+
+            data = json.loads(cleaned)
+            if not isinstance(data, list):
+                return []
+
+            steps: List[Dict[str, str]] = []
+            for item in data:
+                agent = item.get("agent", "")
+                instruction = item.get("instruction", "")
+                if agent and instruction:
+                    steps.append({"agent": agent, "instruction": instruction})
+
+            if len(steps) > 4:
+                steps = steps[:4]
+
+            logger.info(f"📋 Décomposition: {len(steps)} étapes pour '{query[:50]}'")
+            for i, s in enumerate(steps):
+                logger.info(f"   {i+1}. {s['agent']} → {s['instruction'][:60]}")
+            return steps
+
+        except Exception as e:
+            logger.error(f"Erreur décomposition: {e}")
+            return []
+
     async def execute_plan(self, steps: List[PlanStep]) -> str:
         """
         Exécute un plan en respectant les dépendances.

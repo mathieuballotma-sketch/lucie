@@ -408,6 +408,19 @@ class LucidEngine:
                     )
                     logger.info(f"🧠 {len(memories)} souvenirs RAG injectés")
 
+        # Détecter les tâches multi-étapes → pipeline
+        if self._is_multi_step(query):
+            logger.info("🔗 Tâche multi-étapes détectée → pipeline")
+            try:
+                pipeline_result = await self._run_pipeline(query)
+                if pipeline_result:
+                    latency = time.time() - time.time()  # recalculé ci-dessous
+                    if self.rag.active and pipeline_result:
+                        self.rag.index_conversation(query, pipeline_result, time.time())
+                    return pipeline_result, 0.0  # latency recalculée par process()
+            except Exception as e:
+                logger.warning(f"Pipeline échoué, fallback sur think(): {e}")
+
         response, latency = await self.cortex.think(
             query, system_prompt=enriched_system, allow_web_search=allow_web_search
         )
@@ -417,6 +430,31 @@ class LucidEngine:
             self.rag.index_conversation(query, response, time.time())
 
         return response, latency
+
+    def _is_multi_step(self, query: str) -> bool:
+        """Détecte si une requête nécessite un pipeline multi-agents."""
+        q = query.lower()
+        # Mots-clés de chaînage
+        chaining = ["puis", "ensuite", "après", "et sauvegarde", "et enregistre",
+                     "et écris", "et crée un fichier", "et mets"]
+        # Combinaisons d'actions (création + sauvegarde, recherche + résumé, etc.)
+        multi_action = [
+            ("crée" in q or "écris" in q or "rédige" in q or "génère" in q)
+            and ("sauvegarde" in q or "fichier" in q or "bureau" in q or "enregistre" in q),
+            ("résume" in q or "analyse" in q) and ("envoie" in q or "sauvegarde" in q),
+            ("cherche" in q or "trouve" in q) and ("crée" in q or "écris" in q),
+        ]
+        return any(kw in q for kw in chaining) or any(multi_action)
+
+    async def _run_pipeline(self, query: str) -> Optional[str]:
+        """Décompose et exécute un pipeline multi-agents."""
+        planner = self.cortex.planner
+        steps = await planner.decompose(query)
+        if not steps or len(steps) < 2:
+            return None  # pas assez d'étapes, fallback
+
+        result = await self.cortex.execute_pipeline(steps, timeout=120.0)
+        return result
 
     def process(
         self,

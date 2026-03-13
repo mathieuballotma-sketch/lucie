@@ -1421,6 +1421,80 @@ class FrontalCortex:
         self.metrics.record_step("safe_fallback", duration)
         return response, duration
 
+    async def execute_pipeline(
+        self,
+        steps: List[Dict[str, str]],
+        timeout: float = 120.0,
+    ) -> str:
+        """
+        Exécute un pipeline multi-agents séquentiel.
+
+        Args:
+            steps: Liste de {"agent": "NomAgent", "instruction": "..."}
+            timeout: Timeout global en secondes.
+
+        Le résultat de l'agent N devient le contexte de l'agent N+1.
+        """
+        pipeline_start = time.time()
+        context = ""  # résultat cumulé
+        results: List[str] = []
+
+        for i, step in enumerate(steps):
+            elapsed = time.time() - pipeline_start
+            if elapsed > timeout:
+                logger.error(f"⏱️ Pipeline timeout après {elapsed:.1f}s (étape {i+1})")
+                break
+
+            agent_name = step["agent"]
+            instruction = step["instruction"]
+
+            agent = self.agent_registry.agents.get(agent_name)
+            if agent is None:
+                msg = f"❌ Étape {i+1}: Agent '{agent_name}' introuvable"
+                logger.error(msg)
+                results.append(msg)
+                continue
+
+            # Enrichir l'instruction avec le contexte de l'étape précédente
+            if context:
+                enriched = (
+                    f"{instruction}\n\n"
+                    f"Contexte de l'étape précédente :\n{context}"
+                )
+            else:
+                enriched = instruction
+
+            step_start = time.time()
+            try:
+                remaining = timeout - (time.time() - pipeline_start)
+                result = await asyncio.wait_for(
+                    agent.handle(enriched),
+                    timeout=min(remaining, 60.0),
+                )
+                step_duration = time.time() - step_start
+                logger.info(
+                    f"🔗 Pipeline étape {i+1}/{len(steps)}: "
+                    f"{agent_name} → résultat en {step_duration:.1f}s"
+                )
+                context = result  # le résultat devient le contexte suivant
+                results.append(f"✅ {agent_name}: {result}")
+            except asyncio.TimeoutError:
+                msg = f"⏱️ Étape {i+1} ({agent_name}) timeout"
+                logger.error(msg)
+                results.append(msg)
+                break
+            except Exception as e:
+                msg = f"❌ Étape {i+1} ({agent_name}): {e}"
+                logger.error(msg)
+                results.append(msg)
+                break
+
+        total = time.time() - pipeline_start
+        logger.info(f"🔗 Pipeline terminé en {total:.1f}s ({len(results)}/{len(steps)} étapes)")
+
+        # Retourner le dernier résultat utile (pas le log complet)
+        return context if context else "\n".join(results)
+
     def _safe_fallback(self, query: str) -> str:
         logger.warning("Utilisation du fallback sécurisé.")
         return "Désolé, je n'ai pas pu traiter votre demande."
