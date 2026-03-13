@@ -6,7 +6,7 @@ Version avec deux modes : quick (rapide, peu de données) et deep (complet).
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from app.agents.base_agent import BaseAgent
 from app.utils.logger import logger

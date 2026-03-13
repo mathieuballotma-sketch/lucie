@@ -6,10 +6,11 @@ Utilise la validation Pydantic pour les outils.
 import subprocess
 import tempfile
 import time
+from typing import Optional
 
 import pytesseract
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from ...agents.base_agent import BaseAgent, Tool
 from ...utils.logger import logger
@@ -96,7 +97,7 @@ class TextExtractorAgent(BaseAgent):
             record_tool_execution(self.name, "get_screen_text", duration, error=True)
             raise
 
-    async def _tool_get_text_at_position(self, x: int = None, y: int = None) -> str:
+    async def _tool_get_text_at_position(self, x: Optional[int] = None, y: Optional[int] = None) -> str:
         return "Fonction non encore implémentée."
 
     async def _tool_get_ui_element_info(self, **kwargs) -> str:

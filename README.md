@@ -1,237 +1,221 @@
-# 🧠 Agent Lucie
+markdown<div align="center">
 
-> **Assistant IA local, souverain et multi-agents — 100% hors-ligne sur macOS.**
-> Doté d'un système immunitaire numérique intégré qui détecte, neutralise et apprend des menaces.
+# ✦ LUCIE
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/macOS-13+-000000?style=for-the-badge&logo=apple&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Ollama-local-74aa9c?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Status-En%20développement-orange?style=for-the-badge"/>
-</p>
+### L'IA qui vous appartient vraiment.
 
-<p align="center">
-  <a href="README.md">🇫🇷 Français</a> •
-  <a href="README.en.md">🇬🇧 English</a> •
-  <a href="README.zh.md">🇨🇳 中文</a> •
-  <a href="README.es.md">🇪🇸 Español</a>
-</p>
+[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-black.svg)](https://python.org)
+[![macOS](https://img.shields.io/badge/macOS-native-black.svg)]()
+[![Ollama](https://img.shields.io/badge/Ollama-local-black.svg)](https://ollama.ai)
+[![Stars](https://img.shields.io/github/stars/TON_USERNAME/lucie?style=social)]()
+
+**Zéro cloud. Zéro abonnement. Zéro compromis.**
+
+[Démarrer →](#installation) · [Voir la démo](#démo) · [Rejoindre la communauté](#communauté)
 
 ---
 
-## 🚧 Avertissement important — projet en développement actif
+*"La première IA locale qui agit vraiment — elle ne répond pas, elle fait."*
 
-> Agent Lucie est un projet **personnel**, développé et maintenu par **une seule personne**.
-> Je gère simultanément le développement, les tests, la correction de bugs, l'architecture et la documentation — tout seul, en parallèle.
-
-Je fais tout mon possible pour rendre Agent Lucie aussi professionnel et agréable à utiliser que possible, mais certaines fonctionnalités sont encore imparfaites. Je préfère être **totalement transparent** plutôt que de promettre quelque chose d'inachevé.
-
-**État actuel honnête :**
-
-- ✅ Le **cerveau décisionnel** (Cortex, routing, fallback) — stable et fonctionnel
-- ✅ Le **système immunitaire** (CyberAgent, HealerAgent) — opérationnel
-- ✅ **Ouvrir des applications** — Notes, Mail, Safari, Word fonctionnent
-- ⚠️ **Écrire dans les applications** — en cours de correction, peut être instable
-- ❌ **Contrôle vocal** — pas encore disponible, prévu dans une prochaine version
-- 🔄 Des corrections sont apportées **chaque jour**
-
-Merci pour votre patience. N'hésitez pas à ouvrir une issue ! 🙏
+</div>
 
 ---
 
-## 🎯 C'est quoi Agent Lucie ?
+## Le problème que tout le monde ignore
 
-Agent Lucie est un assistant IA qui tourne **entièrement sur votre Mac**, sans envoyer la moindre donnée sur internet. Pas d'abonnement, pas de cloud, pas de dépendance à OpenAI ou Google.
+ChatGPT, Claude, Gemini — vous payez chaque mois pour **prêter votre cerveau à quelqu'un d'autre**.
 
-Il est capable de :
-- Ouvrir vos applications (Notes, Mail, Safari, Word...)
-- Générer des documents Word automatiquement
-- Se souvenir de vos conversations
-- **Protéger activement votre système** contre les fichiers malveillants
-- Apprendre de vos habitudes et s'améliorer avec le temps
+Vos conversations. Vos projets. Vos idées. Tout part sur leurs serveurs.
 
-> 🌍 **Vision à long terme** : Agent Lucie est aujourd'hui optimisé pour macOS, mais l'objectif est de le rendre accessible à **tous les systèmes** (Windows, Linux) grâce à un réseau P2P qui permettra de partager la puissance de calcul entre utilisateurs — pour que l'IA locale soit accessible à tous, même sans hardware puissant.
+Et demain, si ils augmentent les prix ? Si ils ferment le service ? Si ils décident que votre usage ne correspond plus à leurs conditions ?
+
+**Vous perdez tout.**
 
 ---
 
-## ✨ Fonctionnalités
+## Lucie est différente
 
-### 🤖 Cerveau décisionnel
-| Fonctionnalité | État |
-|---|---|
-| Cortex adaptatif — 9 chemins d'exécution | ✅ Stable |
-| Apprentissage automatique du routage | ✅ Stable |
-| Fallback intelligent entre chemins | ✅ Stable |
-| Circuit breaker LLM | ✅ Stable |
+Lucie tourne sur votre Mac. Dans votre RAM. Sur votre disque.
 
-### 🏗️ Structure des agents — la première brique
-
-> **Ce que vous voyez ici n'est que le début.**
-
-L'accès à Notes, Mail, Safari et Word n'est pas une fin en soi — c'est la **fondation**. Chaque application intégrée devient un point d'ancrage pour un agent spécialisé capable, à terme, d'agir **de façon totalement autonome**, sans intervention humaine.
-
-L'objectif final : vous dites ce que vous voulez, et Agent Lucie s'en occupe entièrement — pendant que vous faites autre chose.
-
-| Fonctionnalité | État | Note |
-|---|---|---|
-| Ouvrir Notes, Mail, Safari, Word | ✅ Fonctionnel | Stable |
-| Écrire dans les applications | ⚠️ En correction | Peut être instable |
-| Capture d'écran | ⚠️ En cours | Partiel |
-| Organiser les fenêtres | ⚠️ En cours | Partiel |
-| Créer des rappels | ⚠️ En cours | Partiel |
-| Contrôle vocal | ❌ Pas encore | Prévu prochainement |
-| **Automatisation complète** | 🔮 À venir | L'objectif final |
-
-### 🛡️ Système immunitaire numérique
-| Fonctionnalité | État |
-|---|---|
-| CyberAgent — détection d'anomalies | ✅ Stable |
-| HealerAgent — scan YARA + quarantaine | ✅ Stable |
-| Leurres actifs | ✅ Stable |
-| Mémoire immunitaire | ✅ Stable |
-
-### 🧠 Mémoire & contexte
-| Fonctionnalité | État |
-|---|---|
-| Mémoire épisodique (ChromaDB) | ✅ Stable |
-| Profil utilisateur | ✅ Stable |
-| Memory Manager | ✅ Stable |
-
----
-
-## 🛡️ Système immunitaire numérique
-
-C'est la fonctionnalité la plus originale d'Agent Lucie — un **vrai système immunitaire** intégré nativement dans l'assistant.
-
-### 🔍 CyberAgent
-Surveille en permanence les événements internes du système. Lorsqu'un outil échoue de façon répétée, il calcule une sévérité, déclenche une alerte et peut mettre l'outil défaillant en **quarantaine temporaire**.
-
-### 🩺 HealerAgent
-Scrute les nouveaux fichiers créés ou modifiés. Utilise une base de **hash malveillants** et des **règles YARA** pour détecter les menaces. En cas de détection :
-- Le fichier est déplacé vers `~/AgentLucide/quarantine/`
-- Un **leurre inoffensif** est créé à sa place
-- Toute tentative d'accès au leurre est tracée et signalée
-
----
-
-## 🗺️ Roadmap
-
-> La vision à long terme : un **écosystème IA complet**, accessible à tous — 100% local, souverain, et partagé.
-
-### ✅ Déjà en place
-- Cortex adaptatif multi-chemins
-- Système immunitaire (CyberAgent + HealerAgent)
-- Mémoire épisodique
-- Ouverture d'applications macOS (Notes, Mail, Safari, Word)
-
-### 🔧 Court terme
-- Correction de l'écriture dans les applications
-- Intégrations étendues — Calendrier, Messages, Fichiers
-- Planification parallèle multi-agents
-- Apprentissage des habitudes utilisateur
-
-### 🚀 Moyen terme
-- **Contrôle vocal** — WhisperAI local, parler à l'agent naturellement
-- **Vision** — analyser images, captures d'écran, PDFs
-- **Mémoire sémantique** — graphe de connaissances (relations, projets, événements)
-- **Proactivité** — l'agent suggère des actions sans qu'on lui demande
-
-### 🌍 Long terme — la grande vision
-- **Support multi-plateforme** — macOS aujourd'hui, Windows et Linux demain
-- **Réseau P2P** — partager la puissance de calcul entre utilisateurs pour rendre l'IA locale accessible à tous, même sans hardware puissant
-- **CreatorAgent** — générer des agents spécialisés à la demande
-- **Place de marché** — partager, échanger ou vendre ses agents
-- **Collaboration multi-agents** — des agents qui se délèguent des tâches entre eux
-- **Chiffrement de la mémoire** — zones privées inaccessibles même à l'agent
-
----
-
-## 🏗️ Architecture
-
+Personne d'autre n'y accède. Jamais.
 ```
-Agent Lucie
-├── 🧠 Cortex              — orchestrateur principal (9 chemins, learning router)
-├── 🤖 Agents              — Computer, Document, Knowledge, Cyber, Healer, Reminder, Planner...
-├── 💾 Mémoire             — working memory + épisodique (ChromaDB) + Memory Manager
-├── ⚡ Event Bus           — communication inter-agents (synchrone, thread-safe)
-├── 🛡️ Système immunitaire — CyberAgent (détection) + HealerAgent (guérison)
-├── 🌐 Réseau P2P          — partage de puissance entre instances (en développement)
-└── 🔌 Providers           — Ollama (100% local)
+Vous posez une question
+        ↓
+Lucie réfléchit sur votre machine
+        ↓
+Lucie agit — crée un fichier, cherche sur le web, 
+             organise vos données, code, rédige
+        ↓
+Vous obtenez un résultat
+        ↓
+Rien n'a quitté votre ordinateur
 ```
 
 ---
 
-## 🚀 Installation
+## Ce que Lucie peut faire
+
+### 🧠 Elle pense avec le bon cerveau
+
+Lucie ne choisit pas un seul modèle — elle orchestre une flotte entière :
+
+| Tâche | Modèle choisi automatiquement |
+|-------|-------------------------------|
+| Écrire du code | Codestral |
+| Raisonner | DeepSeek-R1 |
+| Rédiger en français | Gemma2 |
+| Analyser une image | LLaVA |
+| Question rapide | Qwen2.5 0.5b |
+| Tâche complexe | Qwen2.5 14b |
+| Vous connaître | *votre-prénom*-ia |
+
+### 💾 Elle se souvient
+
+Lucie indexe chaque conversation dans un moteur vectoriel FAISS.
+```
+Conversation 1 : "Mon langage préféré est Rust"
+[3 jours plus tard]
+Vous : "Quel outil me conseillerais-tu ?"
+Lucie : "Étant donné que tu travailles en Rust..."
+```
+
+Pas de copier-coller. Pas de répétition. Elle sait.
+
+### ⚡ Elle agit
+
+Lucie ne répond pas — elle **fait**.
+```
+"Crée un résumé de mes capacités et 
+ sauvegarde-le sur mon bureau"
+
+→ PlannerAgent décompose la tâche
+→ CreatorAgent rédige le contenu  
+→ FileAgent sauvegarde le fichier
+→ "Voilà, c'est fait."
+```
+
+### 🎭 Elle vous appartient
+
+Au premier lancement, Lucie apprend votre prénom et crée automatiquement votre modèle personnel — `votre-prénom-ia` — entraîné sur votre contexte.
+
+C'est votre IA. Littéralement.
+
+---
+
+## Architecture
+```
+┌─────────────────────────────────────────┐
+│                   HUD                   │
+│         Interface verre natif macOS     │
+└──────────────────┬──────────────────────┘
+                   │
+┌──────────────────▼──────────────────────┐
+│              FrontalCortex              │
+│    Router intelligent · Circuit Breaker │
+│    Pipeline multi-agents · EventBus     │
+└──────┬───────────┬────────────┬─────────┘
+       │           │            │
+  ┌────▼───┐  ┌────▼───┐  ┌────▼────┐
+  │ Agents │  │ Memory │  │ Models  │
+  │ 13+    │  │ FAISS  │  │ 18+     │
+  │ async  │  │ SQLite │  │ Ollama  │
+  └────────┘  └────────┘  └─────────┘
+```
+
+---
+
+## Installation
 
 ### Prérequis
-- macOS 13+
-- Python 3.11+
-- [Ollama](https://ollama.com) installé
-
-### Étapes
-
 ```bash
-# 1. Cloner le projet
-git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
-cd Agent-Lucie
-
-# 2. Installer les dépendances
-pip install -r requirements.txt
-
-# 3. Télécharger les modèles LLM
-ollama pull qwen2.5:0.5b
-ollama pull qwen2.5:3b
-ollama pull qwen2.5:7b
-ollama pull qwen2.5:14b  # optionnel — nécessite 24 GB de RAM
-
-# 4. Lancer l'agent
-python main.py
+# macOS 12+ requis
+# Python 3.11+
+# Ollama installé → https://ollama.ai
 ```
 
-### ⚙️ Autorisations macOS requises
+### En 3 commandes
+```bash
+git clone https://github.com/TON_USERNAME/lucie
+cd lucie
+./setup.sh
+```
 
-Dans **Réglages Système > Confidentialité** :
-- ✅ Accessibilité → autoriser Terminal
-- ✅ Automatisation → autoriser Terminal
-- ✅ Enregistrement d'écran → pour les captures d'écran
+Le script installe automatiquement les dépendances et télécharge les modèles essentiels.
 
----
+### Premier lancement
+```bash
+python main_hud.py
+```
 
-## 🎥 Démonstration
-
-> 🎬 Une vidéo de démonstration est en préparation.
-
-Le dossier `demos/` contient des **documents Word générés automatiquement** par Agent Lucie.
-
----
-
-## 🛠️ Stack technique
-
-| Composant | Technologie |
-|---|---|
-| LLM local | Ollama — qwen2.5 (0.5B → 14B) |
-| Mémoire vectorielle | ChromaDB |
-| Embeddings | sentence-transformers |
-| Contrôle macOS | PyAutoGUI + AppleScript + NSWorkspace |
-| Détection malwares | YARA + hash signatures |
-| Métriques | Prometheus |
-| I/O asynchrone | asyncio + aiofiles + aiosqlite |
-| Réseau P2P | aiohttp |
+Lucie vous accueille. Elle apprend votre prénom. Elle devient vôtre.
 
 ---
 
-## 👨‍💻 Auteur
+## Démo
 
-**Mathieu Bellot** — développeur indépendant, projet 100% personnel et open-source.
-
-Je construis Agent Lucie seul, avec la conviction que l'IA doit être **locale, souveraine et accessible à tous** — sans abonnement, sans cloud, sans compromis sur la vie privée.
+> *GIF à venir — contribution bienvenue*
 
 ---
 
-## ⚠️ Disclaimer
+## Modèles supportés
 
-Ce projet manipule des applications, fichiers et réglages de votre Mac.
-Il est fourni **en l'état**, sans garantie d'aucune sorte.
-L'auteur n'est pas responsable des actions effectuées par l'agent.
-**Utilisez-le à vos propres risques.**
+Lucie fonctionne avec n'importe quel modèle Ollama. 
+Les modèles recommandés sont téléchargés automatiquement.
+```bash
+ollama list  # voir vos modèles disponibles
+```
+
+---
+
+## Roadmap
+
+- [x] HUD natif macOS translucide
+- [x] Router de modèles intelligent
+- [x] Mémoire vectorielle FAISS
+- [x] Pipeline multi-agents
+- [x] Onboarding personnalisé
+- [ ] P2P chiffré entre instances Lucie
+- [ ] Fine-tuning local automatique
+- [ ] Plugin système (Spotlight, raccourcis)
+- [ ] Support Windows / Linux
+
+---
+
+## Contribuer
+
+Lucie est open-source parce que l'IA privée devrait être accessible à tous — pas seulement à ceux qui peuvent payer 20€/mois indéfiniment.
+```bash
+# Fork → Clone → Branch → PR
+git checkout -b feature/ma-feature
+```
+
+Toutes les contributions sont les bienvenues — 
+code, documentation, modèles, idées.
+
+---
+
+## Communauté
+
+> *Discord / discussions GitHub à venir*
+
+---
+
+## Licence
+
+MIT — faites-en ce que vous voulez.
+
+---
+
+<div align="center">
+
+**Lucie n'est pas un produit.**
+**C'est un droit.**
+
+*Le droit d'avoir une IA qui vous appartient vraiment.*
+
+---
+
+⭐ Si Lucie vous parle, une étoile aide énormément.
+
+</div>

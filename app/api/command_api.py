@@ -43,7 +43,7 @@ class CommandAPI:
             """
             try:
                 response, latency = await self.engine.process_async(
-                    request.query, use_rag=request.use_rag
+                    request.query, use_rag=request.use_rag or True
                 )
                 return CommandResponse(response=response, latency=latency)
             except Exception as e:

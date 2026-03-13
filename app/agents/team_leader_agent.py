@@ -76,7 +76,7 @@ class TeamLeaderAgent(BaseAgent):
 
 
 # Contrat Pydantic
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 class RunTeamContract(BaseModel):
     tasks: List[Dict[str, Any]] = Field(..., description="Liste des tâches à exécuter en parallèle")

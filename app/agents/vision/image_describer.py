@@ -5,6 +5,7 @@ Utilise un modèle de vision-langage léger (moondream) si disponible.
 
 import subprocess
 import tempfile
+from typing import Optional
 
 from ...agents.base_agent import BaseAgent, Tool
 from ...utils.logger import logger
@@ -65,10 +66,10 @@ class ImageDescriberAgent(BaseAgent):
     def _tool_describe_screen(self) -> str:
         return self._describe_screen()
 
-    def _tool_describe_image_at_position(self, x: int = None, y: int = None) -> str:
+    def _tool_describe_image_at_position(self, x: Optional[int] = None, y: Optional[int] = None) -> str:
         return self._describe_image_at_position(x, y)
 
-    def _capture_screen(self) -> str:
+    def _capture_screen(self) -> Optional[str]:
         """Capture l'écran et retourne le chemin du fichier temporaire."""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             tmp_path = tmp.name

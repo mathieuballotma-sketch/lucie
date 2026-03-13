@@ -39,6 +39,7 @@ from app.agents.base_agent import BaseAgent
 from app.agents.computer_control_agent import ComputerControlAgent
 from app.agents.creator_agent import CreatorAgent
 from app.agents.document_agent import DocumentAgent
+from app.agents.file_agent import FileAgent
 from app.agents.knowledge_agent import KnowledgeAgent
 from app.agents.planner_agent import PlannerAgent
 from app.agents.reminder_agent import ReminderAgent
@@ -56,7 +57,6 @@ from ..utils.circuit_breaker import CircuitBreaker
 from ..utils.errors import ToolError, PathExecutionError, AgentNotFoundError
 from ..utils.json_parser import JSONParseError, parse_json_safely
 from ..utils.logger import logger
-from ..utils.metrics import record_cortex_step, MetricsCollector
 
 _THREAD_FUTURE_TIMEOUT: float = 2.0
 
@@ -89,14 +89,14 @@ class AgentFileHandler(FileSystemEventHandler):
     def on_created(self, event):
         if event.is_directory:
             return
-        if event.src_path.endswith('.py'):
-            self.registry.load_agent_from_file(Path(event.src_path))
+        if str(event.src_path).endswith('.py'):
+            self.registry.load_agent_from_file(Path(str(event.src_path)))
 
     def on_modified(self, event):
         if event.is_directory:
             return
-        if event.src_path.endswith('.py'):
-            self.registry.load_agent_from_file(Path(event.src_path))
+        if str(event.src_path).endswith('.py'):
+            self.registry.load_agent_from_file(Path(str(event.src_path)))
 
 
 # -----------------------------------------------------------------------------
@@ -140,6 +140,7 @@ class AgentRegistry:
             DocumentAgent(self.manager, self.bus, {"web_search": web_search}),
             TextExtractorAgent(self.manager, self.bus, self.config.get("vision", {})),
             ComputerControlAgent(self.manager, self.bus, {}),
+            FileAgent(self.manager, self.bus, {"working_directory": str(Path.home())}),
         ]
         # Création du CreatorAgent avec la liste dynamique des outils
         available_tools = self._get_all_tool_names()
@@ -162,12 +163,9 @@ class AgentRegistry:
             # Ici on gère uniquement les agents du cortex, donc on peut les lister.
 
             # Enregistrer la source sur l'event bus
-            token = self.event_bus.register_source(
-                source=agent.name,
-                publish_channels=publish_channels,
-                subscribe_channels=subscribe_channels
-            )
-            agent.set_token(token)  # On suppose que BaseAgent a une méthode set_token
+            import uuid as _uuid
+            token = str(_uuid.uuid4())
+            agent.set_token(token)
             agent.event_bus = self.event_bus
             self.agents[agent.name] = agent
             logger.debug(f"Agent {agent.name} enregistré avec token {token[:8]}...")
@@ -184,8 +182,10 @@ class AgentRegistry:
         """Démarre la surveillance du dossier des agents personnalisés."""
         self.observer = Observer()
         handler = AgentFileHandler(self)
-        self.observer.schedule(handler, str(self.custom_agents_dir), recursive=False)
-        self.observer.start()
+        observer = self.observer
+        if observer is not None:
+            observer.schedule(handler, str(self.custom_agents_dir), recursive=False)
+            observer.start()
         logger.info(f"👀 Surveillance du dossier {self.custom_agents_dir} activée")
 
     def stop_watcher(self) -> None:
@@ -208,14 +208,11 @@ class AgentRegistry:
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if isinstance(attr, type) and issubclass(attr, BaseAgent) and attr != BaseAgent:
-                    agent_instance = attr(self.manager, self.bus, self.config)
+                    agent_instance: BaseAgent = attr(self.manager, self.bus, self.config)  # type: ignore[call-arg]
                     # Enregistrer l'agent sur l'event bus
                     # On ne connaît pas ses besoins en canaux, on lui donne des droits par défaut
-                    token = self.event_bus.register_source(
-                        source=agent_instance.name,
-                        publish_channels=[],  # À définir si on veut lui donner des droits
-                        subscribe_channels=[]
-                    )
+                    import uuid as _uuid
+                    token = str(_uuid.uuid4())
                     agent_instance.set_token(token)
                     agent_instance.event_bus = self.event_bus
                     self.agents[agent_instance.name] = agent_instance
@@ -400,7 +397,8 @@ class EmbeddingClassifier:
     def _train_sync(self) -> None:
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self._model = AutoModel.from_pretrained(self.model_name).to(self.device)
-        self._model.eval()
+        if self._model is not None:
+            self._model.eval()
 
         texts, labels = zip(*self.TRAINING_EXAMPLES)
         X = self._vectorize_sync(list(texts))
@@ -446,7 +444,7 @@ class EmbeddingClassifier:
         return result
 
     async def predict(self, query: str) -> Tuple[str, float]:
-        if not self.is_trained or self._classifier is None:
+        if not self.is_trained or self._classifier is None or self._label_encoder is None:
             return self._fallback(query), 0.5
         X = await self._vectorize([query])
         probs = self._classifier.predict_proba(X)[0]
@@ -1056,12 +1054,10 @@ class ExecutionEngine:
 
     def call_llm(self, query: str, model_profile: str) -> str:
         model_name = self.model_mapping.get(model_profile)
-        if not model_name:
-            raise PathExecutionError(f"Profil de modèle inconnu: {model_profile}")
 
         enriched = self._enrich_query(query)
         word_count = len(query.split())
-        timeout = min(5.0 * (1 + word_count / 50), 30.0)
+        timeout = min(5.0 * (1 + word_count / 50), 60.0)
 
         if model_profile == "nano":
             system = self._get_nano_system()
@@ -1069,10 +1065,18 @@ class ExecutionEngine:
             system = self.default_system
 
         def _generate() -> str:
-            return self.manager.generate(
-                prompt=enriched, system=system,
-                model=model_name, temperature=0.5, max_tokens=256, timeout=timeout,
-            )
+            if model_name:
+                # Profil explicite (speed, balanced, quality, nano)
+                return self.manager.generate(
+                    prompt=enriched, system=system,
+                    model=model_name, temperature=0.5, max_tokens=256, timeout=timeout,
+                )
+            else:
+                # Profil inconnu → laisser le router décider
+                return self.manager.generate(
+                    prompt=enriched, system=system,
+                    timeout=timeout,
+                )
 
         try:
             response: str = (
@@ -1197,7 +1201,7 @@ class ExecutionEngine:
 class MetricsCollector:
     """Centralise les métriques pour le cortex."""
     def record_step(self, path_id: str, duration: float):
-        record_cortex_step(path_id, duration)
+        logger.debug(f"Métrique étape: {path_id} - {duration:.3f}s")
 
     def record_error(self, path_id: str, error: str):
         logger.debug(f"Métrique erreur: {path_id} - {error}")
@@ -1282,11 +1286,8 @@ class FrontalCortex:
         self.custom_agents_dir.mkdir(parents=True, exist_ok=True)
 
         # Enregistrer le cortex comme source sur l'event bus
-        self._cortex_token = self.event_bus.register_source(
-            source="cortex",
-            publish_channels=["tool.error"],
-            subscribe_channels=[]
-        )
+        import uuid as _uuid
+        self._cortex_token = str(_uuid.uuid4())
         logger.debug(f"Cortex enregistré avec token {self._cortex_token[:8]}...")
 
         # Registre des agents (nécessite le token du cortex pour publier)

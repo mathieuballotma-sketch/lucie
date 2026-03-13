@@ -77,8 +77,8 @@ class SchedulerService:
         func: Callable[..., Coroutine[Any, Any, Any]],
         cron_expr: str,
         job_id: str,
-        args: list = None,
-        kwargs: dict = None,
+        args: Optional[list] = None,
+        kwargs: Optional[dict] = None,
     ):
         """
         Ajoute une tâche asynchrone avec une expression cron.

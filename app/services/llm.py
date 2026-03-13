@@ -77,6 +77,7 @@ class LLMService:
                     time.sleep(wait)
                 else:
                     raise LLMResponseError(f"Échec de la requête LLM : {e}")
+        raise LLMResponseError("Échec de la requête LLM après toutes les tentatives.")
 
     def generate(
         self,

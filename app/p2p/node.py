@@ -88,7 +88,7 @@ class P2PNode:
             try:
                 url = f"http://{peer}/threat"
                 async with aiohttp.ClientSession() as session:
-                    async with session.post(url, json=threat_data, timeout=2) as resp:
+                    async with session.post(url, json=threat_data, timeout=aiohttp.ClientTimeout(total=2)) as resp:
                         if resp.status == 200:
                             logger.debug(f"Menace envoyée à {peer}")
                         else:

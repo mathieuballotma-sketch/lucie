@@ -9,12 +9,12 @@ from typing import Any, Optional
 
 from ..utils.logger import logger
 
-# Tentative d'import de json5 pour un parsing tolérant
+# FIX : import avec guard — json5 est Optional
 try:
-    import json5
-
+    import json5 as _json5  # type: ignore[import]
     JSON5_AVAILABLE = True
 except ImportError:
+    _json5 = None  # type: ignore[assignment]
     JSON5_AVAILABLE = False
     logger.debug("json5 non disponible, parsing JSON limité au format strict.")
 
@@ -24,17 +24,24 @@ class JSONParseError(Exception):
     pass
 
 
+def _try_json5(text: str) -> Any:
+    """Tente un parse json5 — lève ValueError si non disponible ou échec."""
+    if not JSON5_AVAILABLE or _json5 is None:
+        raise ValueError("json5 non disponible")
+    return _json5.loads(text)  # type: ignore[union-attr]
+
+
 def parse_json_safely(text: str, expected_type: Optional[type] = None) -> Any:
     """
     Tente de parser du texte en JSON avec plusieurs méthodes :
     1. json.loads() standard
-    2. json5.loads() si disponible (tolère les commentaires, virgules finales)
+    2. json5.loads() si disponible
     3. Extraction par regex du premier objet ou tableau JSON
-    4. Extraction par regex du premier objet ou tableau JSON après nettoyage (enlever markdown)
+    4. Idem après nettoyage markdown
 
     Args:
         text: La chaîne à parser.
-        expected_type: Optionnel, type attendu (dict ou list). Si fourni, vérifie le type.
+        expected_type: Optionnel, type attendu (dict ou list).
 
     Returns:
         L'objet Python résultant.
@@ -42,8 +49,7 @@ def parse_json_safely(text: str, expected_type: Optional[type] = None) -> Any:
     Raises:
         JSONParseError: Si aucun parsing n'a réussi.
     """
-    original = text
-    # Étape 1 : json.loads standard
+    # Étape 1 : json standard
     try:
         result = json.loads(text)
         if expected_type and not isinstance(result, expected_type):
@@ -54,10 +60,10 @@ def parse_json_safely(text: str, expected_type: Optional[type] = None) -> Any:
     except json.JSONDecodeError:
         pass
 
-    # Étape 2 : json5 (tolérant)
+    # Étape 2 : json5
     if JSON5_AVAILABLE:
         try:
-            result = json5.loads(text)
+            result = _try_json5(text)
             if expected_type and not isinstance(result, expected_type):
                 raise JSONParseError(
                     f"Type inattendu (json5) : attendu {expected_type.__name__}, obtenu {type(result).__name__}"
@@ -66,31 +72,29 @@ def parse_json_safely(text: str, expected_type: Optional[type] = None) -> Any:
         except Exception:
             pass
 
-    # Étape 3 : extraction par regex (supprime les marqueurs de code markdown)
-    # Enlever les blocs ```json ... ``` ou ``` ... ```
-    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.MULTILINE | re.DOTALL).strip()
-    # Chercher un objet {...} ou un tableau [...]
+    # Étape 3 : extraction par regex
+    cleaned = re.sub(
+        r"^```(?:json)?\s*|\s*```$", "", text, flags=re.MULTILINE | re.DOTALL
+    ).strip()
+
     patterns = [
-        (r"(\{.*\})", dict),   # objet
-        (r"(\[.*\])", list),   # tableau
+        (r"(\{.*\})", dict),
+        (r"(\[.*\])", list),
     ]
     for pattern, typ in patterns:
         match = re.search(pattern, cleaned, re.DOTALL)
         if match:
             candidate = match.group(1)
-            # Essayer de parser ce candidat
             try:
                 result = json.loads(candidate)
                 if expected_type and not isinstance(result, expected_type):
-                    # Si le type ne correspond pas, on continue
                     continue
                 logger.debug(f"JSON extrait par regex : {candidate[:100]}...")
                 return result
             except json.JSONDecodeError:
-                # Si échec, on tente json5
                 if JSON5_AVAILABLE:
                     try:
-                        result = json5.loads(candidate)
+                        result = _try_json5(candidate)
                         if expected_type and not isinstance(result, expected_type):
                             continue
                         logger.debug(f"JSON extrait par regex + json5 : {candidate[:100]}...")
@@ -99,15 +103,13 @@ def parse_json_safely(text: str, expected_type: Optional[type] = None) -> Any:
                         pass
                 continue
 
-    # Échec total
-    logger.error(f"Impossible de parser le JSON : {original[:200]}...")
+    logger.error(f"Impossible de parser le JSON : {text[:200]}...")
     raise JSONParseError("Aucune méthode de parsing n'a réussi.")
 
 
 def safe_json_loads(text: str, default: Any = None, expected_type: Optional[type] = None) -> Any:
     """
     Version tolérante qui retourne une valeur par défaut en cas d'échec.
-    Utile pour les appels où l'absence de JSON n'est pas bloquante.
 
     Args:
         text: La chaîne à parser.

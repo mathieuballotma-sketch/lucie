@@ -109,7 +109,7 @@ class PermissionManager:
     async def register_source(self, source: str, token: str,
                               publish_channels: List[str],
                               subscribe_channels: List[str],
-                              services: List[str] = None):
+                              services: Optional[List[str]] = None):
         """Enregistre une nouvelle source avec ses droits et son token."""
         async with self._lock:
             if source in self._source_tokens:
@@ -223,10 +223,10 @@ class EventBus:
         self._lock = asyncio.Lock()  # Pour l'historique et autres opérations globales
         self._response_futures: Dict[str, tuple[asyncio.Future, str]] = {}  # request_id -> (future, expected_source)
 
-    async def register_source(self, source: str, token: str = None,
-                              publish_channels: List[str] = None,
-                              subscribe_channels: List[str] = None,
-                              services: List[str] = None):
+    async def register_source(self, source: str, token: Optional[str] = None,
+                              publish_channels: Optional[List[str]] = None,
+                              subscribe_channels: Optional[List[str]] = None,
+                              services: Optional[List[str]] = None):
         """
         Enregistre une source avec ses droits. Si token non fourni, en génère un.
         Retourne le token à conserver par la source.
@@ -239,13 +239,13 @@ class EventBus:
                                                 services or [])
         return token
 
-    async def publish(self, channel: str, data: Any = None, source: str = "system", token: str = None):
+    async def publish(self, channel: str, data: Any = None, source: str = "system", token: Optional[str] = None):
         """
         Publie un événement sur un canal.
         Nécessite que la source soit authentifiée et autorisée.
         """
         # Authentification et autorisation
-        if not await self._permissions.authenticate(source, token):
+        if not await self._permissions.authenticate(source, token or ""):
             raise SecurityError(f"Authentification échouée pour {source}")
         if not await self._permissions.can_publish(source, channel):
             raise SecurityError(f"Source {source} non autorisée à publier sur {channel}")

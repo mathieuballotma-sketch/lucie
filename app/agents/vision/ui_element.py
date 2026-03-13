@@ -3,6 +3,8 @@ Agent spécialisé dans l'extraction d'éléments d'interface utilisateur (bouto
 Utilise l'API d'accessibilité macOS pour obtenir des informations structurées sur les éléments UI.
 """
 
+from typing import Optional
+
 from ...agents.base_agent import BaseAgent, Tool
 from ...utils.logger import logger
 
@@ -79,13 +81,13 @@ class UIElementAgent(BaseAgent):
             ),
         ]
 
-    def _tool_get_ui_elements(self, filter_by_role: str = None) -> str:
+    def _tool_get_ui_elements(self, filter_by_role: Optional[str] = None) -> str:
         return self._get_ui_elements(filter_by_role)
 
     def _tool_get_element_under_mouse(self) -> str:
         return self._get_element_under_mouse()
 
-    def _tool_click_element(self, name: str, role: str = None) -> str:
+    def _tool_click_element(self, name: str, role: Optional[str] = None) -> str:
         return self._click_element(name, role)
 
     def _get_ui_elements(self, filter_by_role=None):

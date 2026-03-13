@@ -8,7 +8,7 @@ from typing import Optional
 
 import httpx
 import requests
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
@@ -243,8 +243,10 @@ class KnowledgeAgent(BaseAgent):
                 return f"Aucun article arXiv trouvé pour '{query}'."
             output = f"Articles arXiv pour '{query}':\n"
             for entry in entries:
-                title = entry.find("atom:title", ns).text
-                summary = entry.find("atom:summary", ns).text
+                title_el = entry.find("atom:title", ns)
+                summary_el = entry.find("atom:summary", ns)
+                title = title_el.text if title_el is not None else ""
+                summary = summary_el.text if summary_el is not None else ""
                 output += f"- {title}\n  {summary[:200]}...\n\n"
             return output
         except Exception as e:

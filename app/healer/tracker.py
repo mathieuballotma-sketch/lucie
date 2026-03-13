@@ -5,7 +5,7 @@ Tracker - Enregistre les menaces et les actions.
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from app.utils.logger import logger
 
 class ThreatTracker:
@@ -25,7 +25,7 @@ class ThreatTracker:
         with open(self.db_path, "w") as f:
             json.dump(self.data, f, indent=2)
 
-    def add_threat(self, file_path: str, threat_hash: str, source_ip: str = None, metadata: Dict = None):
+    def add_threat(self, file_path: str, threat_hash: str, source_ip: Optional[str] = None, metadata: Optional[Dict] = None):
         """Ajoute une menace détectée."""
         threat = {
             "timestamp": datetime.now().isoformat(),

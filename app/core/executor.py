@@ -40,26 +40,26 @@ class Task:
     name: str
     func: Optional[Callable] = None
     args: tuple = ()
-    kwargs: dict = None
+    kwargs: Optional[dict] = None
     priority: int = 0
-    dependencies: List[str] = None
+    dependencies: Optional[List[str]] = None
     status: TaskStatus = TaskStatus.PENDING
     result: Any = None
-    error: str = None
-    created_at: float = None
-    started_at: float = None
-    completed_at: float = None
+    error: Optional[str] = None
+    created_at: Optional[float] = None
+    started_at: Optional[float] = None
+    completed_at: Optional[float] = None
     progress: float = 0.0
     progress_message: str = ""
     user_id: str = "default"
-    metadata: dict = None
+    metadata: Optional[dict] = None
 
 
 class TaskExecutor:
     def __init__(
         self,
         max_workers: int = 3,
-        persist_path: Path = None,
+        persist_path: Optional[Path] = None,
         retention_seconds: int = 3600,
     ):
         self.max_workers = max_workers
@@ -120,6 +120,8 @@ class TaskExecutor:
                 logger.error(f"Erreur restauration tâches: {e}")
 
     def _persist_tasks(self):
+        if self.persist_path is None:
+            return
         try:
             serializable_tasks = {}
             for task_id, task in self.tasks.items():
@@ -221,7 +223,10 @@ class TaskExecutor:
                     time.sleep(0.2)
                     continue
 
-                wait_time = time.time() - task.created_at
+                if future is None:
+                    continue
+                created_at = task.created_at or time.time()
+                wait_time = time.time() - created_at
                 task.status = TaskStatus.RUNNING
                 task.started_at = time.time()
                 self.metrics["avg_wait_time"] = (
@@ -240,7 +245,7 @@ class TaskExecutor:
 
                 all_args = tuple(dep_results) + task.args
                 self.executor.submit(
-                    self._execute_task, task, future, *all_args, **task.kwargs
+                    self._execute_task, task, future, *all_args, **(task.kwargs or {})
                 )
 
                 set_active_tasks(len(self.futures))
@@ -252,6 +257,8 @@ class TaskExecutor:
 
     def _execute_task(self, task: Task, future: Future, *args, **kwargs):
         try:
+            if task.func is None:
+                raise Exception("Tâche sans fonction exécutable")
             if "progress_callback" in kwargs:
                 kwargs["progress_callback"] = lambda p, m: self._update_progress(
                     task.id, p, m
@@ -260,7 +267,8 @@ class TaskExecutor:
             task.result = result
             task.status = TaskStatus.COMPLETED
             task.completed_at = time.time()
-            execution_time = task.completed_at - task.started_at
+            started_at = task.started_at or task.completed_at
+            execution_time = task.completed_at - started_at
             with self._lock:
                 self.metrics["total_completed"] += 1
                 self.metrics["avg_execution_time"] = (
@@ -315,7 +323,7 @@ class TaskExecutor:
         task = self.tasks.get(task_id)
         return task.status if task else None
 
-    def get_task_result(self, task_id: str, timeout: float = None) -> Any:
+    def get_task_result(self, task_id: str, timeout: Optional[float] = None) -> Any:
         future = self.futures.get(task_id)
         if not future:
             raise Exception(f"Tâche {task_id} introuvable")

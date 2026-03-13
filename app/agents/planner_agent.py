@@ -12,18 +12,17 @@ import asyncio
 import json
 import time
 from typing import Dict, List, Any, Optional, Set
-from pydantic import BaseModel, Field, validator
+from pydantic.v1 import BaseModel, Field, validator
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.providers.manager import ProviderManager
 from app.brain.synapses.event_bus import EventBus
 from app.utils.logger import logger
 from app.utils.errors import ToolExecutionError
-from app.utils.circuit_breaker import CircuitBreaker
-from app.utils.metrics import MetricsCollector
+from app.utils.circuit_breaker import CircuitBreaker, CircuitState
 
 
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------1--
 # Exceptions personnalisées
 # -----------------------------------------------------------------------
 class PlanError(Exception):
@@ -101,7 +100,6 @@ class PlannerAgent(BaseAgent):
         ) if config.get("enable_circuit_breaker", True) else None
 
         # Métriques
-        self.metrics = MetricsCollector()
 
         logger.info(f"📋 PlannerAgent initialisé (max_steps={self.max_steps}, workers={self.max_parallel_workers})")
 
@@ -118,7 +116,6 @@ class PlannerAgent(BaseAgent):
         Retourne une liste d'étapes, ou [] si impossible.
         Lève PlanCreationError en cas d'échec grave.
         """
-        self.metrics.increment("plan_creation_attempts")
         start_time = time.time()
 
         agents_desc = "\n".join(
@@ -172,6 +169,8 @@ Si la requête est impossible à planifier, retourne [].
                 logger.warning("Fallback sur le modèle speed pour la création du plan")
                 response = await self._call_llm(prompt, self.plan_fallback_model)
 
+            if response is None:
+                raise ValueError("Aucune réponse du LLM après fallback")
             cleaned = response.strip()
             # Nettoyer les éventuels blocs markdown
             if cleaned.startswith("```json"):
@@ -185,7 +184,6 @@ Si la requête est impossible à planifier, retourne [].
             data = json.loads(cleaned)
             if not isinstance(data, list):
                 logger.error(f"La réponse du planner n'est pas une liste: {data}")
-                self.metrics.increment("plan_creation_failures")
                 return []
 
             # Valider chaque étape avec Pydantic
@@ -205,14 +203,12 @@ Si la requête est impossible à planifier, retourne [].
                 steps = steps[:self.max_steps]
 
             duration = time.time() - start_time
-            self.metrics.record_timing("plan_creation_duration", duration)
-            self.metrics.increment("plan_creation_success")
+            
             logger.info(f"Plan créé avec {len(steps)} étapes en {duration:.2f}s")
             return steps
 
         except json.JSONDecodeError as e:
             logger.error(f"Erreur de parsing JSON: {e}")
-            self.metrics.increment("plan_creation_failures")
             await self.event_bus.publish("tool.error", {
                 "agent": self.name,
                 "error": f"Plan creation failed: invalid JSON - {e}",
@@ -221,7 +217,6 @@ Si la requête est impossible à planifier, retourne [].
             return []
         except asyncio.TimeoutError:
             logger.error("Timeout lors de la création du plan")
-            self.metrics.increment("plan_creation_failures")
             await self.event_bus.publish("tool.error", {
                 "agent": self.name,
                 "error": "Plan creation timeout",
@@ -230,7 +225,6 @@ Si la requête est impossible à planifier, retourne [].
             return []
         except Exception as e:
             logger.error(f"Erreur inattendue lors de la création du plan: {e}")
-            self.metrics.increment("plan_creation_failures")
             await self.event_bus.publish("tool.error", {
                 "agent": self.name,
                 "error": f"Unexpected error: {e}",
@@ -255,13 +249,34 @@ Si la requête est impossible à planifier, retourne [].
         return await asyncio.wait_for(future, timeout=self.plan_timeout + 2.0)
 
     async def _call_llm_with_cb(self, prompt: str, model: str) -> Optional[str]:
-        """Appelle le LLM avec circuit breaker."""
+        """Appelle le LLM avec vérification circuit breaker (async-compatible)."""
+        cb = self.circuit_breaker
+        if cb is None:
+            return await self._call_llm(prompt, model)
+        # Vérifier si le circuit est ouvert avant d'appeler
+        if cb.state == CircuitState.OPEN:
+            elapsed = time.time() - cb.last_failure_time
+            if elapsed < cb.recovery_timeout:
+                logger.warning(f"Circuit '{cb.name}' ouvert, skip appel LLM")
+                return None
         try:
-            return self.circuit_breaker.call(
-                lambda: self._call_llm(prompt, model)
-            )
+            result = await self._call_llm(prompt, model)
+            # Enregistrer le succès dans le circuit breaker
+            with cb._lock:
+                cb.metrics.successful_calls += 1
+                cb.metrics.total_calls += 1
+                cb.failure_count = 0
+            return result
         except Exception as e:
-            logger.error(f"Circuit breaker ouvert ou échec: {e}")
+            # Enregistrer l'échec
+            with cb._lock:
+                cb.metrics.failed_calls += 1
+                cb.metrics.total_calls += 1
+                cb.failure_count += 1
+                cb.last_failure_time = time.time()
+                if cb.failure_count >= cb.failure_threshold:
+                    cb._transition_to(CircuitState.OPEN)
+            logger.error(f"Circuit breaker échec: {e}")
             return None
 
     async def execute_plan(self, steps: List[PlanStep]) -> str:
@@ -272,8 +287,6 @@ Si la requête est impossible à planifier, retourne [].
         """
         if not steps:
             return "Aucune étape à exécuter."
-
-        self.metrics.increment("plan_execution_attempts")
         start_time = time.time()
 
         # Construire un graphe de dépendances
@@ -321,7 +334,6 @@ Si la requête est impossible à planifier, retourne [].
                     error_msg = f"❌ Étape {step.id}: Agent {step.agent} introuvable"
                     logger.error(error_msg)
                     errors[step_id] = error_msg
-                    self.metrics.increment("step_failures")
                     await self.event_bus.publish("tool.error", {
                         "agent": self.name,
                         "step_id": step.id,
@@ -344,12 +356,10 @@ Si la requête est impossible à planifier, retourne [].
                         logger.info(f"🧑‍🏭 Worker {worker_id} exécute étape {step.id}: {step.description}")
                         result = await agent.execute_tool(step.tool, step.parameters)
                         results[step_id] = f"✅ Étape {step.id}: {result}"
-                        self.metrics.increment("step_successes")
                     except Exception as e:
                         error_msg = f"❌ Étape {step.id} échouée: {e}"
                         logger.error(error_msg)
                         errors[step_id] = error_msg
-                        self.metrics.increment("step_failures")
                         await self.event_bus.publish("tool.error", {
                             "agent": self.name,
                             "step_id": step.id,
@@ -380,7 +390,7 @@ Si la requête est impossible à planifier, retourne [].
         await asyncio.gather(*workers, return_exceptions=True)
 
         duration = time.time() - start_time
-        self.metrics.record_timing("plan_execution_duration", duration)
+        
 
         # Construire la réponse finale
         output = []
@@ -393,11 +403,13 @@ Si la requête est impossible à planifier, retourne [].
             output.append("⚠️ Certaines étapes ont échoué, mais le plan a continué.")
         elif cancelled:
             output.append("⛔ Plan arrêté en raison d'une erreur.")
-
-        self.metrics.increment("plan_execution_completed", {"status": "success" if not errors else "partial"})
         logger.info(f"Plan exécuté en {duration:.2f}s, {len(results)} succès, {len(errors)} échecs")
         return "\n".join(output) if output else "Aucun résultat."
 
     async def stop(self):
         """Arrête proprement l'agent (rien de spécial pour l'instant)."""
         logger.info("📋 PlannerAgent arrêté.")
+    def can_handle(self, query: str) -> bool:
+        """Le planner gère les requêtes multi-étapes complexes."""
+        keywords = ["puis", "ensuite", "après", "étape", "d'abord", "enfin", "plan"]
+        return any(kw in query.lower() for kw in keywords)

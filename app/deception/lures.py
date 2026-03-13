@@ -2,6 +2,7 @@
 Générateur de leurres - Crée des fichiers factices pour piéger les attaquants.
 """
 
+import time
 import os
 import uuid
 import random

@@ -32,3 +32,16 @@ class ToolNotFoundError(ToolError):
             code="TOOL_NOT_FOUND",
             suggestion="Vérifiez le nom de l'outil ou consultez la liste des outils disponibles."
         )
+class PathExecutionError(ToolError):
+    """Erreur lors de l'exécution d'un chemin d'action."""
+    def __init__(self, message: str, suggestion: str = ""):
+        super().__init__(message, code="PATH_EXECUTION_ERROR", suggestion=suggestion)
+
+class AgentNotFoundError(ToolError):
+    """Agent introuvable."""
+    def __init__(self, agent_name: str):
+        super().__init__(
+            f"Agent '{agent_name}' introuvable",
+            code="AGENT_NOT_FOUND",
+            suggestion="Vérifiez que l'agent est bien enregistré dans le registre."
+        )

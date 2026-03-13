@@ -1,0 +1,5 @@
+{
+  "python.analysis.extraPaths": ["."],
+  "python.defaultInterpreterPath": "/Users/mathieu/Desktop/mon-agence-ia/venv/bin/python3",
+  "python.analysis.typeCheckingMode": "basic"
+}

@@ -141,7 +141,7 @@ class CalendarAgent(BaseAgent):
         ]
         return any(kw in query.lower() for kw in keywords)
 
-    def handle(self, query: str) -> str:
+    async def handle(self, query: str) -> str:
         # Utilise le LLM pour interpréter la demande et appeler l'outil
         tools_desc = "\n".join(
             [f"- {t.name}: {t.description}" for t in self.get_tools()]
@@ -165,7 +165,7 @@ Si la demande n'est pas claire, réponds {{"tool": "unknown"}}.
                 tool = data.get("tool")
                 params = data.get("parameters", {})
                 if tool and tool != "unknown":
-                    return self.execute_tool(tool, params)
+                    return await self.execute_tool(tool, params)
             return "Je n'ai pas compris votre demande concernant le calendrier."
         except Exception as e:
             logger.error(f"Erreur dans CalendarAgent: {e}")

@@ -1,0 +1,19 @@
+{
+  "include": ["app"],
+  "exclude": ["venv", "__pycache__"],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "reportMissingModuleSource": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportMissingImports": "warning",
+  "reportUnknownArgumentType": "none",
+  "reportOptionalMemberAccess": "warning",
+  "reportCallIssue": "warning",
+  "reportReturnType": "warning",
+  "reportArgumentType": "warning",
+  "reportOperatorIssue": "none",
+  "reportIndexIssue": "none",
+  "reportPossiblyUnbound": "none"
+}

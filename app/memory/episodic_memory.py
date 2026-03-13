@@ -8,6 +8,7 @@ Incarne les principes :
 - Entropie : code clair, documentation, suppression des doublons.
 """
 
+import asyncio
 import json
 import time
 from pathlib import Path
@@ -15,7 +16,6 @@ from typing import List, Dict, Any, Optional, Callable
 import aiosqlite
 
 from app.utils.logger import logger
-from app.utils.metrics import MetricsCollector
 
 
 # -----------------------------------------------------------------------
@@ -51,7 +51,7 @@ class EpisodicMemory:
         self,
         persist_directory: str,
         max_entries: int = 10000,
-        metrics_collector: Optional[MetricsCollector] = None,
+        metrics_collector: Optional[Any] = None,
         embedding_fn: Optional[Callable[[str], List[float]]] = None,
     ):
         """
@@ -65,7 +65,7 @@ class EpisodicMemory:
         self.db_path = Path(persist_directory) / "episodic.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.max_entries = max_entries
-        self.metrics = metrics_collector or MetricsCollector()
+        self.metrics = metrics_collector
         self.embedding_fn = embedding_fn
         self._connection: Optional[aiosqlite.Connection] = None
 
@@ -147,11 +147,9 @@ class EpisodicMemory:
                     # On ne bloque pas l'insertion principale
 
             await conn.commit()
-            self.metrics.increment("episodic.added")
             self.metrics.record_timing("episodic.add_duration", time.time() - start)
         except aiosqlite.Error as e:
             logger.error(f"Erreur lors de l'ajout de l'épisode: {e}")
-            self.metrics.increment("episodic.add_errors")
             raise MemoryStorageError(f"Échec de l'ajout de l'épisode: {e}") from e
 
         # Nettoyage asynchrone (ne pas attendre)
@@ -184,11 +182,9 @@ class EpisodicMemory:
                     await conn.commit()
                     deleted = count - self.max_entries
                     logger.debug(f"Nettoyage de la mémoire épisodique: {deleted} entrées supprimées")
-                    self.metrics.increment("episodic.cleanup_runs")
                     self.metrics.record_value("episodic.cleanup_deleted", deleted)
         except Exception as e:
             logger.error(f"Erreur lors du nettoyage de la mémoire: {e}")
-            self.metrics.increment("episodic.cleanup_errors")
 
     async def remember(
         self,
@@ -218,13 +214,10 @@ class EpisodicMemory:
                 results = await self._similarity_search(query, n_results, min_similarity)
             else:
                 results = await self._chronological_search(n_results)
-
-            self.metrics.increment("episodic.remember_calls")
             self.metrics.record_timing("episodic.remember_duration", time.time() - start)
             return results
         except Exception as e:
             logger.error(f"Erreur lors de la récupération des épisodes: {e}")
-            self.metrics.increment("episodic.remember_errors")
             raise MemoryRetrievalError(f"Échec de la récupération: {e}") from e
 
     async def _chronological_search(self, n_results: int) -> List[Dict[str, Any]]:

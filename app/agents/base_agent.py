@@ -1,8 +1,12 @@
 """
 BaseAgent - Classe de base pour tous les agents.
-v4 : validation Pydantic, levée d'exceptions structurées, publication d'erreurs.
-Ajout d'un print immédiat pour tracer l'entrée dans execute_tool.
-Correction : _publish_error n'utilise plus await (event_bus.publish est synchrone).
+v5 : ajout set_token(), _publish_error async-safe, token et event_bus intégrés.
+
+Corrections v5 :
+  - Ajout de self.token et self.event_bus dans __init__
+  - Ajout de set_token(token) pour injection par le registre
+  - _publish_error : passage en asyncio.create_task + token obligatoire
+  - Suppression du print de debug en production (gardé en commentaire)
 """
 
 import asyncio
@@ -14,7 +18,7 @@ import sys
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
 
-from pydantic import BaseModel, ValidationError
+from pydantic.v1 import BaseModel, ValidationError
 
 from ..utils.errors import ToolValidationError, ToolExecutionError, ToolNotFoundError
 from ..utils.logger import logger
@@ -36,14 +40,26 @@ class Tool:
 
 
 class BaseAgent(ABC):
-    def __init__(self, name: str, llm_service, bus):
+    def __init__(self, name: str, llm_service, bus, event_bus=None, token: Optional[str] = None):
         self.name = name
         self.llm = llm_service
         self.bus = bus
         self._tools_cache: Optional[Dict[str, Tool]] = None
-        # Référence à l'event bus (sera injectée par le cortex)
-        self.event_bus = None
+
+        # --- FIX v5 : token et event_bus font partie de la base ---
+        self.token: Optional[str] = token
+        self.event_bus = event_bus
+
         logger.info(f"🤖 Agent '{self.name}' initialisé")
+
+    # --- FIX v5 : méthode d'injection du token par le registre ---
+    def set_token(self, token: str) -> None:
+        """
+        Injecte le token EventBus fourni par AgentRegistry.
+        À appeler juste après l'instanciation, avant tout abonnement.
+        """
+        self.token = token
+        logger.debug(f"🔑 Token injecté dans {self.name} : {token[:8]}…")
 
     @abstractmethod
     def can_handle(self, query: str) -> bool:
@@ -65,9 +81,8 @@ class BaseAgent(ABC):
         return self._tools_cache.get(name)
 
     async def execute_tool(self, tool_name: str, parameters: Dict[str, Any]) -> str:
-        # Print immédiat pour tracer l'entrée
-        print(f"🟢 EXECUTE_TOOL DEBUT: {tool_name}")
-        sys.stdout.flush()
+        # Décommenter pour debug uniquement :
+        # print(f"🟢 EXECUTE_TOOL DEBUT: {tool_name}"); sys.stdout.flush()
         logger.info(f"🛠️ execute_tool: {tool_name} avec params {parameters}")
 
         start = time.time()
@@ -85,7 +100,6 @@ class BaseAgent(ABC):
             msg = f"Paramètres invalides [{tool_name}]: {e}"
             logger.error(msg)
             tool_execution_errors.labels(agent=self.name, tool=tool_name).inc()
-            # Convertir l'erreur de validation en suggestion lisible
             errors = e.errors()
             suggestions = []
             for err in errors:
@@ -117,23 +131,55 @@ class BaseAgent(ABC):
             duration = time.time() - start
             logger.error(f"Erreur exécution [{tool_name}]: {e}")
             tool_execution_errors.labels(agent=self.name, tool=tool_name).inc()
-            # Publier l'erreur sur le bus d'événements (synchrone)
             self._publish_error(tool_name, str(e))
-            # Relancer une exception structurée
             raise ToolExecutionError(f"Erreur lors de l'exécution: {str(e)}")
 
-    def _publish_error(self, tool: str, error: str):
-        """Publie une erreur d'outil sur le bus d'événements (synchrone)."""
-        if self.event_bus:
-            self.event_bus.publish(
-                "tool.error",
-                {"agent": self.name, "tool": tool, "error": error},
-                self.name
+    def _publish_error(self, tool: str, error: str) -> None:
+        """
+        Publie une erreur d'outil sur l'EventBus de manière async-safe.
+
+        FIX v5 :
+          - Utilise asyncio.create_task (non bloquant, compatible avec la boucle en cours)
+          - Vérifie que token est disponible avant de publier
+          - Ne lève jamais d'exception (publication best-effort)
+        """
+        if not self.event_bus or not self.token:
+            # Pas de bus ou pas de token — on log et on passe
+            if self.event_bus and not self.token:
+                logger.warning(
+                    f"_publish_error [{self.name}] : token manquant, "
+                    "erreur non publiée sur l'EventBus."
+                )
+            return
+
+        try:
+            asyncio.create_task(
+                self.event_bus.publish(
+                    channel="tool.error",
+                    data={
+                        "agent": self.name,
+                        "tool": tool,
+                        "error": error,
+                    },
+                    source=self.name,
+                    token=self.token,
+                )
+            )
+        except RuntimeError:
+            # Pas de boucle asyncio en cours (appel depuis un thread sync) — on ignore
+            logger.debug(
+                f"_publish_error [{self.name}] : pas de boucle asyncio active, "
+                "erreur non publiée."
             )
 
-    def ask_llm(self, prompt: str, system_prompt: Optional[str] = None,
-                model: str = "balanced", temperature: float = 0.5,
-                max_tokens: int = 512) -> str:
+    def ask_llm(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        model: str = "balanced",
+        temperature: float = 0.5,
+        max_tokens: int = 512,
+    ) -> str:
         try:
             response = self.llm.generate(
                 prompt=prompt,
@@ -147,13 +193,24 @@ class BaseAgent(ABC):
             logger.error(f"Erreur LLM [{self.name}]: {e}")
             return f"Erreur LLM: {str(e)}"
 
-    async def ask_llm_async(self, prompt: str, system_prompt: Optional[str] = None,
-                            model: str = "balanced", temperature: float = 0.5,
-                            max_tokens: int = 512) -> str:
+    async def ask_llm_async(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        model: str = "balanced",
+        temperature: float = 0.5,
+        max_tokens: int = 512,
+    ) -> str:
         """Version asynchrone de ask_llm (exécute dans un thread)."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, self.ask_llm, prompt, system_prompt, model, temperature, max_tokens
+            None,
+            self.ask_llm,
+            prompt,
+            system_prompt,
+            model,
+            temperature,
+            max_tokens,
         )
 
     def extract_json_from_response(self, response: str) -> Optional[Dict]:

@@ -148,16 +148,15 @@ class Config:
     @classmethod
     def load(cls, path: Optional[str] = None) -> "Config":
         if path is None:
-            # Chercher config.yaml dans le répertoire courant
             base = Path(__file__).parent.parent.parent
-            path = base / "config.yaml"
+            config_path = base / "config.yaml"
         else:
-            path = Path(path)
+            config_path = Path(path)
 
-        if not path.exists():
-            raise FileNotFoundError(f"Fichier de configuration introuvable: {path}")
+        if not config_path.exists():
+            raise FileNotFoundError(f"Fichier de configuration introuvable: {config_path}")
 
-        with open(path, "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
         # Construire les objets de configuration
@@ -220,3 +219,9 @@ class Config:
         config.planner = PlannerConfig(**planner_data)
 
         return config
+    def validate(self) -> None:
+        """Valide la configuration minimale."""
+        if not self.llm.host:
+            raise ValueError("llm.host est requis")
+        if not self.llm.default_model:
+            raise ValueError("llm.default_model est requis")

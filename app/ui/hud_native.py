@@ -6,11 +6,11 @@ import sys
 import threading
 import time
 
-import AppKit
-import Foundation
-import objc
-import Quartz
-from PyObjCTools import AppHelper
+import AppKit  # type: ignore[import]
+import Foundation  # type: ignore[import]
+import objc  # type: ignore[import]
+import Quartz  # type: ignore[import]
+from PyObjCTools import AppHelper  # type: ignore[import]
 
 from ..core.config import Config
 from ..core.engine import LucidEngine
@@ -382,7 +382,7 @@ class HUDWindow(AppKit.NSPanel):
             hasattr(self, "engine")
             and self.engine
             and hasattr(self.engine, "cortex")
-            and hasattr(self.engine.cortex, "predictor")
+            and getattr(self.engine.cortex, "predictor", None) is not None
         ):
             self.engine.cortex.predictor.update_partial_input(text)
 
@@ -419,6 +419,21 @@ class HUDWindow(AppKit.NSPanel):
         self.orderFrontRegardless()
 
     @objc.IBAction
+    def onboardCleanup_(self, timer):
+        """Timer callback pour le nettoyage post-animation onboarding."""
+        if hasattr(self, "_onboard_cleanup") and self._onboard_cleanup:
+            self._onboard_cleanup()
+            self._onboard_cleanup = None
+
+    @objc.IBAction
+    def onboardNextStep_(self, timer):
+        """Timer callback pour enchaîner l'étape suivante de l'onboarding."""
+        fn = getattr(self, "_onboard_next_step_fn", None)
+        if fn is not None:
+            self._onboard_next_step_fn = None
+            fn()
+
+    @objc.IBAction
     def sendQuery_(self, sender):
         print("🚀 sendQuery_ appelée")
         if self._is_processing:
@@ -430,6 +445,13 @@ class HUDWindow(AppKit.NSPanel):
             print("⚠️ Requête vide, ignorée")
             return
         self._input.setStringValue_("")
+
+        # Intercepter pour l'onboarding si actif
+        onboarding = getattr(self, "_onboarding_flow", None)
+        if onboarding is not None:
+            onboarding.handle_input(query)
+            return
+
         self._is_processing = True
         self._processing_start_time = time.time()
         print("📝 Appel de append_message_safe pour utilisateur")
@@ -507,6 +529,15 @@ class HUDWindow(AppKit.NSPanel):
             self._set_status("●", ns_color(0.2, 0.9, 0.4), "Prêt")
             self._send_btn.setEnabled_(True)
             self._is_dragging = False
+            # Si onboarding en cours, enchaîner l'étape suivante
+            next_step = getattr(self, "_onboard_next_step", None)
+            if next_step is not None:
+                self._onboard_next_step = None
+                # Petite pause avant la prochaine étape
+                AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+                    1.5, self, "onboardNextStep:", None, False
+                )
+                self._onboard_next_step_fn = next_step
             print("✅ Interface prête")
             return
 

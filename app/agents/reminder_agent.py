@@ -1,12 +1,19 @@
 """
 Agent spécialisé dans la gestion des rappels macOS.
 Utilise la validation Pydantic pour les paramètres des outils.
+
+Corrections v2 :
+  - date et time : Optional[str] au lieu de str (Field(None) requiert Optional)
+  - handle() → async def, appelle await _tool_create_reminder()
+  - Annotations de type complètes
 """
 
+import asyncio
 import subprocess
 from datetime import datetime
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
@@ -14,11 +21,16 @@ from app.utils.logger import logger
 
 class ReminderAgentCreateReminderContract(BaseModel):
     title: str = Field(..., description="Titre du rappel")
-    date: str = Field(
-        None, description="Date au format YYYY-MM-DD", pattern=r"^\d{4}-\d{2}-\d{2}$"
+    # FIX v2 : Optional[str] — Field(None) exige Optional, pas str
+    date: Optional[str] = Field(
+        None,
+        description="Date au format YYYY-MM-DD",
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
     )
-    time: str = Field(
-        None, description="Heure au format HH:MM", pattern=r"^\d{2}:\d{2}$"
+    time: Optional[str] = Field(
+        None,
+        description="Heure au format HH:MM",
+        pattern=r"^\d{2}:\d{2}$",
     )
     notes: str = Field("", description="Notes ou description supplémentaires")
 
@@ -40,35 +52,40 @@ class ReminderAgent(BaseAgent):
         ]
 
     async def _tool_create_reminder(
-        self, title: str, date: str = None, time: str = None, notes: str = ""
+        self,
+        title: str,
+        date: Optional[str] = None,
+        time: Optional[str] = None,
+        notes: str = "",
     ) -> str:
         """Crée un rappel via AppleScript."""
 
-        # Échappement pour AppleScript
-        def escape(s):
+        def escape(s: str) -> str:
             return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
 
         title_escaped = escape(title)
         notes_escaped = escape(notes)
 
-        # Construction de la clause due date
         due_script = ""
         if date and time:
             try:
                 dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
-                due_script = f"set due date of last reminder to date \"{
-                    dt.strftime('%d/%m/%Y %H:%M')}\""
-            except BaseException:
+                due_script = (
+                    f'set due date of last reminder to date '
+                    f'"{dt.strftime("%d/%m/%Y %H:%M")}"'
+                )
+            except Exception:
                 due_script = ""
         elif date:
             try:
                 dt = datetime.strptime(date, "%Y-%m-%d")
-                due_script = f"set due date of last reminder to date \"{
-                    dt.strftime('%d/%m/%Y')}\""
-            except BaseException:
+                due_script = (
+                    f'set due date of last reminder to date '
+                    f'"{dt.strftime("%d/%m/%Y")}"'
+                )
+            except Exception:
                 due_script = ""
 
-        # Script principal
         applescript = f"""
 tell application "Reminders"
     make new reminder with properties {{name:"{title_escaped}", body:"{notes_escaped}"}}
@@ -76,19 +93,22 @@ tell application "Reminders"
 end tell
 """
         try:
-            result = subprocess.run(
-                ["osascript", "-e", applescript],
-                capture_output=True,
-                text=True,
-                timeout=10,
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(
+                None,
+                lambda: subprocess.run(
+                    ["osascript", "-e", applescript],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                ),
             )
             if result.returncode == 0:
                 logger.info(f"Rappel créé : {title}")
                 return f"✅ Rappel créé : {title}"
             else:
                 logger.error(f"Erreur AppleScript: {result.stderr}")
-                return f"Erreur lors de la création du rappel : {
-                    result.stderr}"
+                return f"Erreur lors de la création du rappel : {result.stderr}"
         except subprocess.TimeoutExpired:
             return "Erreur: Timeout lors de la création du rappel"
         except Exception as e:
@@ -98,19 +118,16 @@ end tell
     def can_handle(self, query: str) -> bool:
         q = query.lower().strip()
         keywords = [
-            "rappel",
-            "reminder",
-            "rappelle",
-            "n'oublie pas",
-            "pense à",
-            "mes moi un rappel",
-            "crée un rappel",
-            "ajoute un rappel",
-            "programme un rappel",
+            "rappel", "reminder", "rappelle", "n'oublie pas",
+            "pense à", "mes moi un rappel", "crée un rappel",
+            "ajoute un rappel", "programme un rappel",
         ]
         return any(kw in q for kw in keywords)
 
-    def handle(self, query: str) -> str:
+    async def handle(self, query: str) -> str:
+        """
+        FIX v2 : async def — _tool_create_reminder est async, il faut await.
+        """
         prompt = f"""
 Tu es un assistant qui gère les rappels. Voici la demande : "{query}"
 Extrais les informations suivantes au format JSON :
@@ -126,15 +143,18 @@ Réponds uniquement avec le JSON.
             response = self.ask_llm(prompt)
             data = self.extract_json_from_response(response)
             if data:
-                title = data.get("title", query)
-                date = data.get("date")
+                title    = data.get("title") or query
+                date     = data.get("date")
                 time_str = data.get("time")
-                notes = data.get("notes", "")
-                return self._tool_create_reminder(
-                    title=title, date=date, time=time_str, notes=notes
+                notes    = data.get("notes") or ""
+                return await self._tool_create_reminder(
+                    title=title,
+                    date=date,
+                    time=time_str,
+                    notes=notes,
                 )
             else:
-                return self._tool_create_reminder(title=query)
+                return await self._tool_create_reminder(title=query)
         except Exception as e:
             logger.error(f"Erreur dans ReminderAgent.handle: {e}")
             return f"Erreur lors de la création du rappel: {str(e)}"

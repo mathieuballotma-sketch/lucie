@@ -33,6 +33,10 @@ class WorkingMemory:
             lines.append(f"   Assistant: {r}")
         return "\n".join(lines)
 
+    def get_recent(self, n: int = 10) -> List[Tuple[str, str]]:
+        """Retourne les n dernières interactions sous forme de liste de tuples (query, response)."""
+        return list(self.history)[-n:]
+
     def clear(self):
         """Efface l'historique."""
         self.history.clear()

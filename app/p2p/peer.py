@@ -15,6 +15,6 @@ class Peer:
     port: int
     last_seen: float
     public_key: Optional[bytes] = None
-    capabilities: list = None  # ex: ["cyber", "compute", "storage"]
+    capabilities: Optional[list] = None  # ex: ["cyber", "compute", "storage"]
     # référence à la connexion active (objet websocket ou autre)
     connection = None

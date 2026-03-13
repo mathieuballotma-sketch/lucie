@@ -1,0 +1,13 @@
+{
+  "include": ["app"],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "reportAttributeAccessIssue": "warning",
+  "reportOptionalMemberAccess": "warning",
+  "reportOptionalSubscript": "warning",
+  "reportCallIssue": "warning",
+  "reportRedeclaration": "warning",
+  "reportInvalidTypeForm": "warning",
+  "reportPossiblyUnboundVariable": "warning",
+  "reportUndefinedVariable": "error"
+}

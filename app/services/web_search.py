@@ -12,7 +12,7 @@ try:
     DDGS_AVAILABLE = True
 except ImportError:
     try:
-        from ddgs import DDGS
+        from ddgs import DDGS  # type: ignore[import-untyped]
 
         DDGS_AVAILABLE = True
     except ImportError:

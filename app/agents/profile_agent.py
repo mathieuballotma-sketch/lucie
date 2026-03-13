@@ -234,7 +234,7 @@ class ProfileAgent(BaseAgent):
 
     def _infer_goals(self) -> List[str]:
         recent = self.memory.working.get_recent(n=10)
-        recent_queries = [item["query"] for item in recent if "query" in item]
+        recent_queries = [item[0] for item in recent if item[0]]
         if not recent_queries:
             return []
 
@@ -260,5 +260,5 @@ class ProfileAgent(BaseAgent):
     def can_handle(self, query: str) -> bool:
         return False
 
-    def handle(self, query: str) -> str:
+    async def handle(self, query: str) -> str:
         return "Cet agent n'est pas destiné à être utilisé directement."

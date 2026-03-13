@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
 class SoulAgent(BaseAgent):

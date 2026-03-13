@@ -1,71 +1,92 @@
-import subprocess
+"""
+Notifier — notifications macOS.
+Corrections v2 :
+  - filepath: Optional[str] partout
+  - UserNotifications guard complet
+  - NSUserNotification déprécié → type: ignore
+"""
 
-import AppKit
+import subprocess
+from typing import Optional
 
 from .logger import logger
 
+# ── AppKit (PyObjC) ───────────────────────────────────────────────────────────
 try:
-    import UserNotifications
+    import AppKit  # type: ignore[import]
+    _APPKIT_OK = True
+except ImportError:
+    _APPKIT_OK = False
 
+# ── UserNotifications (macOS 10.14+) ─────────────────────────────────────────
+try:
+    import UserNotifications  # type: ignore[import]
     HAS_UN = True
 except ImportError:
     HAS_UN = False
 
 
-def send_notification(title: str, message: str, filepath: str = None):
-    """
-    Envoie une notification macOS interactive avec son.
-    Utilise UNUserNotificationCenter si disponible (macOS 10.14+), sinon NSUserNotification.
-    En dernier recours, utilise osascript.
-    """
+def send_notification(
+    title: str,
+    message: str,
+    filepath: Optional[str] = None,  # FIX : Optional[str]
+) -> None:
+    """Envoie une notification macOS interactive avec son."""
     if HAS_UN:
         _send_via_un(title, message, filepath)
-    else:
+    elif _APPKIT_OK:
         _send_via_ns(title, message, filepath)
+    else:
+        _send_via_osascript(title, message, filepath)
 
 
-def _send_via_un(title: str, message: str, filepath: str = None):
-    """Utilise UNUserNotificationCenter (moderne)."""
-    center = UserNotifications.UNUserNotificationCenter.currentNotificationCenter()
+def _send_via_un(title: str, message: str, filepath: Optional[str] = None) -> None:
+    """Utilise UNUserNotificationCenter (moderne, macOS 10.14+)."""
+    if not HAS_UN:
+        _send_via_ns(title, message, filepath)
+        return
 
-    def check_auth(granted, error):
+    import UserNotifications as UN  # type: ignore[import]
+
+    center = UN.UNUserNotificationCenter.currentNotificationCenter()
+
+    def check_auth(granted: bool, error: object) -> None:
         if not granted:
-            logger.warning(
-                "Notifications UN non autorisées, fallback sur NSUserNotification"
-            )
+            logger.warning("Notifications UN non autorisées, fallback NSUserNotification")
             _send_via_ns(title, message, filepath)
             return
 
-        content = UserNotifications.UNMutableNotificationContent.alloc().init()
+        content = UN.UNMutableNotificationContent.alloc().init()
         content.setTitle_(title)
         content.setBody_(message)
-        content.setSound_(UserNotifications.UNNotificationSound.defaultSound())
+        content.setSound_(UN.UNNotificationSound.defaultSound())
 
         if filepath:
             content.setUserInfo_({"filepath": filepath, "action": "open_file"})
-            action = UserNotifications.UNNotificationAction.actionWithIdentifier_title_options_(
-                "OPEN_ACTION", "Ouvrir", 1  # UNNotificationActionOptionForeground
+            action = UN.UNNotificationAction.actionWithIdentifier_title_options_(
+                "OPEN_ACTION", "Ouvrir", 1
             )
-            category = UserNotifications.UNNotificationCategory.categoryWithIdentifier_actions_intentIdentifiers_options_(
+            category = UN.UNNotificationCategory.categoryWithIdentifier_actions_intentIdentifiers_options_(
                 "OPEN_CATEGORY", [action], [], 1
             )
             center.setNotificationCategories_([category])
             content.setCategoryIdentifier_("OPEN_CATEGORY")
 
-        request = UserNotifications.UNNotificationRequest.requestWithIdentifier_content_trigger_(
+        request = UN.UNNotificationRequest.requestWithIdentifier_content_trigger_(
             f"notif_{title}_{message[:20]}", content, None
         )
         center.addNotificationRequest_withCompletionHandler_(request, lambda err: None)
 
-    center.requestAuthorizationWithOptions_completionHandler_(
-        3, check_auth  # UNAuthorizationOptionAlert + UNAuthorizationOptionSound
-    )
+    center.requestAuthorizationWithOptions_completionHandler_(3, check_auth)
 
 
-def _send_via_ns(title: str, message: str, filepath: str = None):
-    """Fallback sur NSUserNotification (ancien)."""
+def _send_via_ns(title: str, message: str, filepath: Optional[str] = None) -> None:
+    """Fallback NSUserNotification (déprécié mais fonctionnel)."""
+    if not _APPKIT_OK:
+        _send_via_osascript(title, message, filepath)
+        return
     try:
-        notification = AppKit.NSUserNotification.alloc().init()
+        notification = AppKit.NSUserNotification.alloc().init()  # type: ignore[attr-defined]
         notification.setTitle_(title)
         notification.setInformativeText_(message)
         notification.setSoundName_("NSUserNotificationDefaultSoundName")
@@ -77,19 +98,19 @@ def _send_via_ns(title: str, message: str, filepath: str = None):
         else:
             notification.setHasActionButton_(False)
 
-        centre = AppKit.NSUserNotificationCenter.defaultUserNotificationCenter()
+        centre = AppKit.NSUserNotificationCenter.defaultUserNotificationCenter()  # type: ignore[attr-defined]
         centre.scheduleNotification_(notification)
     except Exception as e:
-        logger.warning(f"Échec notification NSUserNotification: {e}")
+        logger.warning(f"Échec NSUserNotification: {e}")
         _send_via_osascript(title, message, filepath)
 
 
-def _send_via_osascript(title: str, message: str, filepath: str = None):
-    """Ultime fallback avec osascript."""
+def _send_via_osascript(title: str, message: str, filepath: Optional[str] = None) -> None:
+    """Ultime fallback osascript."""
     try:
         script = f'display notification "{message}" with title "{title}" sound name "default"'
         if filepath:
-            script += f' subtitle "Cliquez pour ouvrir"'
+            script += ' subtitle "Cliquez pour ouvrir"'
         subprocess.run(["osascript", "-e", script], capture_output=True, timeout=5)
     except Exception as e:
-        logger.error(f"Impossible d'envoyer la notification même avec osascript: {e}")
+        logger.error(f"Impossible d'envoyer la notification : {e}")
