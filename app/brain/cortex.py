@@ -1,15 +1,15 @@
-from __future__ import annotations
-
 """
 Cortex central - Orchestrateur des agents et de la planification.
-Version avec learning routing, memory manager, planner et creator agent.
+Version refactorisée avec séparation des responsabilités et robustesse accrue.
 Incarne les lois universelles :
 - Moindre action : optimisation des chemins, cache, timeouts adaptatifs.
-- Homéostasie : gestion d'erreurs robuste, circuit breakers, quarantaine.
+- Homéostasie : gestion d'erreurs robuste, circuit breakers, publication sur event bus.
 - Évolution : apprentissage des performances, création de nouveaux agents.
 - Entropie : code modulaire, suppression des doublons, documentation.
 - Symbiose : communication via event_bus, intégration harmonieuse des composants.
 """
+
+from __future__ import annotations
 
 import asyncio
 import concurrent.futures
@@ -17,17 +17,23 @@ import json
 import random
 import re
 import time
+import importlib.util
+import sys
 from collections import defaultdict
 from concurrent.futures import TimeoutError
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 import joblib
 import numpy as np
 import torch
+from pydantic import BaseModel, ValidationError
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder
 from transformers import AutoModel, AutoTokenizer
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 from app.agents.base_agent import BaseAgent
 from app.agents.computer_control_agent import ComputerControlAgent
@@ -47,17 +53,217 @@ from ..providers.manager import ProviderManager
 from ..services.prompt_cache import PromptCache
 from ..services.web_search import WebSearch
 from ..utils.circuit_breaker import CircuitBreaker
-from ..utils.errors import ToolError
+from ..utils.errors import ToolError, PathExecutionError, AgentNotFoundError
 from ..utils.json_parser import JSONParseError, parse_json_safely
 from ..utils.logger import logger
-from ..utils.metrics import record_cortex_step
+from ..utils.metrics import record_cortex_step, MetricsCollector
 
 _THREAD_FUTURE_TIMEOUT: float = 2.0
 
 
-# =============================================================================
-# Classifieur sémantique
-# =============================================================================
+# -----------------------------------------------------------------------------
+# Modèles de validation Pydantic
+# -----------------------------------------------------------------------------
+class UserQuery(BaseModel):
+    """Requête utilisateur validée."""
+    text: str
+    allow_web_search: bool = True
+    system_prompt: Optional[str] = None
+
+    @classmethod
+    def from_raw(cls, query: str, **kwargs) -> UserQuery:
+        try:
+            return cls(text=query, **kwargs)
+        except ValidationError as e:
+            raise ValueError(f"Requête invalide: {e}")
+
+
+# -----------------------------------------------------------------------------
+# Gestionnaire d'événements pour le dossier des agents personnalisés
+# -----------------------------------------------------------------------------
+class AgentFileHandler(FileSystemEventHandler):
+    """Handler pour les événements de création/modification de fichiers dans le dossier des agents."""
+    def __init__(self, registry: AgentRegistry):
+        self.registry = registry
+
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        if event.src_path.endswith('.py'):
+            self.registry.load_agent_from_file(Path(event.src_path))
+
+    def on_modified(self, event):
+        if event.is_directory:
+            return
+        if event.src_path.endswith('.py'):
+            self.registry.load_agent_from_file(Path(event.src_path))
+
+
+# -----------------------------------------------------------------------------
+# Registre des agents
+# -----------------------------------------------------------------------------
+class AgentRegistry:
+    """Gère l'enregistrement et le chargement des agents standards et personnalisés."""
+
+    def __init__(
+        self,
+        manager: ProviderManager,
+        bus: Any,
+        event_bus: EventBus,
+        config: Dict[str, Any],
+        custom_agents_dir: Path,
+        cortex_token: str,  # Token du cortex pour que le registre publie au nom du cortex
+    ):
+        self.manager = manager
+        self.bus = bus
+        self.event_bus = event_bus
+        self.config = config
+        self.custom_agents_dir = custom_agents_dir
+        self.cortex_token = cortex_token
+        self.agents: Dict[str, BaseAgent] = {}
+        self.observer: Optional[Observer] = None
+        self._register_standard_agents()
+
+    def _register_standard_agents(self) -> None:
+        """Instancie et enregistre tous les agents standards."""
+        web_search = WebSearch() if self.config.get("web_search", True) else None
+        agents_list: List[BaseAgent] = [
+            ReminderAgent(self.manager, self.bus, {}),
+            KnowledgeAgent(
+                self.manager, self.bus,
+                {
+                    "max_results": 3,
+                    "web_search": web_search,
+                    "news_api_key": self.config.get("api_keys", {}).get("news_api_key"),
+                },
+            ),
+            DocumentAgent(self.manager, self.bus, {"web_search": web_search}),
+            TextExtractorAgent(self.manager, self.bus, self.config.get("vision", {})),
+            ComputerControlAgent(self.manager, self.bus, {}),
+        ]
+        # Création du CreatorAgent avec la liste dynamique des outils
+        available_tools = self._get_all_tool_names()
+        creator = CreatorAgent(
+            self.manager, self.bus, self.event_bus, self.config,
+            agents_dir=self.custom_agents_dir,
+            available_tools=available_tools
+        )
+        agents_list.append(creator)
+
+        for agent in agents_list:
+            # Déterminer les droits de publication/souscription pour cet agent
+            publish_channels = []
+            subscribe_channels = []
+
+            if isinstance(agent, CreatorAgent):
+                publish_channels.append("agent.created")
+            # Ajouter d'autres droits selon le type d'agent
+            # Exemple: HealerAgent aura besoin de canaux, mais il n'est pas dans ce registre car il est créé dans engine.
+            # Ici on gère uniquement les agents du cortex, donc on peut les lister.
+
+            # Enregistrer la source sur l'event bus
+            token = self.event_bus.register_source(
+                source=agent.name,
+                publish_channels=publish_channels,
+                subscribe_channels=subscribe_channels
+            )
+            agent.set_token(token)  # On suppose que BaseAgent a une méthode set_token
+            agent.event_bus = self.event_bus
+            self.agents[agent.name] = agent
+            logger.debug(f"Agent {agent.name} enregistré avec token {token[:8]}...")
+
+    def _get_all_tool_names(self) -> List[str]:
+        """Retourne la liste de tous les noms d'outils disponibles dans les agents standards."""
+        tool_names = set()
+        for agent in self.agents.values():
+            for tool in agent.get_tools():
+                tool_names.add(tool.name)
+        return list(tool_names)
+
+    def start_watcher(self) -> None:
+        """Démarre la surveillance du dossier des agents personnalisés."""
+        self.observer = Observer()
+        handler = AgentFileHandler(self)
+        self.observer.schedule(handler, str(self.custom_agents_dir), recursive=False)
+        self.observer.start()
+        logger.info(f"👀 Surveillance du dossier {self.custom_agents_dir} activée")
+
+    def stop_watcher(self) -> None:
+        if self.observer:
+            self.observer.stop()
+            self.observer.join()
+
+    def load_agent_from_file(self, filepath: Path) -> None:
+        """Charge dynamiquement un agent depuis un fichier Python et l'ajoute au registre."""
+        try:
+            module_name = filepath.stem
+            spec = importlib.util.spec_from_file_location(module_name, filepath)
+            if spec is None or spec.loader is None:
+                logger.error(f"Impossible de charger le module {filepath}")
+                return
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
+
+            for attr_name in dir(module):
+                attr = getattr(module, attr_name)
+                if isinstance(attr, type) and issubclass(attr, BaseAgent) and attr != BaseAgent:
+                    agent_instance = attr(self.manager, self.bus, self.config)
+                    # Enregistrer l'agent sur l'event bus
+                    # On ne connaît pas ses besoins en canaux, on lui donne des droits par défaut
+                    token = self.event_bus.register_source(
+                        source=agent_instance.name,
+                        publish_channels=[],  # À définir si on veut lui donner des droits
+                        subscribe_channels=[]
+                    )
+                    agent_instance.set_token(token)
+                    agent_instance.event_bus = self.event_bus
+                    self.agents[agent_instance.name] = agent_instance
+                    logger.info(f"✅ Agent {agent_instance.name} chargé dynamiquement depuis {filepath}")
+                    # Publier un événement avec le token du cortex
+                    asyncio.create_task(self.event_bus.publish(
+                        channel="agent.loaded",
+                        data={"name": agent_instance.name},
+                        source="AgentRegistry",
+                        token=self.cortex_token
+                    ))
+                    return
+            logger.warning(f"Aucune classe d'agent trouvée dans {filepath}")
+        except Exception as e:
+            logger.error(f"Erreur lors du chargement de {filepath}: {e}")
+            asyncio.create_task(self.event_bus.publish(
+                channel="tool.error",
+                data={
+                    "agent": "AgentRegistry",
+                    "error": str(e),
+                    "suggestion": "Vérifiez la syntaxe du fichier agent."
+                },
+                source="AgentRegistry",
+                token=self.cortex_token
+            ))
+
+    def get_agent(self, name: str) -> BaseAgent:
+        """Retourne un agent par son nom, lève AgentNotFoundError si absent."""
+        agent = self.agents.get(name)
+        if not agent:
+            raise AgentNotFoundError(f"Agent '{name}' introuvable")
+        return agent
+
+    def list_agents(self) -> List[str]:
+        return list(self.agents.keys())
+
+    def get_all_tool_names(self) -> List[str]:
+        """Retourne la liste de tous les noms d'outils disponibles (utile pour CreatorAgent)."""
+        tool_names = set()
+        for agent in self.agents.values():
+            for tool in agent.get_tools():
+                tool_names.add(tool.name)
+        return list(tool_names)
+
+
+# -----------------------------------------------------------------------------
+# Classifieur sémantique (EmbeddingClassifier)
+# -----------------------------------------------------------------------------
 class EmbeddingClassifier:
     """
     Classifieur sémantique basé sur embeddings utilisant un modèle transformers.
@@ -67,11 +273,10 @@ class EmbeddingClassifier:
 
     QUERY_TYPES: List[str] = [
         "greeting", "action", "multi_action", "simple",
-        "complex", "mail", "safari", "arrange", "creation",  # <-- AJOUT
+        "complex", "mail", "safari", "arrange", "creation",
     ]
 
     TRAINING_EXAMPLES: List[Tuple[str, str]] = [
-        # ... (liste existante)
         ("bonjour", "greeting"), ("salut", "greeting"), ("hello", "greeting"),
         ("coucou", "greeting"), ("merci", "greeting"), ("au revoir", "greeting"),
         ("bye", "greeting"), ("hi", "greeting"), ("bonsoir", "greeting"),
@@ -154,7 +359,6 @@ class EmbeddingClassifier:
             self._load_classifier_only()
 
     async def _ensure_loaded(self) -> None:
-        # Chargement paresseux du modèle (principe de moindre action)
         if self._model is not None:
             return
         if self._load_lock is None:
@@ -194,7 +398,6 @@ class EmbeddingClassifier:
             self._save()
 
     def _train_sync(self) -> None:
-        # Entraînement synchrone (une seule fois au démarrage)
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self._model = AutoModel.from_pretrained(self.model_name).to(self.device)
         self._model.eval()
@@ -212,7 +415,6 @@ class EmbeddingClassifier:
     def _mean_pooling(
         self, token_embeddings: torch.Tensor, attention_mask: torch.Tensor
     ) -> torch.Tensor:
-        # Pooling moyen (technique classique pour les embeddings)
         expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * expanded, 1) / torch.clamp(
             expanded.sum(1), min=1e-9
@@ -227,7 +429,6 @@ class EmbeddingClassifier:
             outputs = self._model(**encoded)
         emb = self._mean_pooling(outputs.last_hidden_state, encoded["attention_mask"])
         result = torch.nn.functional.normalize(emb, p=2, dim=1).cpu().numpy()
-        # Nettoyage des NaN (problème MPS) – homéostasie
         result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
         return result
 
@@ -255,7 +456,6 @@ class EmbeddingClassifier:
         return pred_label, confidence
 
     def _fallback(self, query: str) -> str:
-        # Fallback par mots-clés (principe de moindre action : éviter d'appeler le LLM pour ça)
         q = query.lower().strip()
 
         # Détection de création d'agent
@@ -278,14 +478,13 @@ class EmbeddingClassifier:
         return "simple" if len(q.split()) < 5 else "complex"
 
 
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Prédicteur temps réel (NanoPredictor)
-# =============================================================================
+# -----------------------------------------------------------------------------
 class NanoPredictor:
     """
     Prédicteur temps réel : analyse le texte partiel toutes les 0.5 s et
     prépare une action candidate via le LLM nano (0.5B).
-    Incarne le principe de moindre action en anticipant les besoins.
     """
 
     def __init__(
@@ -412,9 +611,9 @@ class NanoPredictor:
         return None
 
 
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Learning Router (ActionSelector amélioré)
-# =============================================================================
+# -----------------------------------------------------------------------------
 class PathStats:
     """Statistiques d'un chemin d'exécution."""
     def __init__(self):
@@ -445,7 +644,6 @@ class ActionSelector:
     """
     Sélecteur de chemin avec apprentissage par renforcement.
     Combine statistiques de performance et priorités statiques.
-    Incarne le principe d'évolution : apprend des succès/échecs pour affiner les choix futurs.
     """
 
     DEFAULT_PATH_PRIORITY: Dict[str, int] = {
@@ -458,7 +656,7 @@ class ActionSelector:
         "llm_speed": 7,
         "llm_balanced": 8,
         "plan_generation": 9,
-        "creation_agent": 10,  # <-- AJOUT (ordre par défaut, mais on utilise les priorités spécifiques)
+        "creation_agent": 10,
     }
 
     TYPE_SPECIFIC_PRIORITY: Dict[str, Dict[str, int]] = {
@@ -544,8 +742,8 @@ class ActionSelector:
             "llm_nano": 9,
             "creation_agent": 10,
         },
-        "creation": {  # <-- NOUVEAU type
-            "creation_agent": 1,        # priorité max pour la création
+        "creation": {
+            "creation_agent": 1,
             "llm_balanced": 2,
             "plan_generation": 3,
             "llm_speed": 4,
@@ -562,7 +760,7 @@ class ActionSelector:
         self.stats: Dict[str, Dict[str, PathStats]] = defaultdict(lambda: defaultdict(PathStats))
         self.paths: Dict[str, Dict[str, Any]] = {}
         self.classifier = classifier
-        self.epsilon = 0.05  # Exploration epsilon-greedy (équilibre exploration/exploitation)
+        self.epsilon = 0.05
 
     def register_path(self, path_id: str, func: Callable, description: str = "") -> None:
         self.paths[path_id] = {"func": func, "description": description}
@@ -575,7 +773,6 @@ class ActionSelector:
 
         type_stats = self.stats[query_type]
 
-        # Exploration epsilon-greedy
         if random.random() < self.epsilon:
             candidates = list(self.paths.keys())
             if len(candidates) > 3:
@@ -584,16 +781,12 @@ class ActionSelector:
             logger.debug(f"Exploration: choix aléatoire de {path_id}")
             return [(path_id, self.paths[path_id]["func"])]
 
-        # Sinon, tri par score décroissant
         def _score(pid: str) -> float:
             s = type_stats.get(pid)
             if s is None or s.count == 0:
-                # Pas de stats : utiliser la priorité statique
                 priority = self.TYPE_SPECIFIC_PRIORITY.get(query_type, {}).get(pid,
                             self.DEFAULT_PATH_PRIORITY.get(pid, 99))
-                # Convertir priorité en score (plus petit = meilleur)
                 return 1000 - priority
-            # Score = taux de succès / (temps moyen + epsilon)
             eps = 0.001
             return s.success_rate / (s.avg_time + eps)
 
@@ -609,13 +802,73 @@ class ActionSelector:
         self.stats[query_type][path_id].record_failure()
 
 
-# =============================================================================
-# Cortex frontal
-# =============================================================================
-class FrontalCortex:
+class PathManager:
+    """Gère l'enregistrement et la sélection des chemins d'exécution."""
+
+    def __init__(self, classifier: EmbeddingClassifier, action_selector: ActionSelector):
+        self.classifier = classifier
+        self.selector = action_selector
+
+    def register_all_paths(self, executor: ExecutionEngine) -> None:
+        """Enregistre tous les chemins auprès du sélecteur."""
+        self.selector.register_path(
+            "direct_action", executor.execute_direct_action,
+            "Exécution directe d'une action simple (mots-clés)",
+        )
+        self.selector.register_path(
+            "multi_action", executor.execute_multi_action,
+            "Exécution séquentielle de plusieurs actions",
+        )
+        self.selector.register_path(
+            "predicted_action", executor.execute_predicted_action,
+            "Action prédite par le nano (temps réel)",
+        )
+        self.selector.register_path(
+            "semantic_parsing", executor.execute_semantic_parsing,
+            "Interprétation sémantique via LLM nano",
+        )
+        self.selector.register_path(
+            "cache_response", executor.get_cached_response,
+            "Réponse depuis le cache exact",
+        )
+        self.selector.register_path(
+            "llm_nano", lambda q: executor.call_llm(q, "nano"),
+            "LLM nano (0.5B) — réponse directe",
+        )
+        self.selector.register_path(
+            "llm_speed", lambda q: executor.call_llm(q, "speed"),
+            "LLM speed (3B) — réponse directe",
+        )
+        self.selector.register_path(
+            "llm_balanced", lambda q: executor.call_llm(q, "balanced"),
+            "LLM balanced (7B) — réponse directe",
+        )
+        self.selector.register_path(
+            "plan_generation", executor.generate_and_execute_plan,
+            "Génération et exécution d'un plan via PlannerAgent",
+        )
+        self.selector.register_path(
+            "creation_agent", executor.execute_creation_agent,
+            "Création d'un nouvel agent via CreatorAgent",
+        )
+
+    async def select_paths(self, query: str) -> List[Tuple[str, Callable]]:
+        return await self.selector.get_paths_for_query(query)
+
+    def record_success(self, query: str, path_id: str, duration: float) -> None:
+        self.selector.record_success(query, path_id, duration)
+
+    def record_failure(self, query: str, path_id: str) -> None:
+        self.selector.record_failure(query, path_id)
+
+
+# -----------------------------------------------------------------------------
+# Moteur d'exécution (ExecutionEngine)
+# -----------------------------------------------------------------------------
+class ExecutionEngine:
     """
-    Cortex frontal — Orchestrateur des agents et de la planification.
-    Intègre tous les principes universels.
+    Exécute les différents chemins d'action.
+    Utilise les agents, le cache, le LLM, etc.
     """
 
     SIMPLE_ACTIONS: Dict[str, Tuple[str, str]] = {
@@ -643,146 +896,34 @@ class FrontalCortex:
 
     def __init__(
         self,
+        registry: AgentRegistry,
+        planner: PlannerAgent,
         manager: ProviderManager,
-        bus: Any,
-        event_bus: EventBus,
         prompt_cache: PromptCache,
-        memory_service: MemoryService,
-        elasticity_engine: ElasticityEngine,
+        memory: MemoryService,
+        event_bus: EventBus,
         config: Dict[str, Any],
-    ) -> None:
+        loop: asyncio.AbstractEventLoop,
+        model_mapping: Dict[str, str],
+        llm_circuit_breaker: Optional[CircuitBreaker] = None,
+    ):
+        self.registry = registry
+        self.planner = planner
         self.manager = manager
-        self.bus = bus
-        self.event_bus = event_bus
         self.prompt_cache = prompt_cache
-        self.memory = memory_service
-        self.elasticity = elasticity_engine
+        self.memory = memory
+        self.event_bus = event_bus
         self.config = config
-        self.web_search = WebSearch() if config.get("web_search", True) else None
-
-        self.executor = TaskExecutor(max_workers=3, persist_path=None)
-
-        # Répertoire pour les agents personnalisés (principe d'évolution)
-        self.custom_agents_dir = Path(config.get("custom_agents_dir", "./data/custom_agents"))
-        self.custom_agents_dir.mkdir(parents=True, exist_ok=True)
-
-        self.agents: Dict[str, BaseAgent] = {}
-        self._register_agents()
-
-        self.memory_manager = MemoryManager(memory_service, config)
-
-        self.planner = PlannerAgent(manager, bus, config)
-
+        self.loop = loop
+        self.model_mapping = model_mapping
+        self.llm_circuit_breaker = llm_circuit_breaker
         self.default_system = "Tu es un assistant IA utile, amical et concis."
-        self.base_plan_timeout: float = config.get("plan_timeout", 30.0)
-        self.max_plan_retries: int = config.get("max_plan_retries", 1)
-        self.enable_memory: bool = config.get("enable_memory", True)
-        self.enable_elasticity: bool = config.get("enable_elasticity", True)
-
-        self.model_mapping: Dict[str, str] = {
-            "speed": config.get("speed_model", "qwen2.5:3b"),
-            "balanced": config.get("balanced_model", "qwen2.5:7b"),
-            "quality": config.get("quality_model", "qwen2.5:14b"),
-            "nano": "qwen2.5:0.5b",
-        }
-
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-
-        retrain: bool = config.get("retrain_classifier", False)
-        self.classifier = EmbeddingClassifier(retrain=retrain)
-
-        self.predictor = NanoPredictor(manager, self.agents, self.model_mapping)
-        self._predictor_started: bool = False
-
-        self._llm_circuit_breaker: Optional[CircuitBreaker] = None
-        if config.get("enable_circuit_breaker", True):
-            self._llm_circuit_breaker = CircuitBreaker(
-                name="llm",
-                failure_threshold=config.get("cb_failure_threshold", 5),
-                recovery_timeout=config.get("cb_recovery_timeout", 60),
-            )
-
-        self.action_selector = ActionSelector(self.classifier)
-        self._register_paths()
-
-        self.planner.set_agents(self.agents)
-
-        logger.info(f"🧠 FrontalCortex initialisé avec {len(self.agents)} agents, memory manager, planner et creator agent.")
-
-    def _register_agents(self) -> None:
-        """Instancie et enregistre tous les agents (principe de symbiose)."""
-        agents_list: List[BaseAgent] = [
-            ReminderAgent(self.manager, self.bus, {}),
-            KnowledgeAgent(
-                self.manager, self.bus,
-                {
-                    "max_results": 3,
-                    "web_search": self.web_search,
-                    "news_api_key": self.config.get("api_keys", {}).get("news_api_key"),
-                },
-            ),
-            DocumentAgent(self.manager, self.bus, {"web_search": self.web_search}),
-            TextExtractorAgent(self.manager, self.bus, self.config.get("vision", {})),
-            ComputerControlAgent(self.manager, self.bus, {}),
-            # Ajout du CreatorAgent
-            CreatorAgent(
-                self.manager, self.bus, self.event_bus, self.config,
-                agents_dir=self.custom_agents_dir
-            ),
-        ]
-        for agent in agents_list:
-            agent.event_bus = self.event_bus
-            self.agents[agent.name] = agent
-
-    def _register_paths(self) -> None:
-        """Déclare tous les chemins d'exécution (principe de moindre action)."""
-        self.action_selector.register_path(
-            "direct_action", self._execute_direct_action,
-            "Exécution directe d'une action simple (mots-clés)",
-        )
-        self.action_selector.register_path(
-            "multi_action", self._execute_multi_action,
-            "Exécution séquentielle de plusieurs actions",
-        )
-        self.action_selector.register_path(
-            "predicted_action", self._execute_predicted_action,
-            "Action prédite par le nano (temps réel)",
-        )
-        self.action_selector.register_path(
-            "semantic_parsing", self._execute_semantic_parsing,
-            "Interprétation sémantique via LLM nano",
-        )
-        self.action_selector.register_path(
-            "cache_response", self._get_cached_response,
-            "Réponse depuis le cache exact",
-        )
-        self.action_selector.register_path(
-            "llm_nano", lambda q: self._call_llm(q, "nano"),
-            "LLM nano (0.5B) — réponse directe",
-        )
-        self.action_selector.register_path(
-            "llm_speed", lambda q: self._call_llm(q, "speed"),
-            "LLM speed (3B) — réponse directe",
-        )
-        self.action_selector.register_path(
-            "llm_balanced", lambda q: self._call_llm(q, "balanced"),
-            "LLM balanced (7B) — réponse directe",
-        )
-        self.action_selector.register_path(
-            "plan_generation", self._generate_and_execute_plan,
-            "Génération et exécution d'un plan via PlannerAgent",
-        )
-        # Nouveau chemin pour la création d'agents
-        self.action_selector.register_path(
-            "creation_agent", self._execute_creation_agent,
-            "Création d'un nouvel agent via CreatorAgent",
-        )
+        self.enable_memory = config.get("enable_memory", True)
+        self.base_plan_timeout = config.get("plan_timeout", 30.0)
 
     def _run_coro_sync(self, coro: Any, timeout: float = _THREAD_FUTURE_TIMEOUT) -> Any:
-        # Exécute une coroutine depuis un thread synchrone (utilisé pour les chemins synchrones)
-        if self._loop is None:
-            raise RuntimeError("Boucle asyncio non initialisée")
-        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        """Exécute une coroutine de manière synchrone dans le thread asyncio."""
+        future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         try:
             return future.result(timeout=timeout)
         except concurrent.futures.TimeoutError:
@@ -793,79 +934,70 @@ class FrontalCortex:
             logger.error(f"Exception dans _run_coro_sync: {e}", exc_info=True)
             raise
 
-    def _get_nano_system(self) -> str:
-        return (
-            "Tu es un assistant personnel local, amical et direct. "
-            "Tu réponds en français, de façon concise (1-3 phrases max). "
-            "Tu peux aider sur tous les sujets du quotidien."
-        )
-
-    async def _execute_direct_action(self, query: str) -> str:
+    async def execute_direct_action(self, query: str) -> str:
         route = self._route_simple_action(query)
         if route:
             agent_name, action = route
-            agent = self.agents.get(agent_name)
-            if agent:
+            try:
+                agent = self.registry.get_agent(agent_name)
                 logger.debug(f"🔧 Exécution directe : {agent_name}.{action['tool']}")
-                try:
-                    result: str = await agent.execute_tool(action["tool"], action["parameters"])
-                except Exception as e:
-                    logger.error(f"Erreur dans direct_action: {e}")
-                    raise
+                result = await agent.execute_tool(action["tool"], action["parameters"])
                 if result.startswith("❌"):
-                    raise Exception(f"L'outil a retourné une erreur: {result}")
+                    raise PathExecutionError(f"L'outil a retourné une erreur: {result}")
                 return result
-        raise Exception("Aucune action directe trouvée")
+            except AgentNotFoundError as e:
+                raise PathExecutionError(str(e)) from e
+        raise PathExecutionError("Aucune action directe trouvée")
 
-    async def _execute_multi_action(self, query: str) -> str:
+    async def execute_multi_action(self, query: str) -> str:
         parts = re.split(r"\s+(et|puis)\s+", query, flags=re.IGNORECASE)
-        results: List[str] = []
+        results = []
         for part in parts:
             part = part.strip()
             if not part or part.lower() in ("et", "puis"):
                 continue
             route = self._route_simple_action(part)
             if not route:
-                raise Exception(f"Impossible de traiter la sous-action: {part}")
+                raise PathExecutionError(f"Impossible de traiter la sous-action: {part}")
             agent_name, action = route
-            agent = self.agents.get(agent_name)
-            if not agent:
-                raise Exception(f"Agent {agent_name} introuvable")
+            agent = self.registry.get_agent(agent_name)
             try:
                 result = await asyncio.wait_for(
                     agent.execute_tool(action["tool"], action["parameters"]),
                     timeout=5.0
                 )
             except asyncio.TimeoutError:
-                raise Exception(f"Timeout sur l'étape '{part}'")
+                raise PathExecutionError(f"Timeout sur l'étape '{part}'")
             if result.startswith("❌"):
-                raise Exception(f"Échec de la sous-action: {result}")
+                raise PathExecutionError(f"Échec de la sous-action: {result}")
             results.append(result)
         if results:
             return "\n".join(results)
-        raise Exception("Aucune action multiple trouvée")
+        raise PathExecutionError("Aucune action multiple trouvée")
 
-    def _execute_predicted_action(self, query: str) -> str:
-        prediction = self._run_coro_sync(self.predictor.get_prediction(), timeout=1.0)
+    def execute_predicted_action(self, query: str) -> str:
+        prediction = self._run_coro_sync(self._get_prediction(), timeout=1.0)
         if not prediction:
-            raise Exception("Aucune prédiction disponible")
+            raise PathExecutionError("Aucune prédiction disponible")
         agent_name = prediction.get("agent")
         tool_name = prediction.get("tool")
         params = prediction.get("parameters", {})
         if not agent_name or not tool_name:
-            raise Exception("Prédiction incomplète")
-        agent = self.agents.get(agent_name)
-        if not agent:
-            raise Exception(f"Agent {agent_name} inconnu")
+            raise PathExecutionError("Prédiction incomplète")
+        agent = self.registry.get_agent(agent_name)
         result = self._run_coro_sync(agent.execute_tool(tool_name, params))
         if result.startswith("❌"):
-            raise Exception(f"Échec de l'action prédite: {result}")
+            raise PathExecutionError(f"Échec de l'action prédite: {result}")
         return result
 
-    def _execute_semantic_parsing(self, query: str) -> str:
+    async def _get_prediction(self) -> Optional[Dict[str, Any]]:
+        # Cette méthode sera connectée au NanoPredictor
+        return None
+
+    def execute_semantic_parsing(self, query: str) -> str:
         tools_desc = [
             f"- {name}.{tool.name}: {tool.description}"
-            for name, agent in self.agents.items()
+            for name, agent in self.registry.agents.items()
             for tool in agent.get_tools()
         ]
         tools_str = "\n".join(tools_desc)
@@ -887,40 +1019,45 @@ class FrontalCortex:
             except JSONParseError:
                 match = re.search(r"(\[.*\])", cleaned, re.DOTALL)
                 if not match:
-                    raise Exception("Impossible de parser la réponse")
+                    raise PathExecutionError("Impossible de parser la réponse")
                 actions = parse_json_safely(match.group(1), expected_type=list)
 
             if not actions:
-                raise Exception("Aucune action générée")
+                raise PathExecutionError("Aucune action générée")
 
-            results: List[str] = []
+            results = []
             for act in actions:
                 agent_name = act.get("agent")
                 tool_name = act.get("tool")
                 params = act.get("parameters", {})
-                agent = self.agents.get(agent_name)
-                if not agent:
-                    raise Exception(f"Agent {agent_name} inconnu")
+                agent = self.registry.get_agent(agent_name)
                 result = self._run_coro_sync(agent.execute_tool(tool_name, params))
                 if result.startswith("❌"):
-                    raise Exception(f"Échec de l'action {tool_name}: {result}")
+                    raise PathExecutionError(f"Échec de l'action {tool_name}: {result}")
                 results.append(result)
             return "\n".join(results)
         except Exception as exc:
-            raise Exception(f"Échec parsing sémantique: {exc}") from exc
+            raise PathExecutionError(f"Échec parsing sémantique: {exc}") from exc
 
-    def _get_cached_response(self, query: str) -> str:
+    def get_cached_response(self, query: str) -> str:
         systems = [self._get_nano_system(), self.default_system]
         for system in systems:
             cached = self.prompt_cache.get(query, system=system, model="balanced")
             if cached:
                 return cached
-        raise Exception("Cache miss")
+        raise PathExecutionError("Cache miss")
 
-    def _call_llm(self, query: str, model_profile: str) -> str:
+    def _get_nano_system(self) -> str:
+        return (
+            "Tu es un assistant personnel local, amical et direct. "
+            "Tu réponds en français, de façon concise (1-3 phrases max). "
+            "Tu peux aider sur tous les sujets du quotidien."
+        )
+
+    def call_llm(self, query: str, model_profile: str) -> str:
         model_name = self.model_mapping.get(model_profile)
         if not model_name:
-            raise Exception(f"Profil de modèle inconnu: {model_profile}")
+            raise PathExecutionError(f"Profil de modèle inconnu: {model_profile}")
 
         enriched = self._enrich_query(query)
         word_count = len(query.split())
@@ -937,25 +1074,25 @@ class FrontalCortex:
                 model=model_name, temperature=0.5, max_tokens=256, timeout=timeout,
             )
 
-        response: str = (
-            self._llm_circuit_breaker.call(_generate)
-            if self._llm_circuit_breaker is not None
-            else _generate()
-        )
+        try:
+            response: str = (
+                self.llm_circuit_breaker.call(_generate)
+                if self.llm_circuit_breaker is not None
+                else _generate()
+            )
+        except Exception as e:
+            raise PathExecutionError(f"Échec de l'appel LLM: {e}") from e
 
         self.prompt_cache.put(query, system, "balanced", response)
         if self.enable_memory:
             self.memory.add_to_working(query, response)
-            if self._loop is not None:
-                asyncio.run_coroutine_threadsafe(
-                    self.memory.add_episode(query, response, metadata={"latency": time.time()}),
-                    self._loop
-                )
-            else:
-                logger.warning("Boucle asyncio non disponible pour ajouter l'épisode")
+            asyncio.run_coroutine_threadsafe(
+                self.memory.add_episode(query, response, metadata={"latency": time.time()}),
+                self.loop
+            )
         return response
 
-    async def _generate_and_execute_plan(self, query: str) -> str:
+    async def generate_and_execute_plan(self, query: str) -> str:
         plan_dicts = self._get_cached_plan(query)
         if plan_dicts:
             from app.agents.planner_agent import PlanStep
@@ -963,7 +1100,7 @@ class FrontalCortex:
         else:
             steps = await self.planner.create_plan(query)
             if not steps:
-                raise Exception("Impossible de générer un plan")
+                raise PathExecutionError("Impossible de générer un plan")
             plan_dicts = [step.dict() for step in steps]
             self._cache_plan(query, plan_dicts)
 
@@ -975,33 +1112,19 @@ class FrontalCortex:
             )
         except asyncio.TimeoutError:
             logger.error(f"Timeout lors de l'exécution du plan")
-            raise Exception("Le plan a pris trop de temps")
+            raise PathExecutionError("Le plan a pris trop de temps")
         return result
 
-    async def _execute_creation_agent(self, query: str) -> str:
-        """
-        Chemin dédié à la création d'agents.
-        Utilise le CreatorAgent pour générer un nouvel agent à partir de la description.
-        """
-        creator = self.agents.get("CreatorAgent")
-        if not creator:
-            raise Exception("CreatorAgent non disponible")
-        # Extraire la description (on retire le préfixe "crée un agent" etc.)
+    async def execute_creation_agent(self, query: str) -> str:
+        creator = self.registry.get_agent("CreatorAgent")
         q = query.lower()
-        # Essayer plusieurs motifs
         for prefix in ["crée un agent", "créer un agent", "génère un agent", "fabrique un agent"]:
             if prefix in q:
                 description = q.split(prefix, 1)[1].strip()
                 if description:
-                    # Appeler l'outil create_agent du CreatorAgent
                     result = await creator.execute_tool("create_agent", {"description": description})
                     return result
-        # Fallback : si on n'a pas trouvé de préfixe, on passe la requête entière
         return await creator.execute_tool("create_agent", {"description": query})
-
-    def _safe_fallback(self, query: str) -> str:
-        logger.warning("Utilisation du fallback sécurisé.")
-        return "Désolé, je n'ai pas pu traiter votre demande."
 
     def _route_simple_action(self, query: str) -> Optional[Tuple[str, Dict[str, Any]]]:
         q = query.lower()
@@ -1010,7 +1133,6 @@ class FrontalCortex:
                 continue
             if tool_name == "open_application":
                 rest = q.replace(keyword, "").strip()
-                # S'arrêter au premier "et" ou "puis" (principe de moindre action)
                 match = re.search(r"^(.*?)(?:\s+(?:et|puis)\s+|$)", rest)
                 if match:
                     rest = match.group(1).strip()
@@ -1028,7 +1150,7 @@ class FrontalCortex:
                 if text.lower().startswith(("et", "puis")):
                     return None
                 app_m = re.search(r"(?:dans|sur)\s+([a-zA-Z]+)", q, re.IGNORECASE)
-                params: Dict[str, Any] = {"text": text}
+                params = {"text": text}
                 if app_m:
                     params["app_name"] = app_m.group(1)
                 return agent_name, {"tool": tool_name, "parameters": params}
@@ -1055,12 +1177,6 @@ class FrontalCortex:
                 return f"Contexte récent:\n{ctx}\n\n{query}"
         return query
 
-    def _build_agents_description(self) -> str:
-        return "\n".join(
-            f"- {name}: {', '.join(t.name for t in agent.get_tools())}"
-            for name, agent in self.agents.items()
-        )
-
     def _get_cached_plan(self, query: str) -> Optional[List[Dict[str, Any]]]:
         try:
             return self.prompt_cache.get_plan(query, similarity_threshold=0.75)
@@ -1074,24 +1190,155 @@ class FrontalCortex:
         except Exception as exc:
             logger.error(f"Erreur stockage plan cache: {exc}")
 
-    # Méthodes de compatibilité (ancien système de planification, non utilisées)
-    def _generate_plan_with_retry(self, query: str) -> Optional[List[Dict[str, Any]]]:
-        return None
 
-    def _generate_plan(self, query: str) -> Optional[List[Dict[str, Any]]]:
-        return None
+# -----------------------------------------------------------------------------
+# Collecteur de métriques
+# -----------------------------------------------------------------------------
+class MetricsCollector:
+    """Centralise les métriques pour le cortex."""
+    def record_step(self, path_id: str, duration: float):
+        record_cortex_step(path_id, duration)
 
-    def _validate_plan(self, plan: List[Dict[str, Any]]) -> bool:
-        return True
+    def record_error(self, path_id: str, error: str):
+        logger.debug(f"Métrique erreur: {path_id} - {error}")
 
-    def _execute_plan(self, plan: List[Dict[str, Any]], query: str, timeout: float = 30.0) -> str:
-        return ""
 
-    def _execute_step(self, *args: Any) -> str:
-        return ""
+# -----------------------------------------------------------------------------
+# Configuration du cortex
+# -----------------------------------------------------------------------------
+@dataclass
+class CortexConfig:
+    """Configuration du cortex."""
+    plan_timeout: float = 30.0
+    max_plan_retries: int = 1
+    enable_memory: bool = True
+    enable_elasticity: bool = True
+    enable_circuit_breaker: bool = True
+    cb_failure_threshold: int = 5
+    cb_recovery_timeout: int = 60
+    web_search: bool = True
+    speed_model: str = "qwen2.5:3b"
+    balanced_model: str = "qwen2.5:7b"
+    quality_model: str = "qwen2.5:14b"
+    nano_model: str = "qwen2.5:0.5b"
+    retrain_classifier: bool = False
+    custom_agents_dir: str = "./data/custom_agents"
+    api_keys: Dict[str, str] = field(default_factory=dict)
+    vision: Dict[str, Any] = field(default_factory=dict)
 
-    def _synthesize(self, query: str, results: List[str]) -> str:
-        return "\n".join(results)
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> CortexConfig:
+        return cls(
+            plan_timeout=data.get("plan_timeout", 30.0),
+            max_plan_retries=data.get("max_plan_retries", 1),
+            enable_memory=data.get("enable_memory", True),
+            enable_elasticity=data.get("enable_elasticity", True),
+            enable_circuit_breaker=data.get("enable_circuit_breaker", True),
+            cb_failure_threshold=data.get("cb_failure_threshold", 5),
+            cb_recovery_timeout=data.get("cb_recovery_timeout", 60),
+            web_search=data.get("web_search", True),
+            speed_model=data.get("speed_model", "qwen2.5:3b"),
+            balanced_model=data.get("balanced_model", "qwen2.5:7b"),
+            quality_model=data.get("quality_model", "qwen2.5:14b"),
+            nano_model=data.get("nano_model", "qwen2.5:0.5b"),
+            retrain_classifier=data.get("retrain_classifier", False),
+            custom_agents_dir=data.get("custom_agents_dir", "./data/custom_agents"),
+            api_keys=data.get("api_keys", {}),
+            vision=data.get("vision", {}),
+        )
+
+
+# =============================================================================
+# Cortex frontal (version allégée)
+# =============================================================================
+class FrontalCortex:
+    """
+    Cortex frontal — Orchestrateur principal.
+    Délègue aux sous-composants pour l'exécution.
+    """
+
+    def __init__(
+        self,
+        manager: ProviderManager,
+        bus: Any,
+        event_bus: EventBus,
+        prompt_cache: PromptCache,
+        memory_service: MemoryService,
+        elasticity_engine: ElasticityEngine,
+        config: Dict[str, Any],
+    ) -> None:
+        self.manager = manager
+        self.bus = bus
+        self.event_bus = event_bus
+        self.prompt_cache = prompt_cache
+        self.memory = memory_service
+        self.elasticity = elasticity_engine
+        self.raw_config = config
+        self.cortex_config = CortexConfig.from_dict(config)
+
+        self.executor = TaskExecutor(max_workers=3, persist_path=None)
+
+        self.custom_agents_dir = Path(self.cortex_config.custom_agents_dir)
+        self.custom_agents_dir.mkdir(parents=True, exist_ok=True)
+
+        # Enregistrer le cortex comme source sur l'event bus
+        self._cortex_token = self.event_bus.register_source(
+            source="cortex",
+            publish_channels=["tool.error"],
+            subscribe_channels=[]
+        )
+        logger.debug(f"Cortex enregistré avec token {self._cortex_token[:8]}...")
+
+        # Registre des agents (nécessite le token du cortex pour publier)
+        self.agent_registry = AgentRegistry(
+            manager, bus, event_bus, config, self.custom_agents_dir, self._cortex_token
+        )
+
+        self.memory_manager = MemoryManager(memory_service, config)
+
+        self.planner = PlannerAgent(manager, bus, event_bus, config)
+        self.planner.set_agents(self.agent_registry.agents)
+
+        # Modèles
+        self.model_mapping: Dict[str, str] = {
+            "speed": self.cortex_config.speed_model,
+            "balanced": self.cortex_config.balanced_model,
+            "quality": self.cortex_config.quality_model,
+            "nano": self.cortex_config.nano_model,
+        }
+
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+
+        # Classifieur
+        self.classifier = EmbeddingClassifier(retrain=self.cortex_config.retrain_classifier)
+
+        # Prédicteur (à connecter)
+        self.predictor: Optional[NanoPredictor] = None
+        self._predictor_started = False
+
+        # Circuit breaker
+        self._llm_circuit_breaker: Optional[CircuitBreaker] = None
+        if self.cortex_config.enable_circuit_breaker:
+            self._llm_circuit_breaker = CircuitBreaker(
+                name="llm",
+                failure_threshold=self.cortex_config.cb_failure_threshold,
+                recovery_timeout=self.cortex_config.cb_recovery_timeout,
+            )
+
+        # Moteur d'exécution (créé plus tard car besoin de loop)
+        self.execution_engine: Optional[ExecutionEngine] = None
+
+        # Gestionnaire de chemins
+        self.action_selector = ActionSelector(self.classifier)
+        self.path_manager = PathManager(self.classifier, self.action_selector)
+
+        # Métriques
+        self.metrics = MetricsCollector()
+
+        # Démarrer le watcher
+        self.agent_registry.start_watcher()
+
+        logger.info(f"🧠 FrontalCortex initialisé avec {len(self.agent_registry.agents)} agents.")
 
     async def think(
         self,
@@ -1099,46 +1346,87 @@ class FrontalCortex:
         system_prompt: Optional[str] = None,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
-        """
-        Point d'entrée principal du Cortex.
-        Incarne le principe de moindre action en testant les chemins du plus rapide au plus lent.
-        """
         self._loop = asyncio.get_running_loop()
 
+        # Initialisation tardive de l'execution engine
+        if self.execution_engine is None:
+            self.execution_engine = ExecutionEngine(
+                registry=self.agent_registry,
+                planner=self.planner,
+                manager=self.manager,
+                prompt_cache=self.prompt_cache,
+                memory=self.memory,
+                event_bus=self.event_bus,
+                config=self.raw_config,
+                loop=self._loop,
+                model_mapping=self.model_mapping,
+                llm_circuit_breaker=self._llm_circuit_breaker,
+            )
+            self.path_manager.register_all_paths(self.execution_engine)
+
         if not self._predictor_started:
-            self.predictor.start(self._loop)
+            # Note: NanoPredictor nécessiterait d'être importé et instancié
+            # self.predictor = NanoPredictor(...)
             self._predictor_started = True
 
         start = time.time()
         logger.info(f"🧠 think() — Requête: {query[:60]}…")
 
-        paths = await self.action_selector.get_paths_for_query(query)
+        try:
+            user_query = UserQuery.from_raw(query, allow_web_search=allow_web_search, system_prompt=system_prompt)
+        except ValueError as e:
+            logger.error(f"Requête invalide: {e}")
+            return "Désolé, votre requête est invalide.", time.time() - start
+
+        paths = await self.path_manager.select_paths(user_query.text)
         logger.info(f"⚡ Ordre des chemins: {[p[0] for p in paths]}")
 
         last_error: Optional[Exception] = None
         for path_id, path_func in paths:
             try:
                 if asyncio.iscoroutinefunction(path_func):
-                    response = await path_func(query)
+                    response = await path_func(user_query.text)
                 else:
-                    response = path_func(query)
+                    response = path_func(user_query.text)
                 duration = time.time() - start
-                self.action_selector.record_success(query, path_id, duration)
-                record_cortex_step(path_id, duration)
+                self.path_manager.record_success(user_query.text, path_id, duration)
+                self.metrics.record_step(path_id, duration)
                 logger.info(f"✅ Chemin '{path_id}' réussi en {duration:.3f}s")
                 return response, duration
             except Exception as exc:
                 logger.warning(f"⚠️  Chemin '{path_id}' échoué: {exc}")
-                self.action_selector.record_failure(query, path_id)
+                self.path_manager.record_failure(user_query.text, path_id)
+                self.metrics.record_error(path_id, str(exc))
                 last_error = exc
+                # Publier l'erreur avec le token du cortex
+                try:
+                    await self.event_bus.publish(
+                        channel="tool.error",
+                        data={
+                            "agent": "cortex",
+                            "path": path_id,
+                            "error": str(exc),
+                            "suggestion": "Un autre chemin va être essayé."
+                        },
+                        source="cortex",
+                        token=self._cortex_token
+                    )
+                except Exception as pub_err:
+                    logger.error(f"Échec publication erreur sur event bus: {pub_err}")
 
         logger.error(f"Tous les chemins ont échoué.")
-        response = self._safe_fallback(query)
+        response = self._safe_fallback(user_query.text)
         duration = time.time() - start
-        record_cortex_step("safe_fallback", duration)
+        self.metrics.record_step("safe_fallback", duration)
         return response, duration
 
+    def _safe_fallback(self, query: str) -> str:
+        logger.warning("Utilisation du fallback sécurisé.")
+        return "Désolé, je n'ai pas pu traiter votre demande."
+
     async def stop(self) -> None:
-        await self.predictor.stop()
+        if self.predictor:
+            await self.predictor.stop()
+        self.agent_registry.stop_watcher()
         self.executor.shutdown()
         logger.info("🛑 Cortex arrêté.")

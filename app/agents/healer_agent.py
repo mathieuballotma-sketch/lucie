@@ -1,28 +1,56 @@
 """
 Healer Agent - Agent de guérison et de neutralisation des menaces.
-Analyse les fichiers suspects, les met en quarantaine, et les neutralise.
-Version avec répertoire dédié pour les leurres, nettoyage périodique et asynchrone.
+Analyse les fichiers suspects, les met en quarantaine, et crée des leurres.
+Version refactorisée avec gestion d'erreurs avancée, métriques, et sécurité renforcée.
+Incarne les principes :
+- Homéostasie : gestion robuste des erreurs, publication sur event bus.
+- Évolution : métriques pour l'auto-amélioration.
+- Immunité adaptative : quarantaine, leurres.
+- Symbiose : événements pour informer les autres agents.
 """
 
 import asyncio
-import os
-import shutil
-import time
 import json
-import uuid
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+import re
 
 import aiofiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.healer.scanner import FileScanner
 from app.healer.analyzer import ThreatAnalyzer
 from app.healer.neutralizer import ThreatNeutralizer
 from app.healer.stealth import StealthMode
+from app.brain.synapses.event_bus import EventBus
 from app.utils.logger import logger
 from app.utils.errors import ToolExecutionError
+from app.utils.metrics import MetricsCollector
+
+
+# -----------------------------------------------------------------------
+# Exceptions personnalisées
+# -----------------------------------------------------------------------
+class HealerError(Exception):
+    """Erreur de base pour HealerAgent."""
+    pass
+
+
+class FileScanError(HealerError):
+    """Erreur lors du scan d'un fichier."""
+    pass
+
+
+class QuarantineError(HealerError):
+    """Erreur lors de la mise en quarantaine."""
+    pass
+
+
+class RestoreError(HealerError):
+    """Erreur lors de la restauration."""
+    pass
 
 
 # -----------------------------------------------------------------------
@@ -31,86 +59,73 @@ from app.utils.errors import ToolExecutionError
 class ScanFileContract(BaseModel):
     filepath: str = Field(..., description="Chemin complet du fichier à scanner")
 
+    @validator('filepath')
+    def path_must_exist(cls, v):
+        if not Path(v).exists():
+            raise ValueError(f"Le fichier {v} n'existe pas")
+        return v
+
+
 class QuarantineFileContract(BaseModel):
     filepath: str = Field(..., description="Chemin complet du fichier à mettre en quarantaine")
 
+    @validator('filepath')
+    def path_must_exist(cls, v):
+        if not Path(v).exists():
+            raise ValueError(f"Le fichier {v} n'existe pas")
+        return v
+
+
 class RestoreFileContract(BaseModel):
     filename: str = Field(..., description="Nom du fichier à restaurer (sans chemin)")
+
+    @validator('filename')
+    def prevent_path_traversal(cls, v):
+        # Évite les tentatives de traversée de répertoire
+        if '..' in v or '/' in v or '\\' in v:
+            raise ValueError("Nom de fichier invalide (caractères interdits)")
+        return v
+
 
 class ListQuarantineContract(BaseModel):
     pass
 
 
-class HealerAgent(BaseAgent):
+# -----------------------------------------------------------------------
+# Nettoyeur de leurres (extrait)
+# -----------------------------------------------------------------------
+class LureCleaner:
     """
-    Agent capable de scanner, analyser et neutraliser les fichiers malveillants.
+    Gère le nettoyage périodique des leurres expirés.
     """
 
-    def __init__(self, llm_service, bus, event_bus, config: dict, memory_service=None):
-        super().__init__("HealerAgent", llm_service, bus)
+    def __init__(self, lures_dir: Path, lure_ttl: int, event_bus: EventBus):
+        self.lures_dir = lures_dir
+        self.lure_ttl = lure_ttl
         self.event_bus = event_bus
-        self.memory = memory_service
+        self._task: Optional[asyncio.Task] = None
 
-        # Configuration
-        self.quarantine_dir = Path(config.get("quarantine_dir", "~/AgentLucide/quarantine")).expanduser()
-        self.lures_dir = Path(config.get("lures_dir", "~/AgentLucide/lures")).expanduser()
-        self.auto_quarantine = config.get("auto_quarantine", True)
-        self.stealth_mode = config.get("stealth_mode", False)
-        self.lure_ttl = config.get("lure_ttl", 86400)  # 24h
+    def start(self, loop: asyncio.AbstractEventLoop):
+        """Démarre la boucle de nettoyage."""
+        self._task = loop.create_task(self._cleanup_loop())
+        logger.debug("LureCleaner démarré")
 
-        # Créer les répertoires
-        self.quarantine_dir.mkdir(parents=True, exist_ok=True)
-        self.lures_dir.mkdir(parents=True, exist_ok=True)
+    async def stop(self):
+        """Arrête la boucle de nettoyage."""
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
 
-        # Initialiser les sous-modules
-        self.scanner = FileScanner(config)
-        self.analyzer = ThreatAnalyzer(config, memory_service)
-        self.neutralizer = ThreatNeutralizer(config, self.quarantine_dir, self.lures_dir)
-        self.stealth = StealthMode(config) if self.stealth_mode else None
+    async def _cleanup_loop(self):
+        """Boucle infinie avec intervalle d'une heure."""
+        while True:
+            await asyncio.sleep(3600)
+            await self._cleanup_once()
 
-        # Boucle asyncio (sera injectée plus tard)
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._cleanup_task: Optional[asyncio.Task] = None
-
-        # Souscrire aux événements
-        self.event_bus.subscribe("file.created", self._on_file_created)
-        self.event_bus.subscribe("file.modified", self._on_file_modified)
-        self.event_bus.subscribe("cyber.threat", self._on_cyber_threat)
-
-        logger.info("🩺 HealerAgent initialisé (en attente de la boucle asyncio)")
-
-    def can_handle(self, query: str) -> bool:
-        """Le HealerAgent ne gère pas directement les requêtes utilisateur."""
-        return False
-
-    def set_loop(self, loop: asyncio.AbstractEventLoop):
-        """Injecte la boucle asyncio et démarre la tâche de nettoyage."""
-        self._loop = loop
-        self._start_cleanup()
-        # Lancer le test après 5 secondes
-        loop.create_task(self._test_scan())
-
-    async def _test_scan(self):
-        """Test automatique : scanne le fichier de test après 5 secondes."""
-        await asyncio.sleep(5)
-        logger.info("🔍 Test automatique : scan de /tmp/test_malware.txt")
-        await self._handle_new_file("/tmp/test_malware.txt")
-
-    def _start_cleanup(self):
-        """Démarre la boucle de nettoyage périodique des leurres."""
-        if self._loop is None:
-            logger.warning("Tentative de démarrage du nettoyage sans boucle asyncio")
-            return
-
-        async def cleanup_loop():
-            while True:
-                await asyncio.sleep(3600)  # toutes les heures
-                await self._cleanup_old_lures()
-
-        self._cleanup_task = self._loop.create_task(cleanup_loop())
-        logger.debug("Nettoyage périodique des leurres démarré")
-
-    async def _cleanup_old_lures(self):
+    async def _cleanup_once(self):
         """Supprime les leurres plus vieux que lure_ttl."""
         now = time.time()
         deleted = 0
@@ -128,6 +143,11 @@ class HealerAgent(BaseAgent):
                             deleted += 1
                     except Exception as e:
                         logger.error(f"Erreur lors du nettoyage de {item}: {e}")
+                        await self.event_bus.publish("tool.error", {
+                            "agent": "LureCleaner",
+                            "error": str(e),
+                            "suggestion": "Vérifiez les permissions du répertoire des leurres."
+                        })
                 else:
                     try:
                         stat = item.stat()
@@ -138,6 +158,78 @@ class HealerAgent(BaseAgent):
                         logger.error(f"Erreur lors de l'accès aux stats de {item}: {e}")
         if deleted:
             logger.info(f"🧹 Nettoyage: {deleted} leurres supprimés")
+
+
+# -----------------------------------------------------------------------
+# Agent guérisseur
+# -----------------------------------------------------------------------
+class HealerAgent(BaseAgent):
+    """
+    Agent capable de scanner, analyser et neutraliser les fichiers malveillants.
+    """
+
+    def __init__(
+        self,
+        llm_service,
+        bus,
+        event_bus: EventBus,
+        config: dict,
+        memory_service=None
+    ):
+        super().__init__("HealerAgent", llm_service, bus)
+        self.event_bus = event_bus
+        self.memory = memory_service
+
+        # Configuration
+        self.quarantine_dir = Path(config.get("quarantine_dir", "~/AgentLucide/quarantine")).expanduser()
+        self.lures_dir = Path(config.get("lures_dir", "~/AgentLucide/lures")).expanduser()
+        self.auto_quarantine = config.get("auto_quarantine", True)
+        self.stealth_mode = config.get("stealth_mode", False)
+        self.lure_ttl = config.get("lure_ttl", 86400)  # 24h
+        self.auto_test = config.get("auto_test", False)  # désactivé par défaut
+
+        # Créer les répertoires
+        self.quarantine_dir.mkdir(parents=True, exist_ok=True)
+        self.lures_dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialiser les sous-modules
+        self.scanner = FileScanner(config)
+        self.analyzer = ThreatAnalyzer(config, memory_service)
+        self.neutralizer = ThreatNeutralizer(config, self.quarantine_dir, self.lures_dir)
+        self.stealth = StealthMode(config) if self.stealth_mode else None
+
+        # Boucle asyncio (sera injectée plus tard)
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+
+        # Nettoyeur de leurres
+        self.lure_cleaner = LureCleaner(self.lures_dir, self.lure_ttl, event_bus)
+
+        # Métriques
+        self.metrics = MetricsCollector()
+
+        # Souscrire aux événements
+        self.event_bus.subscribe("file.created", self._on_file_created)
+        self.event_bus.subscribe("file.modified", self._on_file_modified)
+        self.event_bus.subscribe("cyber.threat", self._on_cyber_threat)
+
+        logger.info("🩺 HealerAgent initialisé (en attente de la boucle asyncio)")
+
+    def set_loop(self, loop: asyncio.AbstractEventLoop):
+        """Injecte la boucle asyncio et démarre les tâches."""
+        self._loop = loop
+        self.lure_cleaner.start(loop)
+        if self.auto_test:
+            loop.create_task(self._test_scan())
+
+    async def _test_scan(self):
+        """Test automatique : scanne un fichier de test après 5 secondes (optionnel)."""
+        await asyncio.sleep(5)
+        test_file = Path("/tmp/test_malware.txt")
+        if test_file.exists():
+            logger.info("🔍 Test automatique : scan de /tmp/test_malware.txt")
+            await self._handle_new_file(str(test_file))
+        else:
+            logger.debug("Test automatique ignoré : fichier /tmp/test_malware.txt absent")
 
     # -----------------------------------------------------------------------
     # Gestion des événements
@@ -157,16 +249,18 @@ class HealerAgent(BaseAgent):
     async def _on_cyber_threat(self, data: dict, event_id: str, source: str):
         pattern = data.get("pattern")
         if pattern and "fichier" in pattern.lower():
-            import re
             match = re.search(r"['\"]([^'\"]+\.\w+)['\"]", pattern)
             if match:
                 filepath = match.group(1)
                 await self._handle_new_file(filepath)
 
     async def _handle_new_file(self, filepath: str):
+        """Analyse un nouveau fichier et agit en conséquence."""
         logger.info(f"🔍 Analyse du fichier: {filepath}")
+        self.metrics.increment("files_scanned")
 
-        if not os.path.exists(filepath):
+        path = Path(filepath)
+        if not path.exists():
             logger.warning(f"Fichier introuvable: {filepath}")
             return
 
@@ -174,19 +268,33 @@ class HealerAgent(BaseAgent):
             scan_result = await self.scanner.scan(filepath)
         except Exception as e:
             logger.error(f"Erreur lors du scan de {filepath}: {e}")
+            await self.event_bus.publish("tool.error", {
+                "agent": self.name,
+                "error": f"Scan failed: {e}",
+                "suggestion": "Vérifiez les permissions du fichier."
+            })
+            self.metrics.increment("scan_errors")
             return
 
         if not scan_result["threat_detected"]:
             logger.debug(f"Fichier sain: {filepath}")
             return
 
+        self.metrics.increment("threats_detected")
+
         try:
             threat_info = await self.analyzer.analyze(filepath, scan_result)
         except Exception as e:
             logger.error(f"Erreur lors de l'analyse de {filepath}: {e}")
+            await self.event_bus.publish("tool.error", {
+                "agent": self.name,
+                "error": f"Analysis failed: {e}",
+                "suggestion": "Le fichier pourrait être corrompu."
+            })
             return
 
-        self.event_bus.publish(
+        # Publier la détection
+        await self.event_bus.publish(
             "healer.threat_detected",
             {
                 "filepath": filepath,
@@ -201,14 +309,17 @@ class HealerAgent(BaseAgent):
             await self._quarantine_file(filepath, threat_info)
 
     async def _quarantine_file(self, filepath: str, threat_info: dict):
+        """Met un fichier en quarantaine et crée un leurre."""
         try:
             dest = await self.neutralizer.quarantine(filepath, threat_info)
             logger.info(f"✅ Fichier mis en quarantaine: {dest}")
+            self.metrics.increment("files_quarantined")
 
             lure_path = await self.neutralizer.create_lure(filepath, threat_info)
             logger.info(f"🎭 Leurre créé: {lure_path}")
+            self.metrics.increment("lures_created")
 
-            self.event_bus.publish(
+            await self.event_bus.publish(
                 "healer.file_quarantined",
                 {
                     "original": filepath,
@@ -220,19 +331,28 @@ class HealerAgent(BaseAgent):
             )
         except Exception as e:
             logger.error(f"Erreur lors de la mise en quarantaine de {filepath}: {e}")
+            await self.event_bus.publish("tool.error", {
+                "agent": self.name,
+                "error": f"Quarantine failed: {e}",
+                "suggestion": "Vérifiez l'espace disque ou les permissions."
+            })
+            self.metrics.increment("quarantine_errors")
 
     # -----------------------------------------------------------------------
     # Implémentations des outils
     # -----------------------------------------------------------------------
     async def _tool_scan_file(self, filepath: str) -> str:
-        if not os.path.exists(filepath):
-            return f"❌ Fichier introuvable: {filepath}"
+        """Outil de scan synchrone (pour requêtes utilisateur)."""
+        self.metrics.increment("tool_calls", {"tool": "scan_file"})
+        path = Path(filepath)
+        if not path.exists():
+            raise ToolExecutionError(f"Fichier introuvable: {filepath}")
 
         try:
             result = await self.scanner.scan(filepath)
         except Exception as e:
             logger.error(f"Erreur lors du scan de {filepath}: {e}")
-            return f"❌ Erreur lors du scan: {e}"
+            raise ToolExecutionError(f"Erreur lors du scan: {e}")
 
         if result["threat_detected"]:
             try:
@@ -245,37 +365,47 @@ class HealerAgent(BaseAgent):
             return "✅ Aucune menace détectée."
 
     async def _tool_quarantine_file(self, filepath: str) -> str:
-        if not os.path.exists(filepath):
-            return f"❌ Fichier introuvable: {filepath}"
+        """Met un fichier en quarantaine (même s'il n'est pas détecté comme menace)."""
+        self.metrics.increment("tool_calls", {"tool": "quarantine_file"})
+        path = Path(filepath)
+        if not path.exists():
+            raise ToolExecutionError(f"Fichier introuvable: {filepath}")
 
         try:
             result = await self.scanner.scan(filepath)
         except Exception as e:
             logger.error(f"Erreur lors du scan de {filepath}: {e}")
-            return f"❌ Erreur lors du scan: {e}"
+            raise ToolExecutionError(f"Erreur lors du scan: {e}")
 
         threat_info = await self.analyzer.analyze(filepath, result) if result["threat_detected"] else {"name": "Inconnu", "severity": 0}
         try:
             dest = await self.neutralizer.quarantine(filepath, threat_info)
         except Exception as e:
             logger.error(f"Erreur lors de la mise en quarantaine de {filepath}: {e}")
-            return f"❌ Erreur lors de la mise en quarantaine: {e}"
+            raise ToolExecutionError(f"Erreur lors de la mise en quarantaine: {e}")
         return f"✅ Fichier mis en quarantaine: {dest}"
 
     async def _tool_restore_file(self, filename: str) -> str:
+        """Restaure un fichier depuis la quarantaine."""
+        self.metrics.increment("tool_calls", {"tool": "restore_file"})
+        # Sécurité supplémentaire : on utilise Path(filename).name pour éviter les traversées
+        safe_name = Path(filename).name
         for item in self.quarantine_dir.iterdir():
-            if item.name == filename or item.name.endswith(f"_{filename}"):
+            if item.name == safe_name or item.name.endswith(f"_{safe_name}"):
                 original_name = item.name.split("_", 1)[-1] if "_" in item.name else item.name
                 original_path = Path.home() / original_name
                 try:
                     await self.neutralizer.restore(item, original_path)
                 except Exception as e:
                     logger.error(f"Erreur lors de la restauration de {item}: {e}")
-                    return f"❌ Erreur lors de la restauration: {e}"
+                    raise ToolExecutionError(f"Erreur lors de la restauration: {e}")
+                self.metrics.increment("files_restored")
                 return f"✅ Fichier restauré: {original_path}"
-        return f"❌ Fichier '{filename}' non trouvé en quarantaine."
+        raise ToolExecutionError(f"Fichier '{filename}' non trouvé en quarantaine.")
 
     async def _tool_list_quarantine(self) -> str:
+        """Liste les fichiers en quarantaine."""
+        self.metrics.increment("tool_calls", {"tool": "list_quarantine"})
         files = list(self.quarantine_dir.iterdir())
         if not files:
             return "📂 Aucun fichier en quarantaine."
@@ -302,12 +432,6 @@ class HealerAgent(BaseAgent):
         ]
 
     async def stop(self):
-        if self._cleanup_task:
-            self._cleanup_task.cancel()
-            try:
-                await self._cleanup_task
-            except asyncio.CancelledError:
-                pass
-            except Exception as e:
-                logger.error(f"Erreur lors de l'arrêt de la tâche de nettoyage: {e}")
-        logger.info("HealerAgent arrêté.")
+        """Arrête proprement l'agent."""
+        await self.lure_cleaner.stop()
+        logger.info("🩺 HealerAgent arrêté.")
