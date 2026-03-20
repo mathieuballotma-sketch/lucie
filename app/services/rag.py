@@ -7,6 +7,7 @@ Utilise OllamaEmbedder (mxbai-embed-large) pour les embeddings — pas de senten
 import hashlib
 import json
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -103,7 +104,8 @@ class RAGService:
     def _init_sqlite(self) -> None:
         """Initialise la base SQLite pour les métadonnées."""
         self.db_path = self.data_dir / "metadata.db"
-        self.conn = sqlite3.connect(str(self.db_path))
+        self._db_lock = threading.Lock()
+        self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         # Optimisations WAL : meilleures perfs en lecture/écriture concurrentes
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")

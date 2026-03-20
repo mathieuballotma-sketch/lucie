@@ -53,6 +53,10 @@ class NanoPredictor:
         PREDICTOR_DB.parent.mkdir(parents=True, exist_ok=True)
         self._load()
 
+    def update_partial_input(self, text: str) -> None:
+        """Reçoit le texte partiel en cours de saisie (stub — pour usage futur)."""
+        pass
+
     def set_router(self, router: object) -> None:
         """Connecte le NanoPredictor au PathRouter pour enrichir les exemples."""
         self._router = router
