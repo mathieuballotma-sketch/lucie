@@ -5,6 +5,7 @@ Team Leader Agent - Dirige une équipe de sous-agents pour des tâches complexes
 import asyncio
 from typing import List, Dict, Any
 from app.agents.base_agent import BaseAgent, Tool
+from pydantic.v1 import BaseModel, Field
 
 class TeamLeaderAgent(BaseAgent):
     """
@@ -75,7 +76,5 @@ class TeamLeaderAgent(BaseAgent):
 
 
 # Contrat Pydantic
-from pydantic.v1 import BaseModel, Field
-
 class RunTeamContract(BaseModel):
     tasks: List[Dict[str, Any]] = Field(..., description="Liste des tâches à exécuter en parallèle")

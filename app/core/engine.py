@@ -36,6 +36,7 @@ from app.utils.circuit_breaker import CircuitBreaker
 from app.utils.crypto import CryptoManager
 from app.utils.logger import logger
 from app.utils.memory_monitor import monitor_memory
+from app.utils.metrics import start_metrics_server
 
 from ..agents.cyber_agent import CyberAgent
 from ..agents.healer_agent import HealerAgent
@@ -626,4 +627,3 @@ class LucidEngine:
             logger.info(f"✅ {response[:100]}… ({latency:.2f}s)")
         except Exception as e:
             logger.error(f"❌ Programmée échouée : {e}")
-from app.utils.metrics import start_metrics_server

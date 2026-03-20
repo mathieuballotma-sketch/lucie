@@ -126,7 +126,7 @@ async def test_fallback_open_application_not_running(agent, mock_appkit):
 async def test_activate_app(agent, mock_appkit):
     """Teste l'activation via AppleScript."""
     await agent._activate_app("Notes")
-    agent._run_applescript.assert_called_once_with('tell application "Notes" to activate', timeout=3.0)
+    agent._run_applescript.assert_called_once_with('tell application "Notes" to activate', timeout=8.0)
 
 
 @pytest.mark.asyncio
