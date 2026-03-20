@@ -3,6 +3,7 @@ Configuration de l'application.
 Gère le chargement depuis un fichier YAML et fournit des objets de configuration typés.
 """
 
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -20,6 +21,85 @@ class AppConfig:
 
 
 @dataclass
+class HardwareConfig:
+    """Informations hardware détectées automatiquement au démarrage."""
+
+    chip: str = "unknown"           # "M1", "M2", "M3", "M4", "arm64", "x86_64"
+    ram_gb: float = 8.0             # RAM totale en Go
+    tier: str = "Light"             # "Light" ≤8 Go, "Standard" ≤16, "Full" ≤24, "Pro" >24
+    is_apple_silicon: bool = False  # True si arm64 (M1+)
+
+
+def detect_hardware() -> HardwareConfig:
+    """
+    Détecte automatiquement le hardware disponible.
+
+    Utilise sysctl sur macOS pour lire la marque du CPU et la taille de la RAM.
+    Si la détection échoue, retourne des valeurs conservatrices par défaut.
+
+    Returns:
+        HardwareConfig avec chip, ram_gb, tier et is_apple_silicon renseignés.
+    """
+    import platform
+
+    is_apple_silicon = platform.machine() == "arm64"
+
+    # ── Détecter le type de puce ────────────────────────────────────────────
+    chip = "x86_64"
+    if is_apple_silicon:
+        chip = "arm64"  # fallback si sysctl échoue
+        try:
+            result = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            brand = result.stdout.strip().lower()
+            for model in ("m4", "m3", "m2", "m1"):
+                if model in brand:
+                    chip = model.upper()
+                    break
+        except Exception:
+            pass
+
+    # ── Détecter la RAM totale ───────────────────────────────────────────────
+    ram_gb: float = 8.0
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", "hw.memsize"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        ram_gb = int(result.stdout.strip()) / (1024**3)
+    except Exception:
+        try:
+            import psutil  # type: ignore[import-untyped]
+
+            ram_gb = psutil.virtual_memory().total / (1024**3)
+        except ImportError:
+            pass
+
+    # ── Déterminer le tier ───────────────────────────────────────────────────
+    if ram_gb <= 8:
+        tier = "Light"
+    elif ram_gb <= 16:
+        tier = "Standard"
+    elif ram_gb <= 24:
+        tier = "Full"
+    else:
+        tier = "Pro"
+
+    return HardwareConfig(
+        chip=chip,
+        ram_gb=round(ram_gb, 1),
+        tier=tier,
+        is_apple_silicon=is_apple_silicon,
+    )
+
+
+@dataclass
 class LLMModelConfig:
     name: str
     max_tokens: int = 2048
@@ -30,6 +110,7 @@ class LLMModelConfig:
 class LLMConfig:
     host: str = "http://localhost:11434"
     default_model: str = "qwen2.5:7b"
+    mlx_model: str = "mlx-community/Qwen2.5-7B-Instruct-4bit"
     timeout: int = 60
     retry_attempts: int = 2
     retry_delay: float = 1.0
@@ -143,6 +224,7 @@ class Config:
     cyber: CyberConfig = field(default_factory=CyberConfig)
     healer: HealerConfig = field(default_factory=HealerConfig)
     planner: PlannerConfig = field(default_factory=PlannerConfig)
+    hardware: HardwareConfig = field(default_factory=detect_hardware)
 
     @classmethod
     def load(cls, path: Optional[str] = None) -> "Config":
