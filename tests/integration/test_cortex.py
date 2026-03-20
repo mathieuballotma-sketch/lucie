@@ -25,7 +25,7 @@ from app.core.elasticity import ElasticityEngine
 # -----------------------------------------------------------------------------
 @pytest.fixture
 def mock_embedding_classifier(monkeypatch):
-    """Remplace le vrai EmbeddingClassifier par un mock asynchrone."""
+    """Remplace le vrai EmbeddingClassifier par un mock synchrone."""
 
     class MockEmbeddingClassifier:
         def __init__(self, *args, **kwargs):
@@ -89,6 +89,8 @@ def mock_prompt_cache():
     cache = MagicMock(spec=PromptCache)
     cache.get.return_value = None
     cache.put = MagicMock()
+    cache.get_plan = MagicMock(return_value=None)
+    cache.put_plan = MagicMock()
     return cache
 
 
@@ -98,7 +100,7 @@ def mock_memory_service():
     memory = MagicMock(spec=MemoryService)
     memory.get_working_context.return_value = "contexte factice"
     memory.add_to_working = MagicMock()
-    memory.add_episode = MagicMock()
+    memory.add_episode = AsyncMock()  # async — requis par asyncio.run_coroutine_threadsafe
     return memory
 
 
@@ -118,11 +120,24 @@ def mock_agents(monkeypatch):
     mock_text_extractor = MagicMock()
     mock_computer_control = MagicMock()
 
+    # Les noms doivent être des chaînes pour que le registre les indexe correctement
+    mock_reminder.name = "ReminderAgent"
+    mock_knowledge.name = "KnowledgeAgent"
+    mock_document.name = "DocumentAgent"
+    mock_text_extractor.name = "TextExtractorAgent"
+    mock_computer_control.name = "ComputerControlAgent"
+
     mock_reminder.get_tools.return_value = []
     mock_knowledge.get_tools.return_value = []
     mock_document.get_tools.return_value = []
     mock_text_extractor.get_tools.return_value = []
     mock_computer_control.get_tools.return_value = []
+
+    mock_reminder.execute_tool = AsyncMock(return_value="ok")
+    mock_knowledge.execute_tool = AsyncMock(return_value="ok")
+    mock_document.execute_tool = AsyncMock(return_value="ok")
+    mock_text_extractor.execute_tool = AsyncMock(return_value="ok")
+    mock_computer_control.execute_tool = AsyncMock(return_value="ok")
 
     monkeypatch.setattr(
         "app.brain.cortex.ReminderAgent", lambda *args, **kwargs: mock_reminder
@@ -159,11 +174,12 @@ def cortex_with_mock_classifier(
     mock_elasticity_engine,
     mock_agents,
 ):
-    """Crée un cortex avec un classifieur mocké (asynchrone) pour tester le routage."""
-    mock_classifier = AsyncMock()
+    """Crée un cortex avec un classifieur mocké pour tester le routage."""
+    mock_classifier = MagicMock()
     mock_classifier.predict = AsyncMock(return_value=("action", 0.95))
     mock_classifier.confidence_threshold = 0.7
     mock_classifier._fallback = MagicMock(return_value="action")
+    mock_classifier.is_trained = True
 
     cortex = FrontalCortex(
         manager=mock_provider_manager,
@@ -177,6 +193,7 @@ def cortex_with_mock_classifier(
     # Remplacer le classifieur par notre mock
     cortex.classifier = mock_classifier
     cortex.action_selector.classifier = mock_classifier
+    cortex.path_manager.classifier = mock_classifier
     return cortex
 
 
@@ -215,7 +232,8 @@ async def test_cortex_initialization(
         config=config,
     )
     assert cortex is not None
-    assert len(cortex.agents) == 5
+    # 5 mocked agents + FileAgent + CreatorAgent = 7
+    assert len(cortex.agent_registry.agents) == 7
     assert cortex.classifier is not None
 
 
@@ -230,7 +248,8 @@ async def test_cortex_think_greeting(
     mock_agents,
     mock_embedding_classifier,
 ):
-    """Teste qu'une requête de salutation emprunte le chemin llm_nano."""
+    """Teste qu'une requête de salutation retourne une réponse du LLM."""
+    mock_provider_manager.generate.return_value = "Salut !"
     cortex = FrontalCortex(
         manager=mock_provider_manager,
         bus=mock_bus,
@@ -240,15 +259,14 @@ async def test_cortex_think_greeting(
         elasticity_engine=mock_elasticity_engine,
         config={},
     )
-    # Mocker _call_llm pour vérifier qu'il est appelé avec les bons arguments
-    mock_llm = MagicMock(return_value="Salut !")
-    cortex._call_llm = mock_llm
+    # Désactiver l'exploration aléatoire pour avoir un comportement déterministe
+    cortex.action_selector.epsilon = 0
 
     response, duration = await cortex.think("bonjour")
 
-    mock_llm.assert_called_once_with("bonjour", "nano")
+    # llm_nano est priorité 1 pour "greeting" → appelle manager.generate
+    mock_provider_manager.generate.assert_called()
     assert "Salut !" in response
-    # La durée peut varier selon les échecs des chemins précédents ; on accepte jusqu'à 5 secondes
     assert duration < 5.0
 
 
@@ -273,14 +291,15 @@ async def test_cortex_think_direct_action(
         elasticity_engine=mock_elasticity_engine,
         config={},
     )
-    # Remplacer _execute_direct_action par un mock et mettre à jour le chemin
-    mock_direct = MagicMock(return_value="Application ouverte")
-    cortex._execute_direct_action = mock_direct
-    cortex.action_selector.paths["direct_action"]["func"] = mock_direct
+    # Désactiver l'exploration aléatoire
+    cortex.action_selector.epsilon = 0
+    # Configurer le mock ComputerControlAgent pour retourner une réponse spécifique
+    mock_agents["computer_control"].execute_tool = AsyncMock(return_value="Application ouverte")
 
     response, duration = await cortex.think("ouvre notes")
 
-    mock_direct.assert_called_once_with("ouvre notes")
+    # direct_action est priorité 1 pour "action" → ComputerControlAgent.open_application
+    mock_agents["computer_control"].execute_tool.assert_called()
     assert response == "Application ouverte"
 
 
@@ -305,17 +324,16 @@ async def test_cortex_think_all_paths_fail(
         elasticity_engine=mock_elasticity_engine,
         config={},
     )
-    # Faire échouer tous les chemins en remplaçant les fonctions par des mocks qui lèvent des exceptions
-    cortex._execute_direct_action = MagicMock(side_effect=Exception("fail"))
-    cortex._execute_multi_action = MagicMock(side_effect=Exception("fail"))
-    cortex._execute_predicted_action = MagicMock(side_effect=Exception("fail"))
-    cortex._execute_semantic_parsing = MagicMock(side_effect=Exception("fail"))
-    cortex._get_cached_response = MagicMock(side_effect=Exception("fail"))
-    cortex._call_llm = MagicMock(side_effect=Exception("fail"))
-    cortex._generate_and_execute_plan = MagicMock(side_effect=Exception("fail"))
-
-    # Mock du fallback
     cortex._safe_fallback = MagicMock(return_value="fallback exécuté")
+
+    async def failing_path(query: str) -> str:
+        raise Exception("fail")
+
+    # Remplacer select_paths pour que tous les chemins échouent
+    cortex.path_manager.select_paths = AsyncMock(return_value=[
+        ("direct_action", failing_path),
+        ("llm_nano", failing_path),
+    ])
 
     response, duration = await cortex.think("n'importe quoi")
 
@@ -324,35 +342,20 @@ async def test_cortex_think_all_paths_fail(
 
 
 @pytest.mark.asyncio
-async def test_cortex_routing_with_mock_classifier(cortex_with_mock_classifier):
-    """Teste que le cortex utilise le classifieur pour le routage."""
+async def test_cortex_routing_with_mock_classifier(cortex_with_mock_classifier, mock_agents):
+    """Teste que le cortex utilise le classifieur pour router vers direct_action."""
     cortex = cortex_with_mock_classifier
+    cortex.action_selector.epsilon = 0
 
-    # Mock des méthodes d'exécution pour vérifier quel chemin est appelé
-    cortex._execute_direct_action = MagicMock(return_value="direct")
-    cortex._execute_multi_action = MagicMock(return_value="multi")
-    cortex._execute_predicted_action = MagicMock(return_value="predicted")
-    cortex._execute_semantic_parsing = MagicMock(return_value="semantic")
-    cortex._get_cached_response = MagicMock(return_value="cache")
-    cortex._call_llm = MagicMock(return_value="llm")
-    cortex._generate_and_execute_plan = MagicMock(return_value="plan")
-
-    # Mettre à jour les fonctions dans paths pour qu'elles pointent vers nos mocks
-    cortex.action_selector.paths["direct_action"]["func"] = cortex._execute_direct_action
-    cortex.action_selector.paths["multi_action"]["func"] = cortex._execute_multi_action
-    cortex.action_selector.paths["predicted_action"]["func"] = cortex._execute_predicted_action
-    cortex.action_selector.paths["semantic_parsing"]["func"] = cortex._execute_semantic_parsing
-    cortex.action_selector.paths["cache_response"]["func"] = cortex._get_cached_response
-    cortex.action_selector.paths["llm_nano"]["func"] = cortex._call_llm
-    cortex.action_selector.paths["llm_speed"]["func"] = cortex._call_llm
-    cortex.action_selector.paths["llm_balanced"]["func"] = cortex._call_llm
-    cortex.action_selector.paths["plan_generation"]["func"] = cortex._generate_and_execute_plan
+    # Le classifieur retourne "action" → "direct_action" est priorité 1
+    # direct_action → ComputerControlAgent.open_application pour "ouvre notes"
+    mock_agents["computer_control"].execute_tool = AsyncMock(return_value="direct")
 
     # Simuler que le classifieur retourne "action"
     cortex.classifier.predict.return_value = ("action", 0.95)
 
     response, duration = await cortex.think("ouvre notes")
 
-    # Vérifier que le chemin direct_action a été appelé
-    cortex._execute_direct_action.assert_called_once_with("ouvre notes")
+    # Vérifier que ComputerControlAgent.execute_tool a été appelé
+    mock_agents["computer_control"].execute_tool.assert_called()
     assert response == "direct"

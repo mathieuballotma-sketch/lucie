@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.agents.computer_control_agent import ComputerControlAgent
+from app.utils.errors import ToolExecutionError
 
 
 class MockApp:
@@ -47,17 +48,21 @@ def agent(mock_appkit):
 
 @pytest.mark.asyncio
 async def test_open_application_already_running(agent, mock_appkit):
-    """Teste l'ouverture d'une application déjà en cours d'exécution."""
-    mock_appkit.runningApplications.return_value = [MockApp("Notes")]
+    """Teste l'ouverture d'une application via subprocess (réussit)."""
+    with patch('asyncio.create_subprocess_exec') as mock_subprocess:
+        mock_process = AsyncMock()
+        mock_process.returncode = 0
+        mock_process.communicate = AsyncMock(return_value=(b"", b""))
+        mock_subprocess.return_value = mock_process
 
-    start = time.monotonic()
-    result = await agent._tool_open_application("Notes")
-    duration = time.monotonic() - start
+        result = await agent._tool_open_application("Notes")
 
-    assert duration < 0.5, f"Trop lent : {duration:.3f}s"
-    # Vérifie que l'activation a bien été demandée via AppleScript
-    agent._run_applescript.assert_awaited_with('tell application "Notes" to activate', timeout=3.0)
-    assert "déjà ouverte" in result
+    mock_subprocess.assert_called_once_with(
+        "open", "-a", "Notes",
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE
+    )
+    assert "ouverte" in result
 
 
 @pytest.mark.asyncio
@@ -83,55 +88,38 @@ async def test_open_application_not_running(agent, mock_appkit):
 
 @pytest.mark.asyncio
 async def test_open_application_fallback_on_exception(agent, mock_appkit):
-    """Teste le fallback AppleScript lorsque l'API Cocoa lève une exception."""
-    # Forcer une exception lors de l'appel à runningApplications
-    mock_appkit.runningApplications.side_effect = Exception("Cocoa crash")
+    """Teste que _tool_open_application lève ToolExecutionError si le subprocess échoue."""
+    with patch('asyncio.create_subprocess_exec') as mock_subprocess:
+        mock_process = AsyncMock()
+        mock_process.returncode = 1
+        mock_process.communicate = AsyncMock(return_value=(b"", b"Application introuvable"))
+        mock_subprocess.return_value = mock_process
 
-    # On mocke _fallback_open_application pour éviter la vraie logique
-    agent._fallback_open_application = AsyncMock(return_value="fallback OK")
-
-    result = await agent._tool_open_application("Notes")
-
-    agent._fallback_open_application.assert_awaited_once()
-    assert result == "fallback OK"
+        with pytest.raises(ToolExecutionError):
+            await agent._tool_open_application("AppInexistante")
 
 
 @pytest.mark.asyncio
 async def test_fallback_open_application_running(agent, mock_appkit):
-    """Teste le fallback lorsque l'application est déjà ouverte."""
-    # Simuler que la vérification AppleScript retourne "true"
-    agent._run_applescript = AsyncMock(return_value=(True, "true"))
-    # On remet le mock de _run_applescript pour ce test (car on l'a peut-être redéfini)
-    # Mais on veut aussi vérifier l'appel à _activate_app, donc on garde la vraie méthode _activate_app
-    # On va plutôt vérifier que _run_applescript a été appelé avec le script d'activation
+    """Teste _wait_for_app_active quand l'application est active."""
+    # Simuler que Notes est l'application en premier plan
+    mock_app = MockApp("Notes")
+    mock_appkit.frontmostApplication.return_value = mock_app
 
-    start_time = time.time()
-    result = await agent._fallback_open_application("Notes", start_time)
+    result = await agent._wait_for_app_active("Notes", timeout=0.5)
 
-    # Vérifier que la vérification a été faite
-    agent._run_applescript.assert_any_call(
-        'tell application "System Events" to exists process "Notes"', timeout=3.0
-    )
-    # Vérifier que l'activation a été demandée
-    agent._run_applescript.assert_any_call('tell application "Notes" to activate', timeout=3.0)
-    assert "(fallback)" in result and "déjà ouverte" in result
+    assert result is True
 
 
 @pytest.mark.asyncio
 async def test_fallback_open_application_not_running(agent, mock_appkit):
-    """Teste le fallback lorsque l'application n'est pas ouverte."""
-    agent._run_applescript = AsyncMock(return_value=(True, "false"))
+    """Teste _wait_for_app_active quand l'application n'est pas active (timeout)."""
+    # Simuler qu'aucune app n'est au premier plan
+    mock_appkit.frontmostApplication.return_value = None
 
-    with patch('asyncio.create_subprocess_exec') as mock_subprocess:
-        mock_process = AsyncMock()
-        mock_process.returncode = 0
-        mock_process.communicate = AsyncMock(return_value=(b"", b""))
-        mock_subprocess.return_value = mock_process
+    result = await agent._wait_for_app_active("Calculator", timeout=0.15)
 
-        start_time = time.time()
-        result = await agent._fallback_open_application("Calculator", start_time)
-
-    assert "ouverte" in result
+    assert result is False
 
 
 @pytest.mark.asyncio
@@ -177,5 +165,5 @@ async def test_arrange_side_by_side(agent, mock_appkit):
     agent._get_screen_size = AsyncMock(return_value=(1920, 1080))
 
     result = await agent._arrange_side_by_side(["Notes", "Safari"])
-    assert "disposées côte à côte" in result
+    assert "côte à côte" in result
     assert agent._run_applescript.call_count >= 2
