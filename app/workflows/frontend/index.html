@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lucie — Éditeur de Flux</title>
+
+  <!-- React Flow styles -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xyflow/react@12/dist/style.css" />
+
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex; align-items: center; gap: 8px;
+      height: 48px; padding: 0 16px;
+      background: #0d1117;
+      border-bottom: 1px solid #1e293b;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .toolbar-logo { font-size: 18px; margin-right: 4px; }
+    .toolbar-name {
+      font-size: 14px; font-weight: 600; color: #a78bfa;
+      letter-spacing: 0.5px; margin-right: 12px;
+    }
+    .toolbar-sep { width: 1px; height: 24px; background: #1e293b; margin: 0 4px; }
+    .workflow-name-input {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 6px; padding: 4px 10px;
+      color: #e2e8f0; font-size: 13px; width: 200px;
+      outline: none; transition: border-color .15s;
+    }
+    .workflow-name-input:focus { border-color: #6366f1; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 6px; border: 1px solid transparent;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+    .btn-primary:hover { background: #6366f1; border-color: #6366f1; }
+    .btn-success { background: #059669; color: #fff; border-color: #059669; }
+    .btn-success:hover { background: #10b981; border-color: #10b981; }
+    .btn-warning { background: #d97706; color: #fff; border-color: #d97706; }
+    .btn-warning:hover { background: #f59e0b; border-color: #f59e0b; }
+    .btn-ghost {
+      background: transparent; color: #94a3b8;
+      border-color: #334155;
+    }
+    .btn-ghost:hover { background: #1e293b; color: #e2e8f0; }
+    .btn-sm { padding: 3px 8px; font-size: 11px; }
+
+    .toolbar-spacer { flex: 1; }
+    .toolbar-status {
+      font-size: 11px; color: #64748b; display: flex; align-items: center; gap: 6px;
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #64748b; display: inline-block;
+    }
+    .status-dot.connected { background: #10b981; }
+
+    /* ── Main layout ── */
+    .main-layout {
+      display: flex; height: calc(100vh - 48px); overflow: hidden;
+    }
+
+    /* ── Sidebar (palette) ── */
+    .sidebar {
+      width: 220px; flex-shrink: 0;
+      background: #0d1117;
+      border-right: 1px solid #1e293b;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 10px 12px 8px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      color: #475569; text-transform: uppercase;
+      border-bottom: 1px solid #1e293b;
+      flex-shrink: 0;
+    }
+    .sidebar-search {
+      padding: 8px 10px;
+      border-bottom: 1px solid #1e293b;
+      flex-shrink: 0;
+    }
+    .sidebar-search input {
+      width: 100%; background: #1e293b; border: 1px solid #334155;
+      border-radius: 5px; padding: 4px 8px;
+      color: #e2e8f0; font-size: 12px; outline: none;
+    }
+    .sidebar-search input:focus { border-color: #4f46e5; }
+    .sidebar-scroll { overflow-y: auto; flex: 1; padding: 8px 0; }
+    .category-group { margin-bottom: 4px; }
+    .category-title {
+      padding: 4px 12px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+      color: #475569; text-transform: uppercase;
+      display: flex; align-items: center; gap: 6px;
+      cursor: pointer; user-select: none;
+    }
+    .category-title:hover { color: #64748b; }
+    .category-chevron { font-size: 8px; transition: transform .2s; }
+    .category-chevron.open { transform: rotate(90deg); }
+
+    .node-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 12px; margin: 1px 6px;
+      border-radius: 5px;
+      cursor: grab; user-select: none;
+      transition: background .1s;
+      border: 1px solid transparent;
+    }
+    .node-item:hover {
+      background: #1e293b; border-color: #334155;
+    }
+    .node-item:active { cursor: grabbing; }
+    .node-item-icon { font-size: 14px; flex-shrink: 0; }
+    .node-item-info { overflow: hidden; }
+    .node-item-name {
+      font-size: 12px; font-weight: 500; color: #cbd5e1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .node-item-desc {
+      font-size: 10px; color: #475569;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ── Canvas wrapper ── */
+    .canvas-wrapper {
+      flex: 1; position: relative; overflow: hidden;
+    }
+
+    /* ── React Flow overrides ── */
+    .react-flow__background { background: #0f1117 !important; }
+    .react-flow__controls {
+      background: #1e293b !important;
+      border: 1px solid #334155 !important;
+      border-radius: 8px !important;
+    }
+    .react-flow__controls-button {
+      background: #1e293b !important;
+      border-color: #334155 !important;
+      color: #94a3b8 !important;
+      fill: #94a3b8 !important;
+    }
+    .react-flow__controls-button:hover {
+      background: #334155 !important;
+    }
+    .react-flow__minimap {
+      background: #1e293b !important;
+      border: 1px solid #334155 !important;
+      border-radius: 8px !important;
+    }
+
+    /* ── Custom node ── */
+    .custom-node {
+      background: #131c2e;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-width: 160px;
+      max-width: 220px;
+      position: relative;
+      transition: border-color .15s, box-shadow .15s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .custom-node.selected {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.3), 0 2px 12px rgba(0,0,0,0.6);
+    }
+    .custom-node.status-running { border-color: #f59e0b; }
+    .custom-node.status-success { border-color: #10b981; }
+    .custom-node.status-error { border-color: #ef4444; }
+
+    .node-status-dot {
+      position: absolute; top: -4px; right: -4px;
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 2px solid #0f1117;
+    }
+    .node-status-dot.running { background: #f59e0b; animation: pulse 1s infinite; }
+    .node-status-dot.success { background: #10b981; }
+    .node-status-dot.error { background: #ef4444; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .node-header {
+      display: flex; align-items: center; gap: 7px;
+      margin-bottom: 6px;
+    }
+    .node-icon { font-size: 16px; flex-shrink: 0; }
+    .node-title { font-size: 12px; font-weight: 600; color: #e2e8f0; line-height: 1.3; }
+    .node-subtitle { font-size: 10px; color: #475569; }
+
+    .node-ports {
+      display: flex; justify-content: space-between;
+      font-size: 9px; color: #475569;
+      margin-top: 2px;
+    }
+    .port-list { display: flex; flex-direction: column; gap: 2px; }
+    .port-list.right { align-items: flex-end; }
+    .port-label { font-size: 9px; color: #475569; }
+
+    /* ── Properties panel ── */
+    .props-panel {
+      width: 260px; flex-shrink: 0;
+      background: #0d1117;
+      border-left: 1px solid #1e293b;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .props-header {
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid #1e293b;
+      flex-shrink: 0;
+    }
+    .props-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+      color: #475569; text-transform: uppercase;
+    }
+    .props-scroll { overflow-y: auto; flex: 1; padding: 12px; }
+    .props-empty {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; flex-direction: column; gap: 8px;
+      color: #334155;
+    }
+    .props-empty-icon { font-size: 32px; }
+    .props-empty-text { font-size: 12px; color: #475569; text-align: center; }
+
+    .field-group { margin-bottom: 12px; }
+    .field-label {
+      display: block; font-size: 11px; font-weight: 500;
+      color: #64748b; margin-bottom: 4px;
+    }
+    .field-input {
+      width: 100%; background: #1e293b; border: 1px solid #334155;
+      border-radius: 5px; padding: 5px 8px;
+      color: #e2e8f0; font-size: 12px; outline: none;
+      transition: border-color .15s;
+    }
+    .field-input:focus { border-color: #4f46e5; }
+    .field-textarea {
+      width: 100%; background: #1e293b; border: 1px solid #334155;
+      border-radius: 5px; padding: 5px 8px;
+      color: #e2e8f0; font-size: 12px; outline: none;
+      resize: vertical; min-height: 60px;
+      font-family: inherit; transition: border-color .15s;
+    }
+    .field-textarea:focus { border-color: #4f46e5; }
+
+    .section-divider {
+      height: 1px; background: #1e293b;
+      margin: 12px 0;
+    }
+    .section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+      color: #334155; text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .port-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 4px; padding: 2px 6px;
+      font-size: 10px; color: #64748b; margin: 2px;
+    }
+    .port-tag.input { border-color: #4f46e5; color: #818cf8; }
+    .port-tag.output { border-color: #059669; color: #34d399; }
+
+    .result-box {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 5px; padding: 6px 8px;
+      font-size: 10px; font-family: monospace;
+      color: #94a3b8; word-break: break-all;
+      max-height: 120px; overflow-y: auto;
+    }
+    .result-box.success { border-color: #059669; color: #34d399; }
+    .result-box.error { border-color: #ef4444; color: #f87171; }
+
+    /* ── Notifications ── */
+    .notifications {
+      position: fixed; top: 56px; right: 12px;
+      display: flex; flex-direction: column; gap: 6px;
+      z-index: 1000; pointer-events: none;
+    }
+    .notif {
+      padding: 8px 14px; border-radius: 7px;
+      font-size: 12px; font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      max-width: 280px;
+      animation: slideIn .2s ease;
+      pointer-events: auto;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(20px); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+    .notif-info    { background: #1e3a5f; border: 1px solid #3b82f6; color: #93c5fd; }
+    .notif-success { background: #14532d; border: 1px solid #16a34a; color: #86efac; }
+    .notif-error   { background: #7f1d1d; border: 1px solid #dc2626; color: #fca5a5; }
+    .notif-warning { background: #78350f; border: 1px solid #d97706; color: #fcd34d; }
+
+    /* ── Load modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 500;
+    }
+    .modal {
+      background: #0d1117; border: 1px solid #334155;
+      border-radius: 10px; padding: 20px;
+      width: 400px; max-height: 500px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .modal-title {
+      font-size: 14px; font-weight: 600; color: #e2e8f0;
+    }
+    .modal-list { overflow-y: auto; flex: 1; }
+    .modal-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; margin: 2px 0;
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 6px; cursor: pointer;
+      transition: border-color .1s;
+    }
+    .modal-item:hover { border-color: #4f46e5; }
+    .modal-item-name { font-size: 13px; font-weight: 500; color: #e2e8f0; }
+    .modal-item-meta { font-size: 10px; color: #475569; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- CDN dependencies (order matters) -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xyflow/react@12/dist/index.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/zustand@4/umd/zustand.production.min.js"></script>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useCallback, useRef, useMemo } = React;
+    const {
+      ReactFlow,
+      Background,
+      Controls,
+      MiniMap,
+      Handle,
+      Position,
+      useNodesState,
+      useEdgesState,
+      addEdge,
+      MarkerType,
+      Panel,
+      useReactFlow,
+      ReactFlowProvider,
+      BackgroundVariant,
+    } = window.ReactFlow;
+
+    const { create } = window.zustand;
+
+    // ── Category icons ──────────────────────────────────────────────────────
+    const CATEGORY_ICONS = {
+      agent:   '🤖',
+      data:    '📊',
+      logic:   '🔀',
+      io:      '📡',
+      general: '⚙️',
+      file:    '📁',
+      web:     '🌐',
+      llm:     '🧠',
+    };
+
+    const getCategoryIcon = (category) =>
+      CATEGORY_ICONS[category] || CATEGORY_ICONS.general;
+
+    // ── Mock API (fallback when pywebview unavailable) ──────────────────────
+    const MOCK_NODE_DEFS = [
+      {
+        id: 'agent.file',
+        name: 'FileAgent',
+        category: 'agent',
+        description: 'Lecture, écriture et gestion de fichiers',
+        inputs:  [{ name: 'input',  type: 'any',    description: 'Entrée',   required: true }],
+        outputs: [{ name: 'output', type: 'any',    description: 'Sortie',   required: true }],
+        config_schema: { path: { type: 'string', description: 'Chemin du fichier' } },
+      },
+      {
+        id: 'agent.creator',
+        name: 'CreatorAgent',
+        category: 'agent',
+        description: 'Génération de contenu avec LLM',
+        inputs:  [{ name: 'prompt',  type: 'string', description: 'Prompt LLM',       required: true  }],
+        outputs: [{ name: 'content', type: 'string', description: 'Contenu généré',   required: true  }],
+        config_schema: { model: { type: 'string', description: 'Modèle Ollama' } },
+      },
+      {
+        id: 'agent.computer_control',
+        name: 'ComputerControlAgent',
+        category: 'agent',
+        description: 'Contrôle natif macOS (clics, clavier)',
+        inputs:  [{ name: 'action', type: 'any',  description: 'Action macOS',  required: true }],
+        outputs: [{ name: 'result', type: 'any',  description: 'Résultat',      required: true }],
+        config_schema: {},
+      },
+      {
+        id: 'logic.condition',
+        name: 'Condition',
+        category: 'logic',
+        description: 'Branchement conditionnel',
+        inputs:  [{ name: 'value', type: 'any', description: 'Valeur à tester', required: true }],
+        outputs: [
+          { name: 'true',  type: 'any', description: 'Si vrai',  required: false },
+          { name: 'false', type: 'any', description: 'Si faux',  required: false },
+        ],
+        config_schema: { expression: { type: 'string', description: 'Expression booléenne' } },
+      },
+      {
+        id: 'data.transform',
+        name: 'Transform',
+        category: 'data',
+        description: 'Transforme des données (JSON, texte)',
+        inputs:  [{ name: 'input',  type: 'any', description: 'Données source',    required: true }],
+        outputs: [{ name: 'output', type: 'any', description: 'Données converties', required: true }],
+        config_schema: { template: { type: 'string', description: 'Template de transformation' } },
+      },
+      {
+        id: 'io.http',
+        name: 'HTTP Request',
+        category: 'io',
+        description: 'Requête HTTP GET / POST',
+        inputs:  [{ name: 'url',      type: 'string', description: 'URL cible', required: true  },
+                  { name: 'payload',  type: 'any',    description: 'Données',   required: false }],
+        outputs: [{ name: 'response', type: 'any',    description: 'Réponse',   required: true  }],
+        config_schema: { method: { type: 'string', description: 'GET | POST | PUT | DELETE' } },
+      },
+    ];
+
+    const MOCK_API = {
+      get_node_definitions: async () => MOCK_NODE_DEFS,
+      save_workflow:        async (data) => data.id || ('mock-' + Date.now()),
+      load_workflow:        async (_id)   => null,
+      list_workflows:       async ()      => [],
+      validate_workflow:    async (_data) => [],
+      execute_workflow:     async (_data) => [],
+    };
+
+    const api = (window.pywebview && window.pywebview.api) ? window.pywebview.api : MOCK_API;
+
+    // ── Zustand store ───────────────────────────────────────────────────────
+    const useStore = create((set, get) => ({
+      workflowId:       null,
+      workflowName:     'Sans titre',
+      selectedNodeId:   null,
+      nodeDefs:         [],
+      notifications:    [],
+      executionResults: {},
+      wsConnected:      false,
+      showLoadModal:    false,
+      savedWorkflows:   [],
+
+      setWorkflowName:   (name)    => set({ workflowName: name }),
+      setSelectedNodeId: (id)      => set({ selectedNodeId: id }),
+      setNodeDefs:       (defs)    => set({ nodeDefs: defs }),
+      setWsConnected:    (v)       => set({ wsConnected: v }),
+      setShowLoadModal:  (v)       => set({ showLoadModal: v }),
+      setSavedWorkflows: (list)    => set({ savedWorkflows: list }),
+
+      setExecutionResults: (results) => {
+        const map = {};
+        results.forEach(r => { map[r.node_id] = r; });
+        set({ executionResults: map });
+      },
+
+      updateNodeExecutionStatus: (nodeId, status) => {
+        set(state => ({
+          executionResults: {
+            ...state.executionResults,
+            [nodeId]: { ...(state.executionResults[nodeId] || {}), status },
+          },
+        }));
+      },
+
+      addNotification: (message, type = 'info') => {
+        const id = Date.now() + Math.random();
+        set(state => ({
+          notifications: [...state.notifications, { id, message, type }],
+        }));
+        setTimeout(
+          () => set(state => ({
+            notifications: state.notifications.filter(n => n.id !== id),
+          })),
+          4000
+        );
+      },
+    }));
+
+    // ── Custom Node Component ────────────────────────────────────────────────
+    function CustomNode({ data, selected }) {
+      const executionResults = useStore(s => s.executionResults);
+      const result = executionResults[data.nodeId];
+      const status = result ? result.status : null;
+
+      const inputs  = data.inputs  || [];
+      const outputs = data.outputs || [];
+
+      return (
+        <div className={`custom-node${selected ? ' selected' : ''}${status ? ` status-${status}` : ''}`}>
+          {status && (
+            <div className={`node-status-dot ${status}`} title={status} />
+          )}
+
+          {/* Input handles */}
+          {inputs.map((port, i) => (
+            <Handle
+              key={`in-${port.name}`}
+              type="target"
+              position={Position.Left}
+              id={port.name}
+              style={{
+                top: inputs.length === 1
+                  ? '50%'
+                  : `${((i + 1) / (inputs.length + 1)) * 100}%`,
+                background: '#6366f1',
+                width: 8, height: 8,
+                border: '2px solid #0f1117',
+              }}
+              title={`↙ ${port.name} (${port.type})`}
+            />
+          ))}
+
+          {/* Output handles */}
+          {outputs.map((port, i) => (
+            <Handle
+              key={`out-${port.name}`}
+              type="source"
+              position={Position.Right}
+              id={port.name}
+              style={{
+                top: outputs.length === 1
+                  ? '50%'
+                  : `${((i + 1) / (outputs.length + 1)) * 100}%`,
+                background: '#10b981',
+                width: 8, height: 8,
+                border: '2px solid #0f1117',
+              }}
+              title={`↗ ${port.name} (${port.type})`}
+            />
+          ))}
+
+          <div className="node-header">
+            <span className="node-icon">{data.icon}</span>
+            <div>
+              <div className="node-title">{data.label}</div>
+              <div className="node-subtitle">{data.category}</div>
+            </div>
+          </div>
+
+          <div className="node-ports">
+            <div className="port-list">
+              {inputs.map(p => (
+                <span key={p.name} className="port-label">{p.name}</span>
+              ))}
+            </div>
+            <div className="port-list right">
+              {outputs.map(p => (
+                <span key={p.name} className="port-label">{p.name}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const nodeTypes = { workflowNode: CustomNode };
+
+    // ── NodePalette ─────────────────────────────────────────────────────────
+    function NodePalette({ nodeDefs }) {
+      const [search, setSearch] = useState('');
+      const [collapsed, setCollapsed] = useState({});
+
+      const filtered = useMemo(() => {
+        const q = search.toLowerCase();
+        return q
+          ? nodeDefs.filter(d => d.name.toLowerCase().includes(q) || d.category.toLowerCase().includes(q))
+          : nodeDefs;
+      }, [nodeDefs, search]);
+
+      const byCategory = useMemo(() => {
+        const map = {};
+        filtered.forEach(d => {
+          if (!map[d.category]) map[d.category] = [];
+          map[d.category].push(d);
+        });
+        return map;
+      }, [filtered]);
+
+      const categories = Object.keys(byCategory).sort();
+
+      const onDragStart = (e, def) => {
+        e.dataTransfer.setData('nodeDefId', def.id);
+        e.dataTransfer.effectAllowed = 'move';
+      };
+
+      const toggleCategory = (cat) => {
+        setCollapsed(c => ({ ...c, [cat]: !c[cat] }));
+      };
+
+      return (
+        <div className="sidebar">
+          <div className="sidebar-header">Nœuds disponibles</div>
+          <div className="sidebar-search">
+            <input
+              placeholder="Rechercher..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="sidebar-scroll">
+            {categories.length === 0 && (
+              <div style={{ padding: '20px 12px', color: '#334155', fontSize: 12, textAlign: 'center' }}>
+                {search ? 'Aucun résultat' : 'Aucun nœud enregistré'}
+              </div>
+            )}
+            {categories.map(cat => (
+              <div key={cat} className="category-group">
+                <div className="category-title" onClick={() => toggleCategory(cat)}>
+                  <span>{getCategoryIcon(cat)}</span>
+                  <span style={{ flex: 1 }}>{cat}</span>
+                  <span className={`category-chevron${collapsed[cat] ? '' : ' open'}`}>▶</span>
+                </div>
+                {!collapsed[cat] && byCategory[cat].map(def => (
+                  <div
+                    key={def.id}
+                    className="node-item"
+                    draggable
+                    onDragStart={e => onDragStart(e, def)}
+                    title={def.description}
+                  >
+                    <span className="node-item-icon">{getCategoryIcon(def.category)}</span>
+                    <div className="node-item-info">
+                      <div className="node-item-name">{def.name}</div>
+                      <div className="node-item-desc">{def.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── PropertiesPanel ─────────────────────────────────────────────────────
+    function PropertiesPanel({ node, nodeDef, onUpdateNode, executionResult }) {
+      const [localConfig, setLocalConfig] = useState({});
+      const [localLabel, setLocalLabel] = useState('');
+
+      useEffect(() => {
+        if (node) {
+          setLocalConfig({ ...(node.data.config || {}) });
+          setLocalLabel(node.data.label || '');
+        }
+      }, [node && node.id]);
+
+      if (!node) {
+        return (
+          <div className="props-panel">
+            <div className="props-header">
+              <div className="props-title">Propriétés</div>
+            </div>
+            <div className="props-scroll">
+              <div className="props-empty">
+                <div className="props-empty-icon">🎯</div>
+                <div className="props-empty-text">
+                  Sélectionne un nœud<br />pour voir ses propriétés
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const inputs  = node.data.inputs  || [];
+      const outputs = node.data.outputs || [];
+      const configSchema = nodeDef ? nodeDef.config_schema : {};
+
+      const handleSave = () => {
+        onUpdateNode({
+          ...node,
+          data: { ...node.data, label: localLabel, config: localConfig },
+        });
+      };
+
+      return (
+        <div className="props-panel">
+          <div className="props-header">
+            <div className="props-title">Propriétés</div>
+          </div>
+          <div className="props-scroll">
+
+            {/* Label */}
+            <div className="field-group">
+              <label className="field-label">Libellé</label>
+              <input
+                className="field-input"
+                value={localLabel}
+                onChange={e => setLocalLabel(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={e => e.key === 'Enter' && handleSave()}
+              />
+            </div>
+
+            {/* Definition info */}
+            <div className="field-group">
+              <label className="field-label">Type</label>
+              <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>
+                {node.data.definitionId}
+              </div>
+            </div>
+
+            {/* Ports */}
+            {(inputs.length > 0 || outputs.length > 0) && (
+              <>
+                <div className="section-divider" />
+                <div className="section-label">Ports</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginBottom: 8 }}>
+                  {inputs.map(p => (
+                    <span key={p.name} className="port-tag input" title={p.description}>
+                      ↙ {p.name}
+                    </span>
+                  ))}
+                  {outputs.map(p => (
+                    <span key={p.name} className="port-tag output" title={p.description}>
+                      ↗ {p.name}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Config schema fields */}
+            {Object.keys(configSchema).length > 0 && (
+              <>
+                <div className="section-divider" />
+                <div className="section-label">Configuration</div>
+                {Object.entries(configSchema).map(([key, schema]) => (
+                  <div key={key} className="field-group">
+                    <label className="field-label">
+                      {key}
+                      {schema.description && (
+                        <span style={{ color: '#334155', fontWeight: 400 }}> — {schema.description}</span>
+                      )}
+                    </label>
+                    {schema.type === 'text' ? (
+                      <textarea
+                        className="field-textarea"
+                        value={localConfig[key] || ''}
+                        onChange={e => setLocalConfig(c => ({ ...c, [key]: e.target.value }))}
+                        onBlur={handleSave}
+                        placeholder={schema.default || ''}
+                      />
+                    ) : (
+                      <input
+                        className="field-input"
+                        value={localConfig[key] || ''}
+                        onChange={e => setLocalConfig(c => ({ ...c, [key]: e.target.value }))}
+                        onBlur={handleSave}
+                        onKeyDown={e => e.key === 'Enter' && handleSave()}
+                        placeholder={schema.default !== undefined ? String(schema.default) : ''}
+                      />
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Execution result */}
+            {executionResult && (
+              <>
+                <div className="section-divider" />
+                <div className="section-label">Résultat d'exécution</div>
+                <div className={`result-box ${executionResult.status}`}>
+                  {executionResult.error
+                    ? `❌ ${executionResult.error}`
+                    : JSON.stringify(executionResult.output, null, 2)}
+                </div>
+                {executionResult.duration_ms > 0 && (
+                  <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>
+                    ⏱ {executionResult.duration_ms.toFixed(1)} ms
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Toolbar ─────────────────────────────────────────────────────────────
+    function Toolbar({ onSave, onLoad, onRun, onValidate, onNew }) {
+      const name       = useStore(s => s.workflowName);
+      const setName    = useStore(s => s.setWorkflowName);
+      const wsConn     = useStore(s => s.wsConnected);
+
+      return (
+        <div className="toolbar">
+          <span className="toolbar-logo">✦</span>
+          <span className="toolbar-name">Lucie Flow</span>
+          <div className="toolbar-sep" />
+
+          <input
+            className="workflow-name-input"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Nom du workflow"
+          />
+
+          <div className="toolbar-sep" />
+
+          <button className="btn btn-ghost btn-sm" onClick={onNew} title="Nouveau workflow (Ctrl+N)">
+            ✦ Nouveau
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={onLoad} title="Charger un workflow">
+            📂 Charger
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={onSave} title="Sauvegarder (Ctrl+S)">
+            💾 Sauvegarder
+          </button>
+
+          <div className="toolbar-sep" />
+
+          <button className="btn btn-warning btn-sm" onClick={onValidate} title="Valider le workflow">
+            ✓ Valider
+          </button>
+          <button className="btn btn-success btn-sm" onClick={onRun} title="Exécuter le workflow">
+            ▶ Exécuter
+          </button>
+
+          <div className="toolbar-spacer" />
+
+          <div className="toolbar-status">
+            <span className={`status-dot${wsConn ? ' connected' : ''}`} />
+            {wsConn ? 'Temps réel actif' : 'Temps réel inactif'}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Notifications ────────────────────────────────────────────────────────
+    function Notifications() {
+      const notifications = useStore(s => s.notifications);
+      return (
+        <div className="notifications">
+          {notifications.map(n => (
+            <div key={n.id} className={`notif notif-${n.type}`}>
+              {n.message}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── LoadModal ────────────────────────────────────────────────────────────
+    function LoadModal({ onClose, onLoad }) {
+      const savedWorkflows = useStore(s => s.savedWorkflows);
+      return (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="modal">
+            <div className="modal-title">📂 Charger un workflow</div>
+            <div className="modal-list">
+              {savedWorkflows.length === 0 ? (
+                <div style={{ color: '#475569', fontSize: 12, padding: 8, textAlign: 'center' }}>
+                  Aucun workflow sauvegardé
+                </div>
+              ) : (
+                savedWorkflows.map(wf => (
+                  <div key={wf.id} className="modal-item" onClick={() => onLoad(wf.id)}>
+                    <div>
+                      <div className="modal-item-name">{wf.name}</div>
+                      <div className="modal-item-meta">
+                        {wf.node_count} nœuds · {wf.edge_count} connexions · {wf.updated_at.slice(0, 10)}
+                      </div>
+                    </div>
+                    <span style={{ color: '#475569' }}>→</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── FlowEditor (inner — has access to useReactFlow) ─────────────────────
+    function FlowEditor() {
+      const store = useStore();
+      const [nodes, setNodes, onNodesChange] = useNodesState([]);
+      const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+      const { screenToFlowPosition } = useReactFlow();
+
+      // History stacks
+      const historyRef      = useRef([{ nodes: [], edges: [] }]);
+      const historyIndexRef = useRef(0);
+      const skipHistoryRef  = useRef(false);
+
+      const pushHistory = useCallback((newNodes, newEdges) => {
+        if (skipHistoryRef.current) return;
+        const idx = historyIndexRef.current;
+        historyRef.current = historyRef.current.slice(0, idx + 1);
+        historyRef.current.push({ nodes: JSON.parse(JSON.stringify(newNodes)), edges: JSON.parse(JSON.stringify(newEdges)) });
+        historyIndexRef.current = historyRef.current.length - 1;
+      }, []);
+
+      const undo = useCallback(() => {
+        if (historyIndexRef.current <= 0) return;
+        historyIndexRef.current--;
+        const state = historyRef.current[historyIndexRef.current];
+        skipHistoryRef.current = true;
+        setNodes(state.nodes);
+        setEdges(state.edges);
+        skipHistoryRef.current = false;
+        store.addNotification('Annulé', 'info');
+      }, [setNodes, setEdges]);
+
+      const redo = useCallback(() => {
+        if (historyIndexRef.current >= historyRef.current.length - 1) return;
+        historyIndexRef.current++;
+        const state = historyRef.current[historyIndexRef.current];
+        skipHistoryRef.current = true;
+        setNodes(state.nodes);
+        setEdges(state.edges);
+        skipHistoryRef.current = false;
+        store.addNotification('Rétabli', 'info');
+      }, [setNodes, setEdges]);
+
+      // Build workflow payload
+      const buildWorkflowData = useCallback(() => ({
+        id:          store.workflowId || undefined,
+        name:        store.workflowName,
+        nodes: nodes.map(n => ({
+          id:            n.id,
+          definition_id: n.data.definitionId,
+          position_x:    n.position.x,
+          position_y:    n.position.y,
+          config:        n.data.config || {},
+          label:         n.data.label || '',
+        })),
+        edges: edges.map(e => ({
+          id:             e.id,
+          source_node_id: e.source,
+          source_port:    e.sourceHandle || 'output',
+          target_node_id: e.target,
+          target_port:    e.targetHandle || 'input',
+        })),
+      }), [store.workflowId, store.workflowName, nodes, edges]);
+
+      // Load node definitions on mount
+      useEffect(() => {
+        (async () => {
+          try {
+            const defs = await api.get_node_definitions();
+            store.setNodeDefs(defs);
+          } catch (err) {
+            store.addNotification('Erreur chargement nœuds: ' + err.message, 'error');
+          }
+        })();
+      }, []);
+
+      // WebSocket connection
+      useEffect(() => {
+        let ws = null;
+        let reconnectTimer = null;
+
+        const connect = () => {
+          try {
+            ws = new WebSocket('ws://localhost:9724');
+            ws.onopen    = () => store.setWsConnected(true);
+            ws.onclose   = () => {
+              store.setWsConnected(false);
+              reconnectTimer = setTimeout(connect, 5000);
+            };
+            ws.onerror   = () => { /* silently ignore */ };
+            ws.onmessage = (event) => {
+              try {
+                const msg = JSON.parse(event.data);
+                if (msg.channel === 'workflow_node_completed' && msg.data) {
+                  store.updateNodeExecutionStatus(msg.data.node_id, msg.data.status);
+                }
+              } catch (_) { /* ignore parse errors */ }
+            };
+          } catch (_) {
+            store.setWsConnected(false);
+          }
+        };
+
+        connect();
+        return () => {
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          if (ws) ws.close();
+        };
+      }, []);
+
+      // Keyboard shortcuts
+      useEffect(() => {
+        const onKeyDown = async (e) => {
+          const ctrl = e.ctrlKey || e.metaKey;
+          if (ctrl && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); }
+          if (ctrl &&  e.shiftKey && e.key === 'z') { e.preventDefault(); redo(); }
+          if (ctrl && !e.shiftKey && e.key === 's') { e.preventDefault(); await handleSave(); }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+      }, [undo, redo, buildWorkflowData]);
+
+      // Handlers
+      const handleSave = useCallback(async () => {
+        try {
+          const data = buildWorkflowData();
+          const id = await api.save_workflow(data);
+          store.addNotification('Workflow sauvegardé ✓', 'success');
+          return id;
+        } catch (err) {
+          store.addNotification('Erreur sauvegarde: ' + err.message, 'error');
+        }
+      }, [buildWorkflowData]);
+
+      const handleValidate = useCallback(async () => {
+        try {
+          const errors = await api.validate_workflow(buildWorkflowData());
+          if (errors.length === 0) {
+            store.addNotification('Workflow valide ✓', 'success');
+          } else {
+            errors.slice(0, 3).forEach(e => store.addNotification(e, 'error'));
+            if (errors.length > 3) store.addNotification(`... et ${errors.length - 3} autre(s)`, 'warning');
+          }
+        } catch (err) {
+          store.addNotification('Erreur validation: ' + err.message, 'error');
+        }
+      }, [buildWorkflowData]);
+
+      const handleRun = useCallback(async () => {
+        store.addNotification('Exécution en cours...', 'info');
+        try {
+          const results = await api.execute_workflow(buildWorkflowData());
+          store.setExecutionResults(results);
+          const errors = results.filter(r => r.status === 'error');
+          if (errors.length === 0) {
+            store.addNotification(`Exécution réussie (${results.length} nœuds) ✓`, 'success');
+          } else {
+            store.addNotification(`${errors.length} erreur(s) d'exécution`, 'error');
+          }
+        } catch (err) {
+          store.addNotification('Erreur exécution: ' + err.message, 'error');
+        }
+      }, [buildWorkflowData]);
+
+      const handleNew = useCallback(() => {
+        setNodes([]);
+        setEdges([]);
+        historyRef.current = [{ nodes: [], edges: [] }];
+        historyIndexRef.current = 0;
+        store.setWorkflowName('Sans titre');
+        store.setSelectedNodeId(null);
+        store.setExecutionResults([]);
+        store.addNotification('Nouveau workflow créé', 'info');
+      }, [setNodes, setEdges]);
+
+      const handleOpenLoad = useCallback(async () => {
+        try {
+          const list = await api.list_workflows();
+          store.setSavedWorkflows(list);
+          store.setShowLoadModal(true);
+        } catch (err) {
+          store.addNotification('Erreur chargement liste: ' + err.message, 'error');
+        }
+      }, []);
+
+      const handleLoad = useCallback(async (workflowId) => {
+        store.setShowLoadModal(false);
+        try {
+          const data = await api.load_workflow(workflowId);
+          if (!data) { store.addNotification('Workflow introuvable', 'error'); return; }
+
+          store.setWorkflowName(data.name || 'Sans titre');
+          const loadedNodes = (data.nodes || []).map(n => ({
+            id:       n.id,
+            type:     'workflowNode',
+            position: { x: n.position_x || 0, y: n.position_y || 0 },
+            data: {
+              nodeId:       n.id,
+              definitionId: n.definition_id,
+              label:        n.label || n.definition_id,
+              category:     'general',
+              icon:         '⚙️',
+              inputs:       [],
+              outputs:      [],
+              config:       n.config || {},
+              configSchema: {},
+            },
+          }));
+          const loadedEdges = (data.edges || []).map(e => ({
+            id:           e.id,
+            source:       e.source_node_id,
+            sourceHandle: e.source_port,
+            target:       e.target_node_id,
+            targetHandle: e.target_port,
+            style:        { stroke: '#4f46e5', strokeWidth: 2 },
+            markerEnd:    { type: MarkerType.ArrowClosed, color: '#4f46e5' },
+          }));
+          setNodes(loadedNodes);
+          setEdges(loadedEdges);
+          pushHistory(loadedNodes, loadedEdges);
+          store.addNotification(`"${data.name}" chargé ✓`, 'success');
+        } catch (err) {
+          store.addNotification('Erreur chargement: ' + err.message, 'error');
+        }
+      }, [setNodes, setEdges, pushHistory]);
+
+      // Drag-and-drop from palette
+      const onDragOver = useCallback((e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }, []);
+
+      const onDrop = useCallback((e) => {
+        e.preventDefault();
+        const defId = e.dataTransfer.getData('nodeDefId');
+        if (!defId) return;
+        const def = store.nodeDefs.find(d => d.id === defId);
+        if (!def) return;
+
+        const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        const nodeId = `node-${Date.now()}`;
+        const newNode = {
+          id:       nodeId,
+          type:     'workflowNode',
+          position,
+          data: {
+            nodeId,
+            definitionId: def.id,
+            label:        def.name,
+            category:     def.category,
+            icon:         getCategoryIcon(def.category),
+            inputs:       def.inputs  || [],
+            outputs:      def.outputs || [],
+            config:       {},
+            configSchema: def.config_schema || {},
+          },
+        };
+
+        setNodes(nds => {
+          const next = [...nds, newNode];
+          pushHistory(next, edges);
+          return next;
+        });
+        store.setSelectedNodeId(nodeId);
+      }, [store.nodeDefs, edges, screenToFlowPosition, setNodes, pushHistory]);
+
+      const onConnect = useCallback((params) => {
+        const newEdge = {
+          ...params,
+          style:     { stroke: '#4f46e5', strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#4f46e5' },
+        };
+        setEdges(eds => {
+          const next = addEdge(newEdge, eds);
+          pushHistory(nodes, next);
+          return next;
+        });
+      }, [nodes, setEdges, pushHistory]);
+
+      const handleNodesChange = useCallback((changes) => {
+        onNodesChange(changes);
+        const hasDragEnd = changes.some(c => c.type === 'position' && c.dragging === false);
+        if (hasDragEnd) {
+          setNodes(nds => { pushHistory(nds, edges); return nds; });
+        }
+      }, [onNodesChange, edges, setNodes, pushHistory]);
+
+      const handleNodeClick = useCallback((_e, node) => {
+        store.setSelectedNodeId(node.id);
+      }, []);
+
+      const handlePaneClick = useCallback(() => {
+        store.setSelectedNodeId(null);
+      }, []);
+
+      const handleUpdateNode = useCallback((updated) => {
+        setNodes(nds => {
+          const next = nds.map(n => n.id === updated.id ? updated : n);
+          pushHistory(next, edges);
+          return next;
+        });
+      }, [edges, setNodes, pushHistory]);
+
+      // Derived: selected node and its definition
+      const selectedNode = useMemo(
+        () => nodes.find(n => n.id === store.selectedNodeId) || null,
+        [nodes, store.selectedNodeId]
+      );
+      const selectedDef = useMemo(
+        () => selectedNode
+          ? store.nodeDefs.find(d => d.id === selectedNode.data.definitionId)
+          : null,
+        [selectedNode, store.nodeDefs]
+      );
+      const selectedResult = selectedNode
+        ? store.executionResults[selectedNode.id] || null
+        : null;
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+          <Toolbar
+            onSave={handleSave}
+            onLoad={handleOpenLoad}
+            onRun={handleRun}
+            onValidate={handleValidate}
+            onNew={handleNew}
+          />
+
+          <div className="main-layout">
+            <NodePalette nodeDefs={store.nodeDefs} />
+
+            <div
+              className="canvas-wrapper"
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+            >
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={handleNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={handleNodeClick}
+                onPaneClick={handlePaneClick}
+                nodeTypes={nodeTypes}
+                fitView
+                deleteKeyCode={['Backspace', 'Delete']}
+                style={{ background: '#0f1117' }}
+              >
+                <Background
+                  variant={BackgroundVariant ? BackgroundVariant.Dots : 'dots'}
+                  gap={24}
+                  size={1}
+                  color="#1e293b"
+                />
+                <Controls />
+                <MiniMap
+                  nodeColor="#4f46e5"
+                  maskColor="rgba(0,0,0,0.6)"
+                  style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+                />
+                <Panel position="top-left" style={{ marginTop: 8, marginLeft: 8 }}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={undo}
+                      title="Annuler (Ctrl+Z)"
+                    >↩ Annuler</button>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={redo}
+                      title="Rétablir (Ctrl+Shift+Z)"
+                    >↪ Rétablir</button>
+                  </div>
+                </Panel>
+              </ReactFlow>
+            </div>
+
+            <PropertiesPanel
+              node={selectedNode}
+              nodeDef={selectedDef}
+              onUpdateNode={handleUpdateNode}
+              executionResult={selectedResult}
+            />
+          </div>
+
+          <Notifications />
+
+          {store.showLoadModal && (
+            <LoadModal
+              onClose={() => store.setShowLoadModal(false)}
+              onLoad={handleLoad}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // ── App root (wrapped in ReactFlowProvider) ──────────────────────────────
+    function App() {
+      return (
+        <ReactFlowProvider>
+          <FlowEditor />
+        </ReactFlowProvider>
+      );
+    }
+
+    // ── Mount ────────────────────────────────────────────────────────────────
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
