@@ -30,47 +30,62 @@
             overflow: hidden;
             height: 100vh;
         }
-        /* ── Layout ── */
         #app { display: flex; flex-direction: column; height: 100vh; }
         #toolbar {
             display: flex; align-items: center; gap: 8px;
             padding: 8px 16px; background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            z-index: 10;
+            border-bottom: 1px solid var(--border); z-index: 10;
         }
         #toolbar h1 { font-size: 14px; font-weight: 600; margin-right: 16px; color: var(--accent); }
         #main { display: flex; flex: 1; overflow: hidden; }
 
-        /* ── Palette (gauche) ── */
+        /* ── Palette ── */
         #palette {
-            width: 240px; background: var(--surface); border-right: 1px solid var(--border);
-            overflow-y: auto; padding: 12px; flex-shrink: 0;
+            width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+            overflow-y: auto; padding: 10px; flex-shrink: 0;
         }
         #palette h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 8px; }
-        .palette-category { margin-bottom: 16px; }
-        .palette-category-title { font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; padding: 2px 0; }
-        .palette-node {
-            padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border);
-            border-radius: 6px; margin-bottom: 4px; cursor: grab; font-size: 12px;
-            transition: border-color 0.15s, background 0.15s;
+        #palette-search {
+            width: 100%; padding: 5px 8px; background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 5px; color: var(--text); font-size: 12px; outline: none; margin-bottom: 10px;
         }
-        .palette-node:hover { border-color: var(--accent); background: #1e2133; }
-        .palette-node-name { font-weight: 500; }
-        .palette-node-desc { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+        #palette-search:focus { border-color: var(--accent); }
+        .palette-category { margin-bottom: 12px; }
+        .palette-category-title {
+            font-size: 11px; font-weight: 600; color: var(--text-dim); margin-bottom: 5px;
+            padding: 2px 4px; display: flex; align-items: center; gap: 5px;
+        }
+        .palette-node {
+            padding: 7px 9px; background: var(--surface2); border: 1px solid var(--border);
+            border-left-width: 3px; border-radius: 6px; margin-bottom: 3px;
+            cursor: grab; font-size: 12px; transition: border-color 0.15s, background 0.15s;
+        }
+        .palette-node:hover { background: #1e2133; }
+        .palette-node-name { font-weight: 500; font-size: 12px; }
+        .palette-node-desc { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+
+        /* ── Tooltip ── */
+        .tooltip {
+            position: fixed; background: #1e2133; border: 1px solid var(--border);
+            border-radius: 6px; padding: 8px 10px; font-size: 11px; color: var(--text);
+            max-width: 180px; z-index: 200; pointer-events: none; line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4); display: none;
+        }
 
         /* ── Canvas ── */
-        #canvas-container { flex: 1; position: relative; background: var(--bg); }
+        #canvas-container { flex: 1; position: relative; background: var(--bg); overflow: hidden; }
         #canvas {
             width: 100%; height: 100%;
             background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
             background-size: 20px 20px;
-            position: relative; overflow: hidden;
+            position: relative; overflow: hidden; cursor: default;
         }
+        #canvas.panning { cursor: grabbing; }
         #canvas-inner { position: absolute; transform-origin: 0 0; }
 
-        /* ── Properties (droite) ── */
+        /* ── Properties ── */
         #properties {
-            width: 280px; background: var(--surface); border-left: 1px solid var(--border);
+            width: 260px; background: var(--surface); border-left: 1px solid var(--border);
             overflow-y: auto; padding: 12px; flex-shrink: 0;
         }
         #properties h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 8px; }
@@ -82,7 +97,7 @@
         }
         #properties input:focus, #properties textarea:focus { border-color: var(--accent); }
 
-        /* ── Boutons toolbar ── */
+        /* ── Buttons ── */
         .btn {
             padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
             background: var(--surface2); color: var(--text); font-size: 12px;
@@ -95,53 +110,86 @@
         .btn-danger { background: var(--error); border-color: var(--error); color: white; }
         .toolbar-sep { width: 1px; height: 24px; background: var(--border); }
 
-        /* ── Nœuds sur le canvas ── */
+        /* ── Nodes ── */
         .wf-node {
-            position: absolute; min-width: 160px; background: var(--surface);
-            border: 2px solid var(--border); border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: move;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            position: absolute; min-width: 175px; max-width: 220px;
+            background: var(--surface); border: 2px solid var(--border);
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            cursor: move; user-select: none;
         }
         .wf-node.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.3); }
         .wf-node.running { border-color: var(--warning); }
         .wf-node.success { border-color: var(--success); }
         .wf-node.error { border-color: var(--error); }
         .wf-node-header {
-            padding: 8px 12px; background: var(--surface2); border-radius: 6px 6px 0 0;
-            font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--border);
+            padding: 7px 10px; border-radius: 6px 6px 0 0;
+            font-size: 12px; font-weight: 600;
+            border-bottom: 1px solid rgba(0,0,0,0.2); color: white;
         }
-        .wf-node-body { padding: 8px 12px; }
+        .wf-node-desc {
+            font-size: 10px; color: var(--text-dim);
+            padding: 4px 10px; border-bottom: 1px solid var(--border); line-height: 1.3;
+        }
+        .wf-node-body { padding: 6px 10px; }
+        .wf-node-ports { display: flex; }
+        .wf-node-inputs, .wf-node-outputs { flex: 1; }
+        .wf-node-outputs { text-align: right; }
         .wf-node-port {
-            display: flex; align-items: center; gap: 6px;
-            padding: 3px 0; font-size: 11px; color: var(--text-dim);
+            display: flex; align-items: center; gap: 5px;
+            padding: 3px 0; font-size: 10px; color: var(--text-dim);
         }
+        .wf-node-outputs .wf-node-port { flex-direction: row-reverse; }
         .wf-node-port-dot {
-            width: 10px; height: 10px; border-radius: 50%;
+            width: 14px; height: 14px; border-radius: 50%;
             border: 2px solid var(--port-any); background: var(--bg);
-            cursor: crosshair; flex-shrink: 0;
+            cursor: crosshair; flex-shrink: 0; transition: transform 0.1s, background 0.1s;
         }
+        .wf-node-port-dot:hover { background: var(--port-any); transform: scale(1.2); }
+        .wf-node-port-dot.compatible { background: var(--port-any); transform: scale(1.15); }
         .wf-node-port-dot[data-type="string"] { border-color: var(--port-string); }
+        .wf-node-port-dot[data-type="string"]:hover,
+        .wf-node-port-dot[data-type="string"].compatible { background: var(--port-string); }
         .wf-node-port-dot[data-type="number"] { border-color: var(--port-number); }
+        .wf-node-port-dot[data-type="number"]:hover,
+        .wf-node-port-dot[data-type="number"].compatible { background: var(--port-number); }
         .wf-node-port-dot[data-type="bool"] { border-color: var(--port-bool); }
-        .wf-node-inputs .wf-node-port { flex-direction: row; }
-        .wf-node-outputs .wf-node-port { flex-direction: row-reverse; text-align: right; }
+        .wf-node-port-dot[data-type="bool"]:hover,
+        .wf-node-port-dot[data-type="bool"].compatible { background: var(--port-bool); }
+
+        /* ── Suggestion pills ── */
+        .wf-node-suggestions {
+            padding: 5px 8px 7px; display: flex; flex-wrap: wrap; gap: 4px;
+            border-top: 1px solid var(--border);
+        }
+        .suggestion-pill {
+            font-size: 9px; padding: 2px 7px; border-radius: 10px;
+            background: var(--surface2); border: 1px solid var(--border);
+            color: var(--text-dim); cursor: pointer; transition: all 0.1s; white-space: nowrap;
+        }
+        .suggestion-pill:hover { border-color: var(--accent); color: var(--text); background: #1e2133; }
 
         /* ── Edges SVG ── */
         #edges-svg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 0;
+            pointer-events: none; z-index: 1; overflow: visible;
         }
         #edges-svg path {
-            fill: none; stroke: var(--border); stroke-width: 2;
-            transition: stroke 0.15s;
+            fill: none; stroke: #4a5060; stroke-width: 2;
+            pointer-events: stroke; cursor: pointer;
         }
+        #edges-svg path:hover { stroke: var(--accent-hover); stroke-width: 3; }
         #edges-svg path.active { stroke: var(--accent); stroke-width: 2.5; }
+        #temp-edge {
+            fill: none; stroke: var(--accent); stroke-width: 2;
+            stroke-dasharray: 6 4; pointer-events: none;
+        }
 
         /* ── Status bar ── */
         #statusbar {
             padding: 4px 16px; background: var(--surface); border-top: 1px solid var(--border);
-            font-size: 11px; color: var(--text-dim); display: flex; justify-content: space-between;
+            font-size: 11px; color: var(--text-dim); display: flex; justify-content: space-between; align-items: center;
         }
+        #status-workflow-name { color: var(--text); font-weight: 500; }
 
         /* ── Minimap ── */
         #minimap {
@@ -150,12 +198,24 @@
             overflow: hidden; z-index: 5; opacity: 0.8;
         }
 
-        /* ── Toast notifications ── */
+        /* ── Zoom controls ── */
+        #zoom-controls {
+            position: absolute; bottom: 122px; right: 12px;
+            display: flex; flex-direction: column; gap: 4px; z-index: 5;
+        }
+        .zoom-btn {
+            width: 28px; height: 28px; background: var(--surface); border: 1px solid var(--border);
+            border-radius: 6px; color: var(--text); font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .zoom-btn:hover { border-color: var(--accent); }
+        #zoom-label { font-size: 10px; color: var(--text-dim); text-align: center; }
+
+        /* ── Toasts ── */
         #toasts { position: fixed; top: 16px; right: 16px; z-index: 100; }
         .toast {
             padding: 10px 16px; border-radius: 8px; margin-bottom: 8px;
-            font-size: 12px; animation: fadeIn 0.2s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            font-size: 12px; animation: fadeIn 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
         .toast-success { background: var(--success); color: white; }
         .toast-error { background: var(--error); color: white; }
@@ -177,7 +237,6 @@
 </head>
 <body>
 <div id="app">
-    <!-- Toolbar -->
     <div id="toolbar">
         <h1>⚡ Lucie Workflows</h1>
         <button class="btn" onclick="app.newWorkflow()" title="Nouveau (Ctrl+N)">📄 Nouveau</button>
@@ -185,35 +244,48 @@
         <button class="btn" onclick="app.saveWorkflow()" title="Sauvegarder (Ctrl+S)">💾 Sauver</button>
         <div class="toolbar-sep"></div>
         <button class="btn" onclick="app.undo()" title="Annuler (Ctrl+Z)">↩ Annuler</button>
-        <button class="btn" onclick="app.redo()" title="Rétablir (Ctrl+Shift+Z)">↪ Rétablir</button>
+        <button class="btn" onclick="app.redo()" title="Rétablir">↪ Rétablir</button>
         <div class="toolbar-sep"></div>
-        <button class="btn" onclick="app.validateWorkflow()" title="Valider le workflow">✅ Valider</button>
-        <button class="btn btn-primary" onclick="app.executeWorkflow()" title="Exécuter le workflow">▶ Exécuter</button>
+        <button class="btn" onclick="app.validateWorkflow()" title="Valider">✅ Valider</button>
+        <button class="btn btn-primary" onclick="app.executeWorkflow()" title="Exécuter">▶ Exécuter</button>
         <div style="flex:1"></div>
-        <span id="workflow-name" style="font-size:13px; color:var(--text-dim)">Sans titre</span>
+        <span id="workflow-name" style="font-size:13px;color:var(--text-dim)">Sans titre</span>
     </div>
 
     <div id="main">
-        <!-- Palette de nœuds -->
         <div id="palette">
             <h2>Nœuds disponibles</h2>
+            <input id="palette-search" type="text" placeholder="Rechercher…" oninput="app.filterPalette(this.value)" />
             <div id="palette-list"></div>
         </div>
 
-        <!-- Canvas -->
         <div id="canvas-container">
-            <div id="canvas" onmousedown="app.canvasMouseDown(event)" onmousemove="app.canvasMouseMove(event)" onmouseup="app.canvasMouseUp(event)" ondrop="app.canvasDrop(event)" ondragover="event.preventDefault()">
-                <svg id="edges-svg"></svg>
+            <div id="canvas"
+                onmousedown="app.canvasMouseDown(event)"
+                onmousemove="app.canvasMouseMove(event)"
+                onmouseup="app.canvasMouseUp(event)"
+                onwheel="app.canvasWheel(event)"
+                ondrop="app.canvasDrop(event)"
+                ondragover="event.preventDefault()"
+                oncontextmenu="event.preventDefault()">
+                <svg id="edges-svg" style="pointer-events:none">
+                    <path id="temp-edge" d="" style="display:none;fill:none;stroke:#6366f1;stroke-width:2;stroke-dasharray:6 4" />
+                </svg>
                 <div id="canvas-inner"></div>
+            </div>
+            <div id="zoom-controls">
+                <button class="zoom-btn" onclick="app.zoomIn()">+</button>
+                <span id="zoom-label">100%</span>
+                <button class="zoom-btn" onclick="app.zoomOut()">−</button>
+                <button class="zoom-btn" onclick="app.zoomReset()" style="font-size:11px">⊙</button>
             </div>
             <div id="minimap"></div>
         </div>
 
-        <!-- Panneau propriétés -->
         <div id="properties">
             <h2>Propriétés</h2>
             <div id="props-content">
-                <p style="font-size:12px; color:var(--text-dim); margin-top:20px">
+                <p style="font-size:12px;color:var(--text-dim);margin-top:20px">
                     Sélectionnez un nœud pour voir ses propriétés.
                 </p>
             </div>
@@ -221,113 +293,285 @@
     </div>
 
     <div id="statusbar">
-        <span id="status-left">Prêt</span>
+        <span><span id="status-workflow-name">Sans titre</span></span>
         <span id="status-right">0 nœuds · 0 connexions</span>
     </div>
 </div>
 <div id="toasts"></div>
+<div class="tooltip" id="tooltip"></div>
 
 <script>
-// ── Mock API (quand PyWebView n'est pas disponible) ──
+// ── Category definitions ──
+const CATEGORIES = [
+    { label: '🧠 Intelligence', color: '#6366f1',
+      agents: ['agent.planner_agent','agent.strategist_agent','agent.analyzer_agent','agent.knowledge_agent'] },
+    { label: '✏️ Création',     color: '#ec4899',
+      agents: ['agent.creator_agent','agent.document_agent','agent.code_debug_agent'] },
+    { label: '📁 Fichiers',     color: '#f59e0b',
+      agents: ['agent.file_agent','agent.workspace_agent','agent.consolidator_agent'] },
+    { label: '🖥 Système',      color: '#06b6d4',
+      agents: ['agent.computer_control_agent','agent.apple_ecosystem_agent','agent.wake_agent'] },
+    { label: '🔒 Sécurité',     color: '#ef4444',
+      agents: ['agent.cyber_agent','agent.deception_agent','agent.healer_agent','agent.watch_agent'] },
+    { label: '👤 Personnel',    color: '#8b5cf6',
+      agents: ['agent.profile_agent','agent.soul_agent','agent.feedback_agent','agent.reminder_agent','agent.calendar_agent'] },
+    { label: '📧 Communication',color: '#10b981',
+      agents: ['agent.smart_mail_agent','agent.safari_research_workflow','agent.team_leader_agent'] },
+    { label: '🔧 Utilitaires',  color: '#94a3b8',
+      agents: ['agent.fixer_agent'] },
+    { label: '⚙️ Flux',         color: '#64748b',
+      agents: ['logic.condition','logic.merge','io.input','io.output'] },
+];
+
+// Reverse map: defId → {label, color}
+const DEF_CATEGORY = {};
+for (const cat of CATEGORIES) {
+    for (const id of cat.agents) DEF_CATEGORY[id] = { label: cat.label, color: cat.color };
+}
+function getCatForDef(defId) {
+    return DEF_CATEGORY[defId] || { label: '⚙️ Flux', color: '#64748b' };
+}
+
+// ── Suggestion map (agentName → suggested agent names) ──
+const SUGGESTIONS = {
+    'PlannerAgent':          ['CreatorAgent','FileAgent','DocumentAgent'],
+    'CreatorAgent':          ['DocumentAgent','FileAgent'],
+    'KnowledgeAgent':        ['PlannerAgent','CreatorAgent','AnalyzerAgent'],
+    'FileAgent':             ['DocumentAgent','WorkspaceAgent'],
+    'DocumentAgent':         ['FileAgent','SmartMailAgent'],
+    'AnalyzerAgent':         ['PlannerAgent','CreatorAgent','KnowledgeAgent'],
+    'ComputerControlAgent':  ['FileAgent','AppleEcosystemAgent'],
+    'CyberAgent':            ['DeceptionAgent','HealerAgent','WatchAgent'],
+    'SmartMailAgent':        ['DocumentAgent','CalendarAgent'],
+    'CalendarAgent':         ['ReminderAgent','SmartMailAgent'],
+    'ProfileAgent':          ['PlannerAgent','SoulAgent'],
+    'CodeDebugAgent':        ['FileAgent','FixerAgent'],
+    'StrategistAgent':       ['PlannerAgent','AnalyzerAgent'],
+};
+function getSuggestionsFor(agentName) {
+    return SUGGESTIONS[agentName] || ['PlannerAgent','CreatorAgent'];
+}
+
+// ── Full mock node definitions ──
 const mockNodeDefs = [
-    { id: 'agent.file_agent', name: 'FileAgent', category: 'agent', description: 'Gestion de fichiers',
-      inputs: [{ name: 'input', type: 'any', description: 'Entrée', required: true }],
-      outputs: [{ name: 'output', type: 'any', description: 'Sortie' }] },
-    { id: 'agent.planner_agent', name: 'PlannerAgent', category: 'agent', description: 'Décomposition de tâches',
-      inputs: [{ name: 'input', type: 'any', description: 'Tâche', required: true }],
-      outputs: [{ name: 'plan', type: 'any', description: 'Plan décomposé' }] },
-    { id: 'agent.creator_agent', name: 'CreatorAgent', category: 'agent', description: 'Génération de contenu',
-      inputs: [{ name: 'input', type: 'any', description: 'Instructions', required: true }],
-      outputs: [{ name: 'output', type: 'any', description: 'Contenu généré' }] },
-    { id: 'agent.knowledge_agent', name: 'KnowledgeAgent', category: 'agent', description: 'Base de connaissances',
-      inputs: [{ name: 'query', type: 'string', description: 'Question' }],
-      outputs: [{ name: 'answer', type: 'string', description: 'Réponse' }] },
-    { id: 'agent.document_agent', name: 'DocumentAgent', category: 'agent', description: 'Word/PDF/Excel',
-      inputs: [{ name: 'input', type: 'any', description: 'Contenu' }],
-      outputs: [{ name: 'document', type: 'any', description: 'Document créé' }] },
-    { id: 'logic.condition', name: 'Condition', category: 'logic', description: 'Branchement conditionnel',
-      inputs: [{ name: 'value', type: 'any', description: 'Valeur à tester' }],
-      outputs: [{ name: 'true', type: 'any', description: 'Si vrai' }, { name: 'false', type: 'any', description: 'Si faux' }] },
-    { id: 'logic.merge', name: 'Fusion', category: 'logic', description: 'Fusionne plusieurs entrées',
-      inputs: [{ name: 'a', type: 'any', description: 'Entrée A' }, { name: 'b', type: 'any', description: 'Entrée B' }],
-      outputs: [{ name: 'output', type: 'any', description: 'Résultat fusionné' }] },
-    { id: 'io.input', name: 'Entrée', category: 'io', description: 'Point d\'entrée du workflow',
-      inputs: [],
-      outputs: [{ name: 'data', type: 'any', description: 'Données utilisateur' }] },
-    { id: 'io.output', name: 'Sortie', category: 'io', description: 'Point de sortie du workflow',
-      inputs: [{ name: 'result', type: 'any', description: 'Résultat final' }],
-      outputs: [] },
+    // Intelligence
+    { id:'agent.planner_agent',    name:'PlannerAgent',    category:'agent',
+      description:'Décompose une tâche complexe en sous-étapes',
+      inputs:[{name:'input',type:'any',description:'Tâche',required:true}],
+      outputs:[{name:'plan',type:'any',description:'Plan décomposé'}] },
+    { id:'agent.strategist_agent', name:'StrategistAgent', category:'agent',
+      description:'Élabore des stratégies à long terme',
+      inputs:[{name:'input',type:'any',description:'Objectif',required:true}],
+      outputs:[{name:'strategy',type:'any',description:'Stratégie'}] },
+    { id:'agent.analyzer_agent',   name:'AnalyzerAgent',   category:'agent',
+      description:'Analyse des données et détecte des patterns',
+      inputs:[{name:'data',type:'any',description:'Données',required:true}],
+      outputs:[{name:'analysis',type:'any',description:'Analyse'}] },
+    { id:'agent.knowledge_agent',  name:'KnowledgeAgent',  category:'agent',
+      description:'Interroge la base de savoir interne',
+      inputs:[{name:'query',type:'string',description:'Question'}],
+      outputs:[{name:'answer',type:'string',description:'Réponse'}] },
+    // Création
+    { id:'agent.creator_agent',    name:'CreatorAgent',    category:'agent',
+      description:'Génère du contenu texte ou créatif',
+      inputs:[{name:'input',type:'any',description:'Instructions',required:true}],
+      outputs:[{name:'output',type:'any',description:'Contenu généré'}] },
+    { id:'agent.document_agent',   name:'DocumentAgent',   category:'agent',
+      description:'Crée et édite des fichiers Word/PDF/Excel',
+      inputs:[{name:'input',type:'any',description:'Contenu'}],
+      outputs:[{name:'document',type:'any',description:'Document créé'}] },
+    { id:'agent.code_debug_agent', name:'CodeDebugAgent',  category:'agent',
+      description:'Détecte et corrige des bugs dans le code',
+      inputs:[{name:'code',type:'string',description:'Code source'}],
+      outputs:[{name:'fixed',type:'string',description:'Code corrigé'}] },
+    // Fichiers
+    { id:'agent.file_agent',       name:'FileAgent',       category:'agent',
+      description:'Lit, écrit, déplace des fichiers locaux',
+      inputs:[{name:'input',type:'any',description:'Entrée',required:true}],
+      outputs:[{name:'output',type:'any',description:'Sortie'}] },
+    { id:'agent.workspace_agent',  name:'WorkspaceAgent',  category:'agent',
+      description:"Organise et gère l'espace de travail",
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'output',type:'any',description:'Sortie'}] },
+    { id:'agent.consolidator_agent', name:'ConsolidatorAgent', category:'agent',
+      description:'Fusionne et consolide plusieurs résultats',
+      inputs:[{name:'a',type:'any',description:'Entrée A'},{name:'b',type:'any',description:'Entrée B'}],
+      outputs:[{name:'output',type:'any',description:'Consolidé'}] },
+    // Système
+    { id:'agent.computer_control_agent', name:'ComputerControlAgent', category:'agent',
+      description:"Contrôle l'interface macOS (clics, menus)",
+      inputs:[{name:'command',type:'string',description:'Commande'}],
+      outputs:[{name:'result',type:'any',description:'Résultat'}] },
+    { id:'agent.apple_ecosystem_agent',  name:'AppleEcosystemAgent',  category:'agent',
+      description:'Intègre les apps Apple (Mail, Calendar…)',
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'output',type:'any',description:'Sortie'}] },
+    { id:'agent.wake_agent',       name:'WakeAgent',       category:'agent',
+      description:'Détecte le wake word pour démarrer',
+      inputs:[],
+      outputs:[{name:'trigger',type:'any',description:'Déclenchement'}] },
+    // Sécurité
+    { id:'agent.cyber_agent',      name:'CyberAgent',      category:'agent',
+      description:'Surveille les menaces de sécurité système',
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'alert',type:'any',description:'Alerte sécurité'}] },
+    { id:'agent.deception_agent',  name:'DeceptionAgent',  category:'agent',
+      description:'Déploie des honeypots pour piéger les attaques',
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'report',type:'any',description:'Rapport'}] },
+    { id:'agent.healer_agent',     name:'HealerAgent',     category:'agent',
+      description:"Surveille et restaure l'intégrité des fichiers",
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'status',type:'any',description:'Statut'}] },
+    { id:'agent.watch_agent',      name:'WatchAgent',      category:'agent',
+      description:'Surveille des répertoires en temps réel',
+      inputs:[{name:'path',type:'string',description:'Chemin à surveiller'}],
+      outputs:[{name:'event',type:'any',description:'Événement'}] },
+    // Personnel
+    { id:'agent.profile_agent',    name:'ProfileAgent',    category:'agent',
+      description:'Gère le profil et préférences utilisateur',
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'profile',type:'any',description:'Profil'}] },
+    { id:'agent.soul_agent',       name:'SoulAgent',       category:'agent',
+      description:'Assure la cohérence de personnalité de Lucie',
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'output',type:'any',description:'Sortie'}] },
+    { id:'agent.feedback_agent',   name:'FeedbackAgent',   category:'agent',
+      description:'Collecte et intègre les retours utilisateur',
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'feedback',type:'any',description:'Retour traité'}] },
+    { id:'agent.reminder_agent',   name:'ReminderAgent',   category:'agent',
+      description:'Gère les rappels et notifications',
+      inputs:[{name:'input',type:'any',description:'Rappel à créer'}],
+      outputs:[{name:'status',type:'any',description:'Statut'}] },
+    { id:'agent.calendar_agent',   name:'CalendarAgent',   category:'agent',
+      description:'Lit et crée des événements dans le calendrier',
+      inputs:[{name:'input',type:'any',description:'Entrée'}],
+      outputs:[{name:'event',type:'any',description:'Événement'}] },
+    // Communication
+    { id:'agent.smart_mail_agent', name:'SmartMailAgent',  category:'agent',
+      description:'Rédige et envoie des emails intelligents',
+      inputs:[{name:'input',type:'any',description:'Contenu du mail'}],
+      outputs:[{name:'sent',type:'any',description:'Envoyé'}] },
+    { id:'agent.safari_research_workflow', name:'SafariResearchWorkflow', category:'agent',
+      description:'Effectue des recherches web via Safari',
+      inputs:[{name:'query',type:'string',description:'Recherche'}],
+      outputs:[{name:'results',type:'any',description:'Résultats'}] },
+    { id:'agent.team_leader_agent', name:'TeamLeaderAgent', category:'agent',
+      description:'Coordonne plusieurs agents en équipe',
+      inputs:[{name:'task',type:'any',description:'Tâche à déléguer'}],
+      outputs:[{name:'result',type:'any',description:'Résultat équipe'}] },
+    // Utilitaires
+    { id:'agent.fixer_agent',      name:'FixerAgent',      category:'agent',
+      description:'Répare automatiquement les erreurs détectées',
+      inputs:[{name:'error',type:'any',description:'Erreur à corriger'}],
+      outputs:[{name:'fixed',type:'any',description:'Corrigé'}] },
+    // Flux
+    { id:'logic.condition', name:'Condition', category:'logic',
+      description:'Branchement conditionnel (si/sinon)',
+      inputs:[{name:'value',type:'any',description:'Valeur à tester'}],
+      outputs:[{name:'true',type:'any',description:'Si vrai'},{name:'false',type:'any',description:'Si faux'}] },
+    { id:'logic.merge', name:'Fusion', category:'logic',
+      description:'Fusionne plusieurs entrées en une',
+      inputs:[{name:'a',type:'any',description:'Entrée A'},{name:'b',type:'any',description:'Entrée B'}],
+      outputs:[{name:'output',type:'any',description:'Résultat fusionné'}] },
+    { id:'io.input', name:'Entrée', category:'io',
+      description:"Point d'entrée du workflow",
+      inputs:[],
+      outputs:[{name:'data',type:'any',description:'Données utilisateur'}] },
+    { id:'io.output', name:'Sortie', category:'io',
+      description:'Point de sortie du workflow',
+      inputs:[{name:'result',type:'any',description:'Résultat final'}],
+      outputs:[] },
 ];
 
 const mockApi = {
     get_node_definitions: () => mockNodeDefs,
-    get_node_categories: () => ['agent', 'logic', 'io'],
-    save_workflow: (data) => data.id || 'mock-' + Date.now(),
-    load_workflow: (id) => null,
-    list_workflows: () => [],
-    delete_workflow: (id) => true,
-    validate_workflow: (data) => [],
-    execute_workflow: (data) => data.nodes.map(n => ({ node_id: n.id, status: 'success', output: {}, duration_ms: Math.random() * 100 })),
+    get_node_categories:  () => ['agent','logic','io'],
+    save_workflow:        (data) => data.id || 'mock-' + Date.now(),
+    load_workflow:        () => null,
+    list_workflows:       () => [],
+    delete_workflow:      () => true,
+    validate_workflow:    () => [],
+    execute_workflow:     (data) => data.nodes.map(n => ({
+        node_id: n.id, status: 'success', output: {}, duration_ms: Math.random() * 100,
+    })),
 };
 
 const api = window.pywebview?.api || mockApi;
 
-// ── Application State ──
+// ── App ──
 const app = {
-    workflow: { id: '', name: 'Sans titre', description: '', nodes: [], edges: [] },
+    workflow: { id:'', name:'Sans titre', description:'', nodes:[], edges:[] },
     nodeDefs: [],
     selectedNodeId: null,
-    dragging: null,
+    dragging:   null,
     connecting: null,
-    undoStack: [],
-    redoStack: [],
-    pan: { x: 0, y: 0 },
+    panning:    null,
+    undoStack:  [],
+    redoStack:  [],
+    pan:  { x: 0, y: 0 },
     zoom: 1,
     wsConnection: null,
 
-    // ── Initialisation ──
     async init() {
         this.nodeDefs = await this._call(() => api.get_node_definitions());
+        if (!this.nodeDefs || !this.nodeDefs.length) this.nodeDefs = mockNodeDefs;
         this.renderPalette();
         this.bindKeyboard();
         this.connectWS();
         this.updateStatus();
     },
 
-    // ── API calls (sync ou async selon PyWebView) ──
     async _call(fn) {
         try {
-            const result = fn();
-            return result instanceof Promise ? await result : result;
-        } catch (e) {
-            console.error('API error:', e);
-            return null;
-        }
+            const r = fn();
+            return r instanceof Promise ? await r : r;
+        } catch(e) { console.error('API error:', e); return null; }
     },
 
     // ── Palette ──
-    renderPalette() {
+    renderPalette(filter) {
         const list = document.getElementById('palette-list');
-        const byCategory = {};
-        this.nodeDefs.forEach(nd => {
-            if (!byCategory[nd.category]) byCategory[nd.category] = [];
-            byCategory[nd.category].push(nd);
-        });
-
-        list.innerHTML = Object.entries(byCategory).map(([cat, nodes]) => `
-            <div class="palette-category">
-                <div class="palette-category-title">${cat.toUpperCase()}</div>
+        const q = (filter || '').toLowerCase();
+        let html = '';
+        for (const cat of CATEGORIES) {
+            const nodes = cat.agents
+                .map(id => this.nodeDefs.find(d => d.id === id))
+                .filter(Boolean)
+                .filter(nd => !q || nd.name.toLowerCase().includes(q) || nd.description.toLowerCase().includes(q));
+            if (!nodes.length) continue;
+            html += `<div class="palette-category">
+                <div class="palette-category-title">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${cat.color};display:inline-block;flex-shrink:0"></span>
+                    ${cat.label}
+                </div>
                 ${nodes.map(nd => `
-                    <div class="palette-node" draggable="true" ondragstart="app.paletteDragStart(event, '${nd.id}')">
+                    <div class="palette-node" draggable="true"
+                         ondragstart="app.paletteDragStart(event,'${nd.id}')"
+                         onmouseenter="app.showTooltip(event,\`${nd.description}\`)"
+                         onmouseleave="app.hideTooltip()"
+                         style="border-left-color:${cat.color}">
                         <div class="palette-node-name">${nd.name}</div>
                         <div class="palette-node-desc">${nd.description}</div>
-                    </div>
-                `).join('')}
-            </div>
-        `).join('');
+                    </div>`).join('')}
+            </div>`;
+        }
+        list.innerHTML = html;
     },
 
-    // ── Drag & Drop depuis palette ──
+    filterPalette(q) { this.renderPalette(q); },
+
+    showTooltip(e, text) {
+        const t = document.getElementById('tooltip');
+        t.textContent = text;
+        t.style.display = 'block';
+        t.style.left = (e.clientX + 14) + 'px';
+        t.style.top  = (e.clientY - 8)  + 'px';
+    },
+    hideTooltip() { document.getElementById('tooltip').style.display = 'none'; },
+
+    // ── Drag from palette ──
     paletteDragStart(e, defId) {
         e.dataTransfer.setData('nodeDefId', defId);
         e.dataTransfer.effectAllowed = 'copy';
@@ -337,39 +581,34 @@ const app = {
         e.preventDefault();
         const defId = e.dataTransfer.getData('nodeDefId');
         if (!defId) return;
-
-        const canvas = document.getElementById('canvas');
-        const rect = canvas.getBoundingClientRect();
+        const rect = document.getElementById('canvas').getBoundingClientRect();
         const x = (e.clientX - rect.left - this.pan.x) / this.zoom;
-        const y = (e.clientY - rect.top - this.pan.y) / this.zoom;
-
+        const y = (e.clientY - rect.top  - this.pan.y) / this.zoom;
         this.addNode(defId, x, y);
     },
 
-    // ── Gestion des nœuds ──
+    // ── Nodes ──
     addNode(defId, x, y) {
         const def = this.nodeDefs.find(d => d.id === defId);
-        if (!def) return;
-
+        if (!def) return null;
         this.pushUndo();
         const node = {
-            id: 'node-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+            id: 'node-' + Date.now() + '-' + Math.random().toString(36).substr(2,4),
             definition_id: defId,
-            position_x: x,
-            position_y: y,
-            config: {},
-            label: def.name,
+            position_x: x, position_y: y,
+            config: {}, label: def.name,
         };
         this.workflow.nodes.push(node);
         this.renderCanvas();
         this.selectNode(node.id);
-        this.toast(`Nœud "${def.name}" ajouté`, 'info');
+        return node;
     },
 
     deleteNode(nodeId) {
         this.pushUndo();
         this.workflow.nodes = this.workflow.nodes.filter(n => n.id !== nodeId);
-        this.workflow.edges = this.workflow.edges.filter(e => e.source_node_id !== nodeId && e.target_node_id !== nodeId);
+        this.workflow.edges = this.workflow.edges.filter(e =>
+            e.source_node_id !== nodeId && e.target_node_id !== nodeId);
         if (this.selectedNodeId === nodeId) this.selectedNodeId = null;
         this.renderCanvas();
         this.renderProperties();
@@ -383,21 +622,16 @@ const app = {
         this.renderProperties();
     },
 
-    // ── Connexions ──
+    // ── Edges ──
     addEdge(srcNodeId, srcPort, tgtNodeId, tgtPort) {
-        const exists = this.workflow.edges.some(e =>
+        if (this.workflow.edges.some(e =>
             e.source_node_id === srcNodeId && e.source_port === srcPort &&
-            e.target_node_id === tgtNodeId && e.target_port === tgtPort
-        );
-        if (exists) return;
-
+            e.target_node_id === tgtNodeId && e.target_port === tgtPort)) return;
         this.pushUndo();
         this.workflow.edges.push({
             id: 'edge-' + Date.now(),
-            source_node_id: srcNodeId,
-            source_port: srcPort,
-            target_node_id: tgtNodeId,
-            target_port: tgtPort,
+            source_node_id: srcNodeId, source_port: srcPort,
+            target_node_id: tgtNodeId, target_port: tgtPort,
         });
         this.renderEdges();
         this.updateStatus();
@@ -407,47 +641,72 @@ const app = {
         this.pushUndo();
         this.workflow.edges = this.workflow.edges.filter(e => e.id !== edgeId);
         this.renderEdges();
+        this.updateStatus();
+        this.toast('Connexion supprimée', 'info');
     },
 
-    // ── Rendu canvas ──
+    // ── Suggestion pill click ──
+    connectSuggestion(sourceNodeId, targetAgentName) {
+        const targetDef = this.nodeDefs.find(d => d.name === targetAgentName);
+        if (!targetDef) { this.toast(`Agent ${targetAgentName} introuvable`, 'error'); return; }
+        const sourceNode = this.workflow.nodes.find(n => n.id === sourceNodeId);
+        if (!sourceNode) return;
+        const targetNode = this.addNode(targetDef.id, sourceNode.position_x + 230, sourceNode.position_y);
+        if (!targetNode) return;
+        const sourceDef = this.nodeDefs.find(d => d.id === sourceNode.definition_id);
+        const srcPort = (sourceDef && sourceDef.outputs && sourceDef.outputs[0]) ? sourceDef.outputs[0].name : 'output';
+        const tgtPort = (targetDef.inputs && targetDef.inputs[0]) ? targetDef.inputs[0].name : 'input';
+        this.addEdge(sourceNodeId, srcPort, targetNode.id, tgtPort);
+        this.toast(`Connexion créée → ${targetAgentName}`, 'info');
+    },
+
+    // ── Canvas render ──
     renderCanvas() {
         const inner = document.getElementById('canvas-inner');
-        inner.style.transform = `translate(${this.pan.x}px, ${this.pan.y}px) scale(${this.zoom})`;
+        inner.style.transform = `translate(${this.pan.x}px,${this.pan.y}px) scale(${this.zoom})`;
 
         inner.innerHTML = this.workflow.nodes.map(node => {
-            const def = this.nodeDefs.find(d => d.id === node.definition_id) || { inputs: [], outputs: [], name: '?' };
+            const def = this.nodeDefs.find(d => d.id === node.definition_id)
+                     || { inputs:[], outputs:[], name:'?', description:'' };
+            const cat = getCatForDef(node.definition_id);
             const isSelected = node.id === this.selectedNodeId;
-            return `
-                <div class="wf-node ${isSelected ? 'selected' : ''}" id="${node.id}"
-                     style="left:${node.position_x}px; top:${node.position_y}px"
-                     onmousedown="app.nodeMouseDown(event, '${node.id}')">
-                    <div class="wf-node-header">${node.label || def.name}</div>
+            const suggestions = getSuggestionsFor(def.name);
+
+            const inputPorts = (def.inputs || []).map(p => `
+                <div class="wf-node-port">
+                    <div class="wf-node-port-dot" data-type="${p.type}"
+                         data-node="${node.id}" data-port="${p.name}" data-dir="input"
+                         onmousedown="app.portMouseDown(event,'${node.id}','${p.name}','input')"
+                         onmouseup="app.portMouseUp(event,'${node.id}','${p.name}','input')"></div>
+                    <span>${p.name}</span>
+                </div>`).join('');
+
+            const outputPorts = (def.outputs || []).map(p => `
+                <div class="wf-node-port">
+                    <div class="wf-node-port-dot" data-type="${p.type}"
+                         data-node="${node.id}" data-port="${p.name}" data-dir="output"
+                         onmousedown="app.portMouseDown(event,'${node.id}','${p.name}','output')"
+                         onmouseup="app.portMouseUp(event,'${node.id}','${p.name}','output')"></div>
+                    <span>${p.name}</span>
+                </div>`).join('');
+
+            const pillsHtml = suggestions.map(s =>
+                `<span class="suggestion-pill" onclick="app.connectSuggestion('${node.id}','${s}')">→ ${s}</span>`
+            ).join('');
+
+            return `<div class="wf-node ${isSelected ? 'selected' : ''}" id="${node.id}"
+                        style="left:${node.position_x}px;top:${node.position_y}px"
+                        onmousedown="app.nodeMouseDown(event,'${node.id}')">
+                    <div class="wf-node-header" style="background:${cat.color}">${node.label || def.name}</div>
+                    <div class="wf-node-desc">${def.description || ''}</div>
                     <div class="wf-node-body">
-                        <div class="wf-node-inputs">
-                            ${(def.inputs || []).map(p => `
-                                <div class="wf-node-port">
-                                    <div class="wf-node-port-dot" data-type="${p.type}"
-                                         data-node="${node.id}" data-port="${p.name}" data-dir="input"
-                                         onmousedown="app.portMouseDown(event, '${node.id}', '${p.name}', 'input')"
-                                         onmouseup="app.portMouseUp(event, '${node.id}', '${p.name}', 'input')"></div>
-                                    <span>${p.name}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <div class="wf-node-outputs">
-                            ${(def.outputs || []).map(p => `
-                                <div class="wf-node-port">
-                                    <div class="wf-node-port-dot" data-type="${p.type}"
-                                         data-node="${node.id}" data-port="${p.name}" data-dir="output"
-                                         onmousedown="app.portMouseDown(event, '${node.id}', '${p.name}', 'output')"
-                                         onmouseup="app.portMouseUp(event, '${node.id}', '${p.name}', 'output')"></div>
-                                    <span>${p.name}</span>
-                                </div>
-                            `).join('')}
+                        <div class="wf-node-ports">
+                            <div class="wf-node-inputs">${inputPorts}</div>
+                            <div class="wf-node-outputs">${outputPorts}</div>
                         </div>
                     </div>
-                </div>
-            `;
+                    ${pillsHtml ? `<div class="wf-node-suggestions">${pillsHtml}</div>` : ''}
+                </div>`;
         }).join('');
 
         this.renderEdges();
@@ -455,75 +714,102 @@ const app = {
         this.renderMinimap();
     },
 
-    // ── Rendu edges SVG ──
+    // ── Edges render ──
     renderEdges() {
         const svg = document.getElementById('edges-svg');
-        svg.innerHTML = this.workflow.edges.map(edge => {
+        const tempEdge = document.getElementById('temp-edge');
+        // Remove all paths except temp-edge
+        [...svg.querySelectorAll('path')].forEach(p => { if (p.id !== 'temp-edge') p.remove(); });
+
+        const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+
+        for (const edge of this.workflow.edges) {
             const srcEl = document.querySelector(`[data-node="${edge.source_node_id}"][data-port="${edge.source_port}"][data-dir="output"]`);
             const tgtEl = document.querySelector(`[data-node="${edge.target_node_id}"][data-port="${edge.target_port}"][data-dir="input"]`);
-            if (!srcEl || !tgtEl) return '';
+            if (!srcEl || !tgtEl) continue;
 
-            const srcRect = srcEl.getBoundingClientRect();
-            const tgtRect = tgtEl.getBoundingClientRect();
-            const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+            const sr = srcEl.getBoundingClientRect();
+            const tr = tgtEl.getBoundingClientRect();
+            const x1 = sr.left + sr.width/2  - canvasRect.left;
+            const y1 = sr.top  + sr.height/2 - canvasRect.top;
+            const x2 = tr.left + tr.width/2  - canvasRect.left;
+            const y2 = tr.top  + tr.height/2 - canvasRect.top;
+            const dx = Math.max(Math.abs(x2 - x1) * 0.5, 60);
 
-            const x1 = srcRect.left + srcRect.width/2 - canvasRect.left;
-            const y1 = srcRect.top + srcRect.height/2 - canvasRect.top;
-            const x2 = tgtRect.left + tgtRect.width/2 - canvasRect.left;
-            const y2 = tgtRect.top + tgtRect.height/2 - canvasRect.top;
-            const dx = Math.abs(x2 - x1) * 0.5;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`);
+            path.dataset.edge = edge.id;
+            path.style.pointerEvents = 'stroke';
+            path.style.cursor = 'pointer';
+            path.addEventListener('dblclick', () => this.deleteEdge(edge.id));
+            svg.insertBefore(path, tempEdge);
+        }
+    },
 
-            return `<path d="M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}" data-edge="${edge.id}" />`;
-        }).join('');
+    updateTempEdge(x2, y2) {
+        if (!this.connecting) return;
+        const srcEl = document.querySelector(`[data-node="${this.connecting.srcNodeId}"][data-port="${this.connecting.srcPort}"][data-dir="output"]`);
+        if (!srcEl) return;
+        const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+        const sr = srcEl.getBoundingClientRect();
+        const x1 = sr.left + sr.width/2  - canvasRect.left;
+        const y1 = sr.top  + sr.height/2 - canvasRect.top;
+        const dx = Math.max(Math.abs(x2 - x1) * 0.5, 40);
+        const te = document.getElementById('temp-edge');
+        te.setAttribute('d', `M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`);
+        te.style.display = '';
+    },
+
+    hideTempEdge() {
+        const te = document.getElementById('temp-edge');
+        te.setAttribute('d', '');
+        te.style.display = 'none';
+    },
+
+    highlightInputPorts(on) {
+        document.querySelectorAll('.wf-node-port-dot[data-dir="input"]').forEach(dot =>
+            on ? dot.classList.add('compatible') : dot.classList.remove('compatible'));
     },
 
     // ── Minimap ──
     renderMinimap() {
-        const minimap = document.getElementById('minimap');
-        if (!this.workflow.nodes.length) { minimap.innerHTML = ''; return; }
-
-        const padding = 10;
-        const nodes = this.workflow.nodes;
-        const minX = Math.min(...nodes.map(n => n.position_x)) - padding;
-        const minY = Math.min(...nodes.map(n => n.position_y)) - padding;
-        const maxX = Math.max(...nodes.map(n => n.position_x + 160)) + padding;
-        const maxY = Math.max(...nodes.map(n => n.position_y + 80)) + padding;
+        const mm = document.getElementById('minimap');
+        if (!this.workflow.nodes.length) { mm.innerHTML = ''; return; }
+        const ns = this.workflow.nodes;
+        const pad = 10;
+        const minX = Math.min(...ns.map(n => n.position_x)) - pad;
+        const minY = Math.min(...ns.map(n => n.position_y)) - pad;
+        const maxX = Math.max(...ns.map(n => n.position_x + 180)) + pad;
+        const maxY = Math.max(...ns.map(n => n.position_y + 80))  + pad;
         const scale = Math.min(160 / (maxX - minX), 100 / (maxY - minY));
-
-        minimap.innerHTML = `<svg width="160" height="100">
-            ${nodes.map(n => {
-                const x = (n.position_x - minX) * scale;
-                const y = (n.position_y - minY) * scale;
-                const fill = n.id === this.selectedNodeId ? '#6366f1' : '#2d3045';
-                return `<rect x="${x}" y="${y}" width="${Math.max(8, 160*scale*0.3)}" height="${Math.max(4, 80*scale*0.3)}" rx="2" fill="${fill}" />`;
-            }).join('')}
-        </svg>`;
+        mm.innerHTML = `<svg width="160" height="100">${ns.map(n => {
+            const x = (n.position_x - minX) * scale;
+            const y = (n.position_y - minY) * scale;
+            const cat = getCatForDef(n.definition_id);
+            const fill = n.id === this.selectedNodeId ? '#818cf8' : cat.color + '99';
+            return `<rect x="${x}" y="${y}" width="${Math.max(8,28*scale)}" height="${Math.max(4,12*scale)}" rx="2" fill="${fill}"/>`;
+        }).join('')}</svg>`;
     },
 
-    // ── Panneau propriétés ──
+    // ── Properties ──
     renderProperties() {
         const content = document.getElementById('props-content');
         if (!this.selectedNodeId) {
             content.innerHTML = '<p style="font-size:12px;color:var(--text-dim);margin-top:20px">Sélectionnez un nœud pour voir ses propriétés.</p>';
             return;
         }
-
         const node = this.workflow.nodes.find(n => n.id === this.selectedNodeId);
         if (!node) return;
         const def = this.nodeDefs.find(d => d.id === node.definition_id) || {};
-
         content.innerHTML = `
             <div class="prop-group">
                 <label>Nom du nœud</label>
-                <input type="text" value="${node.label}" oninput="app.updateNodeProp('${node.id}', 'label', this.value)" />
+                <input type="text" value="${node.label}"
+                    oninput="app.updateNodeProp('${node.id}','label',this.value)" />
             </div>
             <div class="prop-group">
                 <label>Type</label>
                 <input type="text" value="${def.name || node.definition_id}" disabled />
-            </div>
-            <div class="prop-group">
-                <label>Catégorie</label>
-                <input type="text" value="${def.category || '—'}" disabled />
             </div>
             <div class="prop-group">
                 <label>Description</label>
@@ -532,14 +818,15 @@ const app = {
             <div class="prop-group">
                 <label>Position</label>
                 <div style="display:flex;gap:8px">
-                    <input type="number" value="${Math.round(node.position_x)}" oninput="app.updateNodeProp('${node.id}', 'position_x', +this.value)" style="width:50%" />
-                    <input type="number" value="${Math.round(node.position_y)}" oninput="app.updateNodeProp('${node.id}', 'position_y', +this.value)" style="width:50%" />
+                    <input type="number" value="${Math.round(node.position_x)}"
+                        oninput="app.updateNodeProp('${node.id}','position_x',+this.value)" style="width:50%" />
+                    <input type="number" value="${Math.round(node.position_y)}"
+                        oninput="app.updateNodeProp('${node.id}','position_y',+this.value)" style="width:50%" />
                 </div>
             </div>
             <div style="margin-top:16px">
                 <button class="btn btn-danger" onclick="app.deleteNode('${node.id}')">🗑 Supprimer</button>
-            </div>
-        `;
+            </div>`;
     },
 
     updateNodeProp(nodeId, prop, value) {
@@ -549,23 +836,30 @@ const app = {
         if (prop === 'label') {
             const header = document.querySelector(`#${nodeId} .wf-node-header`);
             if (header) header.textContent = value;
-            document.getElementById('workflow-name').textContent = this.workflow.name;
         }
         if (prop.startsWith('position_')) this.renderCanvas();
     },
 
-    // ── Mouse handling ──
+    // ── Mouse events ──
     nodeMouseDown(e, nodeId) {
         if (e.target.classList.contains('wf-node-port-dot')) return;
+        if (e.target.classList.contains('suggestion-pill'))  return;
         e.stopPropagation();
         this.selectNode(nodeId);
         const node = this.workflow.nodes.find(n => n.id === nodeId);
         if (!node) return;
-        this.dragging = { nodeId, startX: e.clientX, startY: e.clientY, origX: node.position_x, origY: node.position_y };
+        this.dragging = { nodeId, startX:e.clientX, startY:e.clientY, origX:node.position_x, origY:node.position_y };
     },
 
     canvasMouseDown(e) {
-        if (e.target.id === 'canvas' || e.target.id === 'edges-svg') {
+        if (e.button === 1 || e.button === 2) {
+            e.preventDefault();
+            document.getElementById('canvas').classList.add('panning');
+            this.panning = { startX:e.clientX, startY:e.clientY, origPanX:this.pan.x, origPanY:this.pan.y };
+            return;
+        }
+        const t = e.target;
+        if (t.id === 'canvas' || t.id === 'canvas-inner' || t.tagName === 'svg' || t.id === 'edges-svg') {
             this.selectedNodeId = null;
             document.querySelectorAll('.wf-node').forEach(el => el.classList.remove('selected'));
             this.renderProperties();
@@ -573,6 +867,14 @@ const app = {
     },
 
     canvasMouseMove(e) {
+        if (this.panning) {
+            this.pan.x = this.panning.origPanX + (e.clientX - this.panning.startX);
+            this.pan.y = this.panning.origPanY + (e.clientY - this.panning.startY);
+            const inner = document.getElementById('canvas-inner');
+            inner.style.transform = `translate(${this.pan.x}px,${this.pan.y}px) scale(${this.zoom})`;
+            this.renderEdges();
+            return;
+        }
         if (this.dragging) {
             const node = this.workflow.nodes.find(n => n.id === this.dragging.nodeId);
             if (!node) return;
@@ -581,33 +883,77 @@ const app = {
             const el = document.getElementById(this.dragging.nodeId);
             if (el) { el.style.left = node.position_x + 'px'; el.style.top = node.position_y + 'px'; }
             this.renderEdges();
+            return;
+        }
+        if (this.connecting) {
+            const cr = document.getElementById('canvas').getBoundingClientRect();
+            this.updateTempEdge(e.clientX - cr.left, e.clientY - cr.top);
         }
     },
 
     canvasMouseUp() {
+        if (this.panning) {
+            this.panning = null;
+            document.getElementById('canvas').classList.remove('panning');
+            return;
+        }
         if (this.dragging) {
             this.pushUndo();
             this.dragging = null;
             this.renderMinimap();
+            return;
         }
-        this.connecting = null;
+        if (this.connecting) {
+            this.hideTempEdge();
+            this.highlightInputPorts(false);
+            this.connecting = null;
+        }
     },
 
     portMouseDown(e, nodeId, portName, dir) {
         e.stopPropagation();
         if (dir === 'output') {
             this.connecting = { srcNodeId: nodeId, srcPort: portName };
+            this.highlightInputPorts(true);
         }
     },
 
     portMouseUp(e, nodeId, portName, dir) {
         e.stopPropagation();
-        if (this.connecting && dir === 'input') {
-            if (this.connecting.srcNodeId !== nodeId) {
-                this.addEdge(this.connecting.srcNodeId, this.connecting.srcPort, nodeId, portName);
-            }
+        if (this.connecting && dir === 'input' && this.connecting.srcNodeId !== nodeId) {
+            this.addEdge(this.connecting.srcNodeId, this.connecting.srcPort, nodeId, portName);
+            this.toast('Connexion créée', 'success');
         }
+        this.hideTempEdge();
+        this.highlightInputPorts(false);
         this.connecting = null;
+    },
+
+    // ── Zoom ──
+    canvasWheel(e) {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        const cr = document.getElementById('canvas').getBoundingClientRect();
+        const mx = e.clientX - cr.left;
+        const my = e.clientY - cr.top;
+        const newZoom = Math.min(Math.max(this.zoom * factor, 0.2), 3);
+        this.pan.x = mx - (mx - this.pan.x) * (newZoom / this.zoom);
+        this.pan.y = my - (my - this.pan.y) * (newZoom / this.zoom);
+        this.zoom = newZoom;
+        const inner = document.getElementById('canvas-inner');
+        inner.style.transform = `translate(${this.pan.x}px,${this.pan.y}px) scale(${this.zoom})`;
+        document.getElementById('zoom-label').textContent = Math.round(this.zoom * 100) + '%';
+        this.renderEdges();
+    },
+    zoomIn()    { this._setZoom(this.zoom * 1.2); },
+    zoomOut()   { this._setZoom(this.zoom * 0.8); },
+    zoomReset() { this.pan = {x:0,y:0}; this._setZoom(1); },
+    _setZoom(z) {
+        this.zoom = Math.min(Math.max(z, 0.2), 3);
+        const inner = document.getElementById('canvas-inner');
+        inner.style.transform = `translate(${this.pan.x}px,${this.pan.y}px) scale(${this.zoom})`;
+        document.getElementById('zoom-label').textContent = Math.round(this.zoom * 100) + '%';
+        this.renderEdges();
     },
 
     // ── Undo / Redo ──
@@ -616,112 +962,83 @@ const app = {
         if (this.undoStack.length > 50) this.undoStack.shift();
         this.redoStack = [];
     },
-
     undo() {
         if (!this.undoStack.length) return;
         this.redoStack.push(JSON.stringify(this.workflow));
         this.workflow = JSON.parse(this.undoStack.pop());
-        this.renderCanvas();
-        this.renderProperties();
+        this.renderCanvas(); this.renderProperties();
     },
-
     redo() {
         if (!this.redoStack.length) return;
         this.undoStack.push(JSON.stringify(this.workflow));
         this.workflow = JSON.parse(this.redoStack.pop());
-        this.renderCanvas();
-        this.renderProperties();
+        this.renderCanvas(); this.renderProperties();
     },
 
-    // ── Actions toolbar ──
+    // ── Toolbar ──
     newWorkflow() {
         this.pushUndo();
-        this.workflow = { id: '', name: 'Sans titre', description: '', nodes: [], edges: [] };
+        this.workflow = { id:'', name:'Sans titre', description:'', nodes:[], edges:[] };
         this.selectedNodeId = null;
-        this.renderCanvas();
-        this.renderProperties();
-        document.getElementById('workflow-name').textContent = 'Sans titre';
+        this.renderCanvas(); this.renderProperties(); this.updateStatus();
         this.toast('Nouveau workflow', 'info');
     },
 
     async saveWorkflow() {
         const id = await this._call(() => api.save_workflow(this.workflow));
-        if (id) {
-            this.workflow.id = id;
-            this.toast('Workflow sauvegardé', 'success');
-        } else {
-            this.toast('Erreur de sauvegarde', 'error');
-        }
+        if (id) { this.workflow.id = id; this.toast('Workflow sauvegardé', 'success'); }
+        else this.toast('Erreur de sauvegarde', 'error');
     },
 
     async showLoadModal() {
-        const workflows = await this._call(() => api.list_workflows());
-        if (!workflows || !workflows.length) {
-            this.toast('Aucun workflow sauvegardé', 'info');
-            return;
-        }
-        // Simple prompt for now
-        const names = workflows.map((w, i) => `${i+1}. ${w.name}`).join('\n');
-        const choice = prompt(`Choisir un workflow:\n${names}`);
+        const wfs = await this._call(() => api.list_workflows());
+        if (!wfs || !wfs.length) { this.toast('Aucun workflow sauvegardé', 'info'); return; }
+        const names = wfs.map((w, i) => `${i+1}. ${w.name}`).join('\n');
+        const choice = prompt('Choisir un workflow:\n' + names);
         if (!choice) return;
         const idx = parseInt(choice) - 1;
-        if (idx >= 0 && idx < workflows.length) {
-            const wf = await this._call(() => api.load_workflow(workflows[idx].id));
+        if (idx >= 0 && idx < wfs.length) {
+            const wf = await this._call(() => api.load_workflow(wfs[idx].id));
             if (wf) {
                 this.pushUndo();
                 this.workflow = wf;
-                this.renderCanvas();
-                document.getElementById('workflow-name').textContent = wf.name;
-                this.toast(`"${wf.name}" chargé`, 'success');
+                this.renderCanvas(); this.updateStatus();
+                this.toast('"' + wf.name + '" chargé', 'success');
             }
         }
     },
 
     async validateWorkflow() {
         const errors = await this._call(() => api.validate_workflow(this.workflow));
-        if (!errors || errors.length === 0) {
-            this.toast('Workflow valide', 'success');
-        } else {
-            this.toast(`${errors.length} erreur(s) de validation`, 'error');
-            errors.forEach(e => console.warn('Validation:', e));
-        }
+        if (!errors || !errors.length) this.toast('Workflow valide ✓', 'success');
+        else { this.toast(errors.length + ' erreur(s) de validation', 'error'); errors.forEach(e => console.warn(e)); }
     },
 
     async executeWorkflow() {
-        this.toast('Exécution en cours...', 'info');
-        document.querySelectorAll('.wf-node').forEach(el => {
-            el.classList.remove('success', 'error', 'running');
-            el.classList.add('running');
-        });
-
+        this.toast('Exécution en cours…', 'info');
+        document.querySelectorAll('.wf-node').forEach(el => { el.classList.remove('success','error'); el.classList.add('running'); });
         const results = await this._call(() => api.execute_workflow(this.workflow));
-        if (!results) { this.toast('Erreur d\'exécution', 'error'); return; }
-
+        if (!results) { this.toast("Erreur d'exécution", 'error'); return; }
         let ok = 0, fail = 0;
         results.forEach(r => {
             const el = document.getElementById(r.node_id);
-            if (el) {
-                el.classList.remove('running');
-                el.classList.add(r.status === 'success' ? 'success' : 'error');
-            }
-            if (r.status === 'success') ok++; else fail++;
+            if (el) { el.classList.remove('running'); el.classList.add(r.status === 'success' ? 'success' : 'error'); }
+            r.status === 'success' ? ok++ : fail++;
         });
-
-        if (fail === 0) this.toast(`Exécution terminée (${ok} nœuds)`, 'success');
-        else this.toast(`${fail} erreur(s) sur ${ok + fail} nœuds`, 'error');
+        if (fail === 0) this.toast('Exécution terminée (' + ok + ' nœuds)', 'success');
+        else this.toast(fail + ' erreur(s) sur ' + (ok+fail) + ' nœuds', 'error');
     },
 
     // ── Keyboard ──
     bindKeyboard() {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'z' && (e.metaKey || e.ctrlKey) && e.shiftKey) { e.preventDefault(); this.redo(); }
-            else if (e.key === 'z' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this.undo(); }
-            else if (e.key === 's' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this.saveWorkflow(); }
-            else if (e.key === 'n' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this.newWorkflow(); }
+        document.addEventListener('keydown', e => {
+            if (e.key === 'z' && (e.metaKey||e.ctrlKey) && e.shiftKey) { e.preventDefault(); this.redo(); }
+            else if (e.key === 'z' && (e.metaKey||e.ctrlKey)) { e.preventDefault(); this.undo(); }
+            else if (e.key === 's' && (e.metaKey||e.ctrlKey)) { e.preventDefault(); this.saveWorkflow(); }
+            else if (e.key === 'n' && (e.metaKey||e.ctrlKey)) { e.preventDefault(); this.newWorkflow(); }
             else if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedNodeId) {
-                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                    this.deleteNode(this.selectedNodeId);
-                }
+                const tag = document.activeElement.tagName;
+                if (tag !== 'INPUT' && tag !== 'TEXTAREA') this.deleteNode(this.selectedNodeId);
             }
         });
     },
@@ -730,37 +1047,36 @@ const app = {
     connectWS() {
         try {
             this.wsConnection = new WebSocket('ws://127.0.0.1:9724');
-            this.wsConnection.onmessage = (e) => {
+            this.wsConnection.onmessage = e => {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'workflow_node_completed') {
                     const el = document.getElementById(msg.data.node_id);
-                    if (el) {
-                        el.classList.remove('running');
-                        el.classList.add(msg.data.status === 'success' ? 'success' : 'error');
-                    }
+                    if (el) { el.classList.remove('running'); el.classList.add(msg.data.status === 'success' ? 'success' : 'error'); }
                 }
             };
-            this.wsConnection.onerror = () => {}; // Silencieux si WS indisponible
-        } catch (e) {}
+            this.wsConnection.onerror = () => {};
+        } catch(e) {}
     },
 
-    // ── Utils ──
+    // ── Status ──
     updateStatus() {
+        const name = this.workflow.name || 'Sans titre';
+        document.getElementById('workflow-name').textContent = name;
+        document.getElementById('status-workflow-name').textContent = name;
         document.getElementById('status-right').textContent =
-            `${this.workflow.nodes.length} nœuds · ${this.workflow.edges.length} connexions`;
+            this.workflow.nodes.length + ' nœuds · ' + this.workflow.edges.length + ' connexions';
     },
 
-    toast(msg, type = 'info') {
-        const container = document.getElementById('toasts');
+    toast(msg, type) {
+        const c = document.getElementById('toasts');
         const el = document.createElement('div');
-        el.className = `toast toast-${type}`;
+        el.className = 'toast toast-' + (type || 'info');
         el.textContent = msg;
-        container.appendChild(el);
+        c.appendChild(el);
         setTimeout(() => el.remove(), 3000);
     },
 };
 
-// Démarrage
 app.init();
 </script>
 </body>

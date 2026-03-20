@@ -27,7 +27,11 @@ class WorkflowEditorAPI:
         executor: Optional[WorkflowExecutor] = None,
     ) -> None:
         self._storage = storage or WorkflowStorage()
-        self._registry = registry or NodeRegistry()
+        if registry is None:
+            self._registry = NodeRegistry()
+            self._registry.auto_discover_agents()
+        else:
+            self._registry = registry
         self._executor = executor or WorkflowExecutor(registry=self._registry)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[threading.Thread] = None
