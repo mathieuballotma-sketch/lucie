@@ -170,3 +170,7 @@ class NanoPredictor:
             )
         except Exception as e:
             logger.error(f"Erreur chargement predictor : {e}")
+
+    def update_partial_input(self, text: str) -> None:
+        """Stub — partial input tracking pas encore implémenté."""
+        pass
