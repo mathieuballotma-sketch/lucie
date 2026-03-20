@@ -317,6 +317,12 @@ end repeat
         self, text: str, interval: float = 0.05,
         app_name: Optional[str] = None, correct_spelling: bool = False
     ) -> str:
+        if not await self.submit_action({
+            "action_type": "type_text",
+            "preview": f"type_text: {text[:50]!r}",
+            "reversible": True,
+        }):
+            return "⛔ Action 'type_text' bloquée par ActionGate."
         start = time.time()
         if app_name:
             try:
@@ -363,11 +369,23 @@ end repeat
         return f"✅ Texte tapé ({len(text)} caractères)."
 
     async def _tool_press_key(self, key: str) -> str:
+        if not await self.submit_action({
+            "action_type": "press_key",
+            "preview": f"press_key: {key!r}",
+            "reversible": True,
+        }):
+            return "⛔ Action 'press_key' bloquée par ActionGate."
         pyautogui.press(key)
         return f"✅ Touche '{key}' pressée."
 
     async def _tool_click(self, x: int, y: int, button: str = "left", move_duration: float = 0.5) -> str:
         """FIX v2 : méthode manquante ajoutée."""
+        if not await self.submit_action({
+            "action_type": "click",
+            "preview": f"click {button} at ({x}, {y})",
+            "reversible": True,
+        }):
+            return "⛔ Action 'click' bloquée par ActionGate."
         start = time.time()
         try:
             pyautogui.moveTo(x, y, duration=move_duration)
@@ -404,6 +422,12 @@ end repeat
             raise ToolExecutionError(f"Erreur screenshot : {e}")
 
     async def _tool_mail_compose(self, to: str, subject: str = "", body: str = "", send: bool = False) -> str:
+        if not await self.submit_action({
+            "action_type": "mail_compose",
+            "preview": f"mail to={to!r} subject={subject!r} send={send}",
+            "reversible": not send,
+        }):
+            return "⛔ Action 'mail_compose' bloquée par ActionGate."
         start = time.time()
 
         # Valider les champs injectés directement dans le script AppleScript
@@ -446,6 +470,12 @@ end tell
         raise ToolExecutionError(f"Erreur email: {error}")
 
     async def _tool_safari_open_url(self, url: str, new_tab: bool = False) -> str:
+        if not await self.submit_action({
+            "action_type": "safari_open_url",
+            "preview": f"safari_open_url: {url!r}",
+            "reversible": True,
+        }):
+            return "⛔ Action 'safari_open_url' bloquée par ActionGate."
         start = time.time()
 
         # Valider le format URL — doit commencer par http:// ou https://
@@ -561,6 +591,12 @@ end tell
         return "✅ Fenêtres disposées en grille 2x2."
 
     async def _tool_arrange_windows(self, layout: str, apps: Optional[List[str]] = None) -> str:
+        if not await self.submit_action({
+            "action_type": "arrange_windows",
+            "preview": f"arrange_windows: layout={layout!r} apps={apps}",
+            "reversible": True,
+        }):
+            return "⛔ Action 'arrange_windows' bloquée par ActionGate."
         start = time.time()
         if layout == "side_by_side":
             if not apps or len(apps) < 2:

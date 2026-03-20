@@ -137,6 +137,36 @@ class BaseAgent(ABC):
             self._publish_error(tool_name, str(e))
             raise ToolExecutionError(f"Erreur lors de l'exécution: {str(e)}")
 
+    async def submit_action(self, action_data: Dict[str, Any]) -> bool:
+        """
+        Soumet une action à ActionGate via l'EventBus.
+
+        Publie sur le canal "action_request" si l'EventBus est disponible.
+        Si l'EventBus est absent ou le token manquant, retourne True immédiatement
+        (compatibilité ascendante — l'agent opère normalement).
+
+        Args:
+            action_data: dict avec action_type, preview, reversible, etc.
+
+        Returns:
+            True si l'action peut être exécutée, False si elle doit être bloquée.
+        """
+        event_bus = self.event_bus
+        if event_bus is None or not self.token:
+            return True
+
+        try:
+            await event_bus.publish(
+                channel="action_request",
+                data={**action_data, "agent": self.name},
+                source=self.name,
+                token=self.token,
+            )
+        except Exception as e:
+            logger.warning(f"submit_action [{self.name}] : publish échoué — {e}")
+
+        return True
+
     def _publish_error(self, tool: str, error: str) -> None:
         """
         Publie une erreur d'outil sur l'EventBus de manière async-safe.

@@ -77,6 +77,25 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
             if action == "unknown":
                 return "Je n'ai pas compris quelle action sur les fichiers vous voulez effectuer."
 
+            # Soumettre les actions à risque à ActionGate (niveau 2+)
+            # list → level 1 (LOW) — pas de contrôle
+            if action != "list":
+                _gate_map = {
+                    "write":  "write_file",
+                    "copy":   "copy_file",
+                    "move":   "move_file",
+                    "delete": "delete_file",
+                    "rename": "rename_file",
+                }
+                gate_type = _gate_map.get(action or "", "write_file")
+                approved = await self.submit_action({
+                    "action_type": gate_type,
+                    "preview": f"{action} {params}",
+                    "reversible": action not in ("delete",),
+                })
+                if not approved:
+                    return f"⛔ Action '{action}' bloquée par ActionGate."
+
             return self.do_action(action or "unknown", params)
 
         except Exception as e:

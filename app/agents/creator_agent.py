@@ -489,7 +489,14 @@ Règles :
                 self._stats["test_fail"] += 1
                 continue
 
-            # 5 — Sauvegarde
+            # 5 — Sauvegarde (avec contrôle ActionGate niveau 3 HIGH)
+            approved = await self.submit_action({
+                "action_type": "create_agent",
+                "preview": f"create_agent: {class_name} → {filepath}",
+                "reversible": True,
+            })
+            if not approved:
+                raise ToolExecutionError(f"Création de '{class_name}' bloquée par ActionGate.")
             try:
                 filepath.write_text(code, encoding="utf-8")
                 logger.info(f"✅ Agent '{class_name}' sauvegardé → {filepath}")
@@ -547,6 +554,12 @@ Règles :
         filepath = self.agents_dir / f"{name.lower()}.py"
         if not filepath.exists():
             raise ToolExecutionError(f"Agent '{name}' introuvable.")
+        if not await self.submit_action({
+            "action_type": "delete_agent",
+            "preview": f"delete_agent: {name} ({filepath})",
+            "reversible": False,
+        }):
+            return f"⛔ Suppression de '{name}' bloquée par ActionGate."
         try:
             filepath.unlink()
             self._stats["deleted"] += 1
