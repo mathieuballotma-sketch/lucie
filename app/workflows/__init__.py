@@ -16,6 +16,8 @@ from .schemas import (
 from .node_registry import NodeRegistry
 from .executor import WorkflowExecutor
 from .storage import WorkflowStorage
+from .bridge import WorkflowEditorAPI, launch_editor
+from .ws_server import WorkflowWSServer
 
 __all__ = [
     "Port",
@@ -27,4 +29,7 @@ __all__ = [
     "NodeRegistry",
     "WorkflowExecutor",
     "WorkflowStorage",
+    "WorkflowEditorAPI",
+    "WorkflowWSServer",
+    "launch_editor",
 ]
