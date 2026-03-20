@@ -3,14 +3,11 @@ Soul Agent - Gère la persistance de l'état et des objectifs à long terme de l
 Inspiré de SOUL.md et MEMORY.md d'OpenClaw.
 """
 
-import asyncio
-import os
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Optional, List
 
-from app.agents.base_agent import BaseAgent, Tool
+from app.agents.base_agent import BaseAgent
 from app.utils.logger import logger
-from pydantic.v1 import BaseModel, Field
 
 
 class SoulAgent(BaseAgent):

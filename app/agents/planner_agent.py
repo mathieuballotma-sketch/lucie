@@ -11,14 +11,13 @@ Incarne les principes :
 import asyncio
 import json
 import time
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, List, Any, Optional
 from pydantic.v1 import BaseModel, Field, validator
 
-from app.agents.base_agent import BaseAgent, Tool
+from app.agents.base_agent import BaseAgent
 from app.providers.manager import ProviderManager
 from app.brain.synapses.event_bus import EventBus
 from app.utils.logger import logger
-from app.utils.errors import ToolExecutionError
 from app.utils.circuit_breaker import CircuitBreaker, CircuitState
 
 
@@ -203,7 +202,7 @@ Si la requête est impossible à planifier, retourne [].
                 steps = steps[:self.max_steps]
 
             duration = time.time() - start_time
-            
+
             logger.info(f"Plan créé avec {len(steps)} étapes en {duration:.2f}s")
             return steps
 
@@ -454,7 +453,7 @@ Réponds UNIQUEMENT avec un JSON :
         await asyncio.gather(*workers, return_exceptions=True)
 
         duration = time.time() - start_time
-        
+
 
         # Construire la réponse finale
         output = []

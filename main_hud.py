@@ -12,6 +12,13 @@ import threading
 import sys
 from pathlib import Path
 
+# Remplacer le policy asyncio par défaut par uvloop (plus rapide) si disponible
+try:
+    import uvloop
+    uvloop.install()
+except ImportError:
+    pass
+
 # Ajouter le chemin du projet pour les imports
 sys.path.insert(0, str(Path(__file__).parent))
 

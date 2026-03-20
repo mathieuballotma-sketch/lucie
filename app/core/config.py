@@ -3,10 +3,9 @@ Configuration de l'application.
 Gère le chargement depuis un fichier YAML et fournit des objets de configuration typés.
 """
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import yaml
 
@@ -99,7 +98,7 @@ class ApiKeysConfig:
 
 @dataclass
 class P2PConfig:
-    enabled: bool = True
+    enabled: bool = False  # Désactivé par défaut — surface d'attaque non sécurisée (C4)
     port: int = 9000
     bootstrap_peers: List[str] = field(default_factory=list)
 

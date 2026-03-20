@@ -19,7 +19,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional
 import re
 
 import aiofiles
@@ -450,5 +450,4 @@ class HealerAgent(BaseAgent):
 
     async def stop(self):
         await self.lure_cleaner.stop()
-        logger.info("🩺 HealerAgent arrêté.") 
- 
+        logger.info("🩺 HealerAgent arrêté.")

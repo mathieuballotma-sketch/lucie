@@ -104,6 +104,10 @@ class RAGService:
         """Initialise la base SQLite pour les métadonnées."""
         self.db_path = self.data_dir / "metadata.db"
         self.conn = sqlite3.connect(str(self.db_path))
+        # Optimisations WAL : meilleures perfs en lecture/écriture concurrentes
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
+        self.conn.execute("PRAGMA cache_size=-64000")  # 64 Mo de cache pages
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS chunks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

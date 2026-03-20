@@ -74,6 +74,15 @@ _PATTERNS: Dict[str, List[re.Pattern[str]]] = {
             re.IGNORECASE,
         ),
     ],
+    # Recherche approfondie et raisonnement long — tier "deep"
+    "deep": [
+        re.compile(
+            r"\b(recherche|research|approfondi|deep.dive|étude.complète|"
+            r"investigation|rapport.détaillé|analyse.complète|"
+            r"synthèse.exhaustive|revue.littérature|état.de.l.art)\b",
+            re.IGNORECASE,
+        ),
+    ],
     "vision": [
         re.compile(
             r"\b(image|screenshot|capture|photo|écran|visuel|"
@@ -123,6 +132,11 @@ class ModelRouter:
             name="deepseek-r1:7b", category="reasoning",
             num_ctx=4096, temperature=0.3, num_predict=1024, priority=10,
         ),
+        # Recherche approfondie (tier "deep")
+        "deepseek-r1:14b": ModelProfile(
+            name="deepseek-r1:14b", category="deep",
+            num_ctx=8192, temperature=0.3, num_predict=4096, priority=10,
+        ),
         # Rédaction / français
         "gemma2:9b": ModelProfile(
             name="gemma2:9b", category="writing",
@@ -147,13 +161,17 @@ class ModelRouter:
             num_ctx=2048, temperature=0.5, num_predict=128, priority=8,
         ),
         # Complexe / qualité
+        "qwen3:14b": ModelProfile(
+            name="qwen3:14b", category="quality",
+            num_ctx=8192, temperature=0.6, num_predict=1024, priority=10,
+        ),
         "qwen2.5:14b": ModelProfile(
             name="qwen2.5:14b", category="quality",
-            num_ctx=8192, temperature=0.6, num_predict=1024, priority=10,
+            num_ctx=8192, temperature=0.6, num_predict=1024, priority=8,
         ),
         "gpt-oss:20b": ModelProfile(
             name="gpt-oss:20b", category="quality",
-            num_ctx=4096, temperature=0.6, num_predict=1024, priority=8,
+            num_ctx=4096, temperature=0.6, num_predict=1024, priority=6,
         ),
         # Généraliste / fallback
         "qwen2.5:7b": ModelProfile(
@@ -193,6 +211,7 @@ class ModelRouter:
         "quick": "speed",
         "mathieu": "balanced",
         "quality": "quality",
+        "deep": "deep",
         "balanced": "balanced",
         "speed": "speed",
         "nano": "nano",

@@ -20,7 +20,7 @@ except ImportError:
 
 # ── UserNotifications (macOS 10.14+) ─────────────────────────────────────────
 try:
-    import UserNotifications  # type: ignore[import]
+    import UserNotifications  # type: ignore[import]  # noqa: F401
     HAS_UN = True
 except ImportError:
     HAS_UN = False

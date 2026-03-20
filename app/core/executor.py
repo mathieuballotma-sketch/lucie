@@ -3,7 +3,7 @@ Gestionnaire de tâches asynchrones avec dépendances, persistance et métriques
 Permet d'exécuter des tâches en parallèle avec gestion des priorités et des dépendances.
 """
 
-import pickle
+import json
 import queue
 import threading
 import time
@@ -99,23 +99,25 @@ class TaskExecutor:
     def _load_persisted_tasks(self):
         if self.persist_path and self.persist_path.exists():
             try:
-                with open(self.persist_path, "rb") as f:
-                    data = pickle.load(f)
-                    tasks_dict = data.get("tasks", {})
-                    for task_id, task_dict in tasks_dict.items():
-                        task_dict["func"] = None
-                        task = Task(**task_dict)
-                        self.tasks[task_id] = task
-                        self.futures[task_id] = Future()
-                        if task.status == TaskStatus.COMPLETED:
-                            self.futures[task_id].set_result(task.result)
-                        elif task.status == TaskStatus.FAILED:
-                            self.futures[task_id].set_exception(Exception(task.error))
-                        elif task.status in [TaskStatus.PENDING, TaskStatus.RUNNING]:
-                            task.status = TaskStatus.PENDING
-                            self.task_queue.put((-task.priority, task_id))
-                    self.metrics = data.get("metrics", self.metrics)
-                    logger.info(f"📦 {len(self.tasks)} tâches restaurées")
+                with open(self.persist_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                tasks_dict = data.get("tasks", {})
+                for task_id, task_dict in tasks_dict.items():
+                    task_dict["func"] = None
+                    task_dict["args"] = tuple(task_dict.get("args", []))
+                    task_dict["status"] = TaskStatus(task_dict.get("status", "pending"))
+                    task = Task(**task_dict)
+                    self.tasks[task_id] = task
+                    self.futures[task_id] = Future()
+                    if task.status == TaskStatus.COMPLETED:
+                        self.futures[task_id].set_result(task.result)
+                    elif task.status == TaskStatus.FAILED:
+                        self.futures[task_id].set_exception(Exception(task.error))
+                    elif task.status in [TaskStatus.PENDING, TaskStatus.RUNNING]:
+                        task.status = TaskStatus.PENDING
+                        self.task_queue.put((-task.priority, task_id))
+                self.metrics = data.get("metrics", self.metrics)
+                logger.info(f"📦 {len(self.tasks)} tâches restaurées")
             except Exception as e:
                 logger.error(f"Erreur restauration tâches: {e}")
 
@@ -127,14 +129,21 @@ class TaskExecutor:
             for task_id, task in self.tasks.items():
                 task_dict = asdict(task)
                 task_dict.pop("func", None)
+                # TaskStatus enum → string value for JSON serialization
+                status = task_dict.get("status")
+                if hasattr(status, "value"):
+                    task_dict["status"] = status.value
+                # tuple args → list (JSON doesn't have tuples)
+                if isinstance(task_dict.get("args"), tuple):
+                    task_dict["args"] = list(task_dict["args"])
                 serializable_tasks[task_id] = task_dict
             data = {
                 "tasks": serializable_tasks,
                 "metrics": self.metrics,
                 "timestamp": time.time(),
             }
-            with open(self.persist_path, "wb") as f:
-                pickle.dump(data, f)
+            with open(self.persist_path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
             self.last_persist = time.time()
         except Exception as e:
             logger.error(f"Erreur persistance tâches: {e}")

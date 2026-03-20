@@ -6,7 +6,6 @@ Lit les routines depuis HEARTBEAT.md et les programme.
 import re
 from pathlib import Path
 from typing import List, Dict, Any, Callable
-import asyncio
 
 class HeartbeatManager:
     def __init__(self, heartbeat_path: str = "~/AgentLucide/HEARTBEAT.md", scheduler=None):

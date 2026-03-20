@@ -3,8 +3,7 @@ Analyseur de menaces - Classe et analyse les menaces détectées.
 Version simplifiée pour éviter les erreurs d'attribut.
 """
 
-import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from app.utils.logger import logger
 
 

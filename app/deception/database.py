@@ -6,10 +6,9 @@ import sqlite3
 import time
 import json
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict
 import threading
 
-from app.utils.logger import logger
 
 
 class AttackerDatabase:

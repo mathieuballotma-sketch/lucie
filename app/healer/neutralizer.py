@@ -2,7 +2,6 @@
 Neutraliseur de menaces - Met en quarantaine et crée des leurres.
 """
 
-import os
 import shutil
 import uuid
 import time  # <-- AJOUT

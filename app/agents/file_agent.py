@@ -4,7 +4,6 @@ import os
 import re
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from app.agents.base_agent import BaseAgent
 from app.utils.logger import logger

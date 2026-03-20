@@ -4,7 +4,7 @@ Scanner de fichiers - Détection de menaces par signatures et heuristique.
 
 import hashlib
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 import aiofiles
 import yara  # À installer: pip install yara-python
 

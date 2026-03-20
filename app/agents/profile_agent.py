@@ -35,8 +35,9 @@ class ProfileAgent(BaseAgent):
         memory_service: MemoryService,
         rag_service: RAGService,
         config: dict,
+        event_bus=None,
     ):
-        super().__init__("ProfileAgent", llm_service, bus)
+        super().__init__("ProfileAgent", llm_service, bus, event_bus=event_bus)
         self.memory = memory_service
         self.rag = rag_service
         self.config = config

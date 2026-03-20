@@ -13,17 +13,15 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
-import json
 import random
 import re
 import time
 import importlib.util
 import sys
 from collections import defaultdict
-from concurrent.futures import TimeoutError
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import joblib
 import numpy as np
@@ -48,13 +46,13 @@ from app.brain.synapses.event_bus import EventBus
 from app.memory.memory_manager import MemoryManager
 
 from ..core.elasticity import ElasticityEngine
-from ..core.executor import Task, TaskExecutor
+from ..core.executor import TaskExecutor
 from ..memory import MemoryService
 from ..providers.manager import ProviderManager
 from ..services.prompt_cache import PromptCache
 from ..services.web_search import WebSearch
 from ..utils.circuit_breaker import CircuitBreaker
-from ..utils.errors import ToolError, PathExecutionError, AgentNotFoundError
+from ..utils.errors import PathExecutionError, AgentNotFoundError
 from ..utils.json_parser import JSONParseError, parse_json_safely
 from ..utils.logger import logger
 
@@ -154,7 +152,7 @@ class AgentRegistry:
         for agent in agents_list:
             # Déterminer les droits de publication/souscription pour cet agent
             publish_channels = []
-            subscribe_channels = []
+            _subscribe_channels: list = []  # réservé pour futures permissions
 
             if isinstance(agent, CreatorAgent):
                 publish_channels.append("agent.created")
@@ -1115,7 +1113,7 @@ class ExecutionEngine:
                 timeout=timeout
             )
         except asyncio.TimeoutError:
-            logger.error(f"Timeout lors de l'exécution du plan")
+            logger.error("Timeout lors de l'exécution du plan")
             raise PathExecutionError("Le plan a pris trop de temps")
         return result
 
@@ -1223,7 +1221,8 @@ class CortexConfig:
     web_search: bool = True
     speed_model: str = "qwen2.5:3b"
     balanced_model: str = "qwen2.5:7b"
-    quality_model: str = "qwen2.5:14b"
+    quality_model: str = "qwen3:14b"
+    deep_model: str = "deepseek-r1:14b"
     nano_model: str = "qwen2.5:0.5b"
     retrain_classifier: bool = False
     custom_agents_dir: str = "./data/custom_agents"
@@ -1243,7 +1242,8 @@ class CortexConfig:
             web_search=data.get("web_search", True),
             speed_model=data.get("speed_model", "qwen2.5:3b"),
             balanced_model=data.get("balanced_model", "qwen2.5:7b"),
-            quality_model=data.get("quality_model", "qwen2.5:14b"),
+            quality_model=data.get("quality_model", "qwen3:14b"),
+            deep_model=data.get("deep_model", "deepseek-r1:14b"),
             nano_model=data.get("nano_model", "qwen2.5:0.5b"),
             retrain_classifier=data.get("retrain_classifier", False),
             custom_agents_dir=data.get("custom_agents_dir", "./data/custom_agents"),
@@ -1305,6 +1305,8 @@ class FrontalCortex:
             "speed": self.cortex_config.speed_model,
             "balanced": self.cortex_config.balanced_model,
             "quality": self.cortex_config.quality_model,
+            # Tier "deep" : recherche approfondie et raisonnement long (deepseek-r1:14b)
+            "deep": self.cortex_config.deep_model,
             "nano": self.cortex_config.nano_model,
         }
 
@@ -1382,7 +1384,7 @@ class FrontalCortex:
         paths = await self.path_manager.select_paths(user_query.text)
         logger.info(f"⚡ Ordre des chemins: {[p[0] for p in paths]}")
 
-        last_error: Optional[Exception] = None
+        _last_error: Optional[Exception] = None
         for path_id, path_func in paths:
             try:
                 if asyncio.iscoroutinefunction(path_func):
@@ -1398,7 +1400,7 @@ class FrontalCortex:
                 logger.warning(f"⚠️  Chemin '{path_id}' échoué: {exc}")
                 self.path_manager.record_failure(user_query.text, path_id)
                 self.metrics.record_error(path_id, str(exc))
-                last_error = exc
+                _last_error = exc
                 # Publier l'erreur avec le token du cortex
                 try:
                     await self.event_bus.publish(
@@ -1415,7 +1417,7 @@ class FrontalCortex:
                 except Exception as pub_err:
                     logger.error(f"Échec publication erreur sur event bus: {pub_err}")
 
-        logger.error(f"Tous les chemins ont échoué.")
+        logger.error("Tous les chemins ont échoué.")
         response = self._safe_fallback(user_query.text)
         duration = time.time() - start
         self.metrics.record_step("safe_fallback", duration)

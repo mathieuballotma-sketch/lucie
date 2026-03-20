@@ -19,7 +19,7 @@ import asyncio
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple
 
 from app.actions.router import ActionRouter
 from app.actions.system import SystemActions
@@ -162,6 +162,7 @@ class LucidEngine:
             memory_service=self.memory,
             rag_service=self.rag,
             config=asdict(self.config),
+            event_bus=self.event_bus,
         )
         self.profile_agent.start()
 

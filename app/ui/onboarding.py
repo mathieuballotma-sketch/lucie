@@ -13,12 +13,11 @@ import time
 from typing import Any, Callable, List, Optional
 
 import AppKit  # type: ignore[import]
-import Foundation  # type: ignore[import]
 import objc  # type: ignore[import]
 import Quartz  # type: ignore[import]
 from PyObjCTools import AppHelper  # type: ignore[import]
 
-from ..services.onboarding import is_onboarded, run_onboarding, save_profile, load_profile
+from ..services.onboarding import run_onboarding, save_profile, load_profile
 
 # Dimensions
 COCOON_W = 300

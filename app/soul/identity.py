@@ -3,7 +3,6 @@ Gestion de l'identité de l'agent (SOUL.md).
 Définit la personnalité, les objectifs, les valeurs.
 """
 
-import os
 from pathlib import Path
 from typing import Dict, Any
 

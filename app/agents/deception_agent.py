@@ -12,10 +12,8 @@ Corrections v2 :
 import asyncio
 import os
 import time
-import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-import json
+from typing import Optional
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.brain.synapses.event_bus import Event
@@ -23,7 +21,6 @@ from app.deception.lures import LureGenerator
 from app.deception.tracker import LureTracker
 from app.deception.database import AttackerDatabase
 from app.utils.logger import logger
-from app.utils.errors import ToolExecutionError
 
 from pydantic.v1 import BaseModel, Field
 

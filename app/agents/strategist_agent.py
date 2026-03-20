@@ -4,6 +4,7 @@ Tourne périodiquement et publie ses suggestions sur le bus d'événements.
 Version avec deux modes : quick (rapide, peu de données) et deep (complet).
 """
 
+import uuid
 from typing import Any, Dict, List, Optional
 
 from pydantic.v1 import BaseModel, Field
@@ -38,8 +39,8 @@ class StrategistAgent(BaseAgent):
     """
 
     def __init__(self, llm_service, bus, event_bus, memory_service, config):
-        super().__init__("StrategistAgent", llm_service, bus)
-        self.event_bus = event_bus
+        _token = str(uuid.uuid4())
+        super().__init__("StrategistAgent", llm_service, bus, event_bus=event_bus, token=_token)
         self.memory = memory_service
         self.config = config
         self.last_run = 0
@@ -133,9 +134,12 @@ Si aucune idée, retourne [].
 
     async def _publish_suggestion(self, suggestion: Dict[str, Any]):
         """Publie une suggestion sur le bus d'événements et incrémente une métrique."""
+        event_bus = self.event_bus
+        if event_bus is None:
+            return
         try:
-            await self.event_bus.publish(
-                event_type="strategist.suggestion", data=suggestion, source=self.name
+            await event_bus.publish(
+                channel="strategist.suggestion", data=suggestion, source=self.name, token=self.token
             )
             logger.info(f"💡 Suggestion publiée: {suggestion.get('title')}")
             strategist_suggestions_total.labels(category=suggestion.get("category", "other")).inc()

@@ -4,7 +4,7 @@ Scheduler - Exécute des tâches planifiées (cron-like) de manière asynchrone.
 
 import asyncio
 import time
-from typing import Callable, Dict, Any, Optional
+from typing import Callable, Dict, Optional
 from croniter import croniter
 from app.utils.logger import logger
 

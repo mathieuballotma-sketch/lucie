@@ -4,7 +4,7 @@ Version optimisée avec cache exact pour les plans.
 """
 
 import hashlib
-import pickle
+import json
 import threading
 import time
 from collections import OrderedDict
@@ -59,19 +59,19 @@ class PromptCache:
 
         # Index FAISS pour les réponses et les plans
         self.index_path = cache_dir / "faiss.index"
-        self.metadata_path = cache_dir / "metadata.pkl"
+        self.metadata_path = cache_dir / "metadata.json"
         self._load_index()
 
         # Cache exact (réponses)
         self.exact_cache: Dict[str, Tuple[str, float, int]] = OrderedDict()
         self.access_count = {}
-        self.exact_cache_path = cache_dir / "exact_cache.pkl"
+        self.exact_cache_path = cache_dir / "exact_cache.json"
         self._load_exact_cache()
 
         # Cache exact pour les plans (clé = hash de la requête)
         self.exact_plan_cache: Dict[str, Tuple[List[Dict], float, int]] = OrderedDict()
         self.plan_access_count = {}
-        self.exact_plan_cache_path = cache_dir / "exact_plan_cache.pkl"
+        self.exact_plan_cache_path = cache_dir / "exact_plan_cache.json"
         self._load_exact_plan_cache()
 
         # Statistiques
@@ -103,8 +103,10 @@ class PromptCache:
             self.index = faiss.IndexFlatIP(self.dimension)  # Similarité cosinus
 
         if self.metadata_path.exists():
-            with open(self.metadata_path, "rb") as f:
-                self.metadata = pickle.load(f)  # Liste de dicts
+            try:
+                self.metadata = json.loads(self.metadata_path.read_text(encoding="utf-8"))
+            except Exception:
+                self.metadata = []
         else:
             self.metadata = []
 
@@ -112,8 +114,9 @@ class PromptCache:
         with self._lock:
             try:
                 faiss.write_index(self.index, str(self.index_path))
-                with open(self.metadata_path, "wb") as f:
-                    pickle.dump(self.metadata, f)
+                self.metadata_path.write_text(
+                    json.dumps(self.metadata), encoding="utf-8"
+                )
             except Exception as e:
                 logger.error(f"Erreur sauvegarde index: {e}")
 
@@ -123,19 +126,20 @@ class PromptCache:
     def _load_exact_cache(self):
         if self.exact_cache_path.exists():
             try:
-                with open(self.exact_cache_path, "rb") as f:
-                    data = pickle.load(f)
-                    for key, (resp, ts, acc) in data.items():
-                        self.exact_cache[key] = (resp, ts, acc)
-                        self.access_count[key] = acc
+                data = json.loads(self.exact_cache_path.read_text(encoding="utf-8"))
+                for key, entry in data.items():
+                    resp, ts, acc = entry[0], entry[1], entry[2]
+                    self.exact_cache[key] = (resp, ts, acc)
+                    self.access_count[key] = acc
             except Exception as e:
                 logger.error(f"Erreur chargement cache exact: {e}")
 
     def _save_exact_cache(self):
         with self._lock:
             try:
-                with open(self.exact_cache_path, "wb") as f:
-                    pickle.dump(dict(self.exact_cache), f)
+                self.exact_cache_path.write_text(
+                    json.dumps(dict(self.exact_cache)), encoding="utf-8"
+                )
             except Exception as e:
                 logger.error(f"Erreur sauvegarde cache exact: {e}")
 
@@ -145,19 +149,20 @@ class PromptCache:
     def _load_exact_plan_cache(self):
         if self.exact_plan_cache_path.exists():
             try:
-                with open(self.exact_plan_cache_path, "rb") as f:
-                    data = pickle.load(f)
-                    for key, (plan, ts, acc) in data.items():
-                        self.exact_plan_cache[key] = (plan, ts, acc)
-                        self.plan_access_count[key] = acc
+                data = json.loads(self.exact_plan_cache_path.read_text(encoding="utf-8"))
+                for key, entry in data.items():
+                    plan, ts, acc = entry[0], entry[1], entry[2]
+                    self.exact_plan_cache[key] = (plan, ts, acc)
+                    self.plan_access_count[key] = acc
             except Exception as e:
                 logger.error(f"Erreur chargement cache exact plans: {e}")
 
     def _save_exact_plan_cache(self):
         with self._lock:
             try:
-                with open(self.exact_plan_cache_path, "wb") as f:
-                    pickle.dump(dict(self.exact_plan_cache), f)
+                self.exact_plan_cache_path.write_text(
+                    json.dumps(dict(self.exact_plan_cache)), encoding="utf-8"
+                )
             except Exception as e:
                 logger.error(f"Erreur sauvegarde cache exact plans: {e}")
 
@@ -197,7 +202,7 @@ class PromptCache:
 
     def _get_exact_key(self, prompt: str, system: str, model: str) -> str:
         key = f"{prompt}||{system}||{model}"
-        return hashlib.md5(key.encode()).hexdigest()
+        return hashlib.blake2b(key.encode(), digest_size=16).hexdigest()
 
     # ----------------------------------------------------------------------
     # API publique pour les réponses
@@ -216,7 +221,7 @@ class PromptCache:
                 self.access_count[exact_key] = acc + 1
                 self.stats["hits_exact"] += 1
                 record_cache_hit("exact")
-                logger.debug(f"🎯 Cache exact trouvé")
+                logger.debug("🎯 Cache exact trouvé")
                 return response
 
         # Si le cache vectoriel n'est pas disponible, on s'arrête là
@@ -293,14 +298,14 @@ class PromptCache:
         self, query: str, similarity_threshold: float = 0.75
     ) -> Optional[List[Dict[str, Any]]]:
         # D'abord, vérifier le cache exact
-        exact_key = hashlib.md5(query.encode()).hexdigest()
+        exact_key = hashlib.blake2b(query.encode(), digest_size=16).hexdigest()
         with self._lock:
             if exact_key in self.exact_plan_cache:
                 plan, timestamp, acc = self.exact_plan_cache[exact_key]
                 self.plan_access_count[exact_key] = acc + 1
                 self.stats["plan_hits_exact"] += 1
                 record_plan_cache_hit()
-                logger.debug(f"📋 Plan exact trouvé")
+                logger.debug("📋 Plan exact trouvé")
                 return plan
 
         if (
@@ -342,7 +347,7 @@ class PromptCache:
         self, query: str, plan: List[Dict[str, Any]], from_vector: bool = False
     ):
         with self._lock:
-            exact_key = hashlib.md5(query.encode()).hexdigest()
+            exact_key = hashlib.blake2b(query.encode(), digest_size=16).hexdigest()
             self.exact_plan_cache[exact_key] = (plan, time.time(), 1)
             self.plan_access_count[exact_key] = 1
             self._evict_plan_if_needed()

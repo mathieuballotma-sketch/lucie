@@ -5,7 +5,6 @@ Stocke les souvenirs importants, les préférences, les faits appris.
 
 from pathlib import Path
 from typing import List, Dict, Any
-import json
 import time
 
 class SoulMemory:

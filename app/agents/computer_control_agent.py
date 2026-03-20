@@ -23,13 +23,12 @@ from app.utils.metrics import record_tool_execution
 
 try:
     import AppKit
-    from AppKit import NSScreen, NSWorkspace
+    from AppKit import NSScreen
     FOUND_APPKIT = True
 except ImportError:
     FOUND_APPKIT = False
     logger.warning("AppKit non disponible — certaines fonctionnalités sont limitées.")
 
-import subprocess
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -75,6 +74,10 @@ ARRANGE_PATTERNS = {
 }
 
 APPS_NEEDING_WINDOW = ["mail", "notes", "calendar", "messages", "facetime"]
+
+# Caractères interdits dans les chaînes injectées dans les scripts AppleScript.
+# Vecteurs d'injection : " (délimiteur de chaîne), \ (escape), & (concat AS), { } (enregistrement AS)
+APPLESCRIPT_FORBIDDEN_CHARS: frozenset = frozenset('"\\&{}')
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -141,6 +144,21 @@ class ComputerControlAgent(BaseAgent):
         os.makedirs(SCREENSHOT_DIR, exist_ok=True)
         logger.info(f"🖱️ ComputerControlAgent initialisé (mode visible={self.visible_mode})")
 
+    @staticmethod
+    def _check_applescript_safety(value: str, field_name: str) -> None:
+        """Rejette toute valeur contenant des caractères dangereux pour AppleScript.
+
+        Vecteurs d'injection : guillemet (délimiteur), backslash (escape),
+        & (concaténation AppleScript), { } (enregistrement AppleScript).
+        Lève ToolExecutionError si un caractère interdit est détecté.
+        """
+        found = APPLESCRIPT_FORBIDDEN_CHARS.intersection(value)
+        if found:
+            raise ToolExecutionError(
+                f"Valeur interdite pour AppleScript — champ '{field_name}' "
+                f"contient les caractères dangereux : {sorted(found)}"
+            )
+
     def get_tools(self) -> list:
         return [
             Tool(name="open_application",  description="Ouvre une application macOS.",                        contract=ComputerControlOpenApplicationContract),
@@ -173,8 +191,13 @@ class ComputerControlAgent(BaseAgent):
             return False, str(e)
 
     async def _activate_app(self, app_name: str) -> None:
+        # Valider contre la whitelist d'applications connues
+        if app_name.lower().strip() not in KNOWN_APPS:
+            raise ToolExecutionError(f"Application non reconnue dans la whitelist : '{app_name}'")
+        # Rejeter les caractères dangereux pour AppleScript
+        self._check_applescript_safety(app_name, "app_name")
         script = f'tell application "{app_name}" to activate'
-        success, error = await self._run_applescript(script, timeout=3.0)
+        success, error = await self._run_applescript(script, timeout=8.0)
         if not success:
             raise Exception(f"Échec activation de '{app_name}': {error}")
 
@@ -382,20 +405,41 @@ end repeat
 
     async def _tool_mail_compose(self, to: str, subject: str = "", body: str = "", send: bool = False) -> str:
         start = time.time()
+
+        # Valider les champs injectés directement dans le script AppleScript
+        self._check_applescript_safety(to, "to")
+        self._check_applescript_safety(subject, "subject")
+        # Le corps est transmis via clipboard — aucune vérification de contenu nécessaire
+
+        # Copier le corps dans le clipboard pour éviter toute injection AppleScript
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "pbcopy", stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.communicate(input=body.encode("utf-8"))
+            await asyncio.sleep(0.1)
+        except Exception as exc:
+            raise ToolExecutionError(
+                f"Impossible de copier le corps dans le clipboard : {exc}"
+            ) from exc
+
         to_esc      = to.replace('"', '\\"')
         subject_esc = subject.replace('"', '\\"')
-        body_esc    = body.replace('"', '\\"').replace("\n", "\\n")
+
+        # Le contenu est lu depuis le clipboard — aucune variable user dans l'f-string
         script = f"""
 tell application "Mail"
     activate
-    set newMessage to make new outgoing message with properties {{subject:"{subject_esc}", content:"{body_esc}"}}
+    set newMessage to make new outgoing message with properties {{subject:"{subject_esc}", content:(the clipboard as text)}}
     tell newMessage
         make new to recipient at end of to recipients with properties {{address:"{to_esc}"}}
     end tell
     {"send newMessage" if send else ""}
 end tell
 """
-        success, error = await self._run_applescript(script, timeout=10.0)
+        success, error = await self._run_applescript(script, timeout=8.0)
         record_tool_execution(self.name, "mail_compose", time.time() - start, error=not success)
         if success:
             return f"✅ Email {'envoyé' if send else 'préparé'} pour {to}."
@@ -403,15 +447,38 @@ end tell
 
     async def _tool_safari_open_url(self, url: str, new_tab: bool = False) -> str:
         start = time.time()
+
+        # Valider le format URL — doit commencer par http:// ou https://
+        if not re.match(r'^https?://', url):
+            raise ToolExecutionError(
+                f"URL non sécurisée (doit commencer par http:// ou https://) : {url}"
+            )
+
+        # Passer l'URL via clipboard pour éviter toute injection dans l'f-string AppleScript
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "pbcopy", stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.communicate(input=url.encode("utf-8"))
+            await asyncio.sleep(0.1)
+        except Exception as exc:
+            raise ToolExecutionError(
+                f"Impossible de copier l'URL dans le clipboard : {exc}"
+            ) from exc
+
         await self._activate_app("Safari")
         if not await self._wait_for_app_active("Safari", timeout=3.0):
             raise ToolExecutionError("Safari ne s'est pas activé")
+
+        # L'URL est lue depuis le clipboard — aucune variable user dans le script AppleScript
         script = (
-            f'tell application "Safari" to tell window 1 to make new tab with properties {{URL:"{url}"}}'
+            'tell application "Safari" to tell window 1 to make new tab with properties {URL:(the clipboard as text)}'
             if new_tab
-            else f'tell application "Safari" to set URL of document 1 to "{url}"'
+            else 'tell application "Safari" to set URL of document 1 to (the clipboard as text)'
         )
-        success, error = await self._run_applescript(script, timeout=5.0)
+        success, error = await self._run_applescript(script, timeout=8.0)
         record_tool_execution(self.name, "safari_open_url", time.time() - start, error=not success)
         if success:
             return "✅ URL ouverte dans Safari."

@@ -3,9 +3,8 @@ Team Leader Agent - Dirige une équipe de sous-agents pour des tâches complexes
 """
 
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from app.agents.base_agent import BaseAgent, Tool
-from app.utils.logger import logger
 
 class TeamLeaderAgent(BaseAgent):
     """

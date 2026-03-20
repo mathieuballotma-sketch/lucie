@@ -14,12 +14,12 @@ import inspect
 import json
 import re
 import time
-import sys
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
 
 from pydantic.v1 import BaseModel, ValidationError
 
+from ..utils.circuit_breaker import CircuitBreaker
 from ..utils.errors import ToolValidationError, ToolExecutionError, ToolNotFoundError
 from ..utils.logger import logger
 from ..utils.metrics import tool_execution_duration, tool_execution_errors
@@ -49,6 +49,9 @@ class BaseAgent(ABC):
         # --- FIX v5 : token et event_bus font partie de la base ---
         self.token: Optional[str] = token
         self.event_bus = event_bus
+
+        # CircuitBreaker pour protéger les appels LLM contre les pannes répétées
+        self._llm_cb = CircuitBreaker(name=f"llm_{name}", failure_threshold=5, recovery_timeout=60.0)
 
         logger.info(f"🤖 Agent '{self.name}' initialisé")
 
@@ -180,14 +183,20 @@ class BaseAgent(ABC):
         temperature: float = 0.5,
         max_tokens: int = 512,
     ) -> str:
-        try:
-            response = self.llm.generate(
+        def _call() -> str:
+            return self.llm.generate(
                 prompt=prompt,
                 system=system_prompt,
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
+
+        def _fallback() -> str:
+            return "[LLM indisponible — circuit ouvert]"
+
+        try:
+            response = self._llm_cb.call(_call, _fallback)
             return response if response else "[RÉPONSE VIDE]"
         except Exception as e:
             logger.error(f"Erreur LLM [{self.name}]: {e}")

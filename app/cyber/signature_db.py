@@ -16,14 +16,14 @@ class SignatureDB:
     - resolved (bool)
     - solution (str)
     """
-    
+
     def __init__(self, db_path: Optional[Path] = None):
         if db_path is None:
             db_path = Path.home() / ".agent_lucide" / "signatures.db"
         self.db_path = db_path
         self.db_path.parent.mkdir(exist_ok=True)
         self._init_db()
-    
+
     def _init_db(self):
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
@@ -51,7 +51,7 @@ class SignatureDB:
                     FOREIGN KEY(signature_id) REFERENCES signatures(id)
                 )
             """)
-    
+
     def add_or_update_signature(self, signature_id: str, pattern: str, agent: str, tool: str, error: str, severity: float = 0.1):
         now = time.time()
         with sqlite3.connect(self.db_path) as conn:
@@ -76,14 +76,14 @@ class SignatureDB:
                     INSERT INTO signatures (id, pattern, first_seen, last_seen, count, affected_agents, severity)
                     VALUES (?, ?, ?, ?, 1, ?, ?)
                 """, (signature_id, pattern, now, now, json.dumps(affected), severity))
-    
+
     def log_threat(self, signature_id: Optional[str], agent: str, tool: str, error: str, metadata: Optional[Dict] = None):
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO threats_log (timestamp, signature_id, agent, tool, error, metadata)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (time.time(), signature_id, agent, tool, error, json.dumps(metadata) if metadata else None))
-    
+
     def get_signature(self, signature_id: str) -> Optional[Dict]:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -92,7 +92,7 @@ class SignatureDB:
             if row:
                 return dict(row)
         return None
-    
+
     def get_recent_threats(self, limit: int = 100) -> List[Dict]:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row

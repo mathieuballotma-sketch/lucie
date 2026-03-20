@@ -54,7 +54,7 @@ class SearchManager:
         self.engines.append(SearchEngine(name, search_func, cooldown, max_retries))
 
     def _get_cache_key(self, query: str) -> str:
-        return hashlib.md5(query.encode()).hexdigest()
+        return hashlib.blake2b(query.encode(), digest_size=16).hexdigest()
 
     def search(self, query: str, max_results: int = 5) -> List[Dict]:
         cache_key = self._get_cache_key(query)

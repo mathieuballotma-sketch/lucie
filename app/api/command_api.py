@@ -8,7 +8,7 @@ from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from ..core.engine import LucidEngine
 

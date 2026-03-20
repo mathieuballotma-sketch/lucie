@@ -21,7 +21,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 import ast
-import concurrent.futures
+import threading
 
 from pydantic.v1 import BaseModel, Field, validator
 
@@ -32,6 +32,9 @@ from app.utils.logger import logger
 from app.utils.errors import ToolExecutionError
 from app.utils.circuit_breaker import CircuitBreaker
 
+
+# Timeout d'exécution pour le sandbox exec() — évite les boucles infinies et le code bloquant
+_EXEC_TIMEOUT: float = 5.0
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Exceptions
@@ -87,6 +90,11 @@ class AgentCodeValidator:
     FORBIDDEN_BUILTINS: Set[str] = {
         "eval", "exec", "compile", "__import__", "open",
         "breakpoint", "input",
+        # Accès au système de types et à l'introspection — vecteurs de bypass sandbox
+        "type", "object", "getattr", "setattr", "delattr",
+        "globals", "locals", "vars", "dir",
+        # Noms dunder non-builtins mais listés de façon défensive
+        "__class__", "__init__", "__subclasses__",
     }
 
     FORBIDDEN_ATTRS: Set[str] = {
@@ -170,11 +178,26 @@ class AgentCodeValidator:
         }
 
         def _run_code() -> Optional[str]:
-            try:
-                exec(code, namespace)  # noqa: S102
-                return None
-            except Exception as exc:
-                return str(exc)
+            """Exécute le code dans un thread dédié avec timeout — évite les boucles infinies."""
+            exec_error: list = [None]
+
+            def _exec_target() -> None:
+                try:
+                    exec(code, namespace)  # noqa: S102
+                except Exception as exc:
+                    exec_error[0] = str(exc)
+
+            exec_thread = threading.Thread(target=_exec_target, daemon=True)
+            exec_thread.start()
+            exec_thread.join(_EXEC_TIMEOUT)
+
+            if exec_thread.is_alive():
+                return f"Timeout : exécution dépassant {_EXEC_TIMEOUT}s"
+
+            # Supprimer __builtins__ du namespace après exec — bloque l'introspection post-exécution
+            namespace.pop("__builtins__", None)
+
+            return exec_error[0]
 
         try:
             exec_error = await loop.run_in_executor(None, _run_code)

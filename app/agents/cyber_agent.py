@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from enum import Enum
 
-from app.agents.base_agent import BaseAgent, Tool
+from app.agents.base_agent import BaseAgent
 from app.brain.synapses.event_bus import EventBus, Event
 from app.utils.logger import logger
 from app.utils.errors import ToolExecutionError

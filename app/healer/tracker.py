@@ -5,7 +5,7 @@ Tracker - Enregistre les menaces et les actions.
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 from app.utils.logger import logger
 
 class ThreatTracker:

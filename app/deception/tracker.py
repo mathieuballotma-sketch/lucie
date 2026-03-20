@@ -2,12 +2,11 @@
 Traqueur de leurres - Surveille les interactions avec les leurres.
 """
 
-import os
 import sqlite3
 import time
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 import threading
 
 from app.utils.logger import logger
