@@ -14,6 +14,7 @@ from PyObjCTools import AppHelper  # type: ignore[import]
 
 from ..core.config import Config
 from ..core.engine import LucidEngine
+from ..utils.logger import logger
 
 print("📦 Chargement du module hud_native")
 
@@ -286,7 +287,7 @@ class HUDWindow(AppKit.NSPanel):
         # Champ de saisie
         input_y = PADDING + STATUS_H + 8
         self._input = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(PADDING, input_y, WINDOW_W - PADDING * 2 - 46, INPUT_H)
+            make_rect(PADDING, input_y, WINDOW_W - PADDING * 2 - 88, INPUT_H)
         )
         self._input.setPlaceholderString_("Votre message…")
         self._input.setBezeled_(True)
@@ -317,6 +318,21 @@ class HUDWindow(AppKit.NSPanel):
         )
         self._send_btn.setAttributedTitle_(attr_title)
         content.addSubview_(self._send_btn)
+
+        # Bouton Workflows (⚡)
+        wf_btn_x = btn_x - 42
+        self._workflow_btn = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(wf_btn_x, input_y, 38, INPUT_H)
+        )
+        self._workflow_btn.setBezelStyle_(AppKit.NSRoundedBezelStyle)
+        self._workflow_btn.setToolTip_("Ouvrir l'éditeur de workflows")
+        self._workflow_btn.setTarget_(self)
+        self._workflow_btn.setAction_("openWorkflowEditor:")
+        wf_attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(
+            "⚡", {AppKit.NSForegroundColorAttributeName: ns_color(1.0, 0.85, 0.2, 0.85)}
+        )
+        self._workflow_btn.setAttributedTitle_(wf_attr_title)
+        content.addSubview_(self._workflow_btn)
 
         # Indicateur de statut (point)
         self._status = AppKit.NSTextField.alloc().initWithFrame_(
@@ -467,6 +483,53 @@ class HUDWindow(AppKit.NSPanel):
 
         print("🚀 Lancement du thread pour _process_query")
         threading.Thread(target=self._process_query, args=(query,), daemon=True).start()
+
+    @objc.IBAction
+    def openWorkflowEditor_(self, sender):
+        """Ouvre l'éditeur de workflows dans un processus séparé."""
+
+        def _launch() -> None:
+            import importlib.util
+
+            spec = importlib.util.find_spec("webview")
+            if spec is None:
+                logger.warning(
+                    "pywebview non installé — installer avec: pip install pywebview"
+                )
+                AppHelper.callAfter(
+                    self.append_message_safe,
+                    "Lucide",
+                    "⚡ L'éditeur de workflows nécessite pywebview.\nInstallez-le avec : pip install pywebview",
+                    False,
+                )
+                return
+
+            try:
+                project_root = os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+                env = os.environ.copy()
+                env.setdefault("PYTHONPATH", project_root)
+                subprocess.Popen(
+                    [
+                        sys.executable,
+                        "-c",
+                        "from app.workflows.bridge import launch_editor; launch_editor()",
+                    ],
+                    cwd=project_root,
+                    env=env,
+                )
+                logger.info("Éditeur de workflows lancé")
+            except Exception as e:
+                logger.error(f"Erreur lancement éditeur workflows : {e}")
+                AppHelper.callAfter(
+                    self.append_message_safe,
+                    "Lucide",
+                    f"⚡ Erreur lors de l'ouverture de l'éditeur : {e}",
+                    False,
+                )
+
+        threading.Thread(target=_launch, daemon=True).start()
 
     def _process_query(self, query):
         print(f"🧵 Thread _process_query démarré pour: '{query}'")
