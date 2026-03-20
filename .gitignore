@@ -1,29 +1,79 @@
-cd /Users/mathieu/Desktop/mon-agence-ia
-cat > .gitignore << 'EOF'
-# Environnements
+# ===== ENVIRONNEMENT =====
+.env
+.env.*
+*.env
+config.local.yaml
+secrets.yaml
+config.yaml
+config/
+
+# ===== CLÉS & TOKENS =====
+*.pem
+*.key
+*.crt
+*.p12
+*.secret
+*_credentials.json
+token.json
+
+# ===== PYTHON =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
 venv/
 venv311/
+env/
 
-# Données & logs
-chroma_data/
+# ===== DONNÉES UTILISATEUR =====
+*.db
+*.sqlite
+*.sqlite3
+memory/
+*.faiss
+*.index
 data/
-data_dev/
 logs/
-logs_dev/
-rag_data/
-short_term_memory.json
+*.log
+*.jsonl
 
-# Sauvegardes
-backup_old/
-Lucid_Docs/
-Lucid_Docs_dev/
+# ===== LUCIE — SPÉCIFIQUE =====
+*.bak
+*.bak2
+*.bak3
+*.bak4
+*.bak5
+*.cache
 
-# Config secrets
-config.dev.yaml
-
-# Python
-__pycache__/
-*.pyc
-*.joblib
+# ===== macOS =====
 .DS_Store
-EOF*.pkl
+._*
+
+# ===== IDE =====
+.vscode/
+.idea/
+.cursor/
+.claude/
+
+# ===== MODÈLES =====
+models/
+*.bin
+*.gguf
+*.ggml
+*.safetensors
+
+# ===== BUILDS =====
+dist/
+build/
+*.dmg
+*.app
+tmp/
+temp/
+
+# ===== TESTS =====
+.pytest_cache/
+.coverage
