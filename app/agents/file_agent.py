@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 from pathlib import Path
+from typing import Any
 
 from app.agents.base_agent import BaseAgent
 from app.utils.logger import logger
@@ -12,18 +13,21 @@ from app.utils.logger import logger
 class FileAgent(BaseAgent):
     """
     Agent spécialisé dans la gestion des fichiers et dossiers.
-    Peut lister, copier, déplacer, supprimer des fichiers.
+    Peut lister, copier, déplacer, supprimer des fichiers et rechercher par contenu.
     """
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("FileAgent", llm_service, bus)
         self.working_directory = config.get("working_directory", str(Path.home()))
+        # Moteur de recherche — injecte par l'engine
+        self.search_engine: Any = None
         logger.info(f"📁 Agent fichiers initialisé (dossier de travail: {self.working_directory})")
 
     def can_handle(self, query: str) -> bool:
         keywords = [
             "fichier", "dossier", "copie", "déplace",
             "supprime", "liste", "renomme", "backup", "sauvegarde",
+            "cherche", "recherche", "trouve", "search", "find",
         ]
         return any(kw in query.lower() for kw in keywords)
 
@@ -102,7 +106,7 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
             logger.error(f"Erreur dans FileAgent.handle: {e}")
             return f"Erreur lors du traitement: {str(e)}"
 
-    def do_action(self, action: str, params: dict) -> str:
+    def do_action(self, action: str, params: dict[str, Any]) -> str:
         """
         Exécute une action spécifique avec les paramètres donnés.
 
@@ -250,3 +254,30 @@ Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
             return f"✅ Fichier renommé: {new}"
         except Exception as e:
             return f"Erreur lors du renommage: {str(e)}"
+
+    async def search(self, query: str, top_k: int = 10) -> str:
+        """Recherche de fichiers par contenu via le moteur de recherche local."""
+        engine = self.search_engine
+        if engine is None:
+            return "Le moteur de recherche n'est pas disponible."
+
+        try:
+            results = await engine.search(query, top_k=top_k)
+            if not results:
+                return f"Aucun fichier trouvé pour '{query}'."
+
+            lines = [f"Résultats pour '{query}' ({len(results)} fichiers) :"]
+            for r in results:
+                score = r.get("score", 0)
+                name = r.get("file_name", "?")
+                summary = r.get("summary", "")
+                path = r.get("file_path", "")
+                line = f"  {'%.0f' % (score * 100)}% | {name}"
+                if summary:
+                    line += f" — {summary[:80]}"
+                line += f"\n       {path}"
+                lines.append(line)
+            return "\n".join(lines)
+        except Exception as e:
+            logger.error(f"Erreur recherche: {e}")
+            return f"Erreur lors de la recherche: {e}"
