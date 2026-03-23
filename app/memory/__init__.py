@@ -5,6 +5,7 @@ Inspiré du cerveau humain : mémoire épisodique (long terme) et mémoire de tr
 
 from .consolidation import ConsolidationEngine
 from .context_graph import ContextEdge, ContextGraph, ContextNode
+from .contextual_memory import ContextualMemory
 from .episodic_memory import EpisodicMemory
 from .memory_service import MemoryService
 from .working_memory import WorkingMemory
@@ -17,4 +18,5 @@ __all__ = [
     "ContextGraph",
     "ContextNode",
     "ContextEdge",
+    "ContextualMemory",
 ]
