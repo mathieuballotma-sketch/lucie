@@ -20,7 +20,8 @@ def load_profile() -> Dict[str, Any]:
     """Charge le profil utilisateur depuis le fichier JSON."""
     if PROFILE_PATH.exists():
         try:
-            return json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
+            data: Dict[str, Any] = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
+            return data
         except Exception as e:
             logger.error(f"Erreur chargement profil: {e}")
     return {}

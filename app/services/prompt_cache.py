@@ -52,7 +52,9 @@ class PromptCache:
         if SENTENCE_TRANSFORMERS_AVAILABLE:
             try:
                 self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
-                self.dimension = self.embedder.get_sentence_embedding_dimension()
+                dim = self.embedder.get_sentence_embedding_dimension()
+                if dim is not None:
+                    self.dimension = dim
             except Exception as e:
                 logger.error(f"Erreur chargement SentenceTransformer: {e}")
                 self.embedder = None
@@ -64,13 +66,13 @@ class PromptCache:
 
         # Cache exact (réponses)
         self.exact_cache: Dict[str, Tuple[str, float, int]] = OrderedDict()
-        self.access_count = {}
+        self.access_count: Dict[str, int] = {}
         self.exact_cache_path = cache_dir / "exact_cache.json"
         self._load_exact_cache()
 
         # Cache exact pour les plans (clé = hash de la requête)
-        self.exact_plan_cache: Dict[str, Tuple[List[Dict], float, int]] = OrderedDict()
-        self.plan_access_count = {}
+        self.exact_plan_cache: Dict[str, Tuple[List[Dict[str, Any]], float, int]] = OrderedDict()
+        self.plan_access_count: Dict[str, int] = {}
         self.exact_plan_cache_path = cache_dir / "exact_plan_cache.json"
         self._load_exact_plan_cache()
 
@@ -96,7 +98,7 @@ class PromptCache:
     # ----------------------------------------------------------------------
     # Gestion de l'index FAISS
     # ----------------------------------------------------------------------
-    def _load_index(self):
+    def _load_index(self) -> None:
         if self.index_path.exists():
             self.index = faiss.read_index(str(self.index_path))
         else:
@@ -110,7 +112,7 @@ class PromptCache:
         else:
             self.metadata = []
 
-    def _save_index(self):
+    def _save_index(self) -> None:
         with self._lock:
             try:
                 faiss.write_index(self.index, str(self.index_path))
@@ -123,7 +125,7 @@ class PromptCache:
     # ----------------------------------------------------------------------
     # Gestion du cache exact (réponses)
     # ----------------------------------------------------------------------
-    def _load_exact_cache(self):
+    def _load_exact_cache(self) -> None:
         if self.exact_cache_path.exists():
             try:
                 data = json.loads(self.exact_cache_path.read_text(encoding="utf-8"))
@@ -134,7 +136,7 @@ class PromptCache:
             except Exception as e:
                 logger.error(f"Erreur chargement cache exact: {e}")
 
-    def _save_exact_cache(self):
+    def _save_exact_cache(self) -> None:
         with self._lock:
             try:
                 self.exact_cache_path.write_text(
@@ -146,7 +148,7 @@ class PromptCache:
     # ----------------------------------------------------------------------
     # Gestion du cache exact pour les plans
     # ----------------------------------------------------------------------
-    def _load_exact_plan_cache(self):
+    def _load_exact_plan_cache(self) -> None:
         if self.exact_plan_cache_path.exists():
             try:
                 data = json.loads(self.exact_plan_cache_path.read_text(encoding="utf-8"))
@@ -157,7 +159,7 @@ class PromptCache:
             except Exception as e:
                 logger.error(f"Erreur chargement cache exact plans: {e}")
 
-    def _save_exact_plan_cache(self):
+    def _save_exact_plan_cache(self) -> None:
         with self._lock:
             try:
                 self.exact_plan_cache_path.write_text(
@@ -166,7 +168,7 @@ class PromptCache:
             except Exception as e:
                 logger.error(f"Erreur sauvegarde cache exact plans: {e}")
 
-    def _evict_if_needed(self):
+    def _evict_if_needed(self) -> None:
         """Éviction LRU pour le cache exact des réponses."""
         with self._lock:
             if len(self.exact_cache) <= self.max_size:
@@ -183,7 +185,7 @@ class PromptCache:
                 self.stats["evictions"] += 1
             logger.debug(f"🧹 Éviction de {to_remove} entrées de cache exact")
 
-    def _evict_plan_if_needed(self):
+    def _evict_plan_if_needed(self) -> None:
         """Éviction LRU pour le cache exact des plans."""
         with self._lock:
             if len(self.exact_plan_cache) <= self.max_size:
@@ -244,7 +246,7 @@ class PromptCache:
                 if entry.get("type") == "response" and (
                     model == "auto" or entry.get("model") == model
                 ):
-                    cached_response = entry["response"]
+                    cached_response: str = str(entry["response"])
                     self.stats["hits_vector"] += 1
                     record_cache_hit("vector")
                     logger.debug(f"🎯 Cache vectoriel trouvé (score: {
@@ -263,7 +265,7 @@ class PromptCache:
         model: str,
         response: str,
         from_vector: bool = False,
-    ):
+    ) -> None:
         with self._lock:
             exact_key = self._get_exact_key(prompt, system, model)
             self.exact_cache[exact_key] = (response, time.time(), 1)
@@ -331,21 +333,21 @@ class PromptCache:
             if 0 <= meta_idx < len(self.metadata):
                 entry = self.metadata[meta_idx]
                 if entry.get("type") == "plan":
-                    plan = entry["plan"]
+                    found_plan: List[Dict[str, Any]] = entry["plan"]
                     # Mettre en cache exact
-                    self.put_plan(query, plan, from_vector=True)
+                    self.put_plan(query, found_plan, from_vector=True)
                     self.stats["plan_hits_vector"] += 1
                     record_plan_cache_hit()
                     logger.debug(f"📋 Plan vectoriel trouvé (score: {
                             score:.3f})")
-                    return plan
+                    return found_plan
         self.stats["plan_misses"] += 1
         record_plan_cache_miss()
         return None
 
     def put_plan(
         self, query: str, plan: List[Dict[str, Any]], from_vector: bool = False
-    ):
+    ) -> None:
         with self._lock:
             exact_key = hashlib.blake2b(query.encode(), digest_size=16).hexdigest()
             self.exact_plan_cache[exact_key] = (plan, time.time(), 1)
@@ -375,7 +377,7 @@ class PromptCache:
     # ----------------------------------------------------------------------
     # Utilitaires
     # ----------------------------------------------------------------------
-    def clear_old(self, max_age_hours: int = 24):
+    def clear_old(self, max_age_hours: int = 24) -> None:
         with self._lock:
             now = time.time()
             to_delete = []
@@ -391,7 +393,7 @@ class PromptCache:
                 logger.info(f"🧹 {
                         len(to_delete)} entrées exactes expirées supprimées")
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> Dict[str, Any]:
         total = (
             self.stats["hits_exact"] + self.stats["hits_vector"] + self.stats["misses"]
         )

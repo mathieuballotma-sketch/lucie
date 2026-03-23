@@ -8,7 +8,7 @@ from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel  # FastAPI requiert pydantic natif (pas pydantic.v1)
 
 from ..core.engine import LucidEngine
 
@@ -35,9 +35,9 @@ class CommandAPI:
         self.app = FastAPI(title="Agent Lucide Command API")
         self._setup_routes()
 
-    def _setup_routes(self):
+    def _setup_routes(self) -> None:
         @self.app.post("/command", response_model=CommandResponse)
-        async def command(request: CommandRequest):
+        async def command(request: CommandRequest) -> CommandResponse:
             """
             Reçoit une commande textuelle, la traite et retourne la réponse.
             """
@@ -50,13 +50,13 @@ class CommandAPI:
                 raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.get("/health")
-        async def health():
+        async def health() -> dict[str, str]:
             return {"status": "ok"}
 
-    def start(self):
+    def start(self) -> None:
         """Démarre le serveur API dans un thread séparé."""
 
-        def run():
+        def run() -> None:
             uvicorn.run(self.app, host=self.host, port=self.port)
 
         thread = threading.Thread(target=run, daemon=True)

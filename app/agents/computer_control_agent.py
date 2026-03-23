@@ -11,7 +11,7 @@ import os
 import re
 import time
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pyautogui
 from pydantic.v1 import BaseModel, Field
@@ -77,7 +77,7 @@ APPS_NEEDING_WINDOW = ["mail", "notes", "calendar", "messages", "facetime"]
 
 # Caractères interdits dans les chaînes injectées dans les scripts AppleScript.
 # Vecteurs d'injection : " (délimiteur de chaîne), \ (escape), & (concat AS), { } (enregistrement AS)
-APPLESCRIPT_FORBIDDEN_CHARS: frozenset = frozenset('"\\&{}')
+APPLESCRIPT_FORBIDDEN_CHARS: frozenset[str] = frozenset('"\\&{}')
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ class ComputerControlArrangeWindowsContract(BaseModel):
 class ComputerControlAgent(BaseAgent):
     """Agent capable d'effectuer des actions visibles sur l'ordinateur."""
 
-    def __init__(self, llm_service, bus, config: dict):
+    def __init__(self, llm_service: Any, bus: Any, config: Dict[str, Any]) -> None:
         super().__init__("ComputerControlAgent", llm_service, bus)
         pyautogui.FAILSAFE = True
 
@@ -159,7 +159,7 @@ class ComputerControlAgent(BaseAgent):
                 f"contient les caractères dangereux : {sorted(found)}"
             )
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> List[Tool]:
         return [
             Tool(name="open_application",  description="Ouvre une application macOS.",                        contract=ComputerControlOpenApplicationContract),
             Tool(name="type_text",         description="Tape un texte.",                                      contract=ComputerControlTypeTextContract),
@@ -205,7 +205,7 @@ class ComputerControlAgent(BaseAgent):
         if not FOUND_APPKIT:
             return None
         try:
-            workspace = AppKit.NSWorkspace.sharedWorkspace()  # type: ignore[attr-defined]
+            workspace = AppKit.NSWorkspace.sharedWorkspace()
             active_app = workspace.frontmostApplication()
             return active_app.localizedName() if active_app else None
         except Exception as e:
@@ -518,7 +518,7 @@ end tell
         # FIX v2 : NSScreen utilisé uniquement si FOUND_APPKIT
         if FOUND_APPKIT:
             try:
-                screen = NSScreen.mainScreen()  # type: ignore[name-defined]
+                screen = NSScreen.mainScreen()
                 frame = screen.frame()
                 return int(frame.size.width), int(frame.size.height)
             except Exception:
@@ -722,7 +722,7 @@ end tell
                 return match.group(1).strip()
         return None
 
-    def _parse_coords(self, query: str) -> Optional[dict]:
+    def _parse_coords(self, query: str) -> Optional[Dict[str, Any]]:
         match = re.search(COORDS_PATTERN, query)
         if match:
             return {"x": int(match.group(1)), "y": int(match.group(2))}

@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import List, Dict, Any, Callable
 
 class HeartbeatManager:
-    def __init__(self, heartbeat_path: str = "~/AgentLucide/HEARTBEAT.md", scheduler=None):
+    def __init__(self, heartbeat_path: str = "~/AgentLucide/HEARTBEAT.md", scheduler: Any = None):
         self.heartbeat_path = Path(heartbeat_path).expanduser()
         self.scheduler = scheduler
-        self.routines = []
+        self.routines: List[Dict[str, Any]] = []
 
     def load_routines(self) -> List[Dict[str, Any]]:
         if not self.heartbeat_path.exists():
@@ -49,7 +49,7 @@ class HeartbeatManager:
                 })
         return routines
 
-    async def schedule_all(self, execute_task: Callable):
+    async def schedule_all(self, execute_task: Callable[..., Any]) -> None:
         """Programme toutes les routines dans le scheduler."""
         routines = self.load_routines()
         for r in routines:

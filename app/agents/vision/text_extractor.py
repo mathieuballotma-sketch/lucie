@@ -6,7 +6,7 @@ Utilise la validation Pydantic pour les outils.
 import subprocess
 import tempfile
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import pytesseract
 from PIL import Image
@@ -44,16 +44,16 @@ class TextExtractorAgent(BaseAgent):
     Agent capable d'extraire le texte de l'écran ou de l'application active.
     """
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("TextExtractorAgent", llm_service, bus)
-        self.accessibility_available = self._check_accessibility()
-        self.use_ocr_fallback = config.get("use_ocr_fallback", True)
-        self.min_text_length = config.get("min_text_length", 50)
-        self.last_text = ""
-        self.last_capture_time = 0
-        self.cache_duration = config.get("cache_duration", 5)
+        self.accessibility_available: bool = self._check_accessibility()
+        self.use_ocr_fallback: bool = config.get("use_ocr_fallback", True)
+        self.min_text_length: int = config.get("min_text_length", 50)
+        self.last_text: str = ""
+        self.last_capture_time: float = 0.0
+        self.cache_duration: int = config.get("cache_duration", 5)
 
-    def _check_accessibility(self):
+    def _check_accessibility(self) -> bool:
         if not FOUND_APPKIT:
             return False
         trusted = ApplicationServices.AXIsProcessTrusted()
@@ -64,7 +64,7 @@ class TextExtractorAgent(BaseAgent):
             return False
         return True
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="get_screen_text",
@@ -83,7 +83,7 @@ class TextExtractorAgent(BaseAgent):
             ),
         ]
 
-    async def _tool_get_screen_text(self, **kwargs) -> str:
+    async def _tool_get_screen_text(self, **kwargs: Any) -> str:
         import time
 
         start = time.time()
@@ -100,7 +100,7 @@ class TextExtractorAgent(BaseAgent):
     async def _tool_get_text_at_position(self, x: Optional[int] = None, y: Optional[int] = None) -> str:
         return "Fonction non encore implémentée."
 
-    async def _tool_get_ui_element_info(self, **kwargs) -> str:
+    async def _tool_get_ui_element_info(self, **kwargs: Any) -> str:
         return "Fonction non encore implémentée."
 
     def _capture_text(self) -> str:
@@ -109,7 +109,7 @@ class TextExtractorAgent(BaseAgent):
             logger.debug("Texte récupéré depuis le cache")
             return self.last_text
 
-        text = None
+        text: Optional[str] = None
         if self.accessibility_available:
             text = self._get_text_via_accessibility()
         if not text and self.use_ocr_fallback:
@@ -118,13 +118,13 @@ class TextExtractorAgent(BaseAgent):
         if text and len(text) >= self.min_text_length:
             self.last_text = text
             self.last_capture_time = now
-            return text
+            return str(text)
         elif text:
-            return text
+            return str(text)
         else:
             return "Aucun texte détecté à l'écran."
 
-    def _get_text_via_accessibility(self):
+    def _get_text_via_accessibility(self) -> Optional[str]:
         try:
             workspace = AppKit.NSWorkspace.sharedWorkspace()
             active_app = workspace.frontmostApplication()
@@ -158,7 +158,7 @@ class TextExtractorAgent(BaseAgent):
             logger.debug(f"Erreur accessibilité: {e}")
             return None
 
-    def _extract_all_text(self, element, depth, max_depth):
+    def _extract_all_text(self, element: Any, depth: int, max_depth: int) -> str:
         if depth > max_depth:
             return ""
         parts = []
@@ -186,7 +186,7 @@ class TextExtractorAgent(BaseAgent):
                     parts.append(child_text)
         return "\n".join(parts).strip()
 
-    def _ocr_screen(self):
+    def _ocr_screen(self) -> Optional[str]:
         try:
             with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
                 subprocess.run(["screencapture", "-x", tmp.name], check=True)

@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic.v1 import BaseModel, Field
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
 from app.utils.metrics import strategist_suggestions_total
 
@@ -38,7 +38,7 @@ class StrategistAgent(BaseAgent):
     Il n'est pas destiné à être appelé directement, mais à tourner périodiquement.
     """
 
-    def __init__(self, llm_service, bus, event_bus, memory_service, config):
+    def __init__(self, llm_service: Any, bus: Any, event_bus: Any, memory_service: Any, config: dict[str, Any]) -> None:
         _token = str(uuid.uuid4())
         super().__init__("StrategistAgent", llm_service, bus, event_bus=event_bus, token=_token)
         self.memory = memory_service
@@ -46,7 +46,7 @@ class StrategistAgent(BaseAgent):
         self.last_run = 0
         self.min_interval = config.get("strategist_interval", 3600)  # 1h par défaut
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return []  # Pas d'outils exposés aux utilisateurs
 
     def can_handle(self, query: str) -> bool:
@@ -55,7 +55,7 @@ class StrategistAgent(BaseAgent):
     async def handle(self, query: str) -> str:
         return "L'agent Stratège n'est pas destiné à être utilisé directement."
 
-    async def run_periodic_review(self, mode: str = "balanced"):
+    async def run_periodic_review(self, mode: str = "balanced") -> None:
         """
         Lance l'analyse stratégique.
         mode: "quick" (analyse rapide, peu de données), "deep" (analyse complète), "balanced" (compromis).  # noqa: E501
@@ -132,7 +132,7 @@ Si aucune idée, retourne [].
             logger.error(f"Erreur dans _analyze: {e}")
             return []
 
-    async def _publish_suggestion(self, suggestion: Dict[str, Any]):
+    async def _publish_suggestion(self, suggestion: Dict[str, Any]) -> None:
         """Publie une suggestion sur le bus d'événements et incrémente une métrique."""
         event_bus = self.event_bus
         if event_bus is None:

@@ -16,7 +16,7 @@ class SynapseBus:
     permet de vérifier sa fraîcheur.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._context: str = ""
         self._lock = threading.RLock()
         self._last_update: float = 0
@@ -60,7 +60,7 @@ class SynapseBus:
         """
         return self.get_age() < max_age
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, object]:
         """
         Retourne des statistiques sur le bus.
         """

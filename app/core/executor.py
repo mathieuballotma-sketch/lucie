@@ -38,9 +38,9 @@ class TaskStatus(Enum):
 class Task:
     id: str
     name: str
-    func: Optional[Callable] = None
-    args: tuple = ()
-    kwargs: Optional[dict] = None
+    func: Optional[Callable[..., Any]] = None
+    args: "tuple[Any, ...]" = ()
+    kwargs: Optional[Dict[str, Any]] = None
     priority: int = 0
     dependencies: Optional[List[str]] = None
     status: TaskStatus = TaskStatus.PENDING
@@ -52,7 +52,7 @@ class Task:
     progress: float = 0.0
     progress_message: str = ""
     user_id: str = "default"
-    metadata: Optional[dict] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class TaskExecutor:
@@ -64,15 +64,15 @@ class TaskExecutor:
     ):
         self.max_workers = max_workers
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
-        self.task_queue = queue.PriorityQueue()
+        self.task_queue: queue.PriorityQueue[tuple[int, str]] = queue.PriorityQueue()
         self.tasks: Dict[str, Task] = {}
-        self.futures: Dict[str, Future] = {}
+        self.futures: Dict[str, Future[Any]] = {}
         self.running = True
         self.persist_path = persist_path
         self.persist_interval = 60
         self.last_persist = time.time()
         self.retention_seconds = retention_seconds
-        self.metrics = {
+        self.metrics: Dict[str, Any] = {
             "total_submitted": 0,
             "total_completed": 0,
             "total_failed": 0,
@@ -96,7 +96,7 @@ class TaskExecutor:
                 len(
                     self.tasks)} tâches restaurées, rétention={retention_seconds}s")
 
-    def _load_persisted_tasks(self):
+    def _load_persisted_tasks(self) -> None:
         if self.persist_path and self.persist_path.exists():
             try:
                 with open(self.persist_path, "r", encoding="utf-8") as f:
@@ -121,7 +121,7 @@ class TaskExecutor:
             except Exception as e:
                 logger.error(f"Erreur restauration tâches: {e}")
 
-    def _persist_tasks(self):
+    def _persist_tasks(self) -> None:
         if self.persist_path is None:
             return
         try:
@@ -131,7 +131,7 @@ class TaskExecutor:
                 task_dict.pop("func", None)
                 # TaskStatus enum → string value for JSON serialization
                 status = task_dict.get("status")
-                if hasattr(status, "value"):
+                if status is not None and hasattr(status, "value"):
                     task_dict["status"] = status.value
                 # tuple args → list (JSON doesn't have tuples)
                 if isinstance(task_dict.get("args"), tuple):
@@ -148,17 +148,17 @@ class TaskExecutor:
         except Exception as e:
             logger.error(f"Erreur persistance tâches: {e}")
 
-    def _persist_loop(self):
+    def _persist_loop(self) -> None:
         while self.running and self.persist_path is not None:
             time.sleep(self.persist_interval)
             self._persist_tasks()
 
-    def _cleanup_loop(self):
+    def _cleanup_loop(self) -> None:
         while self.running:
             time.sleep(60)
             self._cleanup_old_tasks()
 
-    def _cleanup_old_tasks(self):
+    def _cleanup_old_tasks(self) -> None:
         with self._lock:
             now = time.time()
             to_delete = []
@@ -207,7 +207,7 @@ class TaskExecutor:
     def submit_batch(self, tasks: List[Task]) -> List[str]:
         return [self.submit(task) for task in tasks]
 
-    def _worker_loop(self):
+    def _worker_loop(self) -> None:
         while self.running:
             try:
                 qsize = self.task_queue.qsize()
@@ -264,7 +264,7 @@ class TaskExecutor:
             except Exception as e:
                 logger.error(f"Erreur dans worker loop: {e}")
 
-    def _execute_task(self, task: Task, future: Future, *args, **kwargs):
+    def _execute_task(self, task: Task, future: Future[Any], *args: Any, **kwargs: Any) -> None:
         try:
             if task.func is None:
                 raise Exception("Tâche sans fonction exécutable")
@@ -301,7 +301,7 @@ class TaskExecutor:
             future.set_exception(e)
             logger.error(f"❌ Tâche échouée: {task.name} - {e}")
 
-    def _update_progress(self, task_id: str, progress: float, message: str):
+    def _update_progress(self, task_id: str, progress: float, message: str) -> None:
         task = self.tasks.get(task_id)
         if task:
             task.progress = progress
@@ -338,7 +338,7 @@ class TaskExecutor:
             raise Exception(f"Tâche {task_id} introuvable")
         return future.result(timeout=timeout)
 
-    def get_future(self, task_id: str) -> Optional[Future]:
+    def get_future(self, task_id: str) -> Optional[Future[Any]]:
         with self._lock:
             return self.futures.get(task_id)
 
@@ -372,7 +372,7 @@ class TaskExecutor:
                 return True
             return False
 
-    def get_queue_stats(self) -> dict:
+    def get_queue_stats(self) -> Dict[str, int]:
         with self._lock:
             return {
                 "pending": sum(
@@ -396,7 +396,7 @@ class TaskExecutor:
                 "queue_size": self.task_queue.qsize(),
             }
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> Dict[str, Any]:
         with self._lock:
             return {
                 "metrics": self.metrics.copy(),
@@ -405,7 +405,7 @@ class TaskExecutor:
                 "persist_last": self.last_persist,
             }
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         self.running = False
         self.executor.shutdown(wait=True)
         if self.persist_path is not None:

@@ -15,7 +15,7 @@ class P2PClient:
         self.certfile = certfile
         self.ssl_context = self._create_ssl_context()
 
-    def _create_ssl_context(self):
+    def _create_ssl_context(self) -> ssl.SSLContext:
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         context.load_verify_locations(self.certfile)
         # Désactiver la vérification du hostname pour les tests, mais en prod
@@ -25,7 +25,7 @@ class P2PClient:
 
     async def send_message(
         self, host: str, port: int, message: Dict[str, Any]
-    ) -> Optional[Dict]:
+    ) -> Optional[Dict[str, Any]]:
         """Envoie un message à un pair et attend une réponse (optionnelle)."""
         try:
             reader, writer = await asyncio.open_connection(

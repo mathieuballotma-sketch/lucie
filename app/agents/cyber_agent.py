@@ -87,7 +87,7 @@ class CyberAgent(BaseAgent):
         llm_service: Any,
         bus: Any,
         event_bus: EventBus,
-        config: dict,
+        config: Dict[str, Any],
         memory_service: Any = None,
         token: Optional[str] = None,
         get_agent_count: Optional[Callable[[], int]] = None,
@@ -111,10 +111,10 @@ class CyberAgent(BaseAgent):
 
         self.signatures:    Dict[str, ThreatSignature]    = {}
         self.quarantine:    Dict[Tuple[str, str], float]  = {}
-        self.error_history: deque                         = deque(maxlen=ERROR_HISTORY_MAXLEN)
+        self.error_history: deque[Tuple[float, str, str, str]] = deque(maxlen=ERROR_HISTORY_MAXLEN)
 
         self._loop:         Optional[asyncio.AbstractEventLoop] = None
-        self._cleanup_task: Optional[asyncio.Task]              = None
+        self._cleanup_task: Optional[asyncio.Task[None]]         = None
         self._subscribed:   bool                                = False
         self._active:       bool                                = False
 
@@ -314,7 +314,7 @@ class CyberAgent(BaseAgent):
         data = event.data if isinstance(event.data, dict) else {}
         await self._analyze_error(data, source_type="system")
 
-    async def _analyze_error(self, data: dict, source_type: str) -> None:
+    async def _analyze_error(self, data: Dict[str, Any], source_type: str) -> None:
         if not self._active:
             return
 
@@ -454,7 +454,7 @@ class CyberAgent(BaseAgent):
 
         messages = [self._normalize_error(msg) for (_, _, _, msg) in recent]
 
-        word_counter: Counter = Counter()
+        word_counter: Counter[str] = Counter()
         for msg in messages:
             words = set(re.findall(r"\b[a-zA-Z_]{5,}\b", msg))
             word_counter.update(words)
@@ -486,18 +486,18 @@ class CyberAgent(BaseAgent):
 
     # ── Interface BaseAgent ───────────────────────────────────────────────────
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> List[Any]:
         return []
 
     def can_handle(self, query: str) -> bool:
         return False
 
-    async def execute_tool(self, tool_name: str, params: dict) -> Any:
+    async def execute_tool(self, tool_name: str, params: Dict[str, Any]) -> Any:
         raise ToolExecutionError("CyberAgent n'expose aucun outil — il opère via l'EventBus.")
 
     # ── Monitoring ────────────────────────────────────────────────────────────
 
-    async def get_status(self) -> dict:
+    async def get_status(self) -> Dict[str, Any]:
         async with self._lock:
             active_threats = sum(
                 1 for s in self.signatures.values()

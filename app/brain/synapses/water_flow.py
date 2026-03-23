@@ -64,6 +64,7 @@ class WaterGrain:
     handler: Callable[[WaterDrop], Any]
     timeout: float = 5.0
     optional: bool = True
+    stage: int = 0  # Étape d'exécution — même stage = parallèle
 
 
 class WaterFlow:
@@ -96,21 +97,25 @@ class WaterFlow:
         handler: Callable[[WaterDrop], Any],
         timeout: float = 5.0,
         optional: bool = True,
+        stage: int = 0,
     ) -> "WaterFlow":
-        """Ajoute un agent au flux. Retourne self pour chaînage."""
+        """Ajoute un agent au flux. Retourne self pour chaînage.
+        stage : les grains du même stage s'exécutent en parallèle."""
         self._grains.append(WaterGrain(
             name=name,
             handler=handler,
             timeout=timeout,
             optional=optional,
+            stage=stage,
         ))
         logger.debug(f"💧 Grain ajouté : {name}")
         return self
 
-    async def run(self, query: str, initial_context: Optional[Dict] = None) -> WaterDrop:
+    async def run(self, query: str, initial_context: Optional[Dict[str, Any]] = None) -> WaterDrop:
         """
         Lance le flux pour une requête.
-        Chaque grain enrichit la goutte sans bloquer le suivant.
+        Grains groupés par stage — même stage = exécution parallèle.
+        Fallback séquentiel si gather échoue.
         """
         t0 = time.perf_counter()
         self._stats["total_runs"] += 1
@@ -120,8 +125,32 @@ class WaterFlow:
             context=initial_context or {},
         )
 
+        # Grouper les grains par stage (ordre croissant)
+        stages: Dict[int, List[WaterGrain]] = {}
         for grain in self._grains:
-            await self._pass_through_grain(drop, grain)
+            stages.setdefault(grain.stage, []).append(grain)
+
+        for stage_id in sorted(stages.keys()):
+            grains_in_stage = stages[stage_id]
+
+            if len(grains_in_stage) == 1:
+                # Un seul grain — pas d'overhead gather
+                await self._pass_through_grain(drop, grains_in_stage[0])
+            else:
+                # Plusieurs grains — exécution parallèle
+                try:
+                    tasks = [
+                        self._pass_through_grain(drop, g)
+                        for g in grains_in_stage
+                    ]
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                except Exception as e:
+                    # Fallback séquentiel si gather échoue
+                    logger.warning(
+                        f"💧 Fallback séquentiel stage {stage_id} : {e}"
+                    )
+                    for g in grains_in_stage:
+                        await self._pass_through_grain(drop, g)
 
         drop.total_ms = (time.perf_counter() - t0) * 1000
         self._stats["completed"] += 1
@@ -176,7 +205,7 @@ class WaterFlow:
 
     async def _call_handler(
         self,
-        handler: Callable,
+        handler: Callable[[WaterDrop], Any],
         drop: WaterDrop,
     ) -> Any:
         """Appelle le handler (sync ou async)."""
@@ -190,7 +219,7 @@ class WaterFlow:
         return len(self._grains)
 
     @property
-    def stats(self) -> dict:
+    def stats(self) -> Dict[str, Any]:
         return {**self._stats}
 
 
@@ -198,7 +227,7 @@ class WaterFlow:
 
 _threat_intel = None
 
-async def security_grain(drop: WaterDrop) -> Optional[Dict]:
+async def security_grain(drop: WaterDrop) -> Optional[Dict[str, Any]]:
     """Grain 1 — ThreatIntelligence avant tout traitement."""
     try:
         global _threat_intel
@@ -218,7 +247,7 @@ async def security_grain(drop: WaterDrop) -> Optional[Dict]:
 
 _router_singleton = None
 
-async def router_grain(drop: WaterDrop) -> Optional[Dict]:
+async def router_grain(drop: WaterDrop) -> Optional[Dict[str, Any]]:
     """Grain 2 — Fast Path routing (singleton — init une seule fois)."""
     if drop.context.get("blocked"):
         return None
@@ -241,7 +270,7 @@ async def router_grain(drop: WaterDrop) -> Optional[Dict]:
 
 _memory_singleton = None
 
-async def memory_grain(drop: WaterDrop) -> Optional[Dict]:
+async def memory_grain(drop: WaterDrop) -> Optional[Dict[str, Any]]:
     """Grain 3 — Enrichit avec la mémoire épisodique."""
     if drop.context.get("blocked"):
         return None
@@ -249,7 +278,7 @@ async def memory_grain(drop: WaterDrop) -> Optional[Dict]:
         global _memory_singleton
         if _memory_singleton is None:
             from app.memory.episodic_memory import EpisodicMemory
-            _memory_singleton = EpisodicMemory()
+            _memory_singleton = EpisodicMemory(persist_directory="memory")
         memory = _memory_singleton
         # Cherche les 3 dernières interactions similaires
         recent = await memory.search_async(drop.query, limit=3) \
@@ -259,7 +288,7 @@ async def memory_grain(drop: WaterDrop) -> Optional[Dict]:
         return {"recent_context": []}
 
 
-async def logger_grain(drop: WaterDrop) -> Optional[Dict]:
+async def logger_grain(drop: WaterDrop) -> Optional[Dict[str, Any]]:
     """Grain 4 — CodeLogger pour le Self-Healing (Bloc 5b)."""
     try:
         import json

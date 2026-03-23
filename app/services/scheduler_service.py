@@ -6,7 +6,7 @@ Utilise APScheduler avec le scheduler asyncio dans un thread dédié.
 import asyncio
 import logging
 import threading
-from typing import Any, Callable, Coroutine, Optional
+from typing import Any, Callable, Coroutine, Dict, List, Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 class SchedulerService:
     """Service de planification de tâches cron asynchrones."""
 
-    def __init__(self):
-        self.scheduler = None
+    def __init__(self) -> None:
+        self.scheduler: Optional[AsyncIOScheduler] = None
         self._thread: Optional[threading.Thread] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._ready_event = threading.Event()  # Pour signaler que la boucle est prête
-        self.tasks = {}
+        self.tasks: dict[str, Any] = {}
 
-    def start(self):
+    def start(self) -> None:
         """Démarre le scheduler dans un thread séparé avec sa propre boucle."""
         if self._thread is not None:
             logger.warning("Scheduler déjà démarré.")
@@ -37,7 +37,7 @@ class SchedulerService:
         self._ready_event.wait(timeout=5)
         logger.info("✅ SchedulerService démarré dans un thread dédié")
 
-    def _run_loop(self):
+    def _run_loop(self) -> None:
         """Point d'entrée du thread : crée la boucle et démarre le scheduler."""
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
@@ -52,7 +52,7 @@ class SchedulerService:
             self._loop.close()
             logger.info("Boucle du scheduler terminée.")
 
-    def stop(self):
+    def stop(self) -> None:
         """Arrête proprement le scheduler et la boucle."""
         if self._loop and self._thread and self._thread.is_alive():
             # Shutdown du scheduler dans le thread de la boucle
@@ -66,7 +66,7 @@ class SchedulerService:
             self._thread.join(timeout=5)
             logger.info("SchedulerService arrêté.")
 
-    async def _shutdown_scheduler(self):
+    async def _shutdown_scheduler(self) -> None:
         """Coroutine pour arrêter le scheduler proprement."""
         if self.scheduler:
             self.scheduler.shutdown()
@@ -77,9 +77,9 @@ class SchedulerService:
         func: Callable[..., Coroutine[Any, Any, Any]],
         cron_expr: str,
         job_id: str,
-        args: Optional[list] = None,
-        kwargs: Optional[dict] = None,
-    ):
+        args: Optional[List[Any]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         Ajoute une tâche asynchrone avec une expression cron.
         Cette méthode est thread-safe (utilise call_soon_threadsafe).
@@ -94,8 +94,17 @@ class SchedulerService:
         )
         logger.info(f"📅 Tâche cron ajoutée: {job_id} ({cron_expr})")
 
-    async def _add_job_async(self, func, trigger, job_id, args, kwargs):
+    async def _add_job_async(
+        self,
+        func: Callable[..., Coroutine[Any, Any, Any]],
+        trigger: CronTrigger,
+        job_id: str,
+        args: Optional[List[Any]],
+        kwargs: Optional[Dict[str, Any]],
+    ) -> None:
         """Coroutine interne pour ajouter un job."""
+        if self.scheduler is None:
+            return
         self.scheduler.add_job(
             func,
             trigger=trigger,

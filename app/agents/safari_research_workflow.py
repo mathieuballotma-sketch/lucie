@@ -21,7 +21,7 @@ import json
 import re
 import time
 import urllib.parse
-from typing import List, Optional
+from typing import Any, Callable, List, Optional
 
 from app.agents.speed_config import ACTIVE_PROFILE
 from app.utils.logger import logger
@@ -150,7 +150,7 @@ class SafariResearchWorkflow:
     Utilise directement les méthodes AppleScript de ComputerControlAgent.
     """
 
-    def __init__(self, computer_agent, provider_manager) -> None:  # type: ignore[type-arg]
+    def __init__(self, computer_agent: Any, provider_manager: Any) -> None:
         self.computer = computer_agent
         self.manager = provider_manager
         self.speed = ACTIVE_PROFILE
@@ -278,24 +278,25 @@ class SafariResearchWorkflow:
         logger.info(f"🔍 Requête reformulée : '{query[:30]}' → '{result}'")
         return result or query
 
-    def _verify_extraction(self, data: dict, frequency: str) -> bool:
+    def _verify_extraction(self, data: dict[str, Any], frequency: str) -> bool:
         """Vérifie que l'extraction contient ce qu'on cherchait."""
-        rule = VERIFY_RULES.get(frequency, lambda d: True)
+        rule: Callable[[dict[str, Any]], bool] = VERIFY_RULES.get(frequency, lambda d: True)
         try:
             result = rule(data)
             if not result:
                 logger.warning(f"⚠️ Extraction non vérifiée ({frequency})")
-            return result
+            return bool(result)
         except Exception:
             return False
 
-    def _parse_extraction(self, raw: str) -> dict:
+    def _parse_extraction(self, raw: str) -> dict[str, Any]:
         """Parse le résultat d'extraction LLM. Robuste aux réponses non-JSON."""
         if not raw:
             return {}
         clean = raw.strip().replace("```json", "").replace("```", "").strip()
         try:
-            return json.loads(clean)
+            parsed: dict[str, Any] = json.loads(clean)
+            return parsed
         except json.JSONDecodeError:
             logger.warning("⚠️ JSON invalide, fallback texte brut")
             return {"main": clean[:500], "facts": [], "conclusion": ""}
@@ -531,7 +532,7 @@ end tell
                 extract_script, timeout=8.0,
             )
             if success and output:
-                return output[:char_limit]
+                return str(output)[:char_limit]
         except Exception as e:
             logger.warning(f"Extraction contenu échouée: {e}")
 
@@ -579,16 +580,15 @@ end tell
                 + f"\n\nURL source : {url}\n\nContenu :\n{content[:3000]}"
             )
             try:
-                result = await loop.run_in_executor(
-                    None,
-                    lambda p=extract_prompt: self.manager.generate(
+                def _do_extract(p: str = extract_prompt) -> str:
+                    return str(self.manager.generate(
                         prompt=p,
                         system="Extracteur de faits. Bullet points courts en français.",
                         model="qwen2.5:7b",
                         temperature=0.3,
                         max_tokens=300,
-                    ),
-                )
+                    ))
+                result: str = await loop.run_in_executor(None, _do_extract)
                 logger.info(f"📋 Extraction {index}/{total} OK")
                 return result
             except Exception as e:
@@ -652,7 +652,7 @@ end tell
                 ),
             )
             logger.info("✅ Synthèse générée")
-            return response
+            return str(response)
         except Exception as e:
             logger.error(f"Synthèse échouée: {e}")
             return f"Erreur lors de la synthèse : {e}"

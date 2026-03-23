@@ -3,7 +3,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
 from .logger import get_logger
 
@@ -27,7 +27,7 @@ class CircuitMetrics:
     last_failure_time: float = 0.0
     consecutive_successes: int = 0
     # Garder un historique des temps de réponse (max 100)
-    response_times: deque = field(default_factory=lambda: deque(maxlen=100))
+    response_times: deque[float] = field(default_factory=lambda: deque(maxlen=100))
 
 
 class CircuitBreaker:
@@ -57,7 +57,7 @@ class CircuitBreaker:
         logger.info(f"🔌 CircuitBreaker '{name}' initialisé")
 
     def call(
-        self, func: Callable, fallback: Optional[Callable] = None, *args, **kwargs
+        self, func: Callable[..., Any], fallback: Optional[Callable[..., Any]] = None, *args: Any, **kwargs: Any
     ) -> Any:
         """
         Exécute la fonction avec protection du circuit breaker.
@@ -149,18 +149,18 @@ class CircuitBreaker:
                 return self._execute_fallback(fallback, *args, **kwargs)
             raise e
 
-    def _transition_to(self, new_state: CircuitState):
+    def _transition_to(self, new_state: CircuitState) -> None:
         """Change l'état et enregistre le moment."""
         self.state = new_state
         self.last_state_change = time.time()
         if new_state == CircuitState.OPEN:
             self.metrics.last_open_time = time.time()
 
-    def _record_fallback(self):
+    def _record_fallback(self) -> None:
         with self._lock:
             self.metrics.fallback_used += 1
 
-    def _execute_fallback(self, fallback: Callable, *args, **kwargs) -> Any:
+    def _execute_fallback(self, fallback: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         try:
             return fallback(*args, **kwargs)
         except Exception as e:
@@ -168,7 +168,7 @@ class CircuitBreaker:
                     self.name}': {e}")
             raise e
 
-    def get_health_status(self) -> dict:
+    def get_health_status(self) -> Dict[str, Any]:
         """Retourne un rapport détaillé de l'état du circuit."""
         with self._lock:
             total = self.metrics.total_calls
@@ -205,7 +205,7 @@ class CircuitBreaker:
                 "recovery_in": f"{recovery_in:.1f}s",
             }
 
-    def reset(self):
+    def reset(self) -> None:
         """Réinitialise manuellement le circuit."""
         with self._lock:
             self.state = CircuitState.CLOSED

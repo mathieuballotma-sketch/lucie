@@ -82,7 +82,8 @@ class WorkflowEditorAPI:
         wf = self._storage.load(workflow_id)
         if wf is None:
             return None
-        return json.loads(wf.json())
+        result: Dict[str, Any] = json.loads(wf.json())
+        return result
 
     def list_workflows(self) -> List[Dict[str, Any]]:
         """Liste tous les workflows sauvegardés."""
@@ -140,7 +141,7 @@ def launch_editor(
     Nécessite pywebview installé.
     """
     try:
-        import webview  # type: ignore[import-untyped]
+        import webview
     except ImportError:
         logger.error("pywebview n'est pas installé. Installez-le avec: pip install pywebview")
         return

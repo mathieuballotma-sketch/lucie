@@ -8,8 +8,8 @@ import uuid
 import random
 import string
 from pathlib import Path
-from typing import Optional
-import aiofiles
+from typing import Any, Dict, Optional
+import aiofiles  # type: ignore[import-untyped]
 
 from app.utils.logger import logger
 
@@ -19,7 +19,7 @@ class LureGenerator:
     Générateur de leurres (fichiers, ports, etc.).
     """
 
-    def __init__(self, config: dict, lures_dir: Path):
+    def __init__(self, config: Dict[str, Any], lures_dir: Path) -> None:
         self.config = config
         self.lures_dir = lures_dir
 

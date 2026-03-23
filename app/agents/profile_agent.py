@@ -10,7 +10,7 @@ Utilise la mémoire épisodique et les documents indexés pour extraire :
 import threading
 import time
 from collections import Counter
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -30,13 +30,13 @@ class ProfileAgent(BaseAgent):
 
     def __init__(
         self,
-        llm_service,
-        bus,
+        llm_service: Any,
+        bus: Any,
         memory_service: MemoryService,
         rag_service: RAGService,
-        config: dict,
-        event_bus=None,
-    ):
+        config: dict[str, Any],
+        event_bus: Any = None,
+    ) -> None:
         super().__init__("ProfileAgent", llm_service, bus, event_bus=event_bus)
         self.memory = memory_service
         self.rag = rag_service
@@ -53,23 +53,23 @@ class ProfileAgent(BaseAgent):
         self._lock = threading.RLock()
         self._update_interval = config.get("profile_update_interval", 3600)
         self._stop_event = threading.Event()
-        self._thread = None
+        self._thread: Optional[threading.Thread] = None
 
         logger.info("👤 ProfileAgent initialisé")
 
-    def start(self):
+    def start(self) -> None:
         if self._thread is None:
             self._stop_event.clear()
             self._thread = threading.Thread(target=self._update_loop, daemon=True)
             self._thread.start()
             logger.info("🔄 ProfileAgent: mise à jour périodique activée")
 
-    def stop(self):
+    def stop(self) -> None:
         self._stop_event.set()
         if self._thread:
             self._thread.join(timeout=2)
 
-    def _update_loop(self):
+    def _update_loop(self) -> None:
         while not self._stop_event.is_set():
             try:
                 self.update_profile()
@@ -77,14 +77,14 @@ class ProfileAgent(BaseAgent):
                 logger.error(f"Erreur dans la mise à jour du profil: {e}")
             time.sleep(self._update_interval)
 
-    def update_profile(self):
+    def update_profile(self) -> None:
         with self._lock:
             logger.info("👤 Mise à jour du profil utilisateur...")
 
             # Pour l'instant, on n'a pas de méthode get_recent_episodes dans MemoryService.
             # On utilise un échantillon vide, mais on pourra améliorer plus
             # tard.
-            interactions = []
+            interactions: List[Dict[str, Any]] = []
 
             vocab = self._extract_vocabulary(interactions)
             self.profile["vocabulary"] = vocab
@@ -101,7 +101,7 @@ class ProfileAgent(BaseAgent):
             self.profile["last_updated"] = time.time()
             logger.info("✅ Profil utilisateur mis à jour")
 
-    def _extract_vocabulary(self, interactions: List[Dict]) -> Dict:
+    def _extract_vocabulary(self, interactions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Analyse les textes pour trouver les mots et expressions caractéristiques."""
         texts = []
         for item in interactions:
@@ -193,11 +193,13 @@ class ProfileAgent(BaseAgent):
 
         return {"words": significant_words, "bigrams": significant_bigrams}
 
-    def _extract_themes(self, interactions: List[Dict]) -> List[Dict]:
+    def _extract_themes(self, interactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         queries = [item["query"] for item in interactions if "query" in item]
         if len(queries) < 10:
             return []
 
+        if not hasattr(self.memory.episodic, "embedder") or self.memory.episodic.embedder is None:
+            return []
         embeddings = []
         for q in queries:
             emb = self.memory.episodic.embedder.encode(q)
@@ -254,7 +256,7 @@ class ProfileAgent(BaseAgent):
             logger.error(f"Erreur lors de l'inférence des objectifs: {e}")
             return []
 
-    def get_profile(self) -> Dict:
+    def get_profile(self) -> Dict[str, Any]:
         with self._lock:
             return self.profile.copy()
 

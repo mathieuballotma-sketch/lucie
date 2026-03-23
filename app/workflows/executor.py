@@ -178,7 +178,7 @@ class WorkflowExecutor:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for nid, result in zip(level, results):
-                if isinstance(result, Exception):
+                if isinstance(result, BaseException):
                     exec_result = ExecutionResult(
                         node_id=nid,
                         status="error",

@@ -123,7 +123,7 @@ class NanoPredictor:
         """
         return self._new_examples.copy()
 
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, object]:
         """Statistiques d'apprentissage."""
         total = len(self._predictions)
         confirmed = sum(1 for p in self._predictions if p.confirmed)

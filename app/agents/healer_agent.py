@@ -19,7 +19,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 import re
 
 import aiofiles
@@ -65,7 +65,8 @@ class ScanFileContract(BaseModel):
     filepath: str = Field(..., description="Chemin complet du fichier à scanner")
 
     @validator('filepath')
-    def path_must_exist(cls, v):
+    @classmethod
+    def path_must_exist(cls, v: str) -> str:
         if not Path(v).exists():
             raise ValueError(f"Le fichier {v} n'existe pas")
         return v
@@ -75,7 +76,8 @@ class QuarantineFileContract(BaseModel):
     filepath: str = Field(..., description="Chemin complet du fichier à mettre en quarantaine")
 
     @validator('filepath')
-    def path_must_exist(cls, v):
+    @classmethod
+    def path_must_exist(cls, v: str) -> str:
         if not Path(v).exists():
             raise ValueError(f"Le fichier {v} n'existe pas")
         return v
@@ -85,7 +87,8 @@ class RestoreFileContract(BaseModel):
     filename: str = Field(..., description="Nom du fichier à restaurer (sans chemin)")
 
     @validator('filename')
-    def prevent_path_traversal(cls, v):
+    @classmethod
+    def prevent_path_traversal(cls, v: str) -> str:
         if '..' in v or '/' in v or '\\' in v:
             raise ValueError("Nom de fichier invalide (caractères interdits)")
         return v
@@ -105,13 +108,13 @@ class LureCleaner:
         self.lures_dir = lures_dir
         self.lure_ttl = lure_ttl
         self.event_bus = event_bus
-        self._task: Optional[asyncio.Task] = None
+        self._task: Optional[asyncio.Task[None]] = None
 
-    def start(self, loop: asyncio.AbstractEventLoop):
+    def start(self, loop: asyncio.AbstractEventLoop) -> None:
         self._task = loop.create_task(self._cleanup_loop())
         logger.debug("LureCleaner démarré")
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self._task:
             self._task.cancel()
             try:
@@ -119,12 +122,12 @@ class LureCleaner:
             except asyncio.CancelledError:
                 pass
 
-    async def _cleanup_loop(self):
+    async def _cleanup_loop(self) -> None:
         while True:
             await asyncio.sleep(3600)
             await self._cleanup_once()
 
-    async def _cleanup_once(self):
+    async def _cleanup_once(self) -> None:
         now = time.time()
         deleted = 0
         for item in self.lures_dir.iterdir():
@@ -163,13 +166,13 @@ class HealerAgent(BaseAgent):
 
     def __init__(
         self,
-        llm_service,
-        bus,
+        llm_service: Any,
+        bus: Any,
         event_bus: EventBus,
-        config: dict,
-        memory_service=None,
+        config: dict[str, Any],
+        memory_service: Any = None,
         token: Optional[str] = None,
-    ):
+    ) -> None:
         # FIX v2 : on passe event_bus et token à BaseAgent
         super().__init__("HealerAgent", llm_service, bus, event_bus=event_bus, token=token)
         self.memory = memory_service
@@ -197,7 +200,7 @@ class HealerAgent(BaseAgent):
         # nécessitent un token. Elles sont faites dans set_loop().
         logger.info("🩺 HealerAgent initialisé (subscriptions en attente de set_loop)")
 
-    def set_loop(self, loop: asyncio.AbstractEventLoop):
+    def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         """
         Injecte la boucle asyncio, démarre le nettoyeur de leurres
         et enregistre les abonnements EventBus.
@@ -248,7 +251,7 @@ class HealerAgent(BaseAgent):
         except Exception as e:
             logger.error(f"HealerAgent._setup_subscriptions erreur : {e}")
 
-    async def _test_scan(self):
+    async def _test_scan(self) -> None:
         await asyncio.sleep(5)
         test_file = Path("/tmp/test_malware.txt")
         if test_file.exists():
@@ -285,7 +288,7 @@ class HealerAgent(BaseAgent):
             if match:
                 await self._handle_new_file(match.group(1))
 
-    async def _handle_new_file(self, filepath: str):
+    async def _handle_new_file(self, filepath: str) -> None:
         """Analyse un nouveau fichier et agit en conséquence."""
         logger.info(f"🔍 Analyse : {filepath}")
 
@@ -328,7 +331,7 @@ class HealerAgent(BaseAgent):
         if self.auto_quarantine:
             await self._quarantine_file(filepath, threat_info)
 
-    async def _quarantine_file(self, filepath: str, threat_info: dict):
+    async def _quarantine_file(self, filepath: str, threat_info: dict[str, Any]) -> None:
         """Met un fichier en quarantaine et crée un leurre."""
         try:
             dest = await self.neutralizer.quarantine(filepath, threat_info)
@@ -437,7 +440,7 @@ class HealerAgent(BaseAgent):
                 lines.append(f"  - {f.name} (infos indisponibles)")
         return "\n".join(lines)
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool("scan_file", "Analyse un fichier à la recherche de menaces.", ScanFileContract),
             Tool("quarantine_file", "Met un fichier en quarantaine.", QuarantineFileContract),
@@ -448,6 +451,6 @@ class HealerAgent(BaseAgent):
     def can_handle(self, query: str) -> bool:
         return False
 
-    async def stop(self):
+    async def stop(self) -> None:
         await self.lure_cleaner.stop()
         logger.info("🩺 HealerAgent arrêté.")

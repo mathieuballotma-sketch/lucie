@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 
 @dataclass(slots=True, frozen=True)
@@ -37,8 +37,8 @@ class ContextWave:
     query: str
     created: float
     budget: float = 15.0
-    memory: Tuple = ()
-    signals: Optional[dict] = None
+    memory: Tuple[Any, ...] = ()
+    signals: Optional[dict[str, Any]] = None
     chain_step: int = 0
     quantum_path: Optional[str] = None
     parent_wave: Optional[ContextWave] = None
@@ -70,7 +70,7 @@ class ContextWave:
         memory_str = "\n".join(f"- {m}" for m in self.memory)
         return f"{self.query}\n\nContexte mémorisé :\n{memory_str}"
 
-    def next_wave(self, memory: tuple = ()) -> ContextWave:
+    def next_wave(self, memory: tuple[Any, ...] = ()) -> ContextWave:
         """
         Crée une onde enfant pour étape suivante.
         Transmet le budget restant automatiquement.

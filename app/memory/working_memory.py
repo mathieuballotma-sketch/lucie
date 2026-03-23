@@ -13,9 +13,9 @@ class WorkingMemory:
 
     def __init__(self, capacity: int = 10):
         self.capacity = capacity
-        self.history: deque = deque(maxlen=capacity)
+        self.history: deque[Tuple[str, str]] = deque(maxlen=capacity)
 
-    def add(self, query: str, response: str):
+    def add(self, query: str, response: str) -> None:
         """Ajoute une interaction à l'historique."""
         self.history.append((query, response))
 
@@ -37,18 +37,18 @@ class WorkingMemory:
         """Retourne les n dernières interactions sous forme de liste de tuples (query, response)."""
         return list(self.history)[-n:]
 
-    def clear(self):
+    def clear(self) -> None:
         """Efface l'historique."""
         self.history.clear()
 
     def get_last_query(self) -> str:
         """Retourne la dernière requête utilisateur."""
         if self.history:
-            return self.history[-1][0]
+            return str(self.history[-1][0])
         return ""
 
     def get_last_response(self) -> str:
         """Retourne la dernière réponse de l'assistant."""
         if self.history:
-            return self.history[-1][1]
+            return str(self.history[-1][1])
         return ""

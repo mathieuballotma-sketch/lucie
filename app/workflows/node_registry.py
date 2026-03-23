@@ -20,12 +20,14 @@ class NodeRegistry:
 
     _instance: Optional["NodeRegistry"] = None
     _lock = threading.Lock()
+    _definitions: Dict[str, NodeDefinition]
+    _initialized: bool
 
     def __new__(cls) -> "NodeRegistry":
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
-                cls._instance._definitions: Dict[str, NodeDefinition] = {}
+                cls._instance._definitions = {}
                 cls._instance._initialized = True
             return cls._instance
 

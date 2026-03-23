@@ -8,7 +8,7 @@ import time
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 logger = logging.getLogger(__name__)
 ERROR_LOG = Path("memory/journals/error_log.jsonl")
@@ -58,7 +58,7 @@ class AnalyzerAgent:
             ))
         timeouts = [e for e in errors if e.get("result")=="timeout"]
         if timeouts:
-            for tool, count in Counter(e.get("tool") for e in timeouts).most_common():
+            for tool, count in Counter(str(e.get("tool", "")) for e in timeouts).most_common():
                 pins.append(Pin(
                     pattern="timeout_loop", tool=tool,
                     severity=self._get_severity(count*2), occurrences=count,
@@ -89,7 +89,7 @@ class AnalyzerAgent:
                     continue
         return pins
 
-    def _load_errors(self) -> list:
+    def _load_errors(self) -> list[dict[str, Any]]:
         if not ERROR_LOG.exists():
             return []
         errors = []
@@ -108,7 +108,7 @@ class AnalyzerAgent:
                 return sev
         return "low"
 
-    def _find_consecutive_errors(self, errors: list) -> int:
+    def _find_consecutive_errors(self, errors: list[dict[str, Any]]) -> int:
         max_seq = current = 0
         for e in errors:
             if e.get("result") in ("error","timeout"):

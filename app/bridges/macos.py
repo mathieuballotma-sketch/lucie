@@ -1,8 +1,10 @@
 # app/bridges/macos.py
+from typing import Any
+
 from PyQt5.QtCore import QTimer
 
 
-def apply_max_level_and_behavior(window):
+def apply_max_level_and_behavior(window: Any) -> bool:
     """Applique le niveau maximum et le comportement de collection. Retourne True si réussi."""
     try:
         import AppKit
@@ -39,14 +41,14 @@ def apply_max_level_and_behavior(window):
         return False
 
 
-def start_level_watchdog(window, interval=1000):
+def start_level_watchdog(window: Any, interval: int = 1000) -> "QTimer":
     """
     Watchdog qui tente d'appliquer niveau et comportement à chaque cycle,
     jusqu'à succès, puis continue de vérifier.
     """
     success = False
 
-    def check_and_restore():
+    def check_and_restore() -> None:
         nonlocal success
         try:
             if apply_max_level_and_behavior(window):

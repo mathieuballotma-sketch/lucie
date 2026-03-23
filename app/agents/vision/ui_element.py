@@ -3,7 +3,9 @@ Agent spécialisé dans l'extraction d'éléments d'interface utilisateur (bouto
 Utilise l'API d'accessibilité macOS pour obtenir des informations structurées sur les éléments UI.
 """
 
-from typing import Optional
+from typing import Any, Optional
+
+from pydantic.v1 import BaseModel, Field as PydField
 
 from ...agents.base_agent import BaseAgent, Tool
 from ...utils.logger import logger
@@ -18,19 +20,31 @@ except ImportError:
     logger.warning("AppKit non disponible, le UIElementAgent ne fonctionnera pas.")
 
 
+# ── Contrats pydantic pour les outils ──
+class GetUIElementsContract(BaseModel):
+    filter_by_role: Optional[str] = PydField(None, description="Filtre optionnel par rôle (ex: 'button', 'text field', 'menu')")
+
+class GetElementUnderMouseContract(BaseModel):
+    pass
+
+class ClickElementContract(BaseModel):
+    name: str = PydField(..., description="Nom/titre de l'élément à cliquer")
+    role: Optional[str] = PydField(None, description="Rôle de l'élément (optionnel)")
+
+
 class UIElementAgent(BaseAgent):
     """
     Agent capable d'extraire des informations sur les éléments d'interface utilisateur
     (boutons, champs de texte, menus, etc.) à l'écran.
     """
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("UIElementAgent", llm_service, bus)
-        self.accessibility_available = self._check_accessibility()
+        self.accessibility_available: bool = self._check_accessibility()
         # Limite pour éviter de surcharger
-        self.max_elements = config.get("max_elements", 20)
+        self.max_elements: int = config.get("max_elements", 20)
 
-    def _check_accessibility(self):
+    def _check_accessibility(self) -> bool:
         if not FOUND_APPKIT:
             return False
         trusted = ApplicationServices.AXIsProcessTrusted()
@@ -41,56 +55,35 @@ class UIElementAgent(BaseAgent):
             return False
         return True
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="get_ui_elements",
                 description="Récupère la liste des éléments d'interface principaux de l'application active (boutons, champs, etc.)",  # noqa: E501
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "filter_by_role": {
-                            "type": "string",
-                            "description": "Filtre optionnel par rôle (ex: 'button', 'text field', 'menu')",  # noqa: E501
-                        }
-                    },
-                },
+                contract=GetUIElementsContract,
             ),
             Tool(
                 name="get_element_under_mouse",
                 description="Récupère les informations détaillées de l'élément sous la souris",
-                parameters={"type": "object", "properties": {}, "required": []},
+                contract=GetElementUnderMouseContract,
             ),
             Tool(
                 name="click_element",
                 description="Tente de cliquer sur un élément identifié par son nom ou sa position",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Nom/titre de l'élément à cliquer",
-                        },
-                        "role": {
-                            "type": "string",
-                            "description": "Rôle de l'élément (optionnel)",
-                        },
-                    },
-                    "required": ["name"],
-                },
+                contract=ClickElementContract,
             ),
         ]
 
     def _tool_get_ui_elements(self, filter_by_role: Optional[str] = None) -> str:
-        return self._get_ui_elements(filter_by_role)
+        return str(self._get_ui_elements(filter_by_role))
 
     def _tool_get_element_under_mouse(self) -> str:
-        return self._get_element_under_mouse()
+        return str(self._get_element_under_mouse())
 
     def _tool_click_element(self, name: str, role: Optional[str] = None) -> str:
-        return self._click_element(name, role)
+        return str(self._click_element(name, role))
 
-    def _get_ui_elements(self, filter_by_role=None):
+    def _get_ui_elements(self, filter_by_role: Optional[str] = None) -> str:
         if not self.accessibility_available:
             return "Accessibilité non disponible."
 
@@ -143,7 +136,7 @@ class UIElementAgent(BaseAgent):
             logger.error(f"Erreur dans _get_ui_elements: {e}")
             return f"Erreur lors de la récupération des éléments UI : {str(e)}"
 
-    def _extract_ui_elements(self, element, depth, max_depth):
+    def _extract_ui_elements(self, element: Any, depth: int, max_depth: int) -> list[dict[str, Any]]:
         """Parcourt récursivement l'arbre d'accessibilité et extrait les éléments interactifs."""
         if depth > max_depth:
             return []
@@ -220,7 +213,7 @@ class UIElementAgent(BaseAgent):
             logger.debug(f"Erreur extraction élément: {e}")
         return elements
 
-    def _get_element_under_mouse(self):
+    def _get_element_under_mouse(self) -> str:
         if not self.accessibility_available:
             return "Accessibilité non disponible."
 
@@ -264,7 +257,7 @@ class UIElementAgent(BaseAgent):
             logger.error(f"Erreur _get_element_under_mouse: {e}")
             return f"Erreur : {str(e)}"
 
-    def _click_element(self, name, role=None):
+    def _click_element(self, name: str, role: Optional[str] = None) -> str:
         """Tente de cliquer sur un élément identifié par son nom."""
         # Pour l'instant, simple recherche et tentative de clic via AppleScript
         # (à implémenter)
@@ -274,5 +267,5 @@ class UIElementAgent(BaseAgent):
         keywords = ["bouton", "menu", "interface", "cliquer", "souris", "élément", "ui"]
         return any(kw in query.lower() for kw in keywords)
 
-    def handle(self, query: str) -> str:
+    async def handle(self, query: str) -> str:
         return self._tool_get_ui_elements()

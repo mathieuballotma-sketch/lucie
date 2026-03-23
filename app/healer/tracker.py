@@ -14,18 +14,18 @@ class ThreatTracker:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._load()
 
-    def _load(self):
+    def _load(self) -> None:
         if self.db_path.exists():
             with open(self.db_path, "r") as f:
                 self.data = json.load(f)
         else:
             self.data = {"threats": [], "attackers": {}}
 
-    def _save(self):
+    def _save(self) -> None:
         with open(self.db_path, "w") as f:
             json.dump(self.data, f, indent=2)
 
-    def add_threat(self, file_path: str, threat_hash: str, source_ip: Optional[str] = None, metadata: Optional[Dict] = None):
+    def add_threat(self, file_path: str, threat_hash: str, source_ip: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> None:
         """Ajoute une menace détectée."""
         threat = {
             "timestamp": datetime.now().isoformat(),

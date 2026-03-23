@@ -27,27 +27,21 @@ class Message:
         self.signature = self._sign(crypto)
 
     def _sign(self, crypto: CryptoManager) -> str:
-        """Signe le message avec la clé privée du nœud."""
-        data = f"{
-            self.msg_type}{
-            json.dumps(
-                self.payload)}{
-                self.sender_id}{
-                    self.timestamp}"
-        signature = crypto.sign(data.encode())
+        """Signe le message avec la clé du nœud (HMAC via Fernet encrypt)."""
+        data = f"{self.msg_type}{json.dumps(self.payload)}{self.sender_id}{self.timestamp}"
+        # TODO: implémenter sign() dans CryptoManager avec HMAC dédié
+        # Pour l'instant, on utilise encrypt comme pseudo-signature
+        signature = crypto.encrypt(data.encode())
         return base64.b64encode(signature).decode()
 
     def verify(self, crypto: CryptoManager, public_key: bytes) -> bool:
-        """Vérifie la signature avec la clé publique de l'émetteur."""
-        data = f"{
-            self.msg_type}{
-            json.dumps(
-                self.payload)}{
-                self.sender_id}{
-                    self.timestamp}"
+        """Vérifie la signature avec la clé du nœud (decrypt via Fernet)."""
+        data = f"{self.msg_type}{json.dumps(self.payload)}{self.sender_id}{self.timestamp}"
+        # TODO: implémenter verify() dans CryptoManager avec HMAC dédié
+        # Pour l'instant, on tente un decrypt pour valider l'intégrité
         try:
-            crypto.verify(data.encode(), base64.b64decode(self.signature), public_key)
-            return True
+            decrypted = crypto.decrypt(base64.b64decode(self.signature))
+            return decrypted == data.encode()
         except Exception:
             return False
 

@@ -12,7 +12,7 @@ import tempfile
 import threading
 import time
 import wave
-from typing import Callable, Optional
+from typing import Any, Callable, List, Optional
 
 import numpy as np
 import sounddevice as sd
@@ -45,7 +45,7 @@ class KalmanVAD:
 
     def __init__(self, calibration_frames: int = KALMAN_CALIBRATION_FRAMES):
         self._calibration_frames = calibration_frames
-        self._calibration_buffer: list = []
+        self._calibration_buffer: List[float] = []
         self._calibrated = False
         # État Kalman
         self._x_hat = 0.0     # estimation lissée du niveau sonore
@@ -54,7 +54,7 @@ class KalmanVAD:
         self._Q = 0.0001      # bruit de processus
         self._silence_estimate = 0.005  # estimation du silence (défaut = seuil RMS fixe)
         # Détection changement d'environnement
-        self._recent_rms: list = []
+        self._recent_rms: List[float] = []
         self._env_change_counter = 0
 
     def update(self, rms: float) -> float:
@@ -121,7 +121,7 @@ class WakeAgent(BaseAgent):
     - Pas d'EventBus depuis le thread audio
     """
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: Any) -> None:
         super().__init__("WakeAgent", llm_service, bus)
         # Callbacks injectés depuis engine.py
         self._engine_callback: Optional[Callable[[str], None]] = None
@@ -256,7 +256,7 @@ class WakeAgent(BaseAgent):
             return
 
         # Buffer circulaire 2s
-        buffer: collections.deque = collections.deque(
+        buffer: collections.deque[Any] = collections.deque(
             maxlen=int(SAMPLE_RATE * 2 / CHUNK_SAMPLES)
         )
 
@@ -265,7 +265,7 @@ class WakeAgent(BaseAgent):
             f"threshold={WAKE_THRESHOLD})"
         )
 
-        def audio_callback(indata, frames, time_info, status):
+        def audio_callback(indata: Any, frames: int, time_info: Any, status: Any) -> None:
             if status:
                 logger.debug(f"🎙️ Audio status: {status}")
             buffer.append(indata[:, 0].copy())
@@ -293,7 +293,10 @@ class WakeAgent(BaseAgent):
                     chunk_int16 = (chunk * 32767).astype(np.int16)
 
                     # Détecter wake word
-                    prediction = self._wake_model.predict(chunk_int16)
+                    wake_model = self._wake_model
+                    if wake_model is None:
+                        continue
+                    prediction = wake_model.predict(chunk_int16)
                     score = prediction.get(WAKE_WORD, 0.0)
 
                     if score >= WAKE_THRESHOLD:
@@ -301,7 +304,7 @@ class WakeAgent(BaseAgent):
                             f"🎙️ Wake word détecté! (score={score:.2f})"
                         )
                         buffer.clear()
-                        self._wake_model.reset()
+                        wake_model.reset()
                         self._handle_wake()
 
         except Exception as e:
@@ -405,7 +408,7 @@ class WakeAgent(BaseAgent):
         elif not text:
             logger.warning("🎙️ Transcription vide — commande ignorée")
 
-    def _transcribe(self, audio_data: list) -> str:
+    def _transcribe(self, audio_data: List[Any]) -> str:
         """Transcrit l'audio via faster-whisper."""
         if not self._whisper:
             return ""

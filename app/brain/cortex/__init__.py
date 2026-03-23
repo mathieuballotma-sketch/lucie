@@ -12,7 +12,7 @@ import time
 import uuid as _uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from pydantic.v1 import BaseModel, ValidationError
 
@@ -39,56 +39,57 @@ from .execution_engine import ExecutionEngine
 class PathManager:
     """Gère le routage des requêtes vers les chemins d'exécution."""
 
-    def __init__(self, classifier=None):
+    def __init__(self, classifier: Any = None) -> None:
         self._classifier = classifier
         self._router = PathRouter()
         self._router.initialize()
+        self._exec_engine: Optional[Any] = None
 
-    async def select_paths(self, query: str = "", *args, **kwargs):
-        engine = getattr(self, "_exec_engine", None)
+    async def select_paths(self, query: str = "", *args: Any, **kwargs: Any) -> List[Tuple[str, Callable[..., Awaitable[str]]]]:
+        engine: Optional[Any] = self._exec_engine
 
-        async def direct_path(q=None):
+        async def direct_path(q: Optional[str] = None) -> str:
             result = await engine.execute_direct_action(q or query) if engine else None
             if not result:
                 raise ValueError("Aucune action directe trouvee")
-            return result
+            return str(result)
 
-        async def multi_path(q=None):
+        async def multi_path(q: Optional[str] = None) -> str:
             result = await engine.execute_multi_action(q or query) if engine else None
             if not result:
                 raise ValueError("Aucune action multi trouvee")
-            return result
+            return str(result)
 
-        async def creation_path(q=None):
+        async def creation_path(q: Optional[str] = None) -> str:
             result = await engine.execute_creation_agent(q or query) if engine else None
             if not result:
                 raise ValueError("Aucune creation trouvee")
-            return result
+            return str(result)
 
-        async def resonance_path(q=None):
+        async def resonance_path(q: Optional[str] = None) -> str:
             """Chemin LLM par résonance — vibration progressive nano→speed→balanced."""
             if engine and engine._current_ctx is not None:
-                return await engine.llm_resonance(engine._current_ctx, q or query)
+                return str(await engine.llm_resonance(engine._current_ctx, q or query))
             raise ValueError("Résonance non disponible")
 
-        async def llm_path(q=None):
+        async def llm_path(q: Optional[str] = None) -> str:
             if engine:
                 loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(
+                return str(await loop.run_in_executor(
                     None, engine.call_llm, q or query, "balanced"
-                )
+                ))
             raise ValueError("Pas d'engine disponible")
 
-        async def visual_research_path(q=None):
+        async def visual_research_path(q: Optional[str] = None) -> str:
             if engine:
                 result = await engine.execute_visual_research(q or query)
                 if not result:
                     raise ValueError("Recherche visuelle échouée")
-                return result
+                return str(result)
             raise ValueError("Pas d'engine disponible")
 
         # Mapping Thalamus → agent pour le chemin agent_path
-        _THALAMUS_TO_AGENT = {
+        _THALAMUS_TO_AGENT: Dict[str, str] = {
             "calendar_query": "CalendarAgent",
             "reminder_query": "AppleEcosystemAgent",
             "file_query": "FileAgent",
@@ -100,7 +101,7 @@ class PathManager:
             "mail_query": "SmartMailAgent",
         }
 
-        async def agent_path(q=None):
+        async def agent_path(q: Optional[str] = None) -> str:
             """Chemin Thalamus → Agent direct. Le cerveau décide."""
             if not engine:
                 raise ValueError("Pas d'engine")
@@ -117,7 +118,7 @@ class PathManager:
                 if agent and hasattr(agent, "handle"):
                     result = await agent.handle(q or query)
                     if result:
-                        return result
+                        return str(result)
             raise ValueError("Aucun agent Thalamus disponible")
 
         # Routage intelligent : utiliser le router pour décider de l'ordre
@@ -161,7 +162,7 @@ class UserQuery(BaseModel):
     system_prompt: Optional[str] = None
 
     @classmethod
-    def from_raw(cls, query: str, **kwargs) -> UserQuery:
+    def from_raw(cls, query: str, **kwargs: Any) -> UserQuery:
         try:
             return cls(text=query, **kwargs)
         except ValidationError as e:
@@ -330,7 +331,7 @@ class FrontalCortex:
 
     async def think(
         self,
-        query_or_ctx,
+        query_or_ctx: Any,
         system_prompt: Optional[str] = None,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
@@ -422,7 +423,7 @@ class FrontalCortex:
                         path_func(user_query.text), timeout=path_timeout
                     )
                 else:
-                    response = path_func(user_query.text)
+                    response = str(path_func(user_query.text))
                 duration = time.time() - start
                 logger.info(f"✅ Chemin '{path_id}' réussi en {duration:.3f}s")
 
@@ -518,7 +519,7 @@ class FrontalCortex:
                 if is_write:
                     filepath = self._extract_filepath(instruction)
                     logger.info(f"🔗 Shortcut FileAgent → write_file({filepath}, {len(context)} chars)")
-                    result = agent.write_file(filepath, context)  # type: ignore[union-attr]
+                    result = agent.write_file(filepath, context)  # type: ignore[attr-defined]
                 else:
                     result = await asyncio.wait_for(agent.handle(enriched), timeout=min(remaining, 60.0))
                 step_duration = time.time() - step_start

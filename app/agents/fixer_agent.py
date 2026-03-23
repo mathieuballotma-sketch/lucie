@@ -3,31 +3,32 @@ import json
 import logging
 import time
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 PINS_LOG  = Path("memory/journals/pins.jsonl")
 FIXES_LOG = Path("memory/journals/fixes.jsonl")
 
 class FixerAgent:
-    def __init__(self):
+    def __init__(self) -> None:
         FIXES_LOG.parent.mkdir(parents=True, exist_ok=True)
 
-    async def fix_all(self):
+    async def fix_all(self) -> List[Dict[str, Any]]:
         from app.agents.analyzer_agent import AnalyzerAgent
         pins = AnalyzerAgent().get_unfixed_pins()
-        fixes = []
+        fixes: List[Dict[str, Any]] = []
         for pin in pins:
             fix = await self._fix_pin(pin)
             if fix:
                 fixes.append(fix)
         return fixes
 
-    async def _fix_pin(self, pin):
+    async def _fix_pin(self, pin: Any) -> Optional[Dict[str, Any]]:
         from app.security.threat_intelligence import ThreatIntelligence
         diagnosis = await self._diagnose(pin)
         if ThreatIntelligence().analyze(diagnosis).blocked:
             return None
-        fix = {
+        fix: Dict[str, Any] = {
             "timestamp": time.time(),
             "pattern": pin.pattern,
             "tool": pin.tool,
@@ -40,14 +41,14 @@ class FixerAgent:
         self._mark_fixed(pin)
         return fix
 
-    async def _diagnose(self, pin):
+    async def _diagnose(self, pin: Any) -> str:
         return f"Pattern {pin.pattern} sur {pin.tool} ({pin.occurrences}x). {pin.fix_hint}"
 
-    def _mark_fixed(self, pin):
+    def _mark_fixed(self, pin: Any) -> None:
         if not PINS_LOG.exists():
             return
         lines = PINS_LOG.read_text(encoding="utf-8").splitlines()
-        out = []
+        out: List[str] = []
         for line in lines:
             try:
                 d = json.loads(line)

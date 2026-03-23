@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-import AppKit  # type: ignore[import]
+import AppKit
 
 from ..utils.logger import logger
 

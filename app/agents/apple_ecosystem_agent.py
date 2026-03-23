@@ -70,13 +70,13 @@ class AirDropContract(BaseModel):
 class AppleEcosystemAgent(BaseAgent):
     """Connecte Lucie à l'écosystème Apple : Notes, Rappels, Calendrier, Mail, Telegram, HomeKit."""
 
-    def __init__(self, llm_service: Any, bus: Any, config: dict):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("AppleEcosystemAgent", llm_service, bus)
         self._telegram_token: Optional[str] = config.get("telegram_bot_token")
         self._telegram_chat_id: Optional[str] = config.get("telegram_chat_id")
         logger.info("🍎 AppleEcosystemAgent initialisé")
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(name="create_note",      description="Crée une note dans Apple Notes (sync iCloud).",   contract=CreateNoteContract),
             Tool(name="create_reminder",  description="Crée un rappel (notification Mac+iPhone+Watch).", contract=CreateReminderContract),

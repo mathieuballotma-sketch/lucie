@@ -6,7 +6,7 @@ import sqlite3
 import time
 import json
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 import threading
 
 from app.utils.logger import logger
@@ -18,19 +18,20 @@ class LureTracker:
     Utilise une base SQLite pour persister les informations.
     """
 
-    def __init__(self, config: dict, db_path: Path):
+    def __init__(self, config: Dict[str, Any], db_path: Path) -> None:
         self.db_path = db_path
         self._local = threading.local()
         self._init_db()
 
-    def _get_conn(self):
+    def _get_conn(self) -> sqlite3.Connection:
         """Retourne une connexion SQLite pour le thread courant."""
         if not hasattr(self._local, 'conn'):
             self._local.conn = sqlite3.connect(str(self.db_path))
             self._local.conn.row_factory = sqlite3.Row
-        return self._local.conn
+        conn: sqlite3.Connection = self._local.conn
+        return conn
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Crée la table des leurres si elle n'existe pas."""
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -48,7 +49,7 @@ class LureTracker:
         """)
         conn.commit()
 
-    def register_lure(self, path: str, lure_type: str, threat_data: Optional[Dict] = None):
+    def register_lure(self, path: str, lure_type: str, threat_data: Optional[Dict[str, Any]] = None) -> None:
         """Enregistre un nouveau leurre."""
         lure_id = path.split('/')[-1].split('.')[0] + '_' + str(int(time.time()))
         conn = self._get_conn()
@@ -60,7 +61,7 @@ class LureTracker:
         conn.commit()
         logger.debug(f"Leurre enregistré: {path} (ID: {lure_id})")
 
-    def mark_triggered(self, path: str, attacker_info: Optional[Dict] = None):
+    def mark_triggered(self, path: str, attacker_info: Optional[Dict[str, Any]] = None) -> None:
         """Marque un leurre comme déclenché."""
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -94,7 +95,7 @@ class LureTracker:
                 """, (row[0], time.time(), attacker_info.get('ip'), json.dumps(attacker_info)))
                 conn.commit()
 
-    def get_active_lures(self) -> List[Dict]:
+    def get_active_lures(self) -> List[Dict[str, Any]]:
         """Retourne la liste des leurres actifs (non déclenchés)."""
         conn = self._get_conn()
         cursor = conn.cursor()

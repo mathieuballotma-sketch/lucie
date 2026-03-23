@@ -3,7 +3,7 @@ import asyncio
 import logging
 import sqlite3
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 CHAT_DB = Path.home() / "Library/Messages/chat.db"
@@ -31,10 +31,10 @@ class MessageListener:
     def __init__(self) -> None:
         self._last_rowid: int = self._get_last_rowid()
         self._running: bool = False
-        self._handlers: list = []
+        self._handlers: list[Callable[..., Any]] = []
         logger.info(f"MessageListener init — dernier message : {self._last_rowid}")
 
-    def on_command(self, handler: Callable) -> None:
+    def on_command(self, handler: Callable[..., Any]) -> None:
         """Enregistre un handler appele a chaque nouvelle commande."""
         self._handlers.append(handler)
 
@@ -201,7 +201,7 @@ class MessageListener:
                 ) as r:
                     if r.status == 200:
                         data = await r.json()
-                        return data.get("response","").strip()[:300]
+                        return str(data.get("response","")).strip()[:300]
         except Exception as e:
             return f"Erreur LLM : {e}"
         return "Generation impossible"

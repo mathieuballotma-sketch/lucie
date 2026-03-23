@@ -179,7 +179,7 @@ class AgentCodeValidator:
 
         def _run_code() -> Optional[str]:
             """Exécute le code dans un thread dédié avec timeout — évite les boucles infinies."""
-            exec_error: list = [None]
+            exec_error: list[Optional[str]] = [None]
 
             def _exec_target() -> None:
                 try:
@@ -263,7 +263,7 @@ class CreatorAgent(BaseAgent):
         llm_service: ProviderManager,
         bus: Any,
         event_bus: EventBus,
-        config: dict,
+        config: dict[str, Any],
         agents_dir: Path,
         available_tools: Optional[List[str]] = None,
         token: Optional[str] = None,
@@ -305,7 +305,7 @@ class CreatorAgent(BaseAgent):
 
     # ── Outils exposés ────────────────────────────────────────────────────────
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="create_agent",
@@ -369,14 +369,14 @@ Règles :
 
         def _call_llm() -> str:
             """Appel LLM synchrone — compatible avec CircuitBreaker.call()."""
-            return self.llm.generate(
+            return str(self.llm.generate(
                 prompt=prompt,
                 system="",
                 model=model,
                 temperature=0.2,
                 max_tokens=1500,
                 timeout=self.generation_timeout,
-            )
+            ))
 
         loop = asyncio.get_running_loop()
         try:
@@ -403,7 +403,7 @@ Règles :
             self._stats["llm_error"] += 1
             return None
 
-        code = response.strip()
+        code = str(response).strip()
         for fence in ("```python", "```"):
             if code.startswith(fence):
                 code = code[len(fence):]

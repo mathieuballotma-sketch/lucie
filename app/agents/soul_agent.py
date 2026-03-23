@@ -4,7 +4,7 @@ Inspiré de SOUL.md et MEMORY.md d'OpenClaw.
 """
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Any, Optional, List
 
 from app.agents.base_agent import BaseAgent
 from app.utils.logger import logger
@@ -15,7 +15,7 @@ class SoulAgent(BaseAgent):
     Agent responsable de la persistance des objectifs, routines et de l'identité.
     """
 
-    def __init__(self, llm_service, bus, event_bus, config: dict, memory_service=None):
+    def __init__(self, llm_service: Any, bus: Any, event_bus: Any, config: dict[str, Any], memory_service: Any = None) -> None:
         super().__init__("SoulAgent", llm_service, bus)
         self.event_bus = event_bus
         self.memory = memory_service
@@ -29,7 +29,7 @@ class SoulAgent(BaseAgent):
 
         self._load_soul()
 
-    def _load_soul(self):
+    def _load_soul(self) -> None:
         """Charge l'identité et les objectifs depuis SOUL.md."""
         if self.soul_file.exists():
             with open(self.soul_file, "r") as f:
@@ -40,7 +40,7 @@ class SoulAgent(BaseAgent):
             self._save_soul()
             logger.info("🧠 Âme initialisée")
 
-    def _save_soul(self):
+    def _save_soul(self) -> None:
         """Sauvegarde l'identité."""
         with open(self.soul_file, "w") as f:
             f.write(self.soul)
@@ -49,13 +49,13 @@ class SoulAgent(BaseAgent):
         """Retourne l'identité de l'agent."""
         return self.soul
 
-    def set_soul(self, text: str):
+    def set_soul(self, text: str) -> None:
         """Modifie l'identité."""
         self.soul = text
         self._save_soul()
         logger.info("🧠 Âme mise à jour")
 
-    def log_memory(self, entry: str):
+    def log_memory(self, entry: str) -> None:
         """Ajoute une entrée dans MEMORY.md."""
         with open(self.memory_file, "a") as f:
             f.write(f"- {entry}\n")
@@ -76,7 +76,7 @@ class SoulAgent(BaseAgent):
                 return f.read()
         return None
 
-    def set_heartbeat(self, routine: str):
+    def set_heartbeat(self, routine: str) -> None:
         """Définit la routine heartbeat."""
         with open(self.heartbeat_file, "w") as f:
             f.write(routine)

@@ -18,6 +18,7 @@ from app.agents.computer_control_agent import ComputerControlAgent
 from app.agents.workspace_agent import WorkspaceAgent
 from app.agents.creator_agent import CreatorAgent
 from app.agents.document_agent import DocumentAgent
+from app.agents.feedback_agent import FeedbackAgent
 from app.agents.file_agent import FileAgent
 from app.agents.knowledge_agent import KnowledgeAgent
 from app.agents.smart_mail_agent import SmartMailAgent
@@ -26,6 +27,7 @@ from app.agents.reminder_agent import ReminderAgent
 from app.agents.watch_agent import WatchAgent
 from app.agents.vision.text_extractor import TextExtractorAgent
 from app.agents.apple_ecosystem_agent import AppleEcosystemAgent
+from app.agents.deception_agent import DeceptionAgent
 from app.brain.synapses.event_bus import EventBus
 from ...services.web_search import WebSearch
 from ...utils.logger import logger
@@ -36,13 +38,13 @@ class AgentFileHandler(FileSystemEventHandler):
     def __init__(self, registry: AgentRegistry):
         self.registry = registry
 
-    def on_created(self, event):
+    def on_created(self, event: Any) -> None:
         if event.is_directory:
             return
         if str(event.src_path).endswith('.py'):
             self.registry.load_agent_from_file(Path(str(event.src_path)))
 
-    def on_modified(self, event):
+    def on_modified(self, event: Any) -> None:
         if event.is_directory:
             return
         if str(event.src_path).endswith('.py'):
@@ -82,9 +84,9 @@ class AgentRegistry:
         self.custom_agents_dir = custom_agents_dir
         self.cortex_token = cortex_token
         self.agents: Dict[str, BaseAgent] = {}
-        self.observer: Optional[Observer] = None
+        self.observer: Optional[Any] = None  # watchdog.observers.Observer
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._pending_registrations: list = []
+        self._pending_registrations: List[tuple[str, str]] = []
         self._register_standard_agents()
 
     def _register_standard_agents(self) -> None:
@@ -92,6 +94,7 @@ class AgentRegistry:
         agents_list: List[BaseAgent] = [
             ReminderAgent(self.manager, self.bus, {}),
             KnowledgeAgent(
+
                 self.manager, self.bus,
                 {
                     "max_results": 3,
@@ -109,6 +112,20 @@ class AgentRegistry:
             WatchAgent(self.manager, self.bus, {}),
             SmartMailAgent(self.manager, self.bus, {}),
             CodeDebugAgent(self.manager, self.bus, {}),
+            # FeedbackAgent — boucle de rétroaction, token injecté par la boucle après
+            FeedbackAgent(
+                llm_service=self.manager,
+                bus=self.bus,
+                event_bus=self.event_bus,
+                token=None,
+            ),
+            # DeceptionAgent — agent de leurre, NE PAS modifier deception_agent.py
+            DeceptionAgent(
+                llm_service=self.manager,
+                bus=self.bus,
+                event_bus=self.event_bus,
+                config=self.config,
+            ),
         ]
         available_tools = self._get_all_tool_names()
         creator = CreatorAgent(
@@ -164,11 +181,11 @@ class AgentRegistry:
         logger.info(f"👀 Surveillance du dossier {self.custom_agents_dir} activée")
 
     def stop_watcher(self) -> None:
-        if self.observer:
+        if self.observer is not None:
             self.observer.stop()
             self.observer.join()
 
-    def _publish_from_thread(self, channel: str, data: dict) -> None:
+    def _publish_from_thread(self, channel: str, data: Dict[str, Any]) -> None:
         """Publie un événement depuis un thread sync (watchdog) de manière safe."""
         loop = self._loop
         if loop is None or loop.is_closed():
@@ -199,7 +216,7 @@ class AgentRegistry:
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if isinstance(attr, type) and issubclass(attr, BaseAgent) and attr != BaseAgent:
-                    agent_instance: BaseAgent = attr(self.manager, self.bus, self.config)  # type: ignore[call-arg]
+                    agent_instance: BaseAgent = attr(self.manager, self.bus, self.config)
                     token = str(_uuid.uuid4())
                     agent_instance.set_token(token)
                     agent_instance.event_bus = self.event_bus

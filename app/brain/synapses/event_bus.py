@@ -38,7 +38,7 @@ class Event:
     source: str
     timestamp: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Rendre data immuable en le convertissant en tuple si c'est une liste,
         # ou en gelant les dictionnaires. Pour simplifier, on fait une copie profonde
         # mais on ne garantit pas l'immuabilité totale. À améliorer avec Pydantic.
@@ -54,7 +54,7 @@ class RateLimiter:
         self.max_sources = max_sources
         self._counts: OrderedDict[str, tuple[int, float]] = OrderedDict()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         while len(self._counts) > self.max_sources:
             self._counts.popitem(last=False)
         now = time.time()
@@ -85,7 +85,7 @@ class Subscription:
     callback: Callable[[Event], Awaitable[None]]
     source: str
     token_hash: str
-    active_tasks: Set[asyncio.Task] = field(default_factory=set)
+    active_tasks: Set[asyncio.Task[None]] = field(default_factory=set)
 
 
 class PermissionManager:
@@ -93,7 +93,7 @@ class PermissionManager:
     Gère les droits d'émission et de souscription, ainsi que les abonnements actifs.
     Permet de révoquer une source et de nettoyer proprement ses traces.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         self._lock = asyncio.Lock()
         # ACL pour publication : source -> set(channels)
         self._publish_acl: Dict[str, Set[str]] = defaultdict(set)
@@ -109,7 +109,7 @@ class PermissionManager:
     async def register_source(self, source: str, token: str,
                               publish_channels: List[str],
                               subscribe_channels: List[str],
-                              services: Optional[List[str]] = None):
+                              services: Optional[List[str]] = None) -> None:
         """Enregistre une nouvelle source avec ses droits et son token."""
         async with self._lock:
             if source in self._source_tokens:
@@ -148,16 +148,20 @@ class PermissionManager:
                                token: str) -> Subscription:
         """Ajoute un abonnement après vérification du token."""
         async with self._lock:
-            if not await self.authenticate(source, token):
+            # Inline auth/acl checks to avoid re-acquiring the same lock (asyncio.Lock
+            # is not reentrant — calling authenticate() or can_subscribe() here would
+            # deadlock because both also do `async with self._lock`).
+            expected = self._source_tokens.get(source)
+            if not expected or not hmac.compare_digest(token, expected):
                 raise SecurityError(f"Authentification échouée pour {source}")
-            if not await self.can_subscribe(source, channel):
+            if channel not in self._subscribe_acl.get(source, set()):
                 raise SecurityError(f"Source {source} non autorisée à s'abonner à {channel}")
             token_hash = hashlib.sha256(token.encode()).hexdigest()
             sub = Subscription(callback=callback, source=source, token_hash=token_hash)
             self._active_subs[source][channel].append(sub)
             return sub
 
-    async def remove_subscription(self, source: str, channel: str, callback: Callable):
+    async def remove_subscription(self, source: str, channel: str, callback: Callable[..., Any]) -> None:
         """Retire un abonnement spécifique."""
         async with self._lock:
             if source in self._active_subs and channel in self._active_subs[source]:
@@ -179,7 +183,7 @@ class PermissionManager:
                     result.extend(channels[channel])
             return result
 
-    async def kill_source(self, source: str):
+    async def kill_source(self, source: str) -> List[asyncio.Task[None]]:
         """
         Révoque tous les droits d'une source, supprime ses abonnements,
         et retourne la liste des tâches actives à annuler.
@@ -195,7 +199,7 @@ class PermissionManager:
                 if s == source:
                     del self._service_map[svc]
             # Récupérer les abonnements et tâches actives
-            tasks_to_cancel = []
+            tasks_to_cancel: List[asyncio.Task[None]] = []
             if source in self._active_subs:
                 for channel, subs in self._active_subs[source].items():
                     for sub in subs:
@@ -221,12 +225,12 @@ class EventBus:
         self._history: List[Event] = []
         self.max_history = max_history
         self._lock = asyncio.Lock()  # Pour l'historique et autres opérations globales
-        self._response_futures: Dict[str, tuple[asyncio.Future, str]] = {}  # request_id -> (future, expected_source)
+        self._response_futures: Dict[str, tuple[asyncio.Future[Any], str]] = {}  # request_id -> (future, expected_source)
 
     async def register_source(self, source: str, token: Optional[str] = None,
                               publish_channels: Optional[List[str]] = None,
                               subscribe_channels: Optional[List[str]] = None,
-                              services: Optional[List[str]] = None):
+                              services: Optional[List[str]] = None) -> str:
         """
         Enregistre une source avec ses droits. Si token non fourni, en génère un.
         Retourne le token à conserver par la source.
@@ -239,7 +243,7 @@ class EventBus:
                                                 services or [])
         return token
 
-    async def publish(self, channel: str, data: Any = None, source: str = "system", token: Optional[str] = None):
+    async def publish(self, channel: str, data: Any = None, source: str = "system", token: Optional[str] = None) -> None:
         """
         Publie un événement sur un canal.
         Nécessite que la source soit authentifiée et autorisée.
@@ -278,7 +282,7 @@ class EventBus:
         # Lancer les callbacks en parallèle, avec timeout et suivi des tâches
         for sub in subscribers:
             # Créer une tâche avec timeout
-            async def wrapped_cb():
+            async def wrapped_cb() -> None:
                 try:
                     await asyncio.wait_for(sub.callback(event), timeout=2.0)
                 except asyncio.TimeoutError:
@@ -298,7 +302,7 @@ class EventBus:
         """
         return await self._permissions.add_subscription(source, channel, callback, token)
 
-    async def unsubscribe(self, channel: str, callback: Callable, source: str, token: str):
+    async def unsubscribe(self, channel: str, callback: Callable[..., Any], source: str, token: str) -> None:
         """Se désabonne."""
         if not await self._permissions.authenticate(source, token):
             raise SecurityError(f"Authentification échouée pour {source}")
@@ -332,7 +336,7 @@ class EventBus:
         finally:
             self._response_futures.pop(request_id, None)
 
-    async def respond(self, request_id: str, data: Any, source: str, token: str):
+    async def respond(self, request_id: str, data: Any, source: str, token: str) -> None:
         """
         Permet à un agent de répondre à une requête.
         Vérifie que la source correspond à celle attendue.
@@ -350,7 +354,7 @@ class EventBus:
         if not future.done():
             future.set_result(data)
 
-    async def kill_source(self, source: str, admin_token: str):
+    async def kill_source(self, source: str, admin_token: str) -> None:
         """
         Action immunitaire : révoque une source et annule ses tâches en cours.
         Nécessite un jeton d'administrateur (à définir). Pour l'instant, on suppose

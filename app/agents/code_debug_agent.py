@@ -13,7 +13,7 @@ Principes :
 from __future__ import annotations
 
 import asyncio
-from typing import Any, List
+from typing import Any, Callable, List
 
 from pydantic.v1 import BaseModel, Field
 
@@ -56,7 +56,7 @@ class CodeDebugAgent(BaseAgent):
     MODEL = "deepseek-coder:6.7b"
     FALLBACK_MODEL = "qwen2.5:7b"
 
-    def __init__(self, llm_service: Any, bus: Any, config: dict) -> None:
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("CodeDebugAgent", llm_service, bus)
         self.generation_timeout = config.get("code_timeout", 30.0)
         logger.info("🐛 CodeDebugAgent initialisé (deepseek-coder:6.7b)")
@@ -96,22 +96,28 @@ class CodeDebugAgent(BaseAgent):
 
     # ── Appel LLM centralisé ──────────────────────────────────────────────
 
+    def _make_generate_fn(self, prompt: str, system: str, model: str) -> Callable[[], str]:
+        """Crée une closure pour l'appel LLM dans un executor."""
+        def _generate() -> str:
+            return str(self.llm.generate(
+                prompt=prompt,
+                system=system,
+                model=model,
+                temperature=0.15,
+                max_tokens=1024,
+                timeout=self.generation_timeout,
+            ))
+        return _generate
+
     async def _call_code_llm(self, prompt: str, system: str) -> str:
         """Appel deepseek-coder avec fallback sur qwen2.5:7b."""
         loop = asyncio.get_running_loop()
         for model in (self.MODEL, self.FALLBACK_MODEL):
             try:
-                result = await asyncio.wait_for(
+                result: str = await asyncio.wait_for(
                     loop.run_in_executor(
                         None,
-                        lambda m=model: self.llm.generate(
-                            prompt=prompt,
-                            system=system,
-                            model=m,
-                            temperature=0.15,
-                            max_tokens=1024,
-                            timeout=self.generation_timeout,
-                        ),
+                        self._make_generate_fn(prompt, system, model),
                     ),
                     timeout=self.generation_timeout + 2.0,
                 )

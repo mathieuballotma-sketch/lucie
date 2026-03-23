@@ -8,7 +8,7 @@ KEYRING_USERNAME = "master_key"
 
 
 class CryptoManager:
-    def __init__(self):
+    def __init__(self) -> None:
         # On ne stocke pas de sel si on ne dérive pas d'un mot de passe
         self.key = self._get_or_create_key()
         self.cipher = Fernet(self.key)

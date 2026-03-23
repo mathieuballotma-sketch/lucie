@@ -10,7 +10,7 @@ import json
 import secrets
 import uuid
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import aiohttp
 from aiohttp import web
@@ -23,7 +23,7 @@ class P2PNode:
     Nœud P2P pour échanger des signatures de menaces avec d'autres instances.
     """
 
-    def __init__(self, config: dict, crypto: Any, event_bus: Any, data_dir: Path):
+    def __init__(self, config: Dict[str, Any], crypto: Any, event_bus: Any, data_dir: Path) -> None:
         self.config = config
         self.crypto = crypto  # Non utilisé dans cette version simplifiée
         self.event_bus = event_bus
@@ -40,8 +40,8 @@ class P2PNode:
         self.app = web.Application()
         self.app.router.add_post("/threat", self._handle_threat)
         self.app.router.add_get("/peers", self._handle_get_peers)
-        self.runner = None
-        self.site = None
+        self.runner: Optional[web.AppRunner] = None
+        self.site: Optional[web.TCPSite] = None
 
         logger.info(f"🌐 Nœud P2P initialisé avec ID {self.node_id} sur le port {self.port}")
 
@@ -76,20 +76,20 @@ class P2PNode:
         ).hexdigest()
         return hmac.compare_digest(expected, signature)
 
-    def run_in_thread(self):
+    def run_in_thread(self) -> None:
         """Démarre le serveur web dans un thread séparé."""
         import threading
         self._thread = threading.Thread(target=self._run_server, daemon=True)
         self._thread.start()
 
-    def _run_server(self):
+    def _run_server(self) -> None:
         """Exécute le serveur asyncio dans une boucle dédiée."""
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self._start())
         loop.run_forever()
 
-    async def _start(self):
+    async def _start(self) -> None:
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
         # Écoute sur 127.0.0.1 par défaut — évite l'exposition réseau non intentionnelle
@@ -98,7 +98,7 @@ class P2PNode:
         await self.site.start()
         logger.info(f"🚀 Serveur P2P démarré sur {listen_host}:{self.port}")
 
-    async def _handle_threat(self, request):
+    async def _handle_threat(self, request: web.Request) -> web.Response:
         """Reçoit une menace d'un autre nœud — avec authentification HMAC-SHA256 et validation de schéma."""
         # Vérification de la signature HMAC avant tout traitement
         signature = request.headers.get("X-Signature", "")
@@ -123,11 +123,11 @@ class P2PNode:
         self.event_bus.publish("cyber.threat", data, "p2p")
         return web.Response(text="OK")
 
-    async def _handle_get_peers(self, request):
+    async def _handle_get_peers(self, request: web.Request) -> web.Response:
         """Retourne la liste des pairs connus."""
         return web.json_response(list(self.peers))
 
-    async def broadcast_threat(self, threat_data: Dict[str, Any]):
+    async def broadcast_threat(self, threat_data: Dict[str, Any]) -> None:
         """Diffuse une menace à tous les pairs connus avec signature HMAC-SHA256."""
         body_bytes = json.dumps(threat_data).encode("utf-8")
         signature = hmac.new(
@@ -152,7 +152,7 @@ class P2PNode:
             except Exception as e:
                 logger.warning(f"Erreur envoi à {peer}: {e}")
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self.site:
             await self.site.stop()
         if self.runner:

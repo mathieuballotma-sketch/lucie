@@ -13,7 +13,7 @@ class MemoryService:
         self.episodic = episodic
         self.working = working
 
-    def add_to_working(self, query: str, response: str):
+    def add_to_working(self, query: str, response: str) -> None:
         """Ajoute une interaction à la mémoire court terme."""
         self.working.add(query, response)
 
@@ -21,7 +21,7 @@ class MemoryService:
         """Récupère les n dernières interactions."""
         return self.working.get_context(n)
 
-    async def add_episode(self, query: str, response: str, metadata: Optional[Dict] = None):
+    async def add_episode(self, query: str, response: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """Ajoute un épisode à la mémoire long terme."""
         await self.episodic.add_episode(query, response, metadata)
 

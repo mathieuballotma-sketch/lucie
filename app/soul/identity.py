@@ -40,7 +40,7 @@ class SoulIdentity:
         lines = content.split('\n')
         data = {}
         current_section = None
-        current_list = []
+        current_list: list[str] = []
         for line in lines:
             line = line.strip()
             if line.startswith('## '):
@@ -59,16 +59,16 @@ class SoulIdentity:
     def get_personality(self) -> str:
         return "\n".join(self.data.get("Personnalité", []))
 
-    def get_objectives(self) -> list:
-        return self.data.get("Objectifs principaux", [])
+    def get_objectives(self) -> list[str]:
+        return list(self.data.get("Objectifs principaux", []))
 
-    def update(self, key: str, value: Any):
+    def update(self, key: str, value: Any) -> None:
         # Pour mise à jour programmatique (ex: après apprentissage)
         # Réécrire le fichier entier (simplifié)
         self.data[key] = value if isinstance(value, list) else [value]
         self._save()
 
-    def _save(self):
+    def _save(self) -> None:
         with open(self.soul_path, 'w') as f:
             f.write("# Identité d'Agent Lucie\n\n")
             for section, items in self.data.items():

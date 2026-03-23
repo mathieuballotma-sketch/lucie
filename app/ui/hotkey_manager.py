@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-import AppKit  # type: ignore[import]
+import AppKit
 
 from ..utils.logger import logger
 
@@ -58,7 +58,7 @@ class HotkeyManager:
             # ⌥ (Option) = NSAlternateKeyMask, Space = keyCode 49
             if (flags & AppKit.NSAlternateKeyMask) and key == 49:
                 # Exécuter le toggle sur le main thread via AppHelper
-                from PyObjCTools import AppHelper  # type: ignore[import]
+                from PyObjCTools import AppHelper
                 AppHelper.callAfter(self._toggle)
         except Exception as _e:
             logger.debug(f"Hotkey handler échoué : {_e}")

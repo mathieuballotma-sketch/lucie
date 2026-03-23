@@ -1,13 +1,15 @@
 # app/actions/router.py
+from typing import Any, Tuple
+
 from ..utils.logger import logger
 
 
 class ActionRouter:
-    def __init__(self, system_actions, writer_agent):
+    def __init__(self, system_actions: Any, writer_agent: Any) -> None:
         self.system = system_actions
         self.writer = writer_agent
 
-    def parse_and_execute(self, response: str):
+    def parse_and_execute(self, response: str) -> Tuple[bool, Any]:
         lines = response.strip().split("\n")
         for line in lines:
             line = line.strip()

@@ -12,7 +12,7 @@ class ThreatAnalyzer:
     Analyse les menaces pour déterminer leur type, sévérité, et solution possible.
     """
 
-    def __init__(self, config: dict, memory_service=None):
+    def __init__(self, config: Dict[str, Any], memory_service: Any = None) -> None:
         self.config = config
         self.memory = memory_service
         print(f"Analyzer initialisé avec memory = {self.memory}")  # Pour débogage

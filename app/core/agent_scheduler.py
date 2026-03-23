@@ -48,7 +48,7 @@ class SchedulerTicket:
     agent_id: str = field(compare=False)
     enqueued_at: float = field(compare=False, default_factory=time.monotonic)
     # Future interne signalée quand le ticket obtient un slot
-    _ready: asyncio.Future = field(compare=False, repr=False, init=False)
+    _ready: asyncio.Future[bool] = field(compare=False, repr=False, init=False)
 
     def __post_init__(self) -> None:
         loop = asyncio.get_event_loop()

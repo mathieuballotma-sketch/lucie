@@ -1,18 +1,20 @@
 import asyncio
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 # Tentative d'import de DuckDuckGo
+DDGS: Any = None
+DDGS_AVAILABLE = False
 try:
     from duckduckgo_search import DDGS
 
     DDGS_AVAILABLE = True
 except ImportError:
     try:
-        from ddgs import DDGS  # type: ignore[import-untyped]
+        from ddgs import DDGS  # type: ignore[no-redef]
 
         DDGS_AVAILABLE = True
     except ImportError:
@@ -25,14 +27,14 @@ except ImportError:
 class WebSearch:
     """Service de recherche internet asynchrone via DuckDuckGo."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._available = DDGS_AVAILABLE
         if self._available:
             logger.info("✅ WebSearch initialisé")
         else:
             logger.warning("⚠️ WebSearch non disponible")
 
-    async def search(self, query: str, max_results: int = 3) -> List[Dict]:
+    async def search(self, query: str, max_results: int = 3) -> List[Dict[str, Any]]:
         """
         Effectue une recherche web de manière asynchrone.
         Retourne une liste de dictionnaires avec les clés : title, body, url.
@@ -52,7 +54,7 @@ class WebSearch:
             logger.error(f"Exception lors de la recherche web: {e}")
             return []
 
-    def _sync_search(self, query: str, max_results: int) -> List[Dict]:
+    def _sync_search(self, query: str, max_results: int) -> List[Dict[str, Any]]:
         """Version synchrone interne."""
         try:
             with DDGS() as ddgs:
@@ -72,7 +74,7 @@ class WebSearch:
 
     async def search_with_fallback(
         self, query: str, max_results: int = 3, timeout: float = 5.0
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Version avec timeout : si la recherche prend trop longtemps, retourne une liste vide.
         """

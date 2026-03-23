@@ -1,10 +1,11 @@
 import platform
 import re
 import subprocess
+from typing import Any, Dict
 
 
-def get_system_info():
-    info = {}
+def get_system_info() -> Dict[str, Any]:
+    info: Dict[str, Any] = {}
     info["system"] = platform.system()
     info["machine"] = platform.machine()
 
@@ -38,7 +39,7 @@ def get_system_info():
     return info
 
 
-def get_performance_profile(ram_gb, chip):
+def get_performance_profile(ram_gb: int, chip: str) -> str:
     if ram_gb >= 32 and chip in ["M3", "M4"]:
         return "high"
     elif ram_gb >= 16:
@@ -47,7 +48,7 @@ def get_performance_profile(ram_gb, chip):
         return "low"
 
 
-def get_optimized_config():
+def get_optimized_config() -> Dict[str, Any]:
     info = get_system_info()
     profile = get_performance_profile(info["ram_gb"], info.get("chip", ""))
     config = {

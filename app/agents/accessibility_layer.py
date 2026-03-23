@@ -11,7 +11,7 @@ import json
 import os
 import time
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import pyautogui
 
@@ -185,7 +185,7 @@ end tell
             )
             return False
 
-    async def get_window_bounds(self, app: str) -> Optional[dict]:
+    async def get_window_bounds(self, app: str) -> Optional[dict[str, Any]]:
         """Retourne {x, y, width, height} de la première fenêtre de l'app."""
         escaped_app = app.replace('"', '\\"')
         script = f"""

@@ -4,6 +4,8 @@ Mode furtif - Minimise les traces laissées par l'agent.
 
 import os
 import sys
+from typing import Optional, TextIO
+
 from app.utils.logger import logger
 
 
@@ -13,12 +15,12 @@ class StealthMode:
     Note: Ce module est expérimental et peut ne pas fonctionner sur tous les systèmes.
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict[str, object]) -> None:
         self.config = config
-        self.original_stdout = None
-        self.original_stderr = None
+        self.original_stdout: Optional[TextIO] = None
+        self.original_stderr: Optional[TextIO] = None
 
-    def enable(self):
+    def enable(self) -> None:
         """Active le mode furtif (redirige stdout/stderr vers /dev/null)."""
         if not self.config.get("stealth_enabled", False):
             return
@@ -37,7 +39,7 @@ class StealthMode:
         import logging
         logging.disable(logging.CRITICAL)
 
-    def disable(self):
+    def disable(self) -> None:
         """Désactive le mode furtif."""
         if self.original_stdout:
             sys.stdout.close()

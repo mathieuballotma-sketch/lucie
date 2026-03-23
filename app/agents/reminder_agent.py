@@ -11,7 +11,7 @@ Corrections v2 :
 import asyncio
 import subprocess
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic.v1 import BaseModel, Field
 
@@ -38,11 +38,11 @@ class ReminderAgentCreateReminderContract(BaseModel):
 class ReminderAgent(BaseAgent):
     """Agent spécialisé dans la gestion des rappels macOS."""
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("ReminderAgent", llm_service, bus)
         self.default_list = config.get("reminders_default_list", "Rappels")
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="create_reminder",

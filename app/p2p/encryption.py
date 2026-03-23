@@ -4,7 +4,9 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
+
+from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
 KEY_PATH = Path("config/lucie_network.key")
@@ -18,13 +20,12 @@ class LucieEncryption:
     """
 
     def __init__(self) -> None:
-        self._fernet = None
+        self._fernet: Optional[Fernet] = None
         self._key: Optional[bytes] = None
         self._load_or_create_key()
 
     def _load_or_create_key(self) -> None:
         """Charge la cle existante ou en cree une nouvelle."""
-        from cryptography.fernet import Fernet
         KEY_PATH.parent.mkdir(parents=True, exist_ok=True)
 
         if KEY_PATH.exists():
@@ -38,11 +39,13 @@ class LucieEncryption:
 
         self._fernet = Fernet(self._key)
 
-    def encrypt(self, data: dict, node_id: str = "") -> bytes:
+    def encrypt(self, data: Dict[str, Any], node_id: str = "") -> bytes:
         """
         Chiffre un message P2P.
         Ajoute timestamp + node_id pour replay protection.
         """
+        if self._fernet is None:
+            raise RuntimeError("Chiffrement non initialisé — clé Fernet absente")
         payload = {
             "data": data,
             "ts": time.time(),
@@ -52,13 +55,15 @@ class LucieEncryption:
         encrypted = self._fernet.encrypt(raw)
         return encrypted
 
-    def decrypt(self, encrypted: bytes, max_age: float = 30.0) -> Optional[dict]:
+    def decrypt(self, encrypted: bytes, max_age: float = 30.0) -> Optional[Dict[str, Any]]:
         """
         Dechiffre un message P2P.
         Verifie le timestamp — rejette les messages > max_age secondes.
         Retourne None si invalide.
         """
         try:
+            if self._fernet is None:
+                raise RuntimeError("Chiffrement non initialisé — clé Fernet absente")
             raw = self._fernet.decrypt(encrypted)
             payload = json.loads(raw.decode("utf-8"))
 
@@ -68,16 +73,17 @@ class LucieEncryption:
                 logger.warning(f"Message trop vieux rejete : {age:.0f}s")
                 return None
 
-            return payload.get("data")
+            result: Optional[Dict[str, Any]] = payload.get("data")
+            return result
         except Exception as e:
             logger.warning(f"Dechiffrement echoue : {e}")
             return None
 
-    def encrypt_to_b64(self, data: dict, node_id: str = "") -> str:
+    def encrypt_to_b64(self, data: Dict[str, Any], node_id: str = "") -> str:
         """Version base64 pour transport JSON."""
         return base64.b64encode(self.encrypt(data, node_id)).decode("utf-8")
 
-    def decrypt_from_b64(self, b64: str, max_age: float = 30.0) -> Optional[dict]:
+    def decrypt_from_b64(self, b64: str, max_age: float = 30.0) -> Optional[Dict[str, Any]]:
         """Dechiffre depuis base64."""
         try:
             encrypted = base64.b64decode(b64.encode("utf-8"))
@@ -88,12 +94,13 @@ class LucieEncryption:
 
     def export_key(self) -> str:
         """Exporte la cle en base64 pour la partager avec d'autres instances."""
+        if self._key is None:
+            raise RuntimeError("Clé réseau non initialisée")
         return base64.b64encode(self._key).decode("utf-8")
 
     def import_key(self, key_b64: str) -> bool:
         """Importe une cle partagee depuis une autre instance."""
         try:
-            from cryptography.fernet import Fernet
             key = base64.b64decode(key_b64.encode("utf-8"))
             self._key = key
             self._fernet = Fernet(key)
@@ -108,5 +115,7 @@ class LucieEncryption:
     @property
     def key_fingerprint(self) -> str:
         """Empreinte courte de la cle — pour verifier que 2 noeuds partagent la meme."""
+        if self._key is None:
+            raise RuntimeError("Clé réseau non initialisée")
         import hashlib
         return hashlib.blake2b(self._key, digest_size=8).hexdigest()

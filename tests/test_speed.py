@@ -1,18 +1,22 @@
-"""Test de vitesse — validation des temps de réponse < 2s."""
+"""Test de vitesse — validation des temps de réponse < 2s.
+
+Script standalone — lancer avec :
+    PYTHONPATH=. python3 tests/test_speed.py
+
+Ne pas lancer avec pytest (nécessite Ollama actif + warmup).
+"""
 import asyncio
 import time
 import sys
 
 sys.path.insert(0, ".")
 
-from app.core.config import Config
-from app.core.engine import LucidEngine
 
+async def _run_speed_test():
+    """Exécute le benchmark de vitesse avec Ollama."""
+    from app.core.config import Config
+    from app.core.engine import LucidEngine
 
-import pytest
-
-@pytest.mark.asyncio
-async def test():
     config = Config.load()
     engine = LucidEngine(config)
     loop = asyncio.get_running_loop()
@@ -45,4 +49,4 @@ async def test():
 
 
 if __name__ == "__main__":
-    asyncio.run(test())
+    asyncio.run(_run_speed_test())

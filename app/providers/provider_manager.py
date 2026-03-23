@@ -17,9 +17,9 @@ from .manager import ProviderManager
 from .mlx_provider import MLXProvider
 
 # Types de tâches qui préfèrent MLX (latence critique)
-_MLX_PREFERRED: frozenset = frozenset({"routing", "fast", "speed", "default", "auto"})
+_MLX_PREFERRED: frozenset[str] = frozenset({"routing", "fast", "speed", "default", "auto"})
 # Types de tâches qui forcent Ollama (qualité maximale ou fallback explicite)
-_OLLAMA_FORCED: frozenset = frozenset({"fallback", "quality"})
+_OLLAMA_FORCED: frozenset[str] = frozenset({"fallback", "quality"})
 
 
 class HybridProviderManager:
@@ -182,7 +182,7 @@ class HybridProviderManager:
                 )
 
             logger.debug(f"[Hybrid] '{priority}' → MLX (fallback Ollama)")
-            return mlx_cb.call(_mlx_call, _ollama_fallback)  # type: ignore[return-value]
+            return str(mlx_cb.call(_mlx_call, _ollama_fallback))
 
         # ── MLX indisponible : Ollama direct ───────────────────────────────────
         logger.debug(f"[Hybrid] MLX indisponible, '{priority}' → Ollama")

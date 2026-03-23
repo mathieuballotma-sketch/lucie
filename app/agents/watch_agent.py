@@ -34,14 +34,14 @@ class WatchAgent(BaseAgent):
     Alerte quand une condition est remplie.
     """
 
-    def __init__(self, llm_service: Any, bus: Any, config: dict):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("WatchAgent", llm_service, bus)
-        self._watches: Dict[str, dict] = {}
+        self._watches: Dict[str, dict[str, Any]] = {}
         self._running = False
-        self._tasks: Dict[str, asyncio.Task] = {}
+        self._tasks: Dict[str, asyncio.Task[None]] = {}
         logger.info("👁️ WatchAgent initialisé")
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="start_watch",
@@ -224,7 +224,7 @@ class WatchAgent(BaseAgent):
         logger.info(f"👁️ Surveillance arrêtée: {watch['topic']}")
         return f"✅ Surveillance arrêtée : \"{watch['topic']}\" (id={watch_id})"
 
-    def list_watches(self) -> list:
+    def list_watches(self) -> list[dict[str, Any]]:
         """Liste les surveillances actives."""
         result = []
         for wid, watch in self._watches.items():

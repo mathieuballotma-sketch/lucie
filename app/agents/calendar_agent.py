@@ -2,9 +2,27 @@
 import datetime
 import json
 import re
+from typing import Any
+
+from pydantic.v1 import BaseModel, Field
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
+
+
+# ── Contrats Pydantic pour les outils CalendarAgent ──────────────────────────
+
+class ListEventsContract(BaseModel):
+    date: str = Field("aujourd'hui", description="Date au format YYYY-MM-DD ou 'aujourd'hui', 'demain'")
+
+class AddEventContract(BaseModel):
+    title: str = Field(..., description="Titre de l'événement")
+    date: str = Field(..., description="Date et heure au format YYYY-MM-DD HH:MM")
+    duration: int = Field(60, description="Durée en minutes")
+    location: str = Field("", description="Lieu (optionnel)")
+
+class DeleteEventContract(BaseModel):
+    title: str = Field(..., description="Titre de l'événement à supprimer")
 
 try:
     import EventKit
@@ -22,14 +40,14 @@ except ImportError:
     logger.error("❌ EventKit non disponible. Installez pyobjc-framework-EventKit")
 
 
-def datetime_to_nsdate(dt):
+def datetime_to_nsdate(dt: datetime.datetime) -> Any:
     from Foundation import NSDate
 
     timestamp = dt.timestamp()
     return NSDate.dateWithTimeIntervalSince1970_(timestamp)
 
 
-def nsdate_to_datetime(nsdate):
+def nsdate_to_datetime(nsdate: Any) -> datetime.datetime:
     timestamp = nsdate.timeIntervalSince1970()
     return datetime.datetime.fromtimestamp(timestamp)
 
@@ -40,16 +58,16 @@ class CalendarAgent(BaseAgent):
     Peut lire, créer, modifier des événements.
     """
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("CalendarAgent", llm_service, bus)
-        self.store = None
-        self.default_calendar = None
+        self.store: Any = None
+        self.default_calendar: Any = None
         if HAS_EVENTKIT:
             self._setup_eventkit()
         else:
             logger.error("CalendarAgent désactivé : EventKit manquant")
 
-    def _setup_eventkit(self):
+    def _setup_eventkit(self) -> None:
         self.store = EKEventStore.alloc().init()
         self.store.requestAccessToEntityType_completion_(
             EventKit.EKEntityTypeEvent, lambda granted, error: None
@@ -60,60 +78,22 @@ class CalendarAgent(BaseAgent):
         self.default_calendar = self.store.defaultCalendarForNewEvents()
         logger.info("📅 Agent calendrier initialisé")
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="list_events",
                 description="Liste les événements du calendrier pour une date donnée",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "date": {
-                            "type": "string",
-                            "description": "Date au format YYYY-MM-DD ou 'aujourd'hui', 'demain'",
-                        }
-                    },
-                },
+                contract=ListEventsContract,
             ),
             Tool(
                 name="add_event",
                 description="Ajoute un événement au calendrier",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "title": {
-                            "type": "string",
-                            "description": "Titre de l'événement",
-                        },
-                        "date": {
-                            "type": "string",
-                            "description": "Date et heure au format YYYY-MM-DD HH:MM",
-                        },
-                        "duration": {
-                            "type": "integer",
-                            "description": "Durée en minutes (défaut: 60)",
-                        },
-                        "location": {
-                            "type": "string",
-                            "description": "Lieu (optionnel)",
-                        },
-                    },
-                    "required": ["title", "date"],
-                },
+                contract=AddEventContract,
             ),
             Tool(
                 name="delete_event",
                 description="Supprime un événement (par titre)",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "title": {
-                            "type": "string",
-                            "description": "Titre de l'événement à supprimer",
-                        }
-                    },
-                    "required": ["title"],
-                },
+                contract=DeleteEventContract,
             ),
         ]
 

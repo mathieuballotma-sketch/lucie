@@ -12,10 +12,10 @@ import threading
 import time
 from typing import Any, Callable, List, Optional
 
-import AppKit  # type: ignore[import]
-import objc  # type: ignore[import]
-import Quartz  # type: ignore[import]
-from PyObjCTools import AppHelper  # type: ignore[import]
+import AppKit
+import objc
+import Quartz
+from PyObjCTools import AppHelper
 
 from ..services.onboarding import run_onboarding, save_profile, load_profile
 
@@ -51,7 +51,7 @@ def center_rect(w: float, h: float) -> Any:
 # Phase 1 — La chenille
 # ──────────────────────────────────────────────────────────────────────
 
-class CocoonWindow(AppKit.NSPanel):
+class CocoonWindow(AppKit.NSPanel):  # type: ignore[misc]
     """Petite fenêtre sobre qui s'affiche pendant le chargement."""
 
     def initWithCallback_(self, on_ready_callback: Any) -> Any:
@@ -175,7 +175,7 @@ class CocoonWindow(AppKit.NSPanel):
             0.1, self, "fadeInTick:", None, False
         )
 
-    @objc.IBAction
+    @objc.IBAction  # type: ignore[untyped-decorator]
     def fadeInTick_(self, timer: Any) -> None:
         """Déclenche le fade-in après que le runloop soit actif."""
         self.setAlphaValue_(0.0)
@@ -190,7 +190,7 @@ class CocoonWindow(AppKit.NSPanel):
             0.4, self, "dotTick:", None, True
         )
 
-    @objc.IBAction
+    @objc.IBAction  # type: ignore[untyped-decorator]
     def dotTick_(self, timer: Any) -> None:
         self._dot_count = (self._dot_count + 1) % 4
         dots = "." * self._dot_count
@@ -241,13 +241,13 @@ class CocoonWindow(AppKit.NSPanel):
             0.8, self, "startPhase2:", None, False
         )
 
-    @objc.IBAction
+    @objc.IBAction  # type: ignore[untyped-decorator]
     def startPhase2_(self, timer: Any) -> None:
         """Déclenche la transition Phase 2."""
         if self._on_ready:
             self._on_ready(self)
 
-    @objc.IBAction
+    @objc.IBAction  # type: ignore[untyped-decorator]
     def crossfadeTick_(self, timer: Any) -> None:
         """Timer callback pour le crossfade cocoon → HUD."""
         if hasattr(self, "_crossfade_fn") and self._crossfade_fn:

@@ -51,13 +51,13 @@ class PlanStep(BaseModel):
     depends_on: Optional[List[str]] = Field(None, description="IDs des étapes dont dépend cette étape")
 
     @validator('id')
-    def id_non_empty(cls, v):
+    def id_non_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("L'id ne peut pas être vide")
         return v
 
     @validator('agent')
-    def agent_non_empty(cls, v):
+    def agent_non_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("L'agent ne peut pas être vide")
         return v
@@ -77,7 +77,7 @@ class PlannerAgent(BaseAgent):
         llm_service: ProviderManager,
         bus: Any,
         event_bus: EventBus,
-        config: dict
+        config: Dict[str, Any]
     ):
         super().__init__("PlannerAgent", llm_service, bus)
         self.event_bus = event_bus
@@ -102,11 +102,11 @@ class PlannerAgent(BaseAgent):
 
         logger.info(f"📋 PlannerAgent initialisé (max_steps={self.max_steps}, workers={self.max_parallel_workers})")
 
-    def set_agents(self, agents: Dict[str, BaseAgent]):
+    def set_agents(self, agents: Dict[str, BaseAgent]) -> None:
         """Injecte la liste des agents disponibles."""
         self.agents = agents
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> List[Any]:
         return []  # PlannerAgent n'expose pas d'outils directement
 
     async def create_plan(self, query: str) -> List[PlanStep]:
@@ -367,7 +367,7 @@ Réponds UNIQUEMENT avec un JSON :
                         logger.warning(f"Étape {step.id} dépend d'une étape inconnue {dep_id}, ignorée")
 
         # File d'attente des étapes prêtes
-        ready = asyncio.Queue()
+        ready: asyncio.Queue[str] = asyncio.Queue()
         for step_id, count in dependencies_count.items():
             if count == 0:
                 await ready.put(step_id)
@@ -376,7 +376,7 @@ Réponds UNIQUEMENT avec un JSON :
         errors: Dict[str, str] = {}
         cancelled = False
 
-        async def worker(worker_id: int):
+        async def worker(worker_id: int) -> None:
             nonlocal cancelled
             while not cancelled:
                 try:
@@ -469,7 +469,7 @@ Réponds UNIQUEMENT avec un JSON :
         logger.info(f"Plan exécuté en {duration:.2f}s, {len(results)} succès, {len(errors)} échecs")
         return "\n".join(output) if output else "Aucun résultat."
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Arrête proprement l'agent (rien de spécial pour l'instant)."""
         logger.info("📋 PlannerAgent arrêté.")
     def can_handle(self, query: str) -> bool:

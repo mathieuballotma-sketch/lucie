@@ -13,14 +13,14 @@ from .logger import logger
 
 # ── AppKit (PyObjC) ───────────────────────────────────────────────────────────
 try:
-    import AppKit  # type: ignore[import]
+    import AppKit
     _APPKIT_OK = True
 except ImportError:
     _APPKIT_OK = False
 
 # ── UserNotifications (macOS 10.14+) ─────────────────────────────────────────
 try:
-    import UserNotifications  # type: ignore[import]  # noqa: F401
+    import UserNotifications  # noqa: F401
     HAS_UN = True
 except ImportError:
     HAS_UN = False
@@ -46,7 +46,7 @@ def _send_via_un(title: str, message: str, filepath: Optional[str] = None) -> No
         _send_via_ns(title, message, filepath)
         return
 
-    import UserNotifications as UN  # type: ignore[import]
+    import UserNotifications as UN
 
     center = UN.UNUserNotificationCenter.currentNotificationCenter()
 
@@ -86,7 +86,7 @@ def _send_via_ns(title: str, message: str, filepath: Optional[str] = None) -> No
         _send_via_osascript(title, message, filepath)
         return
     try:
-        notification = AppKit.NSUserNotification.alloc().init()  # type: ignore[attr-defined]
+        notification = AppKit.NSUserNotification.alloc().init()  # noqa: E501
         notification.setTitle_(title)
         notification.setInformativeText_(message)
         notification.setSoundName_("NSUserNotificationDefaultSoundName")
@@ -98,7 +98,7 @@ def _send_via_ns(title: str, message: str, filepath: Optional[str] = None) -> No
         else:
             notification.setHasActionButton_(False)
 
-        centre = AppKit.NSUserNotificationCenter.defaultUserNotificationCenter()  # type: ignore[attr-defined]
+        centre = AppKit.NSUserNotificationCenter.defaultUserNotificationCenter()  # noqa: E501
         centre.scheduleNotification_(notification)
     except Exception as e:
         logger.warning(f"Échec NSUserNotification: {e}")

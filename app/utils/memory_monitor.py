@@ -12,13 +12,13 @@ from ..utils.logger import logger
 from .metrics import memory_usage_bytes
 
 
-def monitor_memory(interval: int = 60):
+def monitor_memory(interval: int = 60) -> None:
     """
     Fonction à exécuter dans un thread pour surveiller la mémoire.
     Met à jour la jauge memory_usage_bytes toutes les `interval` secondes.
     """
 
-    def _run():
+    def _run() -> None:
         while True:
             try:
                 mem = psutil.Process().memory_info().rss

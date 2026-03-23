@@ -12,10 +12,10 @@ from app.utils.logger import logger
 
 
 class MemoryManager:
-    def __init__(self, memory_service: MemoryService, config: dict):
+    def __init__(self, memory_service: MemoryService, config: Dict[str, Any]) -> None:
         self.memory = memory_service
-        self.max_short_term = config.get("max_short_term", 5)
-        self.max_long_term = config.get("max_long_term", 3)
+        self.max_short_term: int = config.get("max_short_term", 5)
+        self.max_long_term: int = config.get("max_long_term", 3)
         self.workspace_dir = Path(config.get("workspace_dir", "~/AgentLucide/workspace")).expanduser()
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
         self.routines_file = self.workspace_dir / "routines.json"
@@ -26,12 +26,13 @@ class MemoryManager:
     def _load_routines(self) -> Dict[str, Any]:
         if self.routines_file.exists():
             try:
-                return json.loads(self.routines_file.read_text())
+                data: Dict[str, Any] = json.loads(self.routines_file.read_text())
+                return data
             except Exception as e:
                 logger.error(f"Erreur chargement routines: {e}")
         return {}
 
-    def _save_routines(self):
+    def _save_routines(self) -> None:
         try:
             self.routines_file.write_text(json.dumps(self.routines, indent=2))
         except Exception as e:
@@ -40,12 +41,13 @@ class MemoryManager:
     def _load_preferences(self) -> Dict[str, Any]:
         if self.preferences_file.exists():
             try:
-                return json.loads(self.preferences_file.read_text())
+                data: Dict[str, Any] = json.loads(self.preferences_file.read_text())
+                return data
             except Exception as e:
                 logger.error(f"Erreur chargement préférences: {e}")
         return {}
 
-    def _save_preferences(self):
+    def _save_preferences(self) -> None:
         try:
             self.preferences_file.write_text(json.dumps(self.preferences, indent=2))
         except Exception as e:
@@ -84,17 +86,17 @@ class MemoryManager:
 
         return "\n\n".join(context_parts) if context_parts else ""
 
-    def add_routine(self, name: str, cron_expr: str, action: str):
+    def add_routine(self, name: str, cron_expr: str, action: str) -> None:
         """Ajoute une routine périodique."""
         self.routines[name] = {"cron": cron_expr, "action": action, "created": time.time()}
         self._save_routines()
         logger.info(f"Routine ajoutée: {name}")
 
-    def remove_routine(self, name: str):
+    def remove_routine(self, name: str) -> None:
         if name in self.routines:
             del self.routines[name]
             self._save_routines()
 
-    def set_preference(self, key: str, value: Any):
+    def set_preference(self, key: str, value: Any) -> None:
         self.preferences[key] = value
         self._save_preferences()

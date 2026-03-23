@@ -76,17 +76,20 @@ class SmartMailAgent(BaseAgent):
     Chaque mail est analysé individuellement par LLM.
     """
 
-    def __init__(self, llm_service: Any, bus: Any, config: dict):
+    def __init__(self, llm_service: Any, bus: Any, config: Dict[str, Any]) -> None:
         super().__init__("SmartMailAgent", llm_service, bus)
-        self._watch_task: Optional[asyncio.Task] = None
+        self._watch_task: Optional[asyncio.Task[None]] = None
         self._last_unread: int = 0
         # Référence au registre injectée par le cortex
         self._registry: Optional[Any] = None
         # Sémaphore : max 3 appels Ollama simultanés pour éviter la saturation
         self._ollama_sem: asyncio.Semaphore = asyncio.Semaphore(3)
+        # État des actions mail en attente de confirmation
+        self._pending_reply: Optional[Dict[str, Any]] = None
+        self._pending_compose: Optional[Dict[str, Any]] = None
         logger.info("📧 SmartMailAgent initialisé")
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> List[Tool]:
         return [
             Tool(
                 name="process_inbox",
@@ -292,7 +295,8 @@ end tell
         try:
             match = re.search(r'\{[^}]+\}', response, re.DOTALL)
             if match:
-                return json.loads(match.group())
+                result: Dict[str, Any] = json.loads(match.group())
+                return result
         except (json.JSONDecodeError, AttributeError):
             pass
         # Fallback si parsing échoue
@@ -486,7 +490,7 @@ end tell
 
         # Traiter les mails en parallèle (sémaphore Ollama = 3 slots)
         if not hasattr(self, "_last_suggestions"):
-            self._last_suggestions: Dict[tuple, str] = {}
+            self._last_suggestions: Dict[Tuple[str, str], str] = {}
         logger.info(f"📧 Traitement parallèle de {len(mails)} mails")
         raw_results = await asyncio.gather(
             *[self._process_single_mail(mail) for mail in mails],
@@ -494,9 +498,10 @@ end tell
         )
         results: List[Dict[str, Any]] = []
         for i, (mail, result) in enumerate(zip(mails, raw_results)):
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 logger.warning(f"📧 Mail {i+1} échoué : {result}")
                 continue
+            assert isinstance(result, dict)
             results.append(result)
             # Mettre en cache les suggestions pour _tool_reply_mail
             suggestion = result.get("classification", {}).get("suggestion_reponse")
@@ -644,7 +649,7 @@ end tell
 
         return "Aucune action mail en attente à confirmer."
 
-    async def _execute_reply_applescript(self, data: dict) -> str:
+    async def _execute_reply_applescript(self, data: Dict[str, Any]) -> str:
         """Ouvre la fenêtre reply dans Mail.app via AppleScript."""
         safe_content = data["content"].replace('"', '\\"').replace('\n', '\\n')
         safe_subject = data["subject"].replace('"', '\\"')
@@ -673,7 +678,7 @@ end tell
             return f"❌ Mail introuvable : {data['subject'][:40]}"
         return f"❌ Erreur Mail.app : {output}"
 
-    async def _execute_compose_applescript(self, data: dict) -> str:
+    async def _execute_compose_applescript(self, data: Dict[str, Any]) -> str:
         """Ouvre une nouvelle fenêtre de composition dans Mail.app."""
         safe_to = data.get("to", "").replace('"', '\\"')
         safe_subject = data.get("subject", "").replace('"', '\\"')
@@ -749,7 +754,7 @@ end tell
 
     # ── Résumé ───────────────────────────────────────────────────────────
 
-    def _build_summary(self, results: List[Dict], unread: int, duration: float) -> str:
+    def _build_summary(self, results: List[Dict[str, Any]], unread: int, duration: float) -> str:
         """Construit le résumé lisible de tous les mails traités."""
         if not results:
             return "📮 Aucun mail traité."

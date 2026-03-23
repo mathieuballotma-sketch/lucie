@@ -2,7 +2,7 @@ import sqlite3
 import json
 import time
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Any, Optional, Dict, List
 
 class SignatureDB:
     """
@@ -24,7 +24,7 @@ class SignatureDB:
         self.db_path.parent.mkdir(exist_ok=True)
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS signatures (
@@ -52,7 +52,7 @@ class SignatureDB:
                 )
             """)
 
-    def add_or_update_signature(self, signature_id: str, pattern: str, agent: str, tool: str, error: str, severity: float = 0.1):
+    def add_or_update_signature(self, signature_id: str, pattern: str, agent: str, tool: str, error: str, severity: float = 0.1) -> None:
         now = time.time()
         with sqlite3.connect(self.db_path) as conn:
             # Vérifier si la signature existe déjà
@@ -77,14 +77,14 @@ class SignatureDB:
                     VALUES (?, ?, ?, ?, 1, ?, ?)
                 """, (signature_id, pattern, now, now, json.dumps(affected), severity))
 
-    def log_threat(self, signature_id: Optional[str], agent: str, tool: str, error: str, metadata: Optional[Dict] = None):
+    def log_threat(self, signature_id: Optional[str], agent: str, tool: str, error: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO threats_log (timestamp, signature_id, agent, tool, error, metadata)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (time.time(), signature_id, agent, tool, error, json.dumps(metadata) if metadata else None))
 
-    def get_signature(self, signature_id: str) -> Optional[Dict]:
+    def get_signature(self, signature_id: str) -> Optional[Dict[str, Any]]:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.execute("SELECT * FROM signatures WHERE id = ?", (signature_id,))
@@ -93,7 +93,7 @@ class SignatureDB:
                 return dict(row)
         return None
 
-    def get_recent_threats(self, limit: int = 100) -> List[Dict]:
+    def get_recent_threats(self, limit: int = 100) -> List[Dict[str, Any]]:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.execute("SELECT * FROM threats_log ORDER BY timestamp DESC LIMIT ?", (limit,))

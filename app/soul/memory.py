@@ -18,7 +18,7 @@ class SoulMemory:
         content = self.memory_path.read_text()
         # Format : chaque entrée commence par ## [timestamp] Titre
         entries = []
-        current = {}
+        current: Dict[str, Any] = {}
         lines = content.split('\n')
         for line in lines:
             if line.startswith('## '):
@@ -36,12 +36,12 @@ class SoulMemory:
                 current = {'timestamp': float(ts) if ts.replace('.','').isdigit() else time.time(),
                            'title': title, 'content': ''}
             elif current:
-                current['content'] += line + '\n'
+                current['content'] = str(current['content']) + line + '\n'
         if current:
             entries.append(current)
         return entries
 
-    def add(self, title: str, content: str):
+    def add(self, title: str, content: str) -> None:
         entry = {
             'timestamp': time.time(),
             'title': title,
@@ -68,7 +68,7 @@ class SoulMemory:
     def get_recent(self, n: int = 5) -> List[Dict[str, Any]]:
         return self.entries[-n:]
 
-    def _save(self):
+    def _save(self) -> None:
         with open(self.memory_path, 'w') as f:
             for e in self.entries:
                 f.write(f"## [{e['timestamp']}] {e['title']}\n")

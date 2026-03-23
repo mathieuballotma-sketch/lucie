@@ -35,9 +35,9 @@ class TelegramBot:
         self.app = FastAPI()
         self._setup_routes()
 
-    def _setup_routes(self):
+    def _setup_routes(self) -> None:
         @self.app.post(f"/webhook/{self.token}")
-        async def telegram_webhook(request: Request):
+        async def telegram_webhook(request: Request) -> dict[str, object]:
             """
             Reçoit les updates de Telegram.
             """
@@ -79,10 +79,10 @@ class TelegramBot:
                 return {"ok": False, "error": str(e)}
 
         @self.app.get("/health")
-        async def health():
+        async def health() -> dict[str, str]:
             return {"status": "ok"}
 
-    async def _send_message(self, chat_id: int, text: str):
+    async def _send_message(self, chat_id: int, text: str) -> None:
         """Envoie un message via l'API Telegram."""
         url = f"{self.api_url}/sendMessage"
         payload = {"chat_id": chat_id, "text": text}
@@ -96,7 +96,7 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Exception envoi message: {e}")
 
-    def set_webhook(self):
+    def set_webhook(self) -> None:
         """Configure le webhook auprès de Telegram."""
         url = f"{self.api_url}/setWebhook"
         try:
@@ -109,10 +109,10 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"❌ Exception configuration webhook: {e}")
 
-    def start(self):
+    def start(self) -> None:
         """Démarre le serveur FastAPI pour le bot dans un thread."""
 
-        def run():
+        def run() -> None:
             uvicorn.run(self.app, host="0.0.0.0", port=self.port)
 
         thread = threading.Thread(target=run, daemon=True)

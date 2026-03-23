@@ -151,6 +151,7 @@ class WorkflowStorage:
             conn = sqlite3.connect(self._db_path, check_same_thread=False)
             try:
                 cursor = conn.execute("SELECT COUNT(*) FROM workflows")
-                return cursor.fetchone()[0]
+                row = cursor.fetchone()
+                return int(row[0]) if row else 0
             finally:
                 conn.close()

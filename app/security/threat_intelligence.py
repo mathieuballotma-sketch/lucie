@@ -282,5 +282,5 @@ class ThreatIntelligence:
             logger.error(f"Erreur log menace : {e}")
 
     @property
-    def stats(self) -> dict:
+    def stats(self) -> Dict[str, int]:
         return {**self._stats}

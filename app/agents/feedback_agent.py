@@ -13,7 +13,7 @@ Principes :
 
 from typing import Any, Dict, Optional
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, Tool
 from app.brain.synapses.event_bus import EventBus, Event
 from app.utils.logger import logger
 
@@ -115,11 +115,11 @@ class FeedbackAgent(BaseAgent):
 
     # ── Interface BaseAgent ───────────────────────────────────────────────
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return []
 
     def can_handle(self, query: str) -> bool:
         return False
 
-    async def execute_tool(self, tool_name: str, params: dict) -> Any:
+    async def execute_tool(self, tool_name: str, params: dict[str, Any]) -> Any:
         return "FeedbackAgent n'expose aucun outil — il collecte les métriques via l'EventBus."

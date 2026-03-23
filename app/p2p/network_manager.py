@@ -6,13 +6,13 @@ import socket
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-_encryption = None
+_encryption: Optional[Any] = None
 
-def _get_encryption():
+def _get_encryption() -> Any:
     """Lazy init — évite crash si cryptography absent."""
     global _encryption
     if _encryption is None:
@@ -36,7 +36,7 @@ class LucieNode:
     def address(self) -> str:
         return f"{self.host}:{self.port}"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "host": self.host,
             "port": self.port,
@@ -127,7 +127,7 @@ class NetworkManager:
         finally:
             writer.close()
 
-    async def _process_message(self, msg: dict) -> dict:
+    async def _process_message(self, msg: Dict[str, Any]) -> Dict[str, Any]:
         """Traite un message P2P entrant."""
         msg_type = msg.get("type")
 
@@ -166,7 +166,7 @@ class NetworkManager:
 
         return {"type": "unknown"}
 
-    async def send(self, peer: LucieNode, message: dict) -> Optional[dict]:
+    async def send(self, peer: LucieNode, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Envoie un message a un pair."""
         try:
             reader, writer = await asyncio.wait_for(
@@ -182,8 +182,10 @@ class NetworkManager:
             peer.healthy = True
             raw = json.loads(data.decode("utf-8"))
             if raw.get("v") == 1:
-                return _get_encryption().decrypt_from_b64(raw.get("e",""))
-            return raw
+                result: Optional[Dict[str, Any]] = _get_encryption().decrypt_from_b64(raw.get("e",""))
+                return result
+            raw_dict: Dict[str, Any] = raw
+            return raw_dict
         except Exception as e:
             logger.debug(f"Erreur envoi a {peer.address} : {e}")
             peer.healthy = False
@@ -251,13 +253,13 @@ class NetworkManager:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
+            ip: str = s.getsockname()[0]
             s.close()
             return ip
         except Exception:
             return "127.0.0.1"
 
-    def _get_recent_logs(self, limit: int = 50) -> list:
+    def _get_recent_logs(self, limit: int = 50) -> List[Dict[str, Any]]:
         log_path = Path("memory/journals/machine_log.jsonl")
         if not log_path.exists():
             return []
@@ -270,14 +272,14 @@ class NetworkManager:
                 continue
         return result
 
-    def _apply_shared_fix(self, fix: dict) -> None:
+    def _apply_shared_fix(self, fix: Dict[str, Any]) -> None:
         fixes_path = Path("memory/journals/fixes.jsonl")
         fix["shared"] = True
         with open(fixes_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(fix, ensure_ascii=False) + "\n")
         logger.info(f"Fix partage applique : {fix.get('pattern','?')}")
 
-    def _apply_shared_examples(self, examples: list) -> None:
+    def _apply_shared_examples(self, examples: List[Any]) -> None:
         if not examples:
             return
         from app.security.threat_intelligence import ThreatIntelligence

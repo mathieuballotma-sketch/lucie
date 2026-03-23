@@ -13,21 +13,21 @@ class TeamLeaderAgent(BaseAgent):
     et leur assigner des tâches en parallèle.
     """
 
-    def __init__(self, llm_service, bus, config: dict):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("TeamLeaderAgent", llm_service, bus)
-        self.agent_classes = {}  # mapping nom -> classe
-        self.subagents = {}       # instances créées
-        self.max_parallel = config.get("max_parallel_tasks", 3)
+        self.agent_classes: dict[str, type[BaseAgent]] = {}  # mapping nom -> classe
+        self.subagents: dict[int, BaseAgent] = {}       # instances créées
+        self.max_parallel: int = config.get("max_parallel_tasks", 3)
 
-    def register_agent_class(self, name: str, agent_class):
+    def register_agent_class(self, name: str, agent_class: type[BaseAgent]) -> None:
         self.agent_classes[name] = agent_class
 
-    async def create_subagent(self, agent_type: str, config: dict) -> BaseAgent:
+    async def create_subagent(self, agent_type: str, config: dict[str, Any]) -> BaseAgent:
         """Crée une instance d'un agent existant."""
         if agent_type not in self.agent_classes:
             raise ValueError(f"Type d'agent inconnu: {agent_type}")
         cls = self.agent_classes[agent_type]
-        agent = cls(self.llm, self.bus, config)
+        agent: BaseAgent = cls(self.llm, self.bus, config)
         agent.event_bus = self.event_bus
         self.subagents[id(agent)] = agent
         return agent
@@ -39,7 +39,7 @@ class TeamLeaderAgent(BaseAgent):
         """
         semaphore = asyncio.Semaphore(self.max_parallel)
 
-        async def run_one(task):
+        async def run_one(task: Dict[str, Any]) -> str:
             async with semaphore:
                 agent_type = task['agent']
                 tool = task['tool']
@@ -59,9 +59,9 @@ class TeamLeaderAgent(BaseAgent):
                     return f"❌ {agent_type}.{tool}: {e}"
 
         results = await asyncio.gather(*[run_one(t) for t in tasks])
-        return results
+        return list(results)
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="run_team",

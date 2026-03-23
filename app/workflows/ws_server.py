@@ -33,7 +33,7 @@ class WorkflowWSServer:
     async def start(self) -> None:
         """Démarre le serveur WebSocket."""
         try:
-            import websockets  # type: ignore[import-untyped]
+            import websockets
         except ImportError:
             logger.warning(
                 "websockets non installé — serveur WS désactivé. "

@@ -11,7 +11,7 @@ from ..utils.logger import logger
 
 # FIX : import avec guard — json5 est Optional
 try:
-    import json5 as _json5  # type: ignore[import]
+    import json5 as _json5
     JSON5_AVAILABLE = True
 except ImportError:
     _json5 = None  # type: ignore[assignment]
@@ -28,7 +28,7 @@ def _try_json5(text: str) -> Any:
     """Tente un parse json5 — lève ValueError si non disponible ou échec."""
     if not JSON5_AVAILABLE or _json5 is None:
         raise ValueError("json5 non disponible")
-    return _json5.loads(text)  # type: ignore[union-attr]
+    return _json5.loads(text)
 
 
 def parse_json_safely(text: str, expected_type: Optional[type] = None) -> Any:

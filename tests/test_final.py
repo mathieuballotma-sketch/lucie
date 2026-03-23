@@ -1,9 +1,18 @@
-"""BLOC 10 — Test de validation finale 8→10."""
+"""BLOC 10 — Test de validation finale 8->10.
+
+Script standalone — lancer avec :
+    PYTHONPATH=. python3 tests/test_final.py
+
+Ne pas lancer avec pytest (nécessite Ollama actif).
+"""
 import asyncio, time, sys, signal
 sys.path.insert(0, ".")
-signal.alarm(180)
 
-async def test():
+
+async def _run_final_validation():
+    """Exécute la validation finale complète avec Ollama."""
+    signal.alarm(180)
+
     from app.core.config import Config
     from app.core.engine import LucidEngine
 
@@ -44,4 +53,6 @@ async def test():
     print(f"\nSCORE {score}/{len(tests)}")
     await engine.stop_async()
 
-asyncio.run(test())
+
+if __name__ == "__main__":
+    asyncio.run(_run_final_validation())

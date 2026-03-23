@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +15,12 @@ class WandererAgent:
     remonte les epingles a l'Analyzer.
     """
 
-    def __init__(self, network_manager) -> None:
+    def __init__(self, network_manager: Any) -> None:
         self._net = network_manager
-        self._visited: set = set()
+        self._visited: set[str] = set()
         self._running: bool = False
-        self._findings: list = []
-        self._task: Optional[asyncio.Task] = None
+        self._findings: List[Dict[str, Any]] = []
+        self._task: Optional[asyncio.Task[None]] = None
         logger.info("WandererAgent init")
 
     async def start(self) -> None:
@@ -43,7 +43,7 @@ class WandererAgent:
                 logger.debug("Wanderer : aucun pair disponible")
             await asyncio.sleep(30)
 
-    async def _visit(self, peer) -> None:
+    async def _visit(self, peer: Any) -> None:
         """Visite un noeud et analyse ses logs."""
         logger.info(f"Wanderer visite : {peer.address}")
         self._visited.add(peer.node_id)
@@ -71,7 +71,7 @@ class WandererAgent:
             # Partage les correctifs locaux si on en a
             await self._share_local_fixes(peer)
 
-    def _analyze_remote_logs(self, logs: list, node_id: str) -> list:
+    def _analyze_remote_logs(self, logs: List[Dict[str, Any]], node_id: str) -> List[Dict[str, Any]]:
         """Analyse les logs d'un noeud distant."""
         from collections import Counter
         findings = []
@@ -93,7 +93,7 @@ class WandererAgent:
 
         return findings
 
-    async def _share_local_fixes(self, peer) -> None:
+    async def _share_local_fixes(self, peer: Any) -> None:
         """Partage les correctifs locaux avec un pair."""
         fixes_path = Path("memory/journals/fixes.jsonl")
         if not fixes_path.exists():
@@ -115,7 +115,7 @@ class WandererAgent:
             logger.info(f"Fix partage avec {peer.address}")
 
     @property
-    def stats(self) -> dict:
+    def stats(self) -> Dict[str, Any]:
         return {
             "visited": len(self._visited),
             "findings": len(self._findings),

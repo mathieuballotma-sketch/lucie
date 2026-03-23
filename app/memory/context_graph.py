@@ -337,9 +337,9 @@ class ContextGraph:
 
         # Re-trier par score = nb_mots_correspondants × confidence
         def relevance(row: Any) -> float:
-            c = row["content"].lower()
+            c = str(row["content"]).lower()
             matches = sum(1 for w in words if w in c)
-            return matches * row["confidence"]
+            return float(matches * row["confidence"])
 
         sorted_rows = sorted(rows, key=relevance, reverse=True)
         return [self._row_to_node(r) for r in sorted_rows[:top_k]]

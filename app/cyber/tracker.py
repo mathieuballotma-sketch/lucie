@@ -1,7 +1,7 @@
 import json
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 class ThreatTracker:
     """
@@ -14,7 +14,7 @@ class ThreatTracker:
         self.log_path = log_path
         self.log_path.parent.mkdir(exist_ok=True)
 
-    def log_event(self, event_type: str, data: Dict[str, Any]):
+    def log_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """Enregistre un événement avec horodatage."""
         entry = {
             "timestamp": time.time(),
@@ -24,7 +24,7 @@ class ThreatTracker:
         with open(self.log_path, "a") as f:
             f.write(json.dumps(entry) + "\n")
 
-    def get_recent_events(self, limit: int = 100) -> list:
+    def get_recent_events(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Récupère les derniers événements."""
         events = []
         try:

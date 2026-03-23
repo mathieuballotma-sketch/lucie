@@ -23,7 +23,7 @@ class LLMService:
         timeout: int = 60,
         retry_attempts: int = 2,
         retry_delay: float = 1.0,
-    ):
+    ) -> None:
         self.host = host.rstrip("/")
         self.default_model = default_model
         self.timeout = timeout
@@ -32,7 +32,7 @@ class LLMService:
         self._session = requests.Session()
         self._check_connection()
 
-    def _check_connection(self):
+    def _check_connection(self) -> None:
         """Vérifie que le serveur Ollama est joignable au démarrage."""
         try:
             r = self._session.get(f"{self.host}/api/tags", timeout=5)
@@ -58,7 +58,7 @@ class LLMService:
                         f"Modèle '{payload.get('model')}' introuvable sur Ollama."
                     )
                 r.raise_for_status()
-                return r.json()
+                return dict(r.json())
             except requests.exceptions.Timeout:
                 if attempt < self.retry_attempts:
                     wait = self.retry_delay * (2**attempt)  # exponential backoff
@@ -102,13 +102,13 @@ class LLMService:
             f"Requête LLM (model={model}) : system={system[:50]}..., user={user[:50]}..."
         )
         data = self._post("/api/chat", payload)
-        response = data.get("message", {}).get("content", "").strip()
+        response = str(data.get("message", {}).get("content", "")).strip()
         if not response:
             raise LLMResponseError("Réponse vide du LLM.")
         logger.debug(f"Réponse LLM (taille={len(response)} chars)")
         return response
 
-    def list_models(self) -> list:
+    def list_models(self) -> list[str]:
         """Retourne la liste des modèles disponibles localement."""
         try:
             r = self._session.get(f"{self.host}/api/tags", timeout=10)
@@ -123,6 +123,6 @@ class LLMService:
         """Ping rapide pour vérifier la disponibilité."""
         try:
             r = self._session.get(f"{self.host}/api/tags", timeout=2)
-            return r.status_code == 200
+            return bool(r.status_code == 200)
         except BaseException:
             return False

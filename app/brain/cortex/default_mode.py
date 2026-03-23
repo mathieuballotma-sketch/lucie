@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from ...utils.logger import logger
 
@@ -35,7 +35,7 @@ class DefaultModeNetwork:
         self.insights: List[Dict[str, Any]] = []
         self.memory_graph = memory_graph
 
-    async def reflect(self, memory_sample: list) -> List[Dict[str, Any]]:
+    async def reflect(self, memory_sample: list[Any]) -> List[Dict[str, Any]]:
         """
         Cycle de réflexion autonome.
         Phase 1 — Perception : analyser les souvenirs
@@ -69,7 +69,7 @@ class DefaultModeNetwork:
         self.insights = insights
         return insights
 
-    def _detect_patterns(self, memories: list) -> Dict[str, int]:
+    def _detect_patterns(self, memories: list[Any]) -> Dict[str, int]:
         """Détecte les patterns récurrents dans les souvenirs récents."""
         patterns: Dict[str, int] = {}
         stop_words = {
@@ -81,7 +81,7 @@ class DefaultModeNetwork:
         for memory in memories:
             content = ""
             if isinstance(memory, dict):
-                content = memory.get("content", memory.get("query", ""))
+                content = str(memory.get("content", memory.get("query", "")) or "")
             elif isinstance(memory, str):
                 content = memory
 
@@ -112,7 +112,7 @@ class DefaultModeNetwork:
                 for c2 in concepts[i + 1:6]:
                     self.memory_graph.strengthen(c1, c2)
 
-    async def run(self, get_memory_fn) -> None:
+    async def run(self, get_memory_fn: Callable[..., Any]) -> None:
         """
         Boucle autonome principale.
         Tourne en permanence en arrière-plan.
@@ -139,7 +139,7 @@ class DefaultModeNetwork:
         """Arrêt propre de la boucle."""
         self.active = False
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """Statistiques de réflexion."""
         return {
             "reflections": self.reflection_count,

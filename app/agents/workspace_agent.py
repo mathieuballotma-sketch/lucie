@@ -96,12 +96,12 @@ MENU_BAR_HEIGHT = 25
 class WorkspaceAgent(BaseAgent):
     """Agent d'intelligence spatiale — organise les fenêtres comme un humain."""
 
-    def __init__(self, llm_service: Any, bus: Any, config: dict):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("WorkspaceAgent", llm_service, bus)
         self._screens: Optional[List[ScreenInfo]] = None
         logger.info("🪟 WorkspaceAgent initialisé")
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(name="arrange", description="Organise les fenêtres selon un layout.",
                  contract=WorkspaceArrangeContract),

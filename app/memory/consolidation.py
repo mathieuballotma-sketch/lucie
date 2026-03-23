@@ -5,6 +5,7 @@ Permet d'ajuster les poids ou de marquer les souvenirs comme importants.
 
 import threading
 import time
+from typing import Optional
 
 from ..utils.logger import logger
 from .episodic_memory import EpisodicMemory
@@ -21,9 +22,9 @@ class ConsolidationEngine:
         self.episodic = episodic_memory
         self.interval = interval
         self._stop_event = threading.Event()
-        self._thread = None
+        self._thread: Optional[threading.Thread] = None
 
-    def start(self):
+    def start(self) -> None:
         """Démarre le thread de consolidation."""
         if self._thread is None:
             self._stop_event.clear()
@@ -31,7 +32,7 @@ class ConsolidationEngine:
             self._thread.start()
             logger.info("🔄 Moteur de consolidation démarré")
 
-    def stop(self):
+    def stop(self) -> None:
         """Arrête le thread."""
         self._stop_event.set()
         if self._thread:
@@ -39,7 +40,7 @@ class ConsolidationEngine:
             self._thread = None
             logger.info("Moteur de consolidation arrêté")
 
-    def _run(self):
+    def _run(self) -> None:
         """Boucle principale de consolidation."""
         while not self._stop_event.is_set():
             # Pour l'instant, rien à faire. Plus tard, on pourra :
@@ -48,7 +49,7 @@ class ConsolidationEngine:
             # - Lancer un apprentissage
             time.sleep(self.interval)
 
-    def mark_satisfaction(self, query: str, response: str, rating: int):
+    def mark_satisfaction(self, query: str, response: str, rating: int) -> None:
         """
         Marque un souvenir avec un niveau de satisfaction (1-5).
         Pourrait être utilisé pour l'apprentissage par renforcement.

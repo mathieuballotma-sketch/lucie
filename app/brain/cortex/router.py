@@ -9,8 +9,11 @@ import logging
 import re
 import time
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional, TYPE_CHECKING
 from dataclasses import dataclass
+
+if TYPE_CHECKING:
+    from app.brain.cortex.predictor import NanoPredictor
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +92,7 @@ class PathRouter:
     }
 
     def __init__(self) -> None:
-        self._classifier = None
+        self._classifier: Any = None
         self._trained: bool = False
         self._fast_path_enabled: bool = False
         self._stats = {
@@ -270,7 +273,7 @@ class PathRouter:
         return self._stats["fast_path"] / self._stats["total"]
 
     @property
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, object]:
         return {**self._stats, "fast_path_ratio": f"{self.fast_path_ratio:.0%}"}
 
     @property
@@ -283,7 +286,7 @@ class PathRouter:
 _predictor = None
 
 
-def get_predictor():
+def get_predictor() -> NanoPredictor:
     """Retourne l'instance globale du NanoPredictor."""
     global _predictor
     if _predictor is None:

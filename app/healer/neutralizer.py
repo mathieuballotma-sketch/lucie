@@ -8,7 +8,7 @@ import time  # <-- AJOUT
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional
-import aiofiles
+import aiofiles  # type: ignore[import-untyped]
 
 from app.utils.logger import logger
 
@@ -18,7 +18,7 @@ class ThreatNeutralizer:
     Gère la mise en quarantaine des fichiers malveillants et la création de leurres.
     """
 
-    def __init__(self, config: dict, quarantine_dir: Path, lures_dir: Path):
+    def __init__(self, config: Dict[str, Any], quarantine_dir: Path, lures_dir: Path) -> None:
         self.config = config
         self.quarantine_dir = quarantine_dir
         self.lures_dir = lures_dir

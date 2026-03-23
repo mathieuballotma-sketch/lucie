@@ -42,6 +42,7 @@ logs/
 *.jsonl
 
 # ===== LUCIE — SPÉCIFIQUE =====
+_backups/
 *.bak
 *.bak2
 *.bak3

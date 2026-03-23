@@ -8,7 +8,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import psutil
 
@@ -38,39 +38,39 @@ class ElasticityEngine:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self._stop_event = threading.Event()
-        self._thread = None
+        self._thread: Optional[threading.Thread] = None
         self._listeners: List[Callable[[SystemLoad], None]] = []
         self.current_load = SystemLoad(0, 0, None, False, 0)
 
         # Mapping des profils vers les noms de modèles réels (à surcharger par
         # le cortex)
-        self.model_mapping = {
-            "speed": config.get("speed_model", "qwen2.5:3b"),
-            "balanced": config.get("balanced_model", "qwen2.5:7b"),
-            "quality": config.get("quality_model", "qwen2.5:14b"),
+        self.model_mapping: Dict[str, str] = {
+            "speed": str(config.get("speed_model", "qwen2.5:3b")),
+            "balanced": str(config.get("balanced_model", "qwen2.5:7b")),
+            "quality": str(config.get("quality_model", "qwen2.5:14b")),
         }
 
         # Pour la moyenne glissante de la charge CPU (5 échantillons)
-        self.cpu_history = deque(maxlen=5)
-        self.thermal_history = deque(maxlen=3)
+        self.cpu_history: deque[float] = deque(maxlen=5)
+        self.thermal_history: deque[int] = deque(maxlen=3)
 
         # Intervalle de surveillance (secondes)
         self.monitor_interval = config.get("elasticity_interval", 2)
 
-    def start(self):
+    def start(self) -> None:
         self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self._thread.start()
         logger.info("📊 ElasticityEngine démarré")
 
-    def stop(self):
+    def stop(self) -> None:
         self._stop_event.set()
         if self._thread:
             self._thread.join(timeout=2)
 
-    def add_listener(self, callback: Callable[[SystemLoad], None]):
+    def add_listener(self, callback: Callable[[SystemLoad], None]) -> None:
         self._listeners.append(callback)
 
-    def _monitor_loop(self):
+    def _monitor_loop(self) -> None:
         while not self._stop_event.is_set():
             load = self._get_system_load()
             self.current_load = load
@@ -178,7 +178,7 @@ class ElasticityEngine:
 
     def get_max_workers(self) -> int:
         """Ajuste le nombre de workers selon la charge."""
-        base = self.config.get("base_workers", 3)
+        base: int = int(self.config.get("base_workers", 3))
         load = self.current_load
         if load.thermal_pressure >= 2 or load.cpu_percent > 90:
             return 1

@@ -5,7 +5,9 @@ Utilise un modèle de vision-langage léger (moondream) si disponible.
 
 import subprocess
 import tempfile
-from typing import Optional
+from typing import Any, List, Optional
+
+from pydantic.v1 import BaseModel, Field as PydField
 
 from ...agents.base_agent import BaseAgent, Tool
 from ...utils.logger import logger
@@ -19,15 +21,24 @@ except ImportError:
     )
 
 
+# ── Contrats pydantic pour les outils ──
+class DescribeScreenContract(BaseModel):
+    pass
+
+class DescribeImageAtPositionContract(BaseModel):
+    x: Optional[int] = PydField(None, description="Coordonnée X (optionnel)")
+    y: Optional[int] = PydField(None, description="Coordonnée Y (optionnel)")
+
+
 class ImageDescriberAgent(BaseAgent):
     """
     Agent capable de décrire le contenu des images affichées à l'écran.
     Utilise un VLM (Vision-Language Model) pour générer des descriptions textuelles.
     """
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: Any) -> None:
         super().__init__("ImageDescriberAgent", llm_service, bus)
-        self.model = None
+        self.model: Any = None
         if MOONDREAM_AVAILABLE:
             try:
                 # Charger le modèle (à ajuster selon la bibliothèque)
@@ -37,29 +48,17 @@ class ImageDescriberAgent(BaseAgent):
                 logger.error(f"Erreur chargement Moondream: {e}")
         self.use_fallback = config.get("use_fallback", True)
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> List[Tool]:
         return [
             Tool(
                 name="describe_screen",
                 description="Décrit le contenu visuel général de l'écran (ce qu'on voit).",
-                parameters={"type": "object", "properties": {}, "required": []},
+                contract=DescribeScreenContract,
             ),
             Tool(
                 name="describe_image_at_position",
                 description="Décrit l'image à une position donnée (x, y) ou sous la souris.",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "x": {
-                            "type": "integer",
-                            "description": "Coordonnée X (optionnel)",
-                        },
-                        "y": {
-                            "type": "integer",
-                            "description": "Coordonnée Y (optionnel)",
-                        },
-                    },
-                },
+                contract=DescribeImageAtPositionContract,
             ),
         ]
 
@@ -82,7 +81,7 @@ class ImageDescriberAgent(BaseAgent):
             logger.error(f"Erreur capture écran: {e}")
             return None
 
-    def _describe_screen(self):
+    def _describe_screen(self) -> str:
         img_path = self._capture_screen()
         if not img_path:
             return "Impossible de capturer l'écran."
@@ -103,7 +102,7 @@ class ImageDescriberAgent(BaseAgent):
         # Fallback simple
         return "L'écran contient du texte et des éléments graphiques (description limitée par manque de modèle VLM)."  # noqa: E501
 
-    def _describe_image_at_position(self, x=None, y=None):
+    def _describe_image_at_position(self, x: Optional[int] = None, y: Optional[int] = None) -> str:
         # Pour l'instant, on ne capture qu'une région, mais c'est plus
         # complexe.
         return "Fonction non implémentée."
@@ -112,5 +111,5 @@ class ImageDescriberAgent(BaseAgent):
         keywords = ["image", "photo", "voir", "affiche", "dessin", "graphique"]
         return any(kw in query.lower() for kw in keywords)
 
-    def handle(self, query: str) -> str:
+    async def handle(self, query: str) -> str:
         return self._tool_describe_screen()

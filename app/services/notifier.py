@@ -22,7 +22,7 @@ async def generate_notification_text(context: str) -> str:
             ) as r:
                 if r.status == 200:
                     data = await r.json()
-                    text = data.get("response","").strip()
+                    text = str(data.get("response", "")).strip()
                     text = text.replace('"','').replace("'","").replace("\n"," ")
                     return text[:80].split(".")[0]
     except Exception as e:

@@ -4,7 +4,7 @@ import logging
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ class SmartRouter:
         message: str,
         title: str = "Lucie",
         iphone_number: Optional[str] = None,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """
         Envoie la notification sur le meilleur appareil disponible.
         Retourne un dict avec le resultat.
@@ -190,7 +190,7 @@ async def lucie_smart_notify(
     context: str,
     title: str = "Lucie",
     iphone_number: Optional[str] = None,
-) -> dict:
+) -> Dict[str, Any]:
     """
     Notification intelligente :
     1. Genere le texte via LLM

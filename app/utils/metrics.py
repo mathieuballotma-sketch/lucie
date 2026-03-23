@@ -148,13 +148,13 @@ cyber_quarantine_actions = Counter(
 _metrics_server_thread = None
 
 
-def start_metrics_server(port: int = 8001):
+def start_metrics_server(port: int = 8001) -> None:
     global _metrics_server_thread
     if _metrics_server_thread is not None:
         logger.warning("Serveur de métriques déjà démarré.")
         return
 
-    def run_server():
+    def run_server() -> None:
         try:
             start_http_server(port)
             logger.info(
@@ -170,61 +170,61 @@ def start_metrics_server(port: int = 8001):
 
 
 # Fonctions utilitaires
-def record_llm_request(model: str, duration: float, status: str = "success"):
+def record_llm_request(model: str, duration: float, status: str = "success") -> None:
     llm_requests_total.labels(model=model, status=status).inc()
     if status == "success":
         llm_request_duration_seconds.labels(model=model).observe(duration)
 
 
-def record_tool_execution(agent: str, tool: str, duration: float, error: bool = False):
+def record_tool_execution(agent: str, tool: str, duration: float, error: bool = False) -> None:
     tool_execution_duration.labels(agent=agent, tool=tool).observe(duration)
     if error:
         tool_execution_errors.labels(agent=agent, tool=tool).inc()
 
 
-def record_cache_hit(cache_type: str):
+def record_cache_hit(cache_type: str) -> None:
     cache_hits.labels(cache_type=cache_type).inc()
 
 
-def record_cache_miss(cache_type: str):
+def record_cache_miss(cache_type: str) -> None:
     cache_misses.labels(cache_type=cache_type).inc()
 
 
-def record_plan_cache_hit():
+def record_plan_cache_hit() -> None:
     plan_cache_hits.labels(cache_type="vector").inc()
 
 
-def record_plan_cache_miss():
+def record_plan_cache_miss() -> None:
     plan_cache_misses.labels(cache_type="vector").inc()
 
 
-def record_task_completed(task_name: str):
+def record_task_completed(task_name: str) -> None:
     tasks_completed_total.labels(task_name=task_name).inc()
 
 
-def record_task_failed(task_name: str):
+def record_task_failed(task_name: str) -> None:
     tasks_failed_total.labels(task_name=task_name).inc()
 
 
-def record_task_cancelled(task_name: str):
+def record_task_cancelled(task_name: str) -> None:
     tasks_cancelled_total.labels(task_name=task_name).inc()
 
 
-def set_active_tasks(count: int):
+def set_active_tasks(count: int) -> None:
     active_tasks.set(count)
 
 
-def set_task_queue_size(size: int):
+def set_task_queue_size(size: int) -> None:
     task_queue_size.set(size)
 
 
-def set_working_memory_size(size: int):
+def set_working_memory_size(size: int) -> None:
     working_memory_size.set(size)
 
 
-def record_strategist_suggestion(category: str = "other"):
+def record_strategist_suggestion(category: str = "other") -> None:
     strategist_suggestions_total.labels(category=category).inc()
 
 
-def record_cortex_step(step: str, duration: float):
+def record_cortex_step(step: str, duration: float) -> None:
     cortex_step_duration.labels(step=step).observe(duration)

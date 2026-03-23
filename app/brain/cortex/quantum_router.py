@@ -38,7 +38,7 @@ class QuantumState:
         self.history: List[Dict[str, Any]] = []
         self.total_measures: int = 0
 
-    def probabilities(self) -> np.ndarray:
+    def probabilities(self) -> "np.ndarray[Any, Any]":
         """
         Collapse la superposition en probabilités.
         P = amplitude² (règle de Born simulée).
@@ -46,8 +46,9 @@ class QuantumState:
         p = self.amplitudes ** 2
         total = p.sum()
         if total == 0:
-            return np.ones(len(self.agents)) / len(self.agents)
-        return p / total
+            result: np.ndarray[Any, Any] = np.ones(len(self.agents)) / len(self.agents)
+            return result
+        return np.array(p / total)
 
     def measure(self) -> str:
         """
@@ -115,7 +116,7 @@ class QuantumState:
         if norm > 0:
             self.amplitudes /= norm
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """Statistiques de l'état quantique."""
         probs = self.probabilities()
         return {
@@ -181,7 +182,7 @@ class QuantumRouter:
         return self.state.measure()
 
     async def execute_and_learn(
-        self, ctx: Any, execute_fn: Callable,
+        self, ctx: Any, execute_fn: Callable[..., Any],
     ) -> Tuple[Any, str, bool]:
         """
         Exécute une tâche et apprend du résultat.
@@ -208,6 +209,6 @@ class QuantumRouter:
             logger.warning(f"⚛️ Erreur {path} : {e}")
             raise
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """État actuel du routeur quantique."""
         return self.state.get_stats()

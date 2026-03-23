@@ -12,7 +12,8 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Callable
+from types import TracebackType
+from typing import List, Dict, Any, Optional, Callable, Type
 import aiosqlite
 
 from app.utils.logger import logger
@@ -107,7 +108,7 @@ class EpisodicMemory:
         self,
         query: str,
         response: str,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Ajoute un épisode à la mémoire.
@@ -147,7 +148,8 @@ class EpisodicMemory:
                     # On ne bloque pas l'insertion principale
 
             await conn.commit()
-            self.metrics.record_timing("episodic.add_duration", time.time() - start)
+            if self.metrics is not None:
+                self.metrics.record_timing("episodic.add_duration", time.time() - start)
         except aiosqlite.Error as e:
             logger.error(f"Erreur lors de l'ajout de l'épisode: {e}")
             raise MemoryStorageError(f"Échec de l'ajout de l'épisode: {e}") from e
@@ -164,7 +166,10 @@ class EpisodicMemory:
         try:
             conn = await self._get_connection()
             cursor = await conn.execute("SELECT COUNT(*) FROM episodes")
-            count = (await cursor.fetchone())[0]
+            row = await cursor.fetchone()
+            if row is None:
+                return
+            count = row[0]
             if count > self.max_entries:
                 # Récupérer le timestamp de la (max_entries)ème entrée la plus récente
                 offset = self.max_entries
@@ -182,7 +187,8 @@ class EpisodicMemory:
                     await conn.commit()
                     deleted = count - self.max_entries
                     logger.debug(f"Nettoyage de la mémoire épisodique: {deleted} entrées supprimées")
-                    self.metrics.record_value("episodic.cleanup_deleted", deleted)
+                    if self.metrics is not None:
+                        self.metrics.record_value("episodic.cleanup_deleted", deleted)
         except Exception as e:
             logger.error(f"Erreur lors du nettoyage de la mémoire: {e}")
 
@@ -214,7 +220,8 @@ class EpisodicMemory:
                 results = await self._similarity_search(query, n_results, min_similarity)
             else:
                 results = await self._chronological_search(n_results)
-            self.metrics.record_timing("episodic.remember_duration", time.time() - start)
+            if self.metrics is not None:
+                self.metrics.record_timing("episodic.remember_duration", time.time() - start)
             return results
         except Exception as e:
             logger.error(f"Erreur lors de la récupération des épisodes: {e}")
@@ -316,9 +323,14 @@ class EpisodicMemory:
                 self._connection = None
                 logger.debug("Connexion à la mémoire épisodique fermée")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "EpisodicMemory":
         await self._get_connection()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         await self.close()

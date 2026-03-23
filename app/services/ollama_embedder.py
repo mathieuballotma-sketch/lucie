@@ -52,9 +52,9 @@ class OllamaEmbedder:
         """Détecte la dimension du modèle en générant un embedding test."""
         try:
             resp = self._client.embeddings(model=self.model, prompt="test")
-            emb: Any = resp.get("embedding", [])  # type: ignore[union-attr]
+            emb: Any = resp.get("embedding", [])
             if emb:
-                return len(emb)
+                return int(len(emb))
         except Exception as e:
             logger.warning(f"Impossible de détecter la dimension: {e}")
         return 1024  # fallback mxbai-embed-large default
@@ -63,7 +63,7 @@ class OllamaEmbedder:
         self,
         texts: Union[str, List[str]],
         **_kwargs: Any,
-    ) -> np.ndarray:
+    ) -> "np.ndarray[Any, Any]":
         """
         Encode un ou plusieurs textes en vecteurs d'embedding.
 
@@ -73,18 +73,21 @@ class OllamaEmbedder:
         Returns:
             np.ndarray de shape (n, dimension) ou (dimension,) si un seul texte.
         """
-        single = isinstance(texts, str)
-        if single:
-            texts = [texts]
+        if isinstance(texts, str):
+            text_list: List[str] = [texts]
+            single = True
+        else:
+            text_list = texts
+            single = False
 
         embeddings = []
-        for text in texts:
+        for text in text_list:
             emb = self._embed_single(text)
             embeddings.append(emb)
 
-        result = np.array(embeddings, dtype=np.float32)
+        result: np.ndarray[Any, Any] = np.array(embeddings, dtype=np.float32)
         if single:
-            return result[0]
+            return result[0]  # type: ignore[no-any-return]
         return result
 
     def embed_query(self, text: str) -> List[float]:
@@ -92,13 +95,13 @@ class OllamaEmbedder:
         Embed un seul texte et retourne un vecteur (liste de floats).
         Utilisé par EpisodicMemory.embedding_fn.
         """
-        return self._embed_single(text).tolist()
+        return list(self._embed_single(text).tolist())
 
-    def _embed_single(self, text: str) -> np.ndarray:
+    def _embed_single(self, text: str) -> "np.ndarray[Any, Any]":
         """Génère l'embedding d'un seul texte via Ollama."""
         try:
             resp = self._client.embeddings(model=self.model, prompt=text)
-            emb: Any = resp.get("embedding", [])  # type: ignore[union-attr]
+            emb: Any = resp.get("embedding", [])
             if emb:
                 return np.array(emb, dtype=np.float32)
         except Exception as e:

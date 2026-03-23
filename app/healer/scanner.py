@@ -4,8 +4,8 @@ Scanner de fichiers - Détection de menaces par signatures et heuristique.
 
 import hashlib
 import os
-from typing import Dict, Any, Optional
-import aiofiles
+from typing import Any, Dict, Optional
+import aiofiles  # type: ignore[import-untyped]
 import yara  # À installer: pip install yara-python
 
 from app.utils.logger import logger
@@ -16,7 +16,7 @@ class FileScanner:
     Scanner de fichiers utilisant des signatures YARA et des vérifications heuristiques.
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.rules = self._load_rules()
         self.known_hashes = self._load_known_hashes()
@@ -31,7 +31,7 @@ class FileScanner:
                 logger.error(f"Erreur chargement règles YARA: {e}")
         return None
 
-    def _load_known_hashes(self) -> set:
+    def _load_known_hashes(self) -> set[str]:
         hash_file = self.config.get("malicious_hashes_path", "~/.agent_lucide/malicious_hashes.txt")
         hash_file = os.path.expanduser(hash_file)
         hashes = set()
@@ -44,7 +44,8 @@ class FileScanner:
         return hashes
 
     async def scan(self, filepath: str) -> Dict[str, Any]:
-        result = {
+        # Annotation explicite pour éviter inférence trop stricte de mypy
+        result: Dict[str, Any] = {
             "threat_detected": False,
             "score": 0.0,
             "matches": [],

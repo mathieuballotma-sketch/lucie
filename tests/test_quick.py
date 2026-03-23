@@ -1,11 +1,19 @@
-"""Test rapide de validation des corrections."""
+"""Test rapide de validation des corrections.
+
+Script standalone — lancer avec :
+    PYTHONPATH=. python3 tests/test_quick.py
+
+Ne pas lancer avec pytest (nécessite Ollama actif).
+"""
 import asyncio, time, sys, signal
 sys.path.insert(0, ".")
 
-# Auto-kill après 120s
-signal.alarm(120)
 
-async def quick_test():
+async def _run_quick_test():
+    """Exécute le test rapide avec Ollama."""
+    # Auto-kill après 120s
+    signal.alarm(120)
+
     from app.core.config import Config
     from app.core.engine import LucidEngine
 
@@ -40,4 +48,6 @@ async def quick_test():
     await engine.stop_async()
     print(f"SCORE {ok_count}/{len(tests)}")
 
-asyncio.run(quick_test())
+
+if __name__ == "__main__":
+    asyncio.run(_run_quick_test())
