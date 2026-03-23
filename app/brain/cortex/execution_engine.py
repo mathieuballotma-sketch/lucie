@@ -550,9 +550,9 @@ class ExecutionEngine:
     )
 
     def _classify_intent_llm(self, query: str) -> Optional[Tuple[str, float]]:
-        """Classifie l'intention via qwen2.5:0.5b. Retourne (action, confidence) ou None."""
+        """Classifie l'intention via le modèle speed. Retourne (action, confidence) ou None."""
         try:
-            model_name = self.model_mapping.get("nano", "qwen2.5:0.5b")
+            model_name = self.model_mapping.get("speed", "qwen2.5:3b")
             system = (
                 "Tu es un classificateur d'intention. "
                 "Réponds UNIQUEMENT avec un JSON : "

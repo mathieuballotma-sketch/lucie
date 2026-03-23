@@ -117,6 +117,54 @@ def _check_greeting(query: str) -> Optional[str]:
     return None
 
 
+_CAPABILITY_KEYWORDS: tuple[str, ...] = (
+    "qu'est-ce que tu peux faire",
+    "qu est ce que tu peux faire",
+    "quesque tu peut faire",
+    "que peux-tu faire",
+    "que peux tu faire",
+    "tu peux faire quoi",
+    "tu fais quoi",
+    "que sais-tu faire",
+    "tes capacités",
+    "tes fonctions",
+    "tes fonctionnalités",
+    "liste tes agents",
+    "c'est quoi tes agents",
+    "comment tu fonctionnes",
+    "tu m'aides à faire quoi",
+    "tu m aides a faire quoi",
+    "aide moi à comprendre",
+    "quelles sont tes capacités",
+    "quelles sont tes fonctions",
+    "what can you do",
+)
+
+_CAPABILITY_RESPONSE = """Je suis Lucie, ton IA locale macOS. Voici ce que je peux faire :
+
+📁 **Fichiers** — lire, écrire, organiser des fichiers et dossiers
+📄 **Documents** — créer des fichiers Word, PDF ou Excel
+📅 **Agenda** — ajouter des événements dans Calendrier
+⏰ **Rappels** — créer des rappels dans Reminders
+✉️ **Mail** — lire, classer et rédiger des emails
+💻 **Contrôle macOS** — ouvrir des apps, taper du texte, capturer l'écran
+🔍 **Recherche** — chercher sur le web via Safari
+🧠 **Mémoire** — me souvenir de tes préférences et conversations
+📝 **Code** — expliquer, déboguer et refactoriser du code
+🗂️ **Multi-actions** — enchaîner plusieurs tâches en une phrase
+
+Dis-moi ce que tu veux faire !"""
+
+
+def _check_capabilities(query: str) -> Optional[str]:
+    """Détecte les questions sur les capacités et retourne la liste réelle des agents."""
+    q = query.lower().strip().rstrip("!?.…,;: ")
+    for kw in _CAPABILITY_KEYWORDS:
+        if kw in q:
+            return _CAPABILITY_RESPONSE
+    return None
+
+
 # Requêtes brèves qui ne nécessitent pas de RAG
 _BRIEF_QUERY_MAX_WORDS = 4
 
@@ -652,6 +700,13 @@ class LucidEngine:
             logger.info(f"⚡ Salutation détectée → {latency*1000:.0f}ms")
             return greeting, latency
 
+        # ── Fast path capacités — liste réelle des agents ─────────────
+        capability_resp = _check_capabilities(query)
+        if capability_resp:
+            latency = time.time() - start
+            logger.info(f"⚡ Question capacités détectée → {latency*1000:.0f}ms")
+            return capability_resp, latency
+
         if self._loop is None:
             raise RuntimeError("set_loop() doit être appelé avant process().")
 
@@ -691,6 +746,13 @@ class LucidEngine:
             latency = time.time() - start
             logger.info(f"⚡ Salutation détectée → {latency*1000:.0f}ms")
             return greeting, latency
+
+        # ── Fast path capacités — liste réelle des agents ─────────────
+        capability_resp = _check_capabilities(query)
+        if capability_resp:
+            latency = time.time() - start
+            logger.info(f"⚡ Question capacités détectée → {latency*1000:.0f}ms")
+            return capability_resp, latency
 
         # Timeout adaptatif : 15s simple, 60s pipeline/recherche
         effective_timeout = 120.0 if self._is_multi_step(query) else 45.0

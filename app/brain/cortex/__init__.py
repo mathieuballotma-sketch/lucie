@@ -341,7 +341,7 @@ class FrontalCortex:
             query = ctx.query
         else:
             query = query_or_ctx
-            ctx = ContextWave.create(query, budget=15.0)
+            ctx = ContextWave.create(query, budget=45.0)
 
         self._loop = asyncio.get_running_loop()
         self.agent_registry._loop = self._loop
@@ -408,12 +408,12 @@ class FrontalCortex:
                 # Timeout adapté par chemin — les agents LLM ont besoin de plus
                 _PATH_TIMEOUTS = {
                     "visual_research": 125.0,
-                    "direct": 30.0,
-                    "agent": 30.0,
-                    "resonance": 15.0,
-                    "llm": 30.0,
-                    "multi": 30.0,
-                    "creation": 30.0,
+                    "direct": 45.0,
+                    "agent": 45.0,
+                    "resonance": 45.0,
+                    "llm": 45.0,
+                    "multi": 45.0,
+                    "creation": 45.0,
                 }
                 default_timeout = _PATH_TIMEOUTS.get(path_id, 15.0)
                 path_timeout = ctx.get_effective_timeout(default_timeout)

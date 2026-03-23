@@ -42,3 +42,37 @@ mypy  : ✅ 0 erreurs
 pytest: ✅ 245 passed
 Régressions : aucune
 ---
+
+=== 2026-03-23 — 3 bugs critiques corrigés ===
+
+BUG 1 — CLASSIFICATION (CORRIGÉ)
+  Fichier: app/brain/cortex/execution_engine.py
+  Ligne: ~555 (_classify_intent_llm)
+  Problème: qwen2.5:0.5b (nano) trop petit pour classifier correctement.
+    Classifiait TOUT comme "document" (ex: "qu'est-ce que tu peux faire" → document 1.00)
+  Fix: modèle changé de "nano" (qwen2.5:0.5b) à "speed" (qwen2.5:3b)
+  Impact: classification correcte des intentions, plus de faux "document"
+
+BUG 2 — HUD "…" / BUDGET TIMEOUT (CORRIGÉ)
+  Fichier: app/brain/cortex/__init__.py
+  Ligne: ~344 (think()), ~409-418 (_PATH_TIMEOUTS)
+  Problème: ContextWave budget=15.0s — trop court pour LLM locaux.
+    Tous les chemins échouaient par manque de budget, résultat vide/"…"
+  Fix 1: budget 15.0s → 45.0s dans ContextWave.create()
+  Fix 2: tous les _PATH_TIMEOUTS augmentés à 45.0s (resonance était à 15s)
+  Impact: les LLM locaux ont assez de temps pour répondre
+
+BUG 3 — NanoPredictor.update_partial_input (DÉJÀ CORRIGÉ)
+  Fichier: app/brain/cortex/predictor.py + app/ui/hud_native.py
+  Statut: méthode update_partial_input présente ligne 56 de predictor.py
+    L'appel dans hud_native.py est déjà protégé par hasattr()
+  Action: aucun changement nécessaire
+
+BONUS — CONSCIENCE DES CAPACITÉS (AJOUTÉ)
+  Fichier: app/core/engine.py
+  Ajout: fonction _check_capabilities() + constantes _CAPABILITY_KEYWORDS, _CAPABILITY_RESPONSE
+    Fast-path (< 1ms) pour les questions "qu'est-ce que tu peux faire" etc.
+    Liste réelle des 10 catégories d'agents disponibles
+  Impact: "qu'est-ce que tu peux faire" → réponse directe avec liste des capacités
+    au lieu de créer un fichier Word inutile
+
