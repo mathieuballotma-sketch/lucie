@@ -40,7 +40,7 @@ class Tool:
 
 
 class BaseAgent(ABC):
-    def __init__(self, name: str, llm_service, bus, event_bus=None, token: Optional[str] = None):
+    def __init__(self, name: str, llm_service: Any, bus: Any, event_bus: Any = None, token: Optional[str] = None):
         self.name = name
         self.llm = llm_service
         self.bus = bus
@@ -49,6 +49,9 @@ class BaseAgent(ABC):
         # --- FIX v5 : token et event_bus font partie de la base ---
         self.token: Optional[str] = token
         self.event_bus = event_bus
+
+        # TimeTracker — injecte par l'engine, optionnel
+        self.time_tracker: Any = None
 
         # CircuitBreaker pour protéger les appels LLM contre les pannes répétées
         self._llm_cb = CircuitBreaker(name=f"llm_{name}", failure_threshold=5, recovery_timeout=60.0)
@@ -84,9 +87,16 @@ class BaseAgent(ABC):
         return self._tools_cache.get(name)
 
     async def execute_tool(self, tool_name: str, parameters: Dict[str, Any]) -> str:
-        # Décommenter pour debug uniquement :
-        # print(f"🟢 EXECUTE_TOOL DEBUT: {tool_name}"); sys.stdout.flush()
         logger.info(f"🛠️ execute_tool: {tool_name} avec params {parameters}")
+
+        # TimeTracker — demarrer le chronometrage si disponible
+        timing = None
+        tracker = self.time_tracker
+        if tracker is not None:
+            try:
+                timing = tracker.start_task(tool_name, self.name)
+            except Exception:
+                pass
 
         start = time.time()
         tool = self._get_tool_by_name(tool_name)
@@ -129,7 +139,13 @@ class BaseAgent(ABC):
             duration = time.time() - start
             tool_execution_duration.labels(agent=self.name, tool=tool_name).observe(duration)
             logger.info(f"✅ [{tool_name}] exécuté en {duration:.2f}s")
-            return result
+            # TimeTracker — enregistrer la duree
+            if timing is not None and tracker is not None:
+                try:
+                    tracker.end_task(timing)
+                except Exception:
+                    pass
+            return str(result) if result is not None else ""
         except Exception as e:
             duration = time.time() - start
             logger.error(f"Erreur exécution [{tool_name}]: {e}")
@@ -214,13 +230,13 @@ class BaseAgent(ABC):
         max_tokens: int = 512,
     ) -> str:
         def _call() -> str:
-            return self.llm.generate(
+            return str(self.llm.generate(
                 prompt=prompt,
                 system=system_prompt,
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
-            )
+            ))
 
         def _fallback() -> str:
             return "[LLM indisponible — circuit ouvert]"
@@ -242,7 +258,7 @@ class BaseAgent(ABC):
     ) -> str:
         """Version asynchrone de ask_llm (exécute dans un thread)."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
+        result = await loop.run_in_executor(
             None,
             self.ask_llm,
             prompt,
@@ -251,18 +267,19 @@ class BaseAgent(ABC):
             temperature,
             max_tokens,
         )
+        return str(result)
 
-    def extract_json_from_response(self, response: str) -> Optional[Dict]:
+    def extract_json_from_response(self, response: str) -> Optional[Dict[Any, Any]]:
         cleaned = re.sub(r'^```json\s*', '', response.strip())
         cleaned = re.sub(r'\s*```$', '', cleaned)
         try:
-            return json.loads(cleaned)
+            return dict(json.loads(cleaned))
         except json.JSONDecodeError:
             for pattern in [r'(\{.*\})', r'(\[.*\])']:
                 match = re.search(pattern, cleaned, re.DOTALL)
                 if match:
                     try:
-                        return json.loads(match.group(1))
+                        return dict(json.loads(match.group(1)))
                     except json.JSONDecodeError:
                         continue
         logger.warning(f"JSON non extractible: {cleaned[:200]}…")
