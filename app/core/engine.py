@@ -21,7 +21,7 @@ import time
 from dataclasses import asdict
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.actions.router import ActionRouter
 from app.actions.system import SystemActions
@@ -39,7 +39,9 @@ from app.utils.crypto import CryptoManager
 from app.utils.logger import logger
 from app.utils.memory_monitor import monitor_memory
 from app.services.energy_manager import EnergyOrchestrator, PowerMode
+from app.services.file_watcher import FileWatcher
 from app.services.proactive_engine import ProactiveEngine
+from app.services.search_engine import LocalSearchEngine
 from app.services.time_tracker import TimeTracker
 from app.utils.metrics import start_metrics_server
 
@@ -247,6 +249,24 @@ class LucidEngine:
         self.scheduler.start()
         self.ollama_circuit = CircuitBreaker("ollama", failure_threshold=3, recovery_timeout=30)
         self.crypto = CryptoManager()
+
+        # Moteur de recherche local
+        self.search_engine: Optional[LocalSearchEngine] = None
+        self.file_watcher: Optional[FileWatcher] = None
+        if self.config.search.enabled:
+            self.search_engine = LocalSearchEngine(
+                index_dir=self.config.search.index_dir,
+                embedder=self.embedder,
+                provider_manager=self.manager,
+                excluded_dirs=self.config.search.excluded_dirs,
+                excluded_extensions=self.config.search.excluded_extensions,
+                max_file_size=self.config.search.max_file_size,
+                generate_keywords=self.config.search.generate_keywords,
+            )
+            self.file_watcher = FileWatcher(
+                self.search_engine,
+                check_interval=self.config.search.watch_interval,
+            )
 
     def _init_agents(self) -> None:
         """
@@ -461,6 +481,12 @@ class LucidEngine:
                 time_tracker=self.time_tracker,
             )
             await self.proactive_engine.start()
+            # Demarrer le moteur de recherche et le file watcher
+            if self.file_watcher and self.search_engine:
+                for watched_dir in self.config.search.watched_dirs:
+                    await self.file_watcher.watch(watched_dir)
+                    await self.search_engine.add_directory(watched_dir)
+                await self.file_watcher.start()
         loop.create_task(_register_then_start())
 
         if self.p2p_node:
@@ -477,6 +503,10 @@ class LucidEngine:
         self._stopping = True
         logger.info("Arrêt du moteur en cours…")
 
+        if self.file_watcher:
+            await self.file_watcher.stop()
+        if self.search_engine:
+            self.search_engine.close()
         if self.proactive_engine:
             await self.proactive_engine.stop()
         await self.energy.stop()
@@ -692,6 +722,16 @@ class LucidEngine:
 
     def index_folder(self, path: str) -> int:
         return self.rag.index_folder(path)
+
+    # -----------------------------------------------------------------------
+    # Recherche locale
+    # -----------------------------------------------------------------------
+    async def search_files(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+        """Recherche de fichiers via le moteur de recherche local."""
+        engine = self.search_engine
+        if engine is None:
+            return []
+        return await engine.search(query, top_k=top_k)
 
     # -----------------------------------------------------------------------
     # Handlers d'événements

@@ -215,6 +215,24 @@ class EnergyConfig:
 
 
 @dataclass
+class SearchConfig:
+    """Configuration du moteur de recherche local."""
+
+    enabled: bool = True
+    index_dir: str = "data/search_index"
+    watched_dirs: List[str] = field(default_factory=list)
+    watch_interval: int = 60
+    max_file_size: int = 10_000_000
+    excluded_dirs: List[str] = field(default_factory=lambda: [
+        ".git", "node_modules", "__pycache__", ".venv", "venv",
+    ])
+    excluded_extensions: List[str] = field(default_factory=lambda: [
+        ".pyc", ".pyo", ".so", ".dylib", ".o", ".a",
+    ])
+    generate_keywords: bool = True
+
+
+@dataclass
 class PlannerConfig:
     max_plan_steps: int = 5
 
@@ -235,6 +253,7 @@ class Config:
     healer: HealerConfig = field(default_factory=HealerConfig)
     planner: PlannerConfig = field(default_factory=PlannerConfig)
     energy: EnergyConfig = field(default_factory=EnergyConfig)
+    search: SearchConfig = field(default_factory=SearchConfig)
     hardware: HardwareConfig = field(default_factory=detect_hardware)
 
     @classmethod
@@ -313,6 +332,10 @@ class Config:
         # Energy
         energy_data = data.get("energy", {})
         config.energy = EnergyConfig(**energy_data)
+
+        # Search
+        search_data = data.get("search", {})
+        config.search = SearchConfig(**search_data)
 
         return config
     def validate(self) -> None:
