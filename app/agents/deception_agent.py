@@ -13,7 +13,7 @@ import asyncio
 import os
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.brain.synapses.event_bus import Event
@@ -45,7 +45,7 @@ class GetAttackersContract(BaseModel):
 class DeceptionAgent(BaseAgent):
     """Agent capable de créer des leurres et de surveiller les interactions."""
 
-    def __init__(self, llm_service, bus, event_bus, config: dict, memory_service=None):
+    def __init__(self, llm_service: Any, bus: Any, event_bus: Any, config: Dict[str, Any], memory_service: Any = None):
         super().__init__("DeceptionAgent", llm_service, bus, event_bus=event_bus)
         self.memory = memory_service
 
@@ -84,7 +84,7 @@ class DeceptionAgent(BaseAgent):
         except Exception as e:
             logger.error(f"DeceptionAgent._subscribe erreur : {e}")
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> List[Tool]:
         return [
             Tool(name="deploy_lure",   description="Déploie un leurre dans un répertoire.",      contract=DeployLureContract),
             Tool(name="list_lures",    description="Liste les leurres actifs.",                   contract=ListLuresContract),
@@ -149,7 +149,7 @@ class DeceptionAgent(BaseAgent):
         self,
         lure_type: str,
         target_path: Optional[str] = None,
-        threat_data: Optional[dict] = None,  # FIX v2 : Optional[dict] pas dict
+        threat_data: Optional[Dict[str, Any]] = None,
     ) -> None:
         try:
             if lure_type in ("file", "adjacent"):
