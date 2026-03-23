@@ -26,7 +26,7 @@ except ImportError:
 
 # Cache process-level des modèles chargés : model_name → (model, tokenizer)
 # mlx_lm.load() est coûteux (téléchargement + désérialisation GPU), on met en cache.
-_model_cache: Dict[str, Tuple[Any, Any]] = {}
+_model_cache: Dict[str, Tuple[Any, ...]] = {}
 
 
 class MLXProvider:
@@ -111,7 +111,7 @@ class MLXProvider:
         start_time = time.time()
 
         try:
-            from mlx_lm import generate, load  # type: ignore[import-untyped]
+            from mlx_lm import generate, load
 
             # Construire le prompt (format chat simplifié si system fourni)
             if system:
@@ -126,7 +126,9 @@ class MLXProvider:
                 logger.info(f"⬇️  Chargement MLX {model_name} en mémoire...")
                 _model_cache[model_name] = load(model_name)
 
-            lm_model, tokenizer = _model_cache[model_name]
+            cached = _model_cache[model_name]
+            lm_model = cached[0]
+            tokenizer = cached[1]
 
             result: str = generate(
                 lm_model,

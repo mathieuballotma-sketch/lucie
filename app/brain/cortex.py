@@ -990,7 +990,7 @@ class ExecutionEngine:
         # Cette méthode sera connectée au NanoPredictor
         return None
 
-    def execute_semantic_parsing(self, query: str) -> str:
+    async def execute_semantic_parsing(self, query: str) -> str:
         tools_desc = [
             f"- {name}.{tool.name}: {tool.description}"
             for name, agent in self.registry.agents.items()
@@ -1005,9 +1005,13 @@ class ExecutionEngine:
         )
         try:
             model_name = self.model_mapping.get("nano", "qwen2.5:0.5b")
-            response = self.manager.generate(
-                prompt=prompt, system="", model=model_name,
-                temperature=0.1, max_tokens=512, timeout=3.0,
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.manager.generate(
+                    prompt=prompt, system="", model=model_name,
+                    temperature=0.1, max_tokens=512, timeout=3.0,
+                ),
             )
             cleaned = response.strip()
             try:
@@ -1050,7 +1054,7 @@ class ExecutionEngine:
             "Tu peux aider sur tous les sujets du quotidien."
         )
 
-    def call_llm(self, query: str, model_profile: str) -> str:
+    async def call_llm(self, query: str, model_profile: str) -> str:
         model_name = self.model_mapping.get(model_profile)
 
         enriched = self._enrich_query(query)
@@ -1064,23 +1068,26 @@ class ExecutionEngine:
 
         def _generate() -> str:
             if model_name:
-                # Profil explicite (speed, balanced, quality, nano)
                 return self.manager.generate(
                     prompt=enriched, system=system,
                     model=model_name, temperature=0.5, max_tokens=256, timeout=timeout,
                 )
             else:
-                # Profil inconnu → laisser le router décider
                 return self.manager.generate(
                     prompt=enriched, system=system,
                     timeout=timeout,
                 )
 
+        # Exécuter dans un thread pour ne pas bloquer la boucle asyncio
+        loop = asyncio.get_running_loop()
         try:
-            response: str = (
-                self.llm_circuit_breaker.call(_generate)
-                if self.llm_circuit_breaker is not None
-                else _generate()
+            response: str = await loop.run_in_executor(
+                None,
+                lambda: (
+                    self.llm_circuit_breaker.call(_generate)
+                    if self.llm_circuit_breaker is not None
+                    else _generate()
+                ),
             )
         except Exception as e:
             raise PathExecutionError(f"Échec de l'appel LLM: {e}") from e
@@ -1387,10 +1394,11 @@ class FrontalCortex:
         _last_error: Optional[Exception] = None
         for path_id, path_func in paths:
             try:
-                if asyncio.iscoroutinefunction(path_func):
-                    response = await path_func(user_query.text)
+                result = path_func(user_query.text)
+                if asyncio.iscoroutine(result):
+                    response = await result
                 else:
-                    response = path_func(user_query.text)
+                    response = result
                 duration = time.time() - start
                 self.path_manager.record_success(user_query.text, path_id, duration)
                 self.metrics.record_step(path_id, duration)

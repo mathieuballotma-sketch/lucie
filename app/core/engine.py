@@ -656,7 +656,7 @@ class LucidEngine:
             raise RuntimeError("set_loop() doit être appelé avant process().")
 
         # Timeout adaptatif : 15s simple, 60s pipeline/recherche
-        effective_timeout = 60 if self._is_multi_step(query) else 15
+        effective_timeout = 120 if self._is_multi_step(query) else 45
 
         future = asyncio.run_coroutine_threadsafe(
             self._process_async_core(query, system_prompt, allow_web_search),
@@ -672,7 +672,7 @@ class LucidEngine:
 
         action_executed, final_response = self.action_router.parse_and_execute(raw_response)
         latency = time.time() - start
-        logger.debug("engine.process_latency", latency)
+        logger.debug(f"engine.process_latency: {latency:.3f}")
         return final_response, latency
 
     async def process_async(
@@ -693,7 +693,7 @@ class LucidEngine:
             return greeting, latency
 
         # Timeout adaptatif : 15s simple, 60s pipeline/recherche
-        effective_timeout = 60.0 if self._is_multi_step(query) else 15.0
+        effective_timeout = 120.0 if self._is_multi_step(query) else 45.0
 
         try:
             raw_response, _ = await asyncio.wait_for(
@@ -711,7 +711,7 @@ class LucidEngine:
 
         action_executed, final_response = self.action_router.parse_and_execute(raw_response)
         latency = time.time() - start
-        logger.debug("engine.process_async_latency", latency)
+        logger.debug(f"engine.process_async_latency: {latency:.3f}")
         return final_response, latency
 
     # -----------------------------------------------------------------------
