@@ -203,8 +203,8 @@ class ExecutionEngine:
             "5. JAMAIS de préambule ('J'ai bien reçu...', 'Voici ma réponse...').\n"
             "6. JAMAIS d'excuse ou de refus vague — agis ou dis pourquoi en 1 phrase."
         )
-        self.enable_memory = config.get("enable_memory", True)
-        self.base_plan_timeout = config.get("plan_timeout", 30.0)
+        self.enable_memory: bool = config.get("enable_memory", True)
+        self.base_plan_timeout: float = float(config.get("plan_timeout", 30.0))
         # Contexte ContextWave courant (injecté par think())
         self._current_ctx: Optional[Any] = None
         # Prompt système nano pré-calculé (appelé des milliers de fois)
@@ -241,16 +241,16 @@ class ExecutionEngine:
                         logger.info(f"🧠 LLM → {agent_name}.handle() (conf={confidence:.2f})")
                         result = await agent.handle(query)
                         if result:
-                            return result
+                            return str(result)
             raise PathExecutionError("Aucune action directe trouvée")
         agent_name, action = route
         try:
             agent = self.registry.get_agent(agent_name)
             logger.debug(f"🔧 Exécution directe : {agent_name}.{action['tool']}")
-            result = await agent.execute_tool(action["tool"], action["parameters"])
-            if result.startswith("❌"):
-                raise PathExecutionError(f"L'outil a retourné une erreur: {result}")
-            return result
+            tool_result = str(await agent.execute_tool(action["tool"], action["parameters"]))
+            if tool_result.startswith("❌"):
+                raise PathExecutionError(f"L'outil a retourné une erreur: {tool_result}")
+            return tool_result
         except (AgentNotFoundError, PathExecutionError) as e:
             raise PathExecutionError(str(e)) from e
         except Exception as e:
@@ -308,7 +308,7 @@ class ExecutionEngine:
         if not agent_name or not tool_name:
             raise PathExecutionError("Prédiction incomplète")
         agent = self.registry.get_agent(agent_name)
-        result = self._run_coro_sync(agent.execute_tool(tool_name, params))
+        result: str = str(self._run_coro_sync(agent.execute_tool(tool_name, params)))
         if result.startswith("❌"):
             raise PathExecutionError(f"Échec de l'action prédite: {result}")
         return result
@@ -353,7 +353,7 @@ class ExecutionEngine:
                 tool_name = act.get("tool")
                 params = act.get("parameters", {})
                 agent = self.registry.get_agent(agent_name)
-                result = self._run_coro_sync(agent.execute_tool(tool_name, params))
+                result: str = str(self._run_coro_sync(agent.execute_tool(tool_name, params)))
                 if result.startswith("❌"):
                     raise PathExecutionError(f"Échec de l'action {tool_name}: {result}")
                 results.append(result)
@@ -366,7 +366,7 @@ class ExecutionEngine:
         for system in systems:
             cached = self.prompt_cache.get(query, system=system, model="balanced")
             if cached:
-                return cached
+                return str(cached)
         raise PathExecutionError("Cache miss")
 
     def _get_nano_system(self) -> str:
@@ -410,7 +410,7 @@ class ExecutionEngine:
         model_name = self.model_mapping.get(effective_profile)
 
         # Tokens et timeout adaptés à la complexité
-        _PROFILE_CONFIG: Dict[str, tuple] = {
+        _PROFILE_CONFIG: Dict[str, tuple[int, float, float]] = {
             # (max_tokens, temperature, timeout)
             "nano":     (100, 0.3, 3.0),
             "speed":    (150, 0.3, 8.0),
@@ -437,16 +437,16 @@ class ExecutionEngine:
                       max_timeout: float) -> str:
             sys_prompt = self.nano_system if profile == "nano" else system
             if model:
-                return self.manager.generate(
+                return str(self.manager.generate(
                     prompt=enriched, system=sys_prompt,
                     model=model, temperature=temperature,
                     max_tokens=max_tokens, timeout=max_timeout,
-                )
+                ))
             else:
-                return self.manager.generate(
+                return str(self.manager.generate(
                     prompt=enriched, system=sys_prompt,
                     timeout=max_timeout,
-                )
+                ))
 
         # Cascade de fallback : modèle choisi → speed → nano
         fallback_chain = []
@@ -527,8 +527,8 @@ class ExecutionEngine:
                 description = q.split(prefix, 1)[1].strip()
                 if description:
                     result = await creator.execute_tool("create_agent", {"description": description})
-                    return result
-        return await creator.execute_tool("create_agent", {"description": query})
+                    return str(result)
+        return str(await creator.execute_tool("create_agent", {"description": query}))
 
     # ── Classification LLM — intention avant keywords ──────────────────────
     _LLM_ACTION_TO_AGENT: Dict[str, Tuple[str, str]] = {
@@ -543,6 +543,12 @@ class ExecutionEngine:
         "open_app": ("ComputerControlAgent", "open_application"),
     }
 
+    # Mots-clés requis pour valider la classification "mail"
+    _MAIL_KEYWORDS: Tuple[str, ...] = (
+        "mail", "email", "e-mail", "courrier", "courriel", "envoie un mail",
+        "lis mes mails", "boîte de réception", "inbox",
+    )
+
     def _classify_intent_llm(self, query: str) -> Optional[Tuple[str, float]]:
         """Classifie l'intention via qwen2.5:0.5b. Retourne (action, confidence) ou None."""
         try:
@@ -551,7 +557,18 @@ class ExecutionEngine:
                 "Tu es un classificateur d'intention. "
                 "Réponds UNIQUEMENT avec un JSON : "
                 '{"action": "reminder|calendar|file|note|mail|code|search|document|open_app|question", '
-                '"confidence": 0.0-1.0} '
+                '"confidence": 0.0-1.0}\n'
+                "Exemples :\n"
+                '"bonjour" → {"action":"question","confidence":0.95}\n'
+                '"ouvre Notes" → {"action":"open_app","confidence":0.95}\n'
+                '"qu\'est-ce que tu peux faire" → {"action":"question","confidence":0.95}\n'
+                '"crée un fichier" → {"action":"file","confidence":0.9}\n'
+                '"traduis en anglais" → {"action":"question","confidence":0.9}\n'
+                '"rappelle-moi demain" → {"action":"reminder","confidence":0.95}\n'
+                '"écris un poème" → {"action":"document","confidence":0.9}\n'
+                '"c\'est quoi Python ?" → {"action":"question","confidence":0.9}\n'
+                '"planifie un projet" → {"action":"question","confidence":0.85}\n'
+                '"envoie un mail" → {"action":"mail","confidence":0.95}\n'
                 "Rien d'autre. Pas d'explication."
             )
             response = self.manager.generate(
@@ -568,6 +585,15 @@ class ExecutionEngine:
             data = _json.loads(match.group())
             action = data.get("action", "question")
             confidence = float(data.get("confidence", 0.0))
+            # Garde-fou : "mail" exige un mot-clé mail dans la requête
+            if action == "mail":
+                q_lower = query.lower()
+                if not any(kw in q_lower for kw in self._MAIL_KEYWORDS):
+                    logger.debug(
+                        f"LLM a classifié '{query[:40]}' comme mail "
+                        "mais aucun mot-clé mail détecté — ignoré"
+                    )
+                    return None
             if action and action != "question" and confidence > 0.7:
                 logger.info(f"🧠 LLM classification: {action} ({confidence:.2f})")
                 return action, confidence
@@ -781,7 +807,8 @@ class ExecutionEngine:
 
     def _get_cached_plan(self, query: str) -> Optional[List[Dict[str, Any]]]:
         try:
-            return self.prompt_cache.get_plan(query, similarity_threshold=0.75)
+            result: Any = self.prompt_cache.get_plan(query, similarity_threshold=0.75)
+            return result  # type: ignore[no-any-return]
         except Exception as exc:
             logger.error(f"Erreur récupération plan cache: {exc}")
             return None
@@ -802,7 +829,7 @@ class ExecutionEngine:
         if not model_name:
             return None
 
-        _PROFILE_CONFIG: Dict[str, tuple] = {
+        _PROFILE_CONFIG: Dict[str, tuple[int, float]] = {
             "nano":     (100, 0.3),
             "speed":    (150, 0.3),
             "balanced": (256, 0.5),
@@ -826,9 +853,9 @@ class ExecutionEngine:
                 ),
                 timeout=timeout,
             )
-            if result and result.strip():
+            if result and str(result).strip():
                 logger.info(f"🔔 Résonance {profile} → réponse en {timeout:.1f}s max")
-                return result
+                return str(result)
         except (asyncio.TimeoutError, Exception) as e:
             logger.debug(f"Résonance {profile} silencieuse: {e}")
         return None
@@ -840,7 +867,7 @@ class ExecutionEngine:
         Premier résultat annule les autres.
         Budget global respecté via ctx.remaining().
         """
-        tasks: Dict[str, asyncio.Task] = {}
+        tasks: Dict[str, asyncio.Task[Optional[str]]] = {}
 
         # nano entre en vibration immédiatement
         tasks["nano"] = asyncio.create_task(
@@ -853,13 +880,16 @@ class ExecutionEngine:
             timeout=min(2.0, ctx.remaining()),
             return_when=asyncio.FIRST_COMPLETED,
         )
-        if done:
-            result = list(done)[0].result()
+        for t in done:
+            try:
+                result = t.result()
+            except (asyncio.CancelledError, Exception):
+                continue
             if result:
-                for t in tasks.values():
-                    if not t.done():
-                        t.cancel()
-                return result
+                for tk in tasks.values():
+                    if not tk.done():
+                        tk.cancel()
+                return str(result)
 
         # speed entre en vibration
         if not ctx.is_expired():
@@ -872,13 +902,16 @@ class ExecutionEngine:
             timeout=min(3.0, ctx.remaining()),
             return_when=asyncio.FIRST_COMPLETED,
         )
-        if done:
-            result = list(done)[0].result()
+        for t in done:
+            try:
+                result = t.result()
+            except (asyncio.CancelledError, Exception):
+                continue
             if result:
-                for t in tasks.values():
-                    if not t.done():
-                        t.cancel()
-                return result
+                for tk in tasks.values():
+                    if not tk.done():
+                        tk.cancel()
+                return str(result)
 
         # balanced entre en vibration
         if not ctx.is_expired():
@@ -897,10 +930,13 @@ class ExecutionEngine:
         for p in pending:
             p.cancel()
 
-        if done:
-            result = list(done)[0].result()
+        for t in done:
+            try:
+                result = t.result()
+            except (asyncio.CancelledError, Exception):
+                continue
             if result:
-                return result
+                return str(result)
 
         from ...utils.errors import PathExecutionError
         raise PathExecutionError(

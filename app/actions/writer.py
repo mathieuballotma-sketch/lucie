@@ -18,12 +18,21 @@ class WriterAgent:
 
     def create_word_document(self, title: str, content: str) -> str:
         try:
+            # Valider le titre — rejeter les messages d'erreur utilisés comme titre
+            error_markers = ("Erreur", "Error", "Exception", "Traceback")
+            if any(marker in title for marker in error_markers):
+                title = "document_sans_titre"
+            # Tronquer à 80 caractères
+            if len(title) > 80:
+                title = title[:80]
             # Nettoyer le titre pour en faire un nom de fichier
             filename = title.replace(" ", "_")
-            filename = filename.replace("/", "_")
-            filename = filename.replace("\\", "_")
-            if not filename:
-                filename = "document"
+            for ch in ('/', '\\', ':', '*', '"', '<', '>', '|', '?', '\n'):
+                filename = filename.replace(ch, "_")
+            # Supprimer les parenthèses et points de suspension
+            filename = filename.replace("(", "").replace(")", "")
+            if not filename or filename.strip("_") == "":
+                filename = "document_sans_titre"
             filepath = os.path.join(self.output_dir, f"{filename}.docx")
 
             doc = Document()

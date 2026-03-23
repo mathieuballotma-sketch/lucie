@@ -8,6 +8,7 @@ Corrections v2 :
 
 import asyncio
 import os
+from typing import Any
 
 from pydantic.v1 import BaseModel, Field
 
@@ -24,15 +25,15 @@ class DocumentAgentCreateWordDocumentContract(BaseModel):
 class DocumentAgent(BaseAgent):
     """Agent de création de documents Word."""
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("DocumentAgent", llm_service, bus)
         base_dir   = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         output_dir = os.path.join(base_dir, "Lucid_Docs")
         self.writer     = WriterAgent(output_dir)
-        self.web_search = config.get("web_search")
+        self.web_search: Any = config.get("web_search")
         logger.info(f"📁 Documents sauvegardés dans : {output_dir}")
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="create_word_document",
@@ -71,8 +72,8 @@ class DocumentAgent(BaseAgent):
         if needs_search:
             logger.info("🔍 Recherche web préalable...")
             try:
-                loop    = asyncio.get_running_loop()
-                results = await loop.run_in_executor(None, self.web_search.search, query, 3)
+                # web_search.search est async — appel direct avec await
+                results = await self.web_search.search(query, 3)
                 if results:
                     search_summary = "\n".join(
                         [f"- {r['title']}: {r['body'][:200]}" for r in results]

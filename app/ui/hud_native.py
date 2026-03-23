@@ -556,13 +556,6 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     def _process_query(self, query: str) -> None:
         print(f"🧵 Thread _process_query démarré pour: '{query}'")
         try:
-            # Afficher un message de début de réflexion
-            AppHelper.callAfter(
-                self.append_message_safe, "Agent", "Je réfléchis...", False
-            )
-            # Petite pause pour que l'utilisateur voie le message
-            time.sleep(0.5)
-
             print("Appel de self.engine.process...")
             assert self.engine is not None
             response, latency = self.engine.process(query, use_rag=True)
@@ -571,6 +564,9 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             if not response or not str(response).strip():
                 response = "(Aucune réponse générée)"
                 print("⚠️ Réponse vide, message par défaut utilisé")
+
+            # Convertir en str au cas où ce serait un coroutine ou autre objet
+            response = str(response)
 
             # Lancer le streaming de la réponse
             AppHelper.callAfter(self._start_streaming, "Agent", response, False)
@@ -589,13 +585,20 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._streaming_timer = None
 
         self._streaming_sender = sender
-        self._streaming_full_text = full_text
+        self._streaming_full_text = str(full_text) if full_text else ""
         self._streaming_text = ""
         self._streaming_index = 0
-        self._streaming_range = None  # sera calculé au premier tick
+
+        # Capturer la position avant d'ajouter le message vide
+        storage = self._text_view.textStorage()
+        start_pos = len(storage.string())
 
         # Ajouter un message vide pour le sender
         self.append_message_safe(sender, "", user)
+
+        # Calculer la plage immédiatement (ne pas attendre le premier tick)
+        end_pos = len(storage.string())
+        self._streaming_range = (start_pos, end_pos)
 
         # Lancer le timer
         self._streaming_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
@@ -633,21 +636,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         storage = self._text_view.textStorage()
 
-        # Si on n'a pas encore la plage, on la calcule en cherchant le dernier message
         if self._streaming_range is None:
-            full_string = storage.string()
-            # Trouver la position du dernier message (après le dernier saut de ligne)
-            last_newline = full_string.rfind("\n")
-            if last_newline != -1:
-                # Le dernier message commence après ce saut de ligne
-                start = last_newline + 1
-                end = len(full_string)
-                self._streaming_range = (start, end)
-
-        if self._streaming_range is None:
-            # Cas improbable : pas de message, on annule
             return
-
         start, end = self._streaming_range
 
         # Construire le nouveau message complet (sender + texte courant)

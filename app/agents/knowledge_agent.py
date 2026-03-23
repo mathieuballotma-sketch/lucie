@@ -4,10 +4,11 @@ Utilise la validation Pydantic pour les paramètres des outils.
 """
 
 import asyncio
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 import requests
+from urllib.parse import quote as url_quote
 from pydantic.v1 import BaseModel, Field
 
 from app.agents.base_agent import BaseAgent, Tool
@@ -20,7 +21,14 @@ class KnowledgeAgentWebSearchContract(BaseModel):
 
 
 class KnowledgeAgentWikipediaSummaryContract(BaseModel):
-    query: str = Field(..., description="Le titre ou sujet de l'article")
+    """Accepte 'query' ou 'title' comme nom de champ."""
+
+    query: str = Field(..., alias="title", description="Le titre ou sujet de l'article")
+
+    class Config:
+        """Pydantic v1 : autoriser le nom de champ en plus de l'alias."""
+
+        allow_population_by_field_name = True
 
 
 class KnowledgeAgentWikipediaSearchContract(BaseModel):
@@ -40,7 +48,7 @@ class KnowledgeAgent(BaseAgent):
     Agent de connaissances : recherche web, Wikipedia, arXiv, actualités.
     """
 
-    def __init__(self, llm_service, bus, config):
+    def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("KnowledgeAgent", llm_service, bus)
         self.user_agent = "LucidAgent/1.0 (contact@example.com)"
         self.news_api_key = config.get("news_api_key")
@@ -49,7 +57,7 @@ class KnowledgeAgent(BaseAgent):
         self.search_api_url = "http://127.0.0.1:8000/search"
         self.timeout = config.get("timeout", 10)
 
-    def get_tools(self) -> list:
+    def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="web_search",
@@ -88,11 +96,8 @@ class KnowledgeAgent(BaseAgent):
         if self.web_search:
             logger.info("Fallback sur DuckDuckGo direct")
             try:
-                # Supposons que web_search.search est synchrone, on le met dans un executor
-                loop = asyncio.get_event_loop()
-                results = await loop.run_in_executor(
-                    None, self.web_search.search, query, max_results
-                )
+                # web_search.search est async — appel direct avec await
+                results = await self.web_search.search(query, max_results)
                 if not results:
                     return f"Aucun résultat web trouvé pour '{query}'."
                 output = f"Résultats web pour '{query}':\n"
@@ -154,7 +159,7 @@ class KnowledgeAgent(BaseAgent):
             # Essayer français
             url = (
                 "https://fr.wikipedia.org/api/rest_v1/page/summary/"
-                + requests.utils.quote(query)
+                + url_quote(query)
             )
             resp = await loop.run_in_executor(
                 None,
@@ -171,7 +176,7 @@ class KnowledgeAgent(BaseAgent):
             # Sinon anglais
             url = (
                 "https://en.wikipedia.org/api/rest_v1/page/summary/"
-                + requests.utils.quote(query)
+                + url_quote(query)
             )
             resp = await loop.run_in_executor(
                 None,
@@ -245,8 +250,8 @@ class KnowledgeAgent(BaseAgent):
             for entry in entries:
                 title_el = entry.find("atom:title", ns)
                 summary_el = entry.find("atom:summary", ns)
-                title = title_el.text if title_el is not None else ""
-                summary = summary_el.text if summary_el is not None else ""
+                title = title_el.text if title_el is not None and title_el.text else ""
+                summary = summary_el.text if summary_el is not None and summary_el.text else ""
                 output += f"- {title}\n  {summary[:200]}...\n\n"
             return output
         except Exception as e:
@@ -361,22 +366,17 @@ Si aucun outil n'est pertinent, réponds {{"tool": "none"}}.
             logger.error(f"Erreur dans KnowledgeAgent.handle: {e}")
             return f"Erreur lors de la recherche : {str(e)}"
 
-    async def _run_web_search(self, query: str, max_results: int) -> list:
+    async def _run_web_search(self, query: str, max_results: int) -> list[Any]:
         if not self.web_search:
             return []
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, self.web_search.search, query, max_results
-        )
+        results: list[Any] = await self.web_search.search(query, max_results)
+        return results
 
-    async def _summarize_results(self, query: str, results: list) -> str:
+    async def _summarize_results(self, query: str, results: list[Any]) -> str:
         content = "\n".join([f"- {r['title']}: {r['body'][:200]}" for r in results])
         prompt = f"""
 Voici des résultats de recherche pour la requête "{query}" :
 {content}
 Fais un résumé concis et informatif de ces informations.
 """
-        return self.ask_llm(prompt)
-
-        # ... (tout le code existant, puis à la fin)
         return self.ask_llm(prompt)

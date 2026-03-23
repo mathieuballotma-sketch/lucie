@@ -1,0 +1,44 @@
+=== FIX 1 — Classification LLM fausse — 2026-03-23 ===
+Fichiers modifiés : app/brain/cortex/execution_engine.py
+Changement : Ajout exemples few-shot dans le prompt de classification + garde-fou mail (mots-clés requis)
+ruff  : ✅ 0 erreurs
+mypy  : ✅ 0 erreurs
+pytest: ✅ 245 passed
+Régressions : aucune
+---
+
+=== FIX 2 — HUD affiche '…' au lieu de la réponse — 2026-03-23 ===
+Fichiers modifiés : app/ui/hud_native.py
+Changement : Suppression placeholder "Je réfléchis..." jamais nettoyé, conversion full_text en str, calcul immédiat de _streaming_range dans _start_streaming au lieu du calcul paresseux bugué dans streamingTimerFired_
+ruff  : ✅ 0 erreurs
+mypy  : ✅ 0 erreurs
+pytest: ✅ 245 passed
+Régressions : aucune
+---
+
+=== FIX 3 — web_search coroutine dans run_in_executor — 2026-03-23 ===
+Fichiers modifiés : app/agents/knowledge_agent.py, app/agents/document_agent.py
+Changement : WebSearch.search() est async — remplacé run_in_executor par await direct dans knowledge_agent (2 endroits) et document_agent (1 endroit)
+ruff  : ✅ 0 erreurs
+mypy  : ✅ 0 erreurs
+pytest: ✅ 245 passed
+Régressions : aucune
+---
+
+=== FIX 4 — wikipedia_summary validation error (title vs query) — 2026-03-23 ===
+Fichiers modifiés : app/agents/knowledge_agent.py
+Changement : Ajout alias "title" sur le champ query de KnowledgeAgentWikipediaSummaryContract + allow_population_by_field_name pour accepter les deux noms
+ruff  : ✅ 0 erreurs
+mypy  : ✅ 0 erreurs
+pytest: ✅ 245 passed
+Régressions : aucune
+---
+
+=== FIX 5 — Document nommé d'après le message d'erreur — 2026-03-23 ===
+Fichiers modifiés : app/actions/writer.py
+Changement : Validation du titre dans create_word_document — rejet si contient Erreur/Error/Exception, troncature 80 chars, sanitization caractères interdits, fallback "document_sans_titre"
+ruff  : ✅ 0 erreurs
+mypy  : ✅ 0 erreurs
+pytest: ✅ 245 passed
+Régressions : aucune
+---
