@@ -16,10 +16,12 @@ Incarne les lois universelles :
 """
 
 import asyncio
+import random
 import time
 from dataclasses import asdict
+from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from app.actions.router import ActionRouter
 from app.actions.system import SystemActions
@@ -36,6 +38,9 @@ from app.utils.circuit_breaker import CircuitBreaker
 from app.utils.crypto import CryptoManager
 from app.utils.logger import logger
 from app.utils.memory_monitor import monitor_memory
+from app.services.energy_manager import EnergyOrchestrator, PowerMode
+from app.services.proactive_engine import ProactiveEngine
+from app.services.time_tracker import TimeTracker
 from app.utils.metrics import start_metrics_server
 
 from ..agents.cyber_agent import CyberAgent
@@ -45,10 +50,78 @@ from ..agents.strategist_agent import StrategistAgent
 from ..agents.planner_agent import PlannerAgent
 from ..core.config import Config
 from ..core.elasticity import ElasticityEngine
-from ..memory import ConsolidationEngine, EpisodicMemory, MemoryService, WorkingMemory
+from ..memory import ConsolidationEngine, ContextualMemory, EpisodicMemory, MemoryService, WorkingMemory
 from ..memory.memory_manager import MemoryManager
 from ..p2p.node import P2PNode
 from ..providers.manager import ProviderManager
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Cache instantané pour salutations — réponse < 1ms sans LLM
+# Règle CLAUDE.md : NE JAMAIS toucher _GREETING_CACHE
+# ─────────────────────────────────────────────────────────────────────────────
+_GREETING_CACHE: Dict[str, List[str]] = {
+    "bonjour": ["Bonjour ! Comment puis-je t'aider ?", "Bonjour ! Que puis-je faire pour toi ?", "Bonjour !"],
+    "bonsoir": ["Bonsoir ! Comment puis-je t'aider ?", "Bonsoir !"],
+    "salut": ["Salut ! Qu'est-ce que je peux faire ?", "Salut !", "Salut, dis-moi tout !"],
+    "hello": ["Hello ! How can I help?", "Hello !", "Hello, que puis-je faire ?"],
+    "coucou": ["Coucou ! Quoi de neuf ?", "Coucou !", "Coucou, dis-moi !"],
+    "hey": ["Hey ! Comment ça va ?", "Hey !", "Hey, je t'écoute !"],
+    "hi": ["Hi ! Que puis-je faire ?", "Hi !", "Hi, je suis là !"],
+    "merci": ["Avec plaisir !", "De rien !", "Je t'en prie !"],
+    "au revoir": ["Au revoir !", "À bientôt !", "Salut, à plus !"],
+    "bye": ["Bye !", "À plus !", "Bye bye !"],
+    "bonne nuit": ["Bonne nuit !", "Dors bien !", "Bonne nuit, à demain !"],
+    "ça va": ["Ça va bien, merci ! Et toi ?", "Impeccable ! Et toi ?"],
+    "ca va": ["Ça va bien ! Et toi ?", "Très bien, merci !"],
+    "comment vas-tu": ["Je vais très bien, merci !", "Parfait, prêt à t'aider !"],
+    "comment tu vas": ["Super bien ! Que puis-je faire ?", "Très bien !"],
+    "ok": ["OK ! Autre chose ?", "Bien reçu !"],
+    "oui": ["D'accord ! Que veux-tu faire ?", "OK !"],
+    "non": ["Pas de souci !", "D'accord !"],
+    "merci beaucoup": ["Avec grand plaisir !", "De rien, c'est normal !"],
+    "bonne journée": ["Bonne journée à toi aussi !", "Merci, bonne journée !"],
+    "quoi de neuf": ["Pas grand-chose, je t'attends ! Que puis-je faire ?"],
+}
+
+# Seuil de similarité pour le matching flou des salutations
+_GREETING_SIMILARITY_THRESHOLD = 0.75
+
+
+def _check_greeting(query: str) -> Optional[str]:
+    """Détecte une salutation (exacte ou floue) et retourne une réponse instantanée.
+
+    Matching flou pour attraper les typos : bonjourr, bonojur, slaut, etc.
+    Retourne None si pas une salutation → le pipeline normal prend le relais.
+    """
+    q = query.lower().strip().rstrip("!?.…,;: ")
+
+    # Match exact — 0ms
+    if q in _GREETING_CACHE:
+        return random.choice(_GREETING_CACHE[q])
+
+    # Match flou — < 1ms (SequenceMatcher sur ~20 clés)
+    best_match: Optional[str] = None
+    best_score: float = 0.0
+    for key in _GREETING_CACHE:
+        score = SequenceMatcher(None, q, key).ratio()
+        if score > best_score:
+            best_score = score
+            best_match = key
+
+    if best_match and best_score >= _GREETING_SIMILARITY_THRESHOLD:
+        return random.choice(_GREETING_CACHE[best_match])
+
+    return None
+
+
+# Requêtes brèves qui ne nécessitent pas de RAG
+_BRIEF_QUERY_MAX_WORDS = 4
+
+
+def _is_brief_query(query: str) -> bool:
+    """Détecte les requêtes trop courtes pour bénéficier du RAG."""
+    return len(query.split()) <= _BRIEF_QUERY_MAX_WORDS
 
 
 class LucidEngine:
@@ -71,6 +144,10 @@ class LucidEngine:
             start_metrics_server(port=config.metrics.port)
             monitor_memory(interval=config.metrics.memory_interval)
 
+        self._init_energy()
+        self.time_tracker = TimeTracker()
+        self.contextual_memory = ContextualMemory()
+        self.proactive_engine: Optional[ProactiveEngine] = None
         self._init_llm()
         self._init_executor()
         self._init_memory()
@@ -86,6 +163,32 @@ class LucidEngine:
     # -----------------------------------------------------------------------
     # Initialisation
     # -----------------------------------------------------------------------
+    def _init_energy(self) -> None:
+        """Initialise le gestionnaire d'energie."""
+        self.energy = EnergyOrchestrator(
+            energy_mode=self.config.energy.energy_mode,
+            low_battery_threshold=self.config.energy.low_battery_threshold,
+            power_check_interval=self.config.energy.power_check_interval,
+        )
+        self.energy.on_mode_change(self._on_energy_mode_change)
+
+    def _on_energy_mode_change(self, mode: PowerMode) -> None:
+        """Reagit aux changements de mode energetique."""
+        energy_config = self.energy.get_energy_config()
+        self.manager.set_energy_config(energy_config)
+
+        # Basculer FAISS si necessaire
+        profile = self.energy.profile
+        faiss_mode = profile.get("faiss_mode", "memory")
+        if hasattr(self.rag, "switch_faiss_mode"):
+            self.rag.switch_faiss_mode(faiss_mode)
+
+        # En mode CRITICAL, decharger les modeles
+        if mode == PowerMode.CRITICAL:
+            self.manager.unload_all_models()
+
+        logger.info(f"Engine adapte au mode energie: {mode.value}")
+
     def _init_llm(self) -> None:
         models_config = {}
         for key, m in self.config.llm.models.items():
@@ -236,13 +339,19 @@ class LucidEngine:
             },
         )
 
+        # Injecter le QuantumRouter pour l'apprentissage adaptatif du routage
+        from app.brain.cortex.quantum_router import QuantumRouter
+        self.cortex._quantum_router = QuantumRouter()  # type: ignore[assignment]
+
         # FIX v2 : utiliser agent_registry.agents (et non cortex.agents qui n'existe pas)
         self.planner_agent.set_agents(self.cortex.agent_registry.agents)
 
         for agent in self.cortex.agent_registry.agents.values():
             agent.event_bus = self.event_bus
+            agent.time_tracker = self.time_tracker
 
     def _init_p2p(self) -> None:
+        self.p2p_node: Optional[P2PNode] = None
         if hasattr(self.config, "p2p") and self.config.p2p.enabled:
             data_dir = Path(self.config.app.data_dir) / "p2p"
             self.p2p_node = P2PNode(
@@ -251,8 +360,6 @@ class LucidEngine:
                 event_bus=self.event_bus,
                 data_dir=data_dir,
             )
-        else:
-            self.p2p_node = None
 
     # -----------------------------------------------------------------------
     # Enregistrement des handlers
@@ -323,7 +430,15 @@ class LucidEngine:
         )
         self.healer_agent.set_token(healer_token)
 
-        logger.info("✅ Engine : handlers enregistrés (engine + cyber + healer)")
+        # ── StrategistAgent ──────────────────────────────────────────────
+        strategist_token = await self.event_bus.register_source(
+            source="StrategistAgent",
+            publish_channels=["strategist.suggestion"],
+            subscribe_channels=[],
+        )
+        self.strategist.set_token(strategist_token)
+
+        logger.info("✅ Engine : handlers enregistrés (engine + cyber + healer + strategist)")
 
     # -----------------------------------------------------------------------
     # Cycle de vie
@@ -336,10 +451,16 @@ class LucidEngine:
         une fois la boucle disponible.
         """
         self._loop = loop
-        async def _register_then_start():
+        async def _register_then_start() -> None:
             await self._register_event_handlers()
             self.cyber_agent.set_loop(loop)
             self.healer_agent.set_loop(loop)
+            await self.energy.start()
+            self.proactive_engine = ProactiveEngine(
+                contextual_memory=self.contextual_memory,
+                time_tracker=self.time_tracker,
+            )
+            await self.proactive_engine.start()
         loop.create_task(_register_then_start())
 
         if self.p2p_node:
@@ -356,6 +477,9 @@ class LucidEngine:
         self._stopping = True
         logger.info("Arrêt du moteur en cours…")
 
+        if self.proactive_engine:
+            await self.proactive_engine.stop()
+        await self.energy.stop()
         if self.p2p_node:
             await self.p2p_node.stop()
         await self.healer_agent.stop()
@@ -375,10 +499,16 @@ class LucidEngine:
         logger.info("Moteur arrêté")
 
     def stop(self) -> None:
-        if self._loop and self._loop.is_running():
-            asyncio.create_task(self.stop_async())
+        """Arrêt sûr — jamais de asyncio.run() si une boucle tourne déjà."""
+        loop = self._loop
+        if loop is not None and loop.is_running():
+            loop.create_task(self.stop_async())
         else:
-            asyncio.run(self.stop_async())
+            try:
+                asyncio.run(self.stop_async())
+            except RuntimeError:
+                # Boucle déjà en cours dans un autre thread — fallback
+                logger.warning("Arrêt impossible via asyncio.run(), boucle déjà active")
 
     # -----------------------------------------------------------------------
     # Traitement des requêtes
@@ -389,9 +519,26 @@ class LucidEngine:
         system_prompt: Optional[str] = None,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
-        # Enrichir le system prompt avec les souvenirs RAG pertinents
+        # Enrichir le system prompt avec le contexte utilisateur
         enriched_system = system_prompt
-        if self.rag.active:
+        try:
+            user_ctx = await self.contextual_memory.get_context_for_query(query)
+            if user_ctx:
+                ctx_parts = []
+                comm = user_ctx.get("communication")
+                if comm:
+                    ctx_parts.append(f"Preferences communication: {comm}")
+                interests = user_ctx.get("content_interests")
+                if interests:
+                    ctx_parts.append(f"Sujets frequents: {interests}")
+                if ctx_parts:
+                    ctx_str = "\n".join(ctx_parts) + "\n\n"
+                    enriched_system = (
+                        f"{ctx_str}{enriched_system}" if enriched_system else ctx_str
+                    )
+        except Exception as e:
+            logger.debug(f"Contexte utilisateur indisponible: {e}")
+        if self.rag.active and not _is_brief_query(query):
             memories = self.rag.search_memories(query, n_results=3)
             if memories:
                 memory_ctx = "\n".join(
@@ -416,7 +563,7 @@ class LucidEngine:
             try:
                 pipeline_result = await self._run_pipeline(query)
                 if pipeline_result:
-                    latency = time.time() - time.time()  # recalculé ci-dessous
+                    # Latence recalculée par process() — pas besoin ici
                     if self.rag.active and pipeline_result:
                         self.rag.index_conversation(query, pipeline_result, time.time())
                     return pipeline_result, 0.0  # latency recalculée par process()
@@ -468,11 +615,18 @@ class LucidEngine:
         start = time.time()
         logger.info(f"⚙️ Engine.process() — {query[:50]}…")
 
-        if use_rag:
-            self.rag.query(query)
+        # ── Fast path salutations — < 1ms, contourne TOUT ────────────
+        greeting = _check_greeting(query)
+        if greeting:
+            latency = time.time() - start
+            logger.info(f"⚡ Salutation détectée → {latency*1000:.0f}ms")
+            return greeting, latency
 
         if self._loop is None:
             raise RuntimeError("set_loop() doit être appelé avant process().")
+
+        # Timeout adaptatif : 15s simple, 60s pipeline/recherche
+        effective_timeout = 60 if self._is_multi_step(query) else 15
 
         future = asyncio.run_coroutine_threadsafe(
             self._process_async_core(query, system_prompt, allow_web_search),
@@ -480,7 +634,7 @@ class LucidEngine:
         )
 
         try:
-            raw_response, _ = future.result(timeout=120)
+            raw_response, _ = future.result(timeout=effective_timeout)
         except Exception as e:
             future.cancel()
             logger.error(f"Erreur process: {e}")
@@ -501,13 +655,26 @@ class LucidEngine:
         start = time.time()
         logger.info(f"⚙️ Engine.process_async() — {query[:50]}…")
 
-        if use_rag:
-            self.rag.query(query)
+        # ── Fast path salutations — < 1ms ────────────────────────────
+        greeting = _check_greeting(query)
+        if greeting:
+            latency = time.time() - start
+            logger.info(f"⚡ Salutation détectée → {latency*1000:.0f}ms")
+            return greeting, latency
+
+        # Timeout adaptatif : 15s simple, 60s pipeline/recherche
+        effective_timeout = 60.0 if self._is_multi_step(query) else 15.0
 
         try:
-            raw_response, _ = await self._process_async_core(
-                query, system_prompt, allow_web_search
+            raw_response, _ = await asyncio.wait_for(
+                self._process_async_core(
+                    query, system_prompt, allow_web_search
+                ),
+                timeout=effective_timeout,
             )
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout process_async après {effective_timeout}s")
+            return "Désolé, la requête a pris trop de temps.", time.time() - start
         except Exception as e:
             logger.error(f"Erreur process_async: {e}")
             return f"Erreur: {e}", time.time() - start

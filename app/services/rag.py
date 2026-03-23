@@ -54,6 +54,7 @@ class RAGService:
         self.max_sources = getattr(config, "max_sources", 3)
 
         # Initialisation FAISS + SQLite
+        self.id_mapping: List[int] = []
         self._init_faiss()
         self._init_sqlite()
 
@@ -70,12 +71,22 @@ class RAGService:
             logger.info(f"Index FAISS recréé (dim {old_dim} → {self.dimension})")
         logger.info(f"✅ RAG activé avec embedder (dim={self.dimension})")
 
-    def _init_faiss(self) -> None:
-        """Initialise ou charge l'index FAISS."""
+    def _init_faiss(self, use_mmap: bool = False) -> None:
+        """Initialise ou charge l'index FAISS.
+
+        Args:
+            use_mmap: Si True, charge l'index en mode mmap (economie memoire).
+        """
+        self._faiss_mode = "mmap" if use_mmap else "memory"
         self.index_path = self.data_dir / "faiss.index"
         if self.index_path.exists():
             try:
-                self.index = faiss.read_index(str(self.index_path))
+                if use_mmap:
+                    self.index = faiss.read_index(
+                        str(self.index_path), faiss.IO_FLAG_MMAP
+                    )
+                else:
+                    self.index = faiss.read_index(str(self.index_path))
                 if self.index.d != self.dimension:
                     logger.warning(
                         f"Dimension FAISS ({self.index.d}) != embedder ({self.dimension}), "
@@ -83,7 +94,11 @@ class RAGService:
                     )
                     self.index = faiss.IndexFlatL2(self.dimension)
                 else:
-                    logger.info(f"Index FAISS chargé ({self.index.ntotal} vecteurs)")
+                    mode_str = "mmap" if use_mmap else "memory"
+                    logger.info(
+                        f"Index FAISS chargé ({self.index.ntotal} vecteurs, "
+                        f"mode={mode_str})"
+                    )
             except Exception as e:
                 logger.warning(f"Erreur chargement index FAISS: {e}, recréation")
                 self.index = faiss.IndexFlatL2(self.dimension)
@@ -95,7 +110,7 @@ class RAGService:
         self.mapping_path = self.data_dir / "id_mapping.json"
         if self.mapping_path.exists():
             try:
-                self.id_mapping: List[int] = json.loads(self.mapping_path.read_text())
+                self.id_mapping = json.loads(self.mapping_path.read_text())
             except Exception:
                 self.id_mapping = []
         else:
@@ -139,6 +154,28 @@ class RAGService:
         """Sauvegarde le mapping FAISS → IDs en JSON (pas pickle)."""
         self.mapping_path.write_text(json.dumps(self.id_mapping))
 
+    def switch_faiss_mode(self, mode: str) -> None:
+        """Bascule le mode FAISS entre 'memory' et 'mmap'.
+
+        Sauvegarde l'index courant puis le recharge dans le nouveau mode.
+        """
+        if mode == self._faiss_mode:
+            return
+        # Sauvegarder l'index courant si besoin
+        if self.index.ntotal > 0:
+            faiss.write_index(self.index, str(self.index_path))
+        use_mmap = mode == "mmap"
+        self._init_faiss(use_mmap=use_mmap)
+        logger.info(f"FAISS bascule en mode {mode}")
+
+    def unload_faiss(self) -> None:
+        """Libere l'index FAISS de la memoire."""
+        if self.index.ntotal > 0:
+            faiss.write_index(self.index, str(self.index_path))
+        self.index = faiss.IndexFlatL2(self.dimension)
+        self.id_mapping = []
+        logger.info("Index FAISS decharge de la memoire")
+
     # -----------------------------------------------------------------------
     # Indexation de conversations (mémoire épisodique vectorielle)
     # -----------------------------------------------------------------------
@@ -172,7 +209,7 @@ class RAGService:
             conv_id: int = cur.lastrowid or 0
 
             # Ajouter à FAISS (ID négatif pour distinguer des chunks de fichiers)
-            self.index.add(np.array([embedding]).astype("float32"))  # type: ignore[arg-type]
+            self.index.add(np.array([embedding]).astype("float32"))
             self.id_mapping.append(-conv_id)  # négatif = conversation
 
             self.conn.commit()
@@ -207,7 +244,7 @@ class RAGService:
             return []
 
         n = min(n_results, self.index.ntotal)
-        distances, indices = self.index.search(q_emb, n)  # type: ignore[call-arg]
+        distances, indices = self.index.search(q_emb, n)
 
         results: List[Dict[str, Any]] = []
         for i, idx in enumerate(indices[0]):
@@ -255,8 +292,8 @@ class RAGService:
     # Indexation de fichiers (inchangée dans la logique)
     # -----------------------------------------------------------------------
     def _get_file_hash(self, path: Path) -> str:
-        """Calcule le hash MD5 d'un fichier."""
-        hasher = hashlib.md5()
+        """Calcule le hash blake2b d'un fichier."""
+        hasher = hashlib.blake2b(digest_size=16)
         with open(path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 hasher.update(chunk)
@@ -277,7 +314,7 @@ class RAGService:
     def _read_pdf(self, path: Path) -> str:
         """Lit le contenu texte d'un PDF."""
         try:
-            doc = pymupdf.open(path)
+            doc: Any = pymupdf.open(path)  # type: ignore[no-untyped-call]
             text = ""
             for page in doc:
                 text += str(page.get_text())
@@ -349,7 +386,7 @@ class RAGService:
                 (str(file_path), i, len(chunks), file_hash, chunk),
             )
             chunk_id: int = cur.lastrowid or 0
-            self.index.add(np.array([emb]).astype("float32"))  # type: ignore[arg-type]
+            self.index.add(np.array([emb]).astype("float32"))
             self.id_mapping.append(chunk_id)
 
         self.conn.commit()
@@ -454,7 +491,7 @@ class RAGService:
             logger.info(f"Reconstruction index FAISS ({len(all_texts)} entrées)...")
             embeddings = embedder.encode(all_texts)
             self.index = faiss.IndexFlatL2(self.dimension)
-            self.index.add(embeddings.astype("float32"))  # type: ignore[arg-type]
+            self.index.add(embeddings.astype("float32"))
             self.id_mapping = all_ids
 
         faiss.write_index(self.index, str(self.index_path))

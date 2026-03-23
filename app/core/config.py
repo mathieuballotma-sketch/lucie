@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 
 @dataclass
@@ -75,7 +75,7 @@ def detect_hardware() -> HardwareConfig:
         ram_gb = int(result.stdout.strip()) / (1024**3)
     except Exception:
         try:
-            import psutil  # type: ignore[import-untyped]
+            import psutil
 
             ram_gb = psutil.virtual_memory().total / (1024**3)
         except ImportError:
@@ -205,6 +205,16 @@ class HealerConfig:
 
 
 @dataclass
+class EnergyConfig:
+    """Configuration de la gestion d'energie."""
+
+    energy_mode: str = "auto"
+    ollama_keep_alive_default: str = "2m"
+    power_check_interval: int = 30
+    low_battery_threshold: int = 20
+
+
+@dataclass
 class PlannerConfig:
     max_plan_steps: int = 5
 
@@ -224,6 +234,7 @@ class Config:
     cyber: CyberConfig = field(default_factory=CyberConfig)
     healer: HealerConfig = field(default_factory=HealerConfig)
     planner: PlannerConfig = field(default_factory=PlannerConfig)
+    energy: EnergyConfig = field(default_factory=EnergyConfig)
     hardware: HardwareConfig = field(default_factory=detect_hardware)
 
     @classmethod
@@ -298,6 +309,10 @@ class Config:
         # Planner
         planner_data = data.get("planner", {})
         config.planner = PlannerConfig(**planner_data)
+
+        # Energy
+        energy_data = data.get("energy", {})
+        config.energy = EnergyConfig(**energy_data)
 
         return config
     def validate(self) -> None:

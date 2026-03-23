@@ -1,16 +1,19 @@
 # app/ui/hud_native.py
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
 import threading
 import time
+from typing import Any, Optional, Tuple
 
-import AppKit  # type: ignore[import]
-import Foundation  # type: ignore[import]
-import objc  # type: ignore[import]
-import Quartz  # type: ignore[import]
-from PyObjCTools import AppHelper  # type: ignore[import]
+import AppKit
+import Foundation
+import objc
+import Quartz
+from PyObjCTools import AppHelper
 
 from ..core.config import Config
 from ..core.engine import LucidEngine
@@ -28,29 +31,29 @@ STATUS_H = 16
 ALPHA = 0.75
 
 
-def ns_color(r, g, b, a=1.0):
+def ns_color(r: float, g: float, b: float, a: float = 1.0) -> Any:
     return AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(r, g, b, a)
 
 
-def ns_white(w, a=1.0):
+def ns_white(w: float, a: float = 1.0) -> Any:
     return AppKit.NSColor.colorWithCalibratedWhite_alpha_(w, a)
 
 
-def make_rect(x, y, w, h):
+def make_rect(x: float, y: float, w: float, h: float) -> Any:
     return AppKit.NSMakeRect(x, y, w, h)
 
 
-class DraggableView(AppKit.NSView):
-    def initWithFrame_(self, frame):
+class DraggableView(AppKit.NSView):  # type: ignore[misc]
+    def initWithFrame_(self, frame: Any) -> Any:
         self = objc.super(DraggableView, self).initWithFrame_(frame)
         if self is not None:
-            self._drag_start = None
+            self._drag_start: Any = None
         return self
 
-    def mouseDown_(self, event):
+    def mouseDown_(self, event: Any) -> None:
         self._drag_start = event.locationInWindow()
 
-    def mouseDragged_(self, event):
+    def mouseDragged_(self, event: Any) -> None:
         if self._drag_start is None:
             return
         loc = event.locationInWindow()
@@ -61,17 +64,17 @@ class DraggableView(AppKit.NSView):
             f = win.frame()
             win.setFrameOrigin_((f.origin.x + dx, f.origin.y + dy))
 
-    def mouseUp_(self, event):
+    def mouseUp_(self, event: Any) -> None:
         self._drag_start = None
 
-    def isOpaque(self):
+    def isOpaque(self) -> bool:
         return False
 
 
-class ThinkingIndicatorView(AppKit.NSView):
+class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
     """Indicateur animé (point qui pulse)"""
 
-    def initWithFrame_(self, frame):
+    def initWithFrame_(self, frame: Any) -> Any:
         self = objc.super(ThinkingIndicatorView, self).initWithFrame_(frame)
         if self is not None:
             self.setWantsLayer_(True)
@@ -80,7 +83,7 @@ class ThinkingIndicatorView(AppKit.NSView):
             self.layer().setMasksToBounds_(True)
         return self
 
-    def startAnimating(self):
+    def startAnimating(self) -> None:
         self.layer().setBackgroundColor_(ns_color(0.3, 0.6, 1.0, 0.9).CGColor())
         anim = Quartz.CABasicAnimation.animationWithKeyPath_("transform.scale")
         anim.setFromValue_(1.0)
@@ -90,13 +93,13 @@ class ThinkingIndicatorView(AppKit.NSView):
         anim.setRepeatCount_(float("inf"))
         self.layer().addAnimation_forKey_(anim, "pulse")
 
-    def stopAnimating(self):
+    def stopAnimating(self) -> None:
         self.layer().removeAllAnimations()
         self.layer().setBackgroundColor_(ns_white(1.0, 0.2).CGColor())
 
 
-class HUDWindow(AppKit.NSPanel):
-    def init(self):
+class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
+    def init(self) -> Any:
         rect = make_rect(
             100,
             AppKit.NSScreen.mainScreen().frame().size.height - WINDOW_H - 100,
@@ -128,18 +131,18 @@ class HUDWindow(AppKit.NSPanel):
         self.setAlphaValue_(ALPHA)
         self.setHasShadow_(True)
 
-        self._is_dragging = False
-        self._is_processing = False
-        self._processing_start_time = 0
-        self.engine = None  # sera injecté plus tard
+        self._is_dragging: bool = False
+        self._is_processing: bool = False
+        self._processing_start_time: float = 0.0
+        self.engine: Optional[Any] = None  # sera injecté plus tard
 
         # Variables pour le streaming de réponse
-        self._streaming_text = ""
-        self._streaming_index = 0
-        self._streaming_timer = None
-        self._streaming_sender = ""
-        self._streaming_full_text = ""
-        self._streaming_range = None  # plage (début, fin) du message en cours
+        self._streaming_text: str = ""
+        self._streaming_index: int = 0
+        self._streaming_timer: Optional[Any] = None
+        self._streaming_sender: str = ""
+        self._streaming_full_text: str = ""
+        self._streaming_range: Optional[Tuple[int, int]] = None  # plage (début, fin) du message en cours
 
         self._setup_ui()
         self._setup_space_observer()
@@ -148,13 +151,13 @@ class HUDWindow(AppKit.NSPanel):
         print("✅ HUDPanel initialisé avec effet verre")
         return self
 
-    def canBecomeKeyWindow(self):
+    def canBecomeKeyWindow(self) -> bool:
         return True
 
-    def canBecomeMainWindow(self):
+    def canBecomeMainWindow(self) -> bool:
         return True
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         content = self.contentView()
         content.setWantsLayer_(True)
         content.layer().setCornerRadius_(CORNER_R)
@@ -357,15 +360,33 @@ class HUDWindow(AppKit.NSPanel):
         self._status_text.setTextColor_(ns_white(0.7, 0.8))
         content.addSubview_(self._status_text)
 
+        # Indicateur energie (a droite du statut)
+        self._energy_label = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(WINDOW_W - PADDING - 120, PADDING, 120, STATUS_H)
+        )
+        self._energy_label.setStringValue_("")
+        self._energy_label.setEditable_(False)
+        self._energy_label.setBezeled_(False)
+        self._energy_label.setDrawsBackground_(False)
+        self._energy_label.setFont_(AppKit.NSFont.systemFontOfSize_(10))
+        self._energy_label.setTextColor_(ns_color(0.2, 0.9, 0.4, 0.8))
+        self._energy_label.setAlignment_(AppKit.NSTextAlignmentRight)
+        content.addSubview_(self._energy_label)
+
+        # Timer de mise a jour de l'indicateur energie
+        self._energy_timer = Foundation.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            10.0, self, "updateEnergyIndicator:", None, True
+        )
+
         # Initialisation pour le prédicteur
-        self._last_text = ""
-        self._typing_timer = None
+        self._last_text: str = ""
+        self._typing_timer: Optional[Any] = None
         self._start_typing_monitor()
 
-    def _start_typing_monitor(self):
+    def _start_typing_monitor(self) -> None:
         """Lance le timer de surveillance de la frappe."""
 
-        def check_text():
+        def check_text() -> None:
             current = self._input.stringValue()
             if current != self._last_text:
                 self._last_text = current
@@ -378,8 +399,8 @@ class HUDWindow(AppKit.NSPanel):
 
         check_text()
 
-    @objc.IBAction
-    def typingTimerFired_(self, timer):
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def typingTimerFired_(self, timer: Any) -> None:
         """Appelé par le timer toutes les 0.5s."""
         current = self._input.stringValue()
         if current != self._last_text:
@@ -392,7 +413,7 @@ class HUDWindow(AppKit.NSPanel):
             0.5, self, "typingTimerFired:", None, False
         )
 
-    def _send_to_predictor(self, text: str):
+    def _send_to_predictor(self, text: str) -> None:
         """Envoie le texte partiel au prédicteur (via l'engine)."""
         if (
             hasattr(self, "engine")
@@ -402,7 +423,7 @@ class HUDWindow(AppKit.NSPanel):
         ):
             self.engine.cortex.predictor.update_partial_input(text)
 
-    def _setup_space_observer(self):
+    def _setup_space_observer(self) -> None:
         nc = AppKit.NSWorkspace.sharedWorkspace().notificationCenter()
         nc.addObserver_selector_name_object_(
             self,
@@ -412,13 +433,13 @@ class HUDWindow(AppKit.NSPanel):
         )
         print("👂 Observateur d'espace configuré")
 
-    def spaceDidChange_(self, notification):
+    def spaceDidChange_(self, notification: Any) -> None:
         print("🔄 Changement d'espace")
         self.orderFrontRegardless()
         self.setLevel_(Quartz.kCGFloatingWindowLevel + 1)
 
-    def _setup_watchdog(self):
-        self._watchdog = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+    def _setup_watchdog(self) -> None:
+        self._watchdog: Any = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             2.0, self, "watchdogTick:", None, True
         )
         AppKit.NSRunLoop.currentRunLoop().addTimer_forMode_(
@@ -426,7 +447,7 @@ class HUDWindow(AppKit.NSPanel):
         )
         print("🐶 Watchdog activé (2s)")
 
-    def watchdogTick_(self, timer):
+    def watchdogTick_(self, timer: Any) -> None:
         if self._is_dragging or self._is_processing:
             return
         if not self.isVisible():
@@ -434,23 +455,24 @@ class HUDWindow(AppKit.NSPanel):
         self.setLevel_(Quartz.kCGFloatingWindowLevel + 1)
         self.orderFrontRegardless()
 
-    @objc.IBAction
-    def onboardCleanup_(self, timer):
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def onboardCleanup_(self, timer: Any) -> None:
         """Timer callback pour le nettoyage post-animation onboarding."""
-        if hasattr(self, "_onboard_cleanup") and self._onboard_cleanup:
-            self._onboard_cleanup()
+        cleanup_fn: Optional[Any] = getattr(self, "_onboard_cleanup", None)
+        if cleanup_fn is not None:
+            cleanup_fn()
             self._onboard_cleanup = None
 
-    @objc.IBAction
-    def onboardNextStep_(self, timer):
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def onboardNextStep_(self, timer: Any) -> None:
         """Timer callback pour enchaîner l'étape suivante de l'onboarding."""
-        fn = getattr(self, "_onboard_next_step_fn", None)
+        fn: Optional[Any] = getattr(self, "_onboard_next_step_fn", None)
         if fn is not None:
             self._onboard_next_step_fn = None
             fn()
 
-    @objc.IBAction
-    def sendQuery_(self, sender):
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def sendQuery_(self, sender: Any) -> None:
         print("🚀 sendQuery_ appelée")
         if self._is_processing:
             print("⚠️ Requête déjà en cours, ignorée")
@@ -469,7 +491,7 @@ class HUDWindow(AppKit.NSPanel):
             return
 
         self._is_processing = True
-        self._processing_start_time = time.time()
+        self._processing_start_time = float(time.time())
         print("📝 Appel de append_message_safe pour utilisateur")
         self.append_message_safe("Toi", query, user=True)
 
@@ -484,8 +506,8 @@ class HUDWindow(AppKit.NSPanel):
         print("🚀 Lancement du thread pour _process_query")
         threading.Thread(target=self._process_query, args=(query,), daemon=True).start()
 
-    @objc.IBAction
-    def openWorkflowEditor_(self, sender):
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def openWorkflowEditor_(self, sender: Any) -> None:
         """Ouvre l'éditeur de workflows dans un processus séparé."""
 
         def _launch() -> None:
@@ -531,7 +553,7 @@ class HUDWindow(AppKit.NSPanel):
 
         threading.Thread(target=_launch, daemon=True).start()
 
-    def _process_query(self, query):
+    def _process_query(self, query: str) -> None:
         print(f"🧵 Thread _process_query démarré pour: '{query}'")
         try:
             # Afficher un message de début de réflexion
@@ -542,6 +564,7 @@ class HUDWindow(AppKit.NSPanel):
             time.sleep(0.5)
 
             print("Appel de self.engine.process...")
+            assert self.engine is not None
             response, latency = self.engine.process(query, use_rag=True)
             print(f"✅ Réponse reçue: '{str(response)[:100]}…', latence={latency:.2f}s")
 
@@ -559,7 +582,7 @@ class HUDWindow(AppKit.NSPanel):
             traceback.print_exc()
             AppHelper.callAfter(self._on_response_error, f"Erreur : {e}")
 
-    def _start_streaming(self, sender, full_text, user=False):
+    def _start_streaming(self, sender: str, full_text: Any, user: bool = False) -> None:
         """Démarre le streaming caractère par caractère."""
         if self._streaming_timer is not None:
             self._streaming_timer.invalidate()
@@ -579,8 +602,8 @@ class HUDWindow(AppKit.NSPanel):
             0.03, self, "streamingTimerFired:", None, True
         )
 
-    @objc.IBAction
-    def streamingTimerFired_(self, timer):
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def streamingTimerFired_(self, timer: Any) -> None:
         if self._streaming_index >= len(self._streaming_full_text):
             timer.invalidate()
             self._streaming_timer = None
@@ -664,7 +687,7 @@ class HUDWindow(AppKit.NSPanel):
         total_len = len(storage.string())
         self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(total_len, 0))
 
-    def _on_response_error(self, error_text):
+    def _on_response_error(self, error_text: str) -> None:
         """Gère une erreur pendant la réponse."""
         self.append_message_safe("Agent", error_text, False)
         self._thinking_indicator.stopAnimating()
@@ -674,8 +697,8 @@ class HUDWindow(AppKit.NSPanel):
         self._is_processing = False
         self._is_dragging = False
 
-    @objc.python_method
-    def append_message_safe(self, sender, text, user=True):
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def append_message_safe(self, sender: str, text: str, user: bool = True) -> None:
         """Ajoute un message en garantissant l'exécution sur le main thread."""
         import threading
 
@@ -686,8 +709,8 @@ class HUDWindow(AppKit.NSPanel):
         else:
             self._append_message_on_main((sender, text, user))
 
-    @objc.python_method
-    def _append_message_on_main(self, args):
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _append_message_on_main(self, args: Any) -> None:
         """Réelle mise à jour du NSTextView (exécutée sur main thread)."""
         sender, text, user = args
         print(f"📝 _append_message_on_main: {sender} -> '{text[:60]}…'")
@@ -728,13 +751,56 @@ class HUDWindow(AppKit.NSPanel):
             scrollView.displayIfNeeded()
         print(f"   ✅ Message ajouté, total caractères: {end}")
 
-    @objc.python_method
-    def _set_status(self, dot, color, label):
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _set_status(self, dot: str, color: Any, label: str) -> None:
         self._status.setStringValue_(dot)
         self._status.setTextColor_(color)
         self._status_text.setStringValue_(label)
 
-    def close(self):
+    def updateEnergyIndicator_(self, timer: Any) -> None:
+        """Met a jour l'indicateur energie dans le HUD."""
+        engine = getattr(self, "engine", None)
+        if engine is None or not hasattr(engine, "energy"):
+            return
+        try:
+            status = engine.energy.get_status_for_hud()
+            mode = status.get("mode", "balanced")
+            thermal = status.get("thermal_name", "nominal")
+
+            mode_labels = {
+                "performance": "Performance",
+                "balanced": "Balanced",
+                "eco": "Eco",
+                "critical": "Chauffe",
+            }
+            mode_colors = {
+                "performance": ns_color(0.2, 0.9, 0.4, 0.8),   # vert
+                "balanced": ns_color(0.2, 0.9, 0.4, 0.8),       # vert
+                "eco": ns_color(1.0, 0.85, 0.2, 0.8),           # jaune
+                "critical": ns_color(1.0, 0.2, 0.2, 0.8),       # rouge
+            }
+            thermal_colors = {
+                "nominal": ns_color(0.2, 0.9, 0.4, 0.8),
+                "fair": ns_color(1.0, 0.85, 0.2, 0.8),
+                "serious": ns_color(1.0, 0.6, 0.0, 0.8),
+                "critical": ns_color(1.0, 0.2, 0.2, 0.8),
+            }
+
+            label = mode_labels.get(mode, mode)
+            color = thermal_colors.get(thermal, mode_colors.get(mode, ns_white(0.7)))
+
+            battery_pct = status.get("battery_percent")
+            if battery_pct is not None and status.get("on_battery"):
+                text = f"{label} | {battery_pct}%"
+            else:
+                text = label
+
+            self._energy_label.setStringValue_(text)
+            self._energy_label.setTextColor_(color)
+        except Exception:
+            pass
+
+    def close(self) -> None:
         if hasattr(self, "_watchdog") and self._watchdog:
             self._watchdog.invalidate()
         nc = AppKit.NSWorkspace.sharedWorkspace().notificationCenter()
@@ -742,14 +808,14 @@ class HUDWindow(AppKit.NSPanel):
         objc.super(HUDWindow, self).close()
 
 
-class AppDelegate(AppKit.NSObject):
-    def initWithEngine_(self, engine):
+class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
+    def initWithEngine_(self, engine: Any) -> Any:
         self = objc.super(AppDelegate, self).init()
         if self is not None:
             self.engine = engine
         return self
 
-    def applicationDidFinishLaunching_(self, notification):
+    def applicationDidFinishLaunching_(self, notification: Any) -> None:
         print("🚀 Application lancée")
         try:
             self.window = HUDWindow.alloc().init()
@@ -778,7 +844,7 @@ class AppDelegate(AppKit.NSObject):
             traceback.print_exc()
             sys.exit(1)
 
-    def userNotificationCenter_didActivateNotification_(self, center, notification):
+    def userNotificationCenter_didActivateNotification_(self, center: Any, notification: Any) -> None:
         user_info = notification.userInfo()
         if user_info and user_info.get("action") == "open_file":
             filepath = user_info.get("filepath")
@@ -788,13 +854,13 @@ class AppDelegate(AppKit.NSObject):
             else:
                 print(f"⚠️ Fichier introuvable : {filepath}")
 
-    def applicationWillTerminate_(self, notification):
+    def applicationWillTerminate_(self, notification: Any) -> None:
         print("👋 Arrêt de l'application")
         if hasattr(self, "engine"):
             self.engine.stop()
 
 
-def run_hud(engine=None):
+def run_hud(engine: Optional[Any] = None) -> None:
     print("🚀 Lancement de run_hud")
     app = AppKit.NSApplication.sharedApplication()
     app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)

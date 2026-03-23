@@ -42,10 +42,13 @@ class ProviderManager:
         self.config = config
         self.host = config.get("host", "http://localhost:11434")
         self.models = config.get("models", {})
-        self.timeout = config.get("timeout", 120)
+        self.timeout = config.get("timeout", 30)
         self.retry_attempts = config.get("retry_attempts", 3)
         self.retry_delay = config.get("retry_delay", 1.0)
         self.keep_alive = config.get("keep_alive", -1)
+
+        # Configuration energetique (injectee par EnergyOrchestrator)
+        self._energy_config: Optional[Dict[str, Any]] = None
 
         # Créer un client Ollama avec timeout explicite
         self._client = self._create_client()
@@ -78,7 +81,7 @@ class ProviderManager:
         """Vérifie que le serveur Ollama est accessible et que les modèles sont disponibles."""
         try:
             models_resp = self._client.list()
-            models_list = models_resp.get("models", [])  # type: ignore[union-attr]
+            models_list = models_resp.get("models", [])  # noqa: E501
             models_available = [m["name"] for m in models_list]
             logger.info(f"✅ Ollama accessible. Modèles disponibles: {models_available}")
 
@@ -180,8 +183,8 @@ class ProviderManager:
                     keep_alive=self.keep_alive,
                 )
                 elapsed = time.time() - start_time
-                msg = response.get("message", {})  # type: ignore[union-attr]
-                result = msg.get("content", "").strip()  # type: ignore[union-attr]
+                msg = response.get("message", {})  # noqa: E501
+                result = str(msg.get("content", "")).strip()  # noqa: E501
 
                 # Enregistrer la latence pour les stats
                 self.router.record_latency(model_name, elapsed)
@@ -234,9 +237,9 @@ class ProviderManager:
     def _get_model_name(self, model: Any) -> str:
         """Extrait le nom du modèle à partir d'un objet ModelConfig ou d'une chaîne."""
         if hasattr(model, "name"):
-            return model.name
+            return str(model.name)
         elif isinstance(model, dict):
-            return model.get("name", "")
+            return str(model.get("name", ""))
         else:
             return str(model)
 
@@ -259,11 +262,45 @@ class ProviderManager:
         """Retourne la liste des modèles disponibles sur le serveur Ollama."""
         try:
             response = self._client.list()
-            models_list = response.get("models", [])  # type: ignore[union-attr]
+            models_list = response.get("models", [])  # noqa: E501
             return [m["name"] for m in models_list]
         except Exception as e:
             logger.error(f"Impossible de lister les modèles: {e}")
             return []
+
+    def set_energy_config(self, energy_config: Dict[str, Any]) -> None:
+        """Injecte la configuration energetique depuis EnergyOrchestrator."""
+        self._energy_config = energy_config
+        keep_alive = energy_config.get("keep_alive")
+        if keep_alive is not None:
+            self.keep_alive = keep_alive
+        logger.info(f"Configuration energetique appliquee: {energy_config}")
+
+    def unload_model(self, model: str) -> None:
+        """Decharge un modele de la memoire Ollama (keep_alive: 0)."""
+        try:
+            self._client.chat(
+                model=model,
+                messages=[],
+                keep_alive=0,
+            )
+            logger.info(f"Modele {model} decharge de la memoire")
+        except Exception as e:
+            logger.warning(f"Impossible de decharger {model}: {e}")
+
+    def unload_all_models(self) -> None:
+        """Decharge tous les modeles actuellement en memoire."""
+        try:
+            response = self._client.ps()
+            running = response.get("models", [])
+            for model_info in running:
+                name = model_info.get("name", "")
+                if name:
+                    self.unload_model(name)
+            if not running:
+                logger.debug("Aucun modele en memoire a decharger")
+        except Exception as e:
+            logger.warning(f"Impossible de lister les modeles en memoire: {e}")
 
     def is_available(self) -> bool:
         """Vérifie rapidement si Ollama est joignable."""
