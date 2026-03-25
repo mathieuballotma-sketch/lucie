@@ -668,8 +668,11 @@ class LucidEngine:
         multi_action = [
             ("crée" in q or "écris" in q or "rédige" in q or "génère" in q)
             and ("sauvegarde" in q or "fichier" in q or "bureau" in q or "enregistre" in q),
-            ("résume" in q or "analyse" in q) and ("envoie" in q or "sauvegarde" in q),
+            ("résume" in q or "analyse" in q or "résumé" in q) and ("envoie" in q or "sauvegarde" in q),
             ("cherche" in q or "trouve" in q) and ("crée" in q or "écris" in q),
+            # Recherche + résumé/synthèse (ex: "recherche X et fais un résumé")
+            ("recherche" in q or "cherche" in q)
+            and ("résumé" in q or "résume" in q or "synthèse" in q),
         ]
         return any(kw in q for kw in chaining) or any(multi_action)
 

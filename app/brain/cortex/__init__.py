@@ -131,18 +131,28 @@ class PathManager:
         if is_creation:
             return [("creation", creation_path), ("llm", llm_path)]
 
+        # ── Recherche visuelle Safari → PRIORITAIRE sur multi-action ─────
+        # Détection par co-occurrence : recherche + synthèse/résumé, ou safari + recherche
+        _LLM_ONLY_PREFIXES = ("explique", "définis", "qu'est-ce", "c'est quoi",
+                               "donne-moi", "résume en", "décris")
+        if not any(q_lower.startswith(p) for p in _LLM_ONLY_PREFIXES):
+            _has_search = any(w in q_lower for w in ("recherche", "cherche", "trouve"))
+            _has_synth = any(w in q_lower for w in (
+                "résumé", "résume", "synthèse", "synthese", "bilan", "rapport",
+            ))
+            _has_safari = "safari" in q_lower
+            if (_has_search and _has_synth) or (_has_safari and _has_search):
+                return [("visual_research", visual_research_path), ("llm", llm_path)]
+
+        # Recherche visuelle détectée par le router (keywords/embedding/thalamus)
+        if route_result and route_result.path.value == "visual_research":
+            if not any(q_lower.startswith(p) for p in _LLM_ONLY_PREFIXES):
+                return [("visual_research", visual_research_path), ("llm", llm_path)]
+
         # Multi-action détectée ("et" ou "puis" dans la requête) → multi en premier
         import re as _re
         if _re.search(r"\s+(et|puis)\s+", q_lower):
             return [("multi", multi_path), ("direct", direct_path), ("agent", agent_path), ("llm", llm_path)]
-
-        # Recherche visuelle Safari → workflow dédié, fallback LLM
-        # Mais pas pour les questions "explique X" qui sont des questions LLM
-        _LLM_ONLY_PREFIXES = ("explique", "définis", "qu'est-ce", "c'est quoi",
-                               "donne-moi", "résume en", "décris")
-        if route_result and route_result.path.value == "visual_research":
-            if not any(q_lower.startswith(p) for p in _LLM_ONLY_PREFIXES):
-                return [("visual_research", visual_research_path), ("llm", llm_path)]
 
         # Fast path (keyword ou embedding match) → direct/agent/multi d'abord
         if route_result and route_result.path.value == "fast_path":

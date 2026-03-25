@@ -43,6 +43,18 @@ pytest: ✅ 245 passed
 Régressions : aucune
 ---
 
+=== FIX 6 — Routage Safari Research cassé (visual_research jamais atteint) — 2026-03-25 ===
+Fichiers modifiés : app/brain/cortex/__init__.py, app/brain/cortex/execution_engine.py, app/core/engine.py
+Changement :
+  1. PathManager.select_paths() : détection co-occurrence recherche+résumé/safari+recherche AVANT le check multi-action "et"
+  2. execute_multi_action() : fallback via agent.can_handle()+handle() quand une sous-partie n'est pas dans SIMPLE_ACTIONS
+  3. _is_multi_step() : ajout pattern recherche+résumé/synthèse comme filet de sécurité pipeline
+ruff  : ✅ 0 erreurs
+mypy  : ✅ 0 erreurs
+pytest: ✅ 245 passed
+Régressions : aucune
+---
+
 === 2026-03-23 — 3 bugs critiques corrigés ===
 
 BUG 1 — CLASSIFICATION (CORRIGÉ)

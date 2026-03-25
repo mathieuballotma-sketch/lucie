@@ -258,26 +258,41 @@ class ExecutionEngine:
 
     async def execute_multi_action(self, query: str) -> str:
         parts = re.split(r"\s+(et|puis)\s+", query, flags=re.IGNORECASE)
-        results = []
+        results: List[str] = []
         for part in parts:
             part = part.strip()
             if not part or part.lower() in ("et", "puis"):
                 continue
             route = self._route_simple_action(part)
-            if not route:
-                raise PathExecutionError(f"Impossible de traiter la sous-action: {part}")
-            agent_name, action = route
-            agent = self.registry.get_agent(agent_name)
-            try:
-                result = await asyncio.wait_for(
-                    agent.execute_tool(action["tool"], action["parameters"]),
-                    timeout=15.0
-                )
-            except asyncio.TimeoutError:
-                raise PathExecutionError(f"Timeout sur l'étape '{part}'")
-            if result.startswith("❌"):
-                raise PathExecutionError(f"Échec de la sous-action: {result}")
-            results.append(result)
+            if route:
+                agent_name, action = route
+                agent = self.registry.get_agent(agent_name)
+                try:
+                    result = str(await asyncio.wait_for(
+                        agent.execute_tool(action["tool"], action["parameters"]),
+                        timeout=15.0,
+                    ))
+                except asyncio.TimeoutError:
+                    raise PathExecutionError(f"Timeout sur l'étape '{part}'")
+                if result.startswith("❌"):
+                    raise PathExecutionError(f"Échec de la sous-action: {result}")
+                results.append(result)
+            else:
+                # Fallback : chercher un agent qui sait traiter cette sous-action
+                handled = False
+                for ag_name, ag in self.registry.agents.items():
+                    if hasattr(ag, "can_handle") and ag.can_handle(part):
+                        try:
+                            res = str(await asyncio.wait_for(
+                                ag.handle(part), timeout=30.0,
+                            ))
+                            results.append(res)
+                            handled = True
+                            break
+                        except Exception as e:
+                            logger.warning(f"Agent {ag_name} échoué sur '{part}': {e}")
+                if not handled:
+                    raise PathExecutionError(f"Impossible de traiter la sous-action: {part}")
         if results:
             return "\n".join(results)
         raise PathExecutionError("Aucune action multiple trouvée")
