@@ -261,23 +261,16 @@ class SafariResearchWorkflow:
         loop = asyncio.get_running_loop()
         suffix = {"finance_query": "prix aujourd'hui"}.get(frequency, "")
         llm_prompt = (
-            f"Reformule cette commande vocale en une requête Google courte et efficace "
-            f"(3-5 mots, sans verbes de commande comme 'ouvre', 'cherche', 'fais', "
-            f"'safari', 'résume', 'synthèse').\n"
-            f"Commande : {query}\n"
-            f"Requête Google :"
+            "Extrais les mots-clés de recherche Google de cette requête utilisateur. "
+            "Retourne UNIQUEMENT les mots-clés, sans explication. "
+            f"Requête: {query}"
         )
         try:
             llm_result: str = await loop.run_in_executor(
                 None,
                 lambda: str(self.manager.generate(
                     prompt=llm_prompt,
-                    system=(
-                        "Tu reformules des commandes vocales en requêtes Google optimales. "
-                        "Réponds UNIQUEMENT avec la requête Google, sans explication, "
-                        "sans guillemets, sans ponctuation finale."
-                    ),
-                    model="qwen2.5:7b",
+                    model="qwen2.5:3b",
                     temperature=0.1,
                     max_tokens=30,
                 )),

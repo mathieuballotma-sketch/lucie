@@ -234,8 +234,8 @@ _PROFILE_DEEPSEEK_CODER = OptimizedProfile(
 )
 
 _PROFILE_GEMMA2 = OptimizedProfile(
-    name="gemma2:9b",
-    family="gemma2",
+    name="qwen2.5:7b",
+    family="qwen2",
     parameters="9.2B",
     category="writing",
     system_prompt=(
