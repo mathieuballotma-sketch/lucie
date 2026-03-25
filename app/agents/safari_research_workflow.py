@@ -10,7 +10,7 @@ Workflow :
 1. Ouvre Safari → recherche Google (nouvel onglet)
 2. Extrait les 3 premiers liens via JavaScript
 3. Visite chaque site UN PAR UN (nouvel onglet, pause visible)
-4. Synthèse gemma2:9b
+4. Synthèse qwen2.5:7b
 5. Ouvre Pages → colle la synthèse formatée
 """
 
@@ -207,7 +207,7 @@ class SafariResearchWorkflow:
         # Extraire le sujet et reformuler la requête Google
         subject = self._extract_subject(query)
         self.subject = subject
-        search_query = self._extract_search_query(query, self._frequency)
+        search_query = await self._extract_search_query(query, self._frequency)
         logger.info(f"🎯 Sujet : '{subject}' | Google : '{search_query}' (fréquence: {self._frequency})")
 
         # Étape 1 : Ouvrir Safari + recherche Google
@@ -256,27 +256,61 @@ class SafariResearchWorkflow:
             q = re.sub(pattern, "", q).strip(" ,.")
         return q.strip() or query
 
-    def _extract_search_query(self, query: str, frequency: str) -> str:
-        """Reformule la requête utilisateur en requête Google optimale."""
+    async def _extract_search_query(self, query: str, frequency: str) -> str:
+        """Reformule la requête utilisateur en requête Google optimale via LLM."""
+        loop = asyncio.get_running_loop()
+        suffix = {"finance_query": "prix aujourd'hui"}.get(frequency, "")
+        llm_prompt = (
+            f"Reformule cette commande vocale en une requête Google courte et efficace "
+            f"(3-5 mots, sans verbes de commande comme 'ouvre', 'cherche', 'fais', "
+            f"'safari', 'résume', 'synthèse').\n"
+            f"Commande : {query}\n"
+            f"Requête Google :"
+        )
+        try:
+            llm_result: str = await loop.run_in_executor(
+                None,
+                lambda: str(self.manager.generate(
+                    prompt=llm_prompt,
+                    system=(
+                        "Tu reformules des commandes vocales en requêtes Google optimales. "
+                        "Réponds UNIQUEMENT avec la requête Google, sans explication, "
+                        "sans guillemets, sans ponctuation finale."
+                    ),
+                    model="qwen2.5:7b",
+                    temperature=0.1,
+                    max_tokens=30,
+                )),
+            )
+            cleaned = llm_result.strip().strip('"').strip("'").split("\n")[0].strip()
+            if suffix:
+                cleaned = f"{cleaned} {suffix}".strip()
+            if cleaned and len(cleaned) > 3:
+                logger.info(f"🔍 Requête LLM : '{query[:40]}' → '{cleaned}'")
+                return cleaned
+        except Exception as e:
+            logger.warning(f"Reformulation LLM échouée, fallback mots-clés: {e}")
+
+        # Fallback — extraction par mots-clés améliorée
         noise_words = {
+            "ouvre", "ouvrir", "safari", "chrome", "firefox", "navigateur",
             "cherche", "recherche", "trouve", "trouver", "sur", "sites", "site", "web",
             "fais", "fait", "fait-moi", "moi", "une", "synthèse", "synthese",
-            "syntèse", "syntese", "résumé", "resume", "résume",
-            "les", "des", "du", "la", "le", "et",
+            "syntèse", "syntese", "résumé", "resume", "résume", "résumer", "résuler",
+            "les", "des", "du", "la", "le", "et", "dans", "pour", "avec", "par",
             "trois", "plusieurs", "donne", "donner",
             "stp", "svp", "merci", "consulte",
         }
-        # Nettoyer les apostrophes françaises (garder le contexte)
         q = query.lower()
         for prefix in ("l'", "d'", "j'", "c'", "s'", "n'", "qu'"):
-            q = q.replace(prefix, prefix.rstrip("'") + " ")
+            q = q.replace(prefix, prefix[:-1] + " ")
         words = q.split()
-        cleaned = [w for w in words if w not in noise_words and len(w) > 2]
-        suffix = {"finance_query": "prix aujourd'hui"}.get(frequency, "")
-        base = " ".join(cleaned[:5])
-        result = f"{base} {suffix}".strip()
-        logger.info(f"🔍 Requête reformulée : '{query[:30]}' → '{result}'")
-        return result or query
+        # Garder les mots >= 2 chars pour capturer "or", "ai", etc.
+        fallback_cleaned = [w for w in words if w not in noise_words and len(w) >= 2]
+        base = " ".join(fallback_cleaned[:6])
+        fallback_result = f"{base} {suffix}".strip()
+        logger.info(f"🔍 Requête fallback : '{query[:40]}' → '{fallback_result}'")
+        return fallback_result or query
 
     def _verify_extraction(self, data: dict[str, Any], frequency: str) -> bool:
         """Vérifie que l'extraction contient ce qu'on cherchait."""
@@ -606,8 +640,8 @@ end tell
         ]
         extractions = list(await asyncio.gather(*extraction_tasks))
 
-        # ── Étape 4b : Synthèse via gemma2:9b ───────────────────────────
-        logger.info("🧠 Synthèse finale (gemma2:9b)...")
+        # ── Étape 4b : Synthèse via qwen2.5:7b ──────────────────────────
+        logger.info("🧠 Synthèse finale (qwen2.5:7b)...")
 
         sources_block = "\n\n".join(
             f"Source {i+1} ({url_list[i] if i < len(url_list) else '?'}) :\n{ext}"
@@ -634,8 +668,13 @@ end tell
             "- Croises les sources pour détecter les contradictions\n"
             "- Mets en avant les chiffres clés et les faits vérifiables\n"
             "- Rédiges dans un français clair et professionnel\n"
-            "- Structures toujours : résultat → détails → analyse → conclusion\n"
-            "- Cites tes sources avec les URLs\n\n"
+            "- Structures TOUJOURS avec ces titres exacts, chacun suivi d'une ligne vide :\n"
+            "  RÉSULTAT PRINCIPAL\n"
+            "  DONNÉES CLÉS\n"
+            "  ANALYSE\n"
+            "  CONCLUSION\n"
+            "- Sépares chaque section par une ligne vide\n"
+            "- Cites tes sources à la fin\n\n"
             "Tu ne répètes jamais les mêmes informations.\n"
             "Tu signales si les sources se contredisent."
         )
@@ -646,7 +685,7 @@ end tell
                 lambda: self.manager.generate(
                     prompt=synth_prompt,
                     system=synth_system,
-                    model="gemma2:9b",
+                    model="qwen2.5:7b",
                     temperature=0.5,
                     max_tokens=1024,
                 ),

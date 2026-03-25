@@ -150,7 +150,7 @@ class MessageListener:
             async with aiohttp.ClientSession() as s:
                 async with s.post(
                     "http://localhost:11434/api/generate",
-                    json={"model":"gemma2:9b","prompt":prompt,"stream":False},
+                    json={"model":"qwen2.5:7b","prompt":prompt,"stream":False},
                     timeout=aiohttp.ClientTimeout(total=30),
                 ) as r:
                     if r.status == 200:
@@ -196,7 +196,7 @@ class MessageListener:
             async with aiohttp.ClientSession() as s:
                 async with s.post(
                     "http://localhost:11434/api/generate",
-                    json={"model":"gemma2:9b","prompt":command,"stream":False},
+                    json={"model":"qwen2.5:7b","prompt":command,"stream":False},
                     timeout=aiohttp.ClientTimeout(total=30),
                 ) as r:
                     if r.status == 200:

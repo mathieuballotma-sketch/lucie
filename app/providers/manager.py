@@ -144,7 +144,7 @@ class ProviderManager:
             routed = True
 
         if not model_name:
-            model_name = self._select_model("auto") or "mistral:latest"
+            model_name = self._select_model("auto") or "qwen2.5:7b"
 
         # Construire les messages
         messages: List[Message] = []

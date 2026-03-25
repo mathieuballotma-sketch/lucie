@@ -137,11 +137,6 @@ class ModelRouter:
             name="deepseek-r1:14b", category="deep",
             num_ctx=8192, temperature=0.3, num_predict=4096, priority=10,
         ),
-        # Rédaction / français
-        "gemma2:9b": ModelProfile(
-            name="gemma2:9b", category="writing",
-            num_ctx=4096, temperature=0.7, num_predict=1024, priority=10,
-        ),
         # Vision
         "llava:latest": ModelProfile(
             name="llava:latest", category="vision",
@@ -382,6 +377,6 @@ class ModelRouter:
 
         # Vraiment rien — modèle par défaut
         return ModelProfile(
-            name="mistral:latest", category="balanced",
+            name="qwen2.5:7b", category="balanced",
             num_ctx=4096, temperature=0.7, num_predict=512,
         )
