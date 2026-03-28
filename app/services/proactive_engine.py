@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from ..memory.contextual_memory import ContextualMemory
+from ..services.habits_tracker import HabitsTracker
+from ..services.insights_engine import InsightsEngine
 from ..services.time_tracker import TimeTracker
 from ..utils.logger import get_logger
 
@@ -26,9 +28,13 @@ class ProactiveEngine:
         self,
         contextual_memory: ContextualMemory,
         time_tracker: TimeTracker,
+        habits_tracker: Optional[HabitsTracker] = None,
+        insights_engine: Optional[InsightsEngine] = None,
     ) -> None:
         self._memory = contextual_memory
         self._tracker = time_tracker
+        self._habits = habits_tracker
+        self._insights = insights_engine
         self._suggestion_history: List[Dict[str, Any]] = []
         self._dismissed_topics: Dict[str, float] = {}  # topic -> dismissed_until
         self._dismissed_ttl: float = 86400.0  # 24h blacklist
@@ -134,6 +140,13 @@ class ProactiveEngine:
         total_saved = tracker_status.get("total_saved", "0s")
         parts.append(f"Total temps gagne: {total_saved}")
 
+        # Section insights (optionnelle)
+        insights_engine = self._insights
+        if insights_engine is not None:
+            insights_summary = insights_engine.get_summary_for_briefing()
+            if insights_summary:
+                parts.append(insights_summary)
+
         if not parts:
             return None
 
@@ -184,6 +197,25 @@ class ProactiveEngine:
                     "action": action,
                 }
                 suggestions.append(suggestion)
+
+        # Suggestions basees sur les habitudes
+        habits_tracker = self._habits
+        if habits_tracker is not None:
+            now = datetime.now()
+            habit_suggestions = habits_tracker.get_suggestions(
+                current_time=now.timestamp()
+            )
+            for hs in habit_suggestions:
+                suggestions.append(
+                    {
+                        "type": "habit",
+                        "topic": f"habit_{hs.action}",
+                        "title": f"Habitude: {hs.action}",
+                        "content": hs.message,
+                        "score": hs.confidence,
+                        "action": hs.action,
+                    }
+                )
 
         return suggestions
 
