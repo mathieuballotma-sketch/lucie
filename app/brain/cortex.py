@@ -41,6 +41,8 @@ from app.agents.file_agent import FileAgent
 from app.agents.knowledge_agent import KnowledgeAgent
 from app.agents.planner_agent import PlannerAgent
 from app.agents.reminder_agent import ReminderAgent
+from app.agents.clipboard_agent import ClipboardAgent
+from app.agents.smart_notification_agent import SmartNotificationAgent
 from app.agents.vision.text_extractor import TextExtractorAgent
 from app.brain.synapses.event_bus import EventBus
 from app.memory.memory_manager import MemoryManager
@@ -139,6 +141,8 @@ class AgentRegistry:
             TextExtractorAgent(self.manager, self.bus, self.config.get("vision", {})),
             ComputerControlAgent(self.manager, self.bus, {}),
             FileAgent(self.manager, self.bus, {"working_directory": str(Path.home())}),
+            ClipboardAgent(self.manager, self.bus, {}),
+            SmartNotificationAgent(self.manager, self.bus, {}),
         ]
         # Création du CreatorAgent avec la liste dynamique des outils
         available_tools = self._get_all_tool_names()
@@ -190,6 +194,25 @@ class AgentRegistry:
         if self.observer:
             self.observer.stop()
             self.observer.join()
+
+    async def start_background_agents(self) -> None:
+        """Démarre les agents de fond (ceux qui exposent une méthode start())."""
+        for agent in self.agents.values():
+            if hasattr(agent, "start") and callable(getattr(agent, "start")):
+                try:
+                    agent.start()  # type: ignore[union-attr]
+                    logger.debug(f"Agent background démarré : {agent.name}")
+                except Exception as exc:
+                    logger.error(f"Erreur démarrage agent background {agent.name}: {exc}")
+
+    def stop_background_agents(self) -> None:
+        """Arrête les agents de fond."""
+        for agent in self.agents.values():
+            if hasattr(agent, "stop") and callable(getattr(agent, "stop")):
+                try:
+                    agent.stop()  # type: ignore[union-attr]
+                except Exception as exc:
+                    logger.error(f"Erreur arrêt agent background {agent.name}: {exc}")
 
     def load_agent_from_file(self, filepath: Path) -> None:
         """Charge dynamiquement un agent depuis un fichier Python et l'ajoute au registre."""
@@ -1326,6 +1349,7 @@ class FrontalCortex:
         # Prédicteur (à connecter)
         self.predictor: Optional[NanoPredictor] = None
         self._predictor_started = False
+        self._background_agents_started = False
 
         # Circuit breaker
         self._llm_circuit_breaker: Optional[CircuitBreaker] = None
@@ -1379,6 +1403,10 @@ class FrontalCortex:
             # Note: NanoPredictor nécessiterait d'être importé et instancié
             # self.predictor = NanoPredictor(...)
             self._predictor_started = True
+
+        if not self._background_agents_started:
+            await self.agent_registry.start_background_agents()
+            self._background_agents_started = True
 
         start = time.time()
         logger.info(f"🧠 think() — Requête: {query[:60]}…")
@@ -1513,6 +1541,7 @@ class FrontalCortex:
     async def stop(self) -> None:
         if self.predictor:
             await self.predictor.stop()
+        self.agent_registry.stop_background_agents()
         self.agent_registry.stop_watcher()
         self.executor.shutdown()
         logger.info("🛑 Cortex arrêté.")
