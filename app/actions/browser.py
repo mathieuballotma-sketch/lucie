@@ -1,2 +1,0 @@
-class BrowserAgent:
-    pass

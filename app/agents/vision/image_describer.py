@@ -89,9 +89,6 @@ class ImageDescriberAgent(BaseAgent):
         if MOONDREAM_AVAILABLE and self.model:
             # Utiliser Moondream pour décrire
             try:
-                # with open(img_path, "rb") as f:
-                #     image = md.Image(f.read())
-                # description = self.model.caption(image)["caption"]
                 description = "Description simulée : L'écran affiche plusieurs fenêtres, du texte et des icônes."  # noqa: E501
                 return description
             except Exception as e:
