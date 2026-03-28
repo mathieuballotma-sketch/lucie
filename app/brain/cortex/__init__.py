@@ -196,7 +196,7 @@ class CortexConfig:
     speed_model: str = "qwen2.5:3b"
     balanced_model: str = "qwen2.5:7b"
     quality_model: str = "qwen3:14b"
-    nano_model: str = "qwen2.5:0.5b"
+    nano_model: str = "qwen2.5:3b"
     deep_model: str = "deepseek-r1:14b"
     retrain_classifier: bool = False
     custom_agents_dir: str = "./data/custom_agents"

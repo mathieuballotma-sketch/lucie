@@ -1,3 +1,20 @@
+=== FIX 7 — Stabilisation runtime (7 correctifs) — 2026-03-28 ===
+Fichiers modifiés : execution_engine.py, __init__.py, manager.py, cyber_agent.py, strategist_agent.py, executor.py, scanner.py, neutralizer.py, lures.py
+Changements :
+  A. nano_model: qwen2.5:0.5b → qwen2.5:3b (modèle absent)
+  B. System prompts: "LANGUE : français uniquement" en tête de tous les prompts
+  C. CyberAgent: remember(limit=100) → remember(n_results=100) — signature correcte
+  D. TaskExecutor: détection fichier tâches corrompu (binaire) → suppression + fallback
+  E. 3 erreurs mypy unused-ignore (aiofiles) → supprimées
+  F. StrategistAgent: remember() appelé sans await → ajout await
+  G. ProviderManager: injection system prompt FR par défaut quand aucun n'est fourni
+ruff  : ✅ 0 erreurs
+mypy  : ✅ 0 erreurs (158 fichiers)
+pytest: ✅ 245 passed
+Runtime: ✅ Réponses en français, salutations < 1ms, plus d'erreur CyberAgent
+Régressions : aucune
+---
+
 === FIX 1 — Classification LLM fausse — 2026-03-23 ===
 Fichiers modifiés : app/brain/cortex/execution_engine.py
 Changement : Ajout exemples few-shot dans le prompt de classification + garde-fou mail (mots-clés requis)

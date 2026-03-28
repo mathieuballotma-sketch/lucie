@@ -146,10 +146,16 @@ class ProviderManager:
         if not model_name:
             model_name = self._select_model("auto") or "qwen2.5:7b"
 
-        # Construire les messages
-        messages: List[Message] = []
-        if system:
-            messages.append(Message(role="system", content=system))
+        # Construire les messages — toujours injecter le français si pas de system
+        _DEFAULT_SYSTEM = (
+            "LANGUE : français uniquement. "
+            "Tu es Lucie, un assistant IA local. "
+            "Réponds TOUJOURS en français."
+        )
+        effective_system = system if system else _DEFAULT_SYSTEM
+        messages: List[Message] = [
+            Message(role="system", content=effective_system),
+        ]
         messages.append(Message(role="user", content=prompt))
 
         # Options pour Ollama — inclure num_ctx du profil si routé

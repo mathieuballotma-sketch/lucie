@@ -223,18 +223,14 @@ class CyberAgent(BaseAgent):
         if not self.memory:
             return
         try:
-            try:
-                episodes = await self.memory.remember(
-                    query="threat signatures",
-                    limit=100,
-                    metadata_filter={"type": "threat_signature"},
-                )
-            except TypeError:
-                episodes = await self.memory.remember(query="threat signatures", limit=100)
-                episodes = [
-                    ep for ep in episodes
-                    if ep.metadata.get("type") == "threat_signature"
-                ]
+            episodes = await self.memory.remember(
+                query="threat signatures",
+                n_results=100,
+            )
+            episodes = [
+                ep for ep in episodes
+                if isinstance(ep, dict) and ep.get("metadata", {}).get("type") == "threat_signature"
+            ]
 
             loaded = 0
             async with self._lock:

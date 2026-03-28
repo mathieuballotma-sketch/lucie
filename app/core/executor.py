@@ -99,8 +99,12 @@ class TaskExecutor:
     def _load_persisted_tasks(self) -> None:
         if self.persist_path and self.persist_path.exists():
             try:
-                with open(self.persist_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                raw = self.persist_path.read_bytes()
+                if not raw or raw[0:1] not in (b"{", b"[", b" ", b"\n"):
+                    logger.warning("Fichier tâches corrompu (binaire) — ignoré")
+                    self.persist_path.unlink(missing_ok=True)
+                    return
+                data = json.loads(raw.decode("utf-8"))
                 tasks_dict = data.get("tasks", {})
                 for task_id, task_dict in tasks_dict.items():
                     task_dict["func"] = None

@@ -79,12 +79,12 @@ class StrategistAgent(BaseAgent):
             temperature = 0.5
         elif mode == "deep":
             working_context = self.memory.get_working_context(n=20)
-            similar = self.memory.remember("stratégie automatisation", n_results=5)
+            similar = await self.memory.remember("stratégie automatisation", n_results=5)
             max_tokens = 512
             temperature = 0.7
         else:  # balanced
             working_context = self.memory.get_working_context(n=10)
-            similar = self.memory.remember("stratégie automatisation", n_results=3)
+            similar = await self.memory.remember("stratégie automatisation", n_results=3)
             max_tokens = 384
             temperature = 0.6
 

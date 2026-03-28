@@ -8,7 +8,7 @@ import time  # <-- AJOUT
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional
-import aiofiles  # type: ignore[import-untyped]
+import aiofiles
 
 from app.utils.logger import logger
 
