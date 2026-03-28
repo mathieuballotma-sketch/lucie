@@ -270,7 +270,7 @@ class SafariResearchWorkflow:
                 None,
                 lambda: str(self.manager.generate(
                     prompt=llm_prompt,
-                    model="qwen2.5:3b",
+                    model_role="lightweight",
                     temperature=0.1,
                     max_tokens=30,
                 )),
@@ -611,7 +611,7 @@ end tell
                     return str(self.manager.generate(
                         prompt=p,
                         system="Extracteur de faits. Bullet points courts en français.",
-                        model="qwen2.5:7b",
+                        model_role="generation",
                         temperature=0.3,
                         max_tokens=300,
                     ))
@@ -678,7 +678,7 @@ end tell
                 lambda: self.manager.generate(
                     prompt=synth_prompt,
                     system=synth_system,
-                    model="qwen2.5:7b",
+                    model_role="generation",
                     temperature=0.5,
                     max_tokens=1024,
                 ),

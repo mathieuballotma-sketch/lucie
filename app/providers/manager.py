@@ -42,6 +42,7 @@ class ProviderManager:
         self.config = config
         self.host = config.get("host", "http://localhost:11434")
         self.models = config.get("models", {})
+        self.model_roles: Dict[str, str] = config.get("model_roles", {})
         self.timeout = config.get("timeout", 30)
         self.retry_attempts = config.get("retry_attempts", 3)
         self.retry_delay = config.get("retry_delay", 1.0)
@@ -102,6 +103,7 @@ class ProviderManager:
         system: Optional[str] = None,
         priority: str = "auto",
         model: Optional[str] = None,
+        model_role: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 512,
         timeout: Optional[float] = None,
@@ -114,12 +116,20 @@ class ProviderManager:
             system: Le prompt système (optionnel).
             priority: Priorité ("auto", "speed", "balanced", "quality") pour choisir le modèle.
             model: Nom explicite du modèle (si fourni, écrase priority).
+            model_role: Rôle fonctionnel ("code", "generation", "router", ...) résolu via model_roles.
             temperature: Température pour la génération.
             max_tokens: Nombre maximum de tokens à générer.
             timeout: Timeout spécifique pour cette requête (en secondes).
         """
         start_time = time.time()
         routed = False
+
+        # Résoudre model_role → model si model_role fourni et model absent
+        if model_role and model is None:
+            resolved = self.model_roles.get(model_role)
+            if resolved:
+                model = resolved
+                logger.debug(f"[Role] '{model_role}' → {model}")
 
         # Déterminer le modèle à utiliser
         if model:

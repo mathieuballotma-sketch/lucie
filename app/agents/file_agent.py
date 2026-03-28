@@ -16,6 +16,8 @@ class FileAgent(BaseAgent):
     Peut lister, copier, déplacer, supprimer des fichiers et rechercher par contenu.
     """
 
+    model_role = "code"
+
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("FileAgent", llm_service, bus)
         self.working_directory = config.get("working_directory", str(Path.home()))
@@ -58,7 +60,7 @@ Réponds UNIQUEMENT avec un JSON de cette forme :
 Si la demande n'est pas claire, réponds {{"action": "unknown"}}.
 """
         try:
-            response = self.ask_llm(prompt)
+            response = self.ask_llm(prompt, model_role=self.model_role)
             cleaned = response.strip().replace("```json", "").replace("```", "").strip()
             try:
                 decision = json.loads(cleaned)

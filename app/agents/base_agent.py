@@ -226,6 +226,7 @@ class BaseAgent(ABC):
         prompt: str,
         system_prompt: Optional[str] = None,
         model: str = "balanced",
+        model_role: Optional[str] = None,
         temperature: float = 0.5,
         max_tokens: int = 512,
     ) -> str:
@@ -233,7 +234,8 @@ class BaseAgent(ABC):
             return str(self.llm.generate(
                 prompt=prompt,
                 system=system_prompt,
-                model=model,
+                model=None if model_role else model,
+                model_role=model_role,
                 temperature=temperature,
                 max_tokens=max_tokens,
             ))
@@ -253,6 +255,7 @@ class BaseAgent(ABC):
         prompt: str,
         system_prompt: Optional[str] = None,
         model: str = "balanced",
+        model_role: Optional[str] = None,
         temperature: float = 0.5,
         max_tokens: int = 512,
     ) -> str:
@@ -264,6 +267,7 @@ class BaseAgent(ABC):
             prompt,
             system_prompt,
             model,
+            model_role,
             temperature,
             max_tokens,
         )

@@ -1075,6 +1075,7 @@ class ExecutionEngine:
             else:
                 return self.manager.generate(
                     prompt=enriched, system=system,
+                    model_role="router",
                     timeout=timeout,
                 )
 

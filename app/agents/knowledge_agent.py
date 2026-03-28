@@ -48,6 +48,8 @@ class KnowledgeAgent(BaseAgent):
     Agent de connaissances : recherche web, Wikipedia, arXiv, actualités.
     """
 
+    model_role = "lightweight"
+
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("KnowledgeAgent", llm_service, bus)
         self.user_agent = "LucidAgent/1.0 (contact@example.com)"
@@ -353,7 +355,7 @@ Réponds UNIQUEMENT avec un JSON de la forme :
 Si aucun outil n'est pertinent, réponds {{"tool": "none"}}.
 """
         try:
-            response = self.ask_llm(prompt, temperature=0.3)
+            response = self.ask_llm(prompt, temperature=0.3, model_role=self.model_role)
             data = self.extract_json_from_response(response)
             if data and isinstance(data, dict):
                 tool = data.get("tool")
@@ -379,4 +381,4 @@ Voici des résultats de recherche pour la requête "{query}" :
 {content}
 Fais un résumé concis et informatif de ces informations.
 """
-        return self.ask_llm(prompt)
+        return self.ask_llm(prompt, model_role=self.model_role)

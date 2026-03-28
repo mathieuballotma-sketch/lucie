@@ -116,6 +116,15 @@ class LLMConfig:
     retry_delay: float = 1.0
     keep_alive: int = -1
     models: Dict[str, LLMModelConfig] = field(default_factory=dict)
+    # Mapping rôle → modèle Ollama spécialisé
+    model_roles: Dict[str, str] = field(default_factory=lambda: {
+        "router":     "qwen3:8b",
+        "code":       "qwen2.5-coder:7b",
+        "generation": "mistral:7b",
+        "reasoning":  "phi4:14b",
+        "translation": "gemma2:2b",
+        "lightweight": "qwen2.5:3b",
+    })
 
 
 @dataclass
@@ -283,7 +292,10 @@ class Config:
         models = {}
         for key, model_conf in models_data.items():
             models[key] = LLMModelConfig(**model_conf)
-        config.llm = LLMConfig(models=models, **llm_data)
+        model_roles_data: Dict[str, str] = llm_data.pop("model_roles", {})
+        default_roles = LLMConfig().model_roles
+        merged_roles = {**default_roles, **model_roles_data}
+        config.llm = LLMConfig(models=models, model_roles=merged_roles, **llm_data)
 
         # Metrics
         metrics_data = data.get("metrics", {})

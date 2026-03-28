@@ -13,7 +13,7 @@ Principes :
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Callable, List
+from typing import Any, Callable, Dict, List
 
 from pydantic.v1 import BaseModel, Field
 
@@ -50,16 +50,21 @@ class ReviewCodeContract(BaseModel):
 class CodeDebugAgent(BaseAgent):
     """
     Agent spécialisé dans l'analyse, le debug et le refactoring de code.
-    Utilise deepseek-coder:6.7b pour des réponses techniques précises.
+    Utilise qwen2.5-coder:7b (rôle "code") pour des réponses techniques précises.
     """
 
-    MODEL = "deepseek-coder:6.7b"
+    model_role = "code"
+    MODEL = "deepseek-coder:6.7b"       # valeur par défaut, surchargée par config
     FALLBACK_MODEL = "qwen2.5:7b"
 
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("CodeDebugAgent", llm_service, bus)
         self.generation_timeout = config.get("code_timeout", 30.0)
-        logger.info("🐛 CodeDebugAgent initialisé (deepseek-coder:6.7b)")
+        # Résoudre le modèle depuis model_roles si disponible
+        model_roles: Dict[str, str] = getattr(llm_service, "model_roles", {})
+        self.MODEL = model_roles.get("code", "deepseek-coder:6.7b")
+        self.FALLBACK_MODEL = model_roles.get("balanced", "qwen2.5:7b")
+        logger.info(f"🐛 CodeDebugAgent initialisé ({self.MODEL})")
 
     def get_tools(self) -> List[Tool]:
         return [

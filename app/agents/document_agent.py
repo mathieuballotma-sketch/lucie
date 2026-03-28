@@ -25,6 +25,8 @@ class DocumentAgentCreateWordDocumentContract(BaseModel):
 class DocumentAgent(BaseAgent):
     """Agent de création de documents Word."""
 
+    model_role = "code"
+
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("DocumentAgent", llm_service, bus)
         base_dir   = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -84,7 +86,7 @@ Résultats de recherche :
 {search_summary}
 Rédige un contenu structuré. Ne fournis que le contenu, sans titre.
 """
-                    content = self.ask_llm(prompt)
+                    content = self.ask_llm(prompt, model_role=self.model_role)
                 else:
                     logger.warning("Aucun résultat, utilisation LLM seul.")
             except Exception as e:
@@ -99,7 +101,7 @@ Le contenu doit être détaillé et bien structuré.
 Réponds uniquement avec le JSON.
 """
             try:
-                response = self.ask_llm(prompt, temperature=0.5)
+                response = self.ask_llm(prompt, temperature=0.5, model_role=self.model_role)
                 data     = self.extract_json_from_response(response)
                 if data and "title" in data and "content" in data:
                     title   = data["title"]
@@ -114,6 +116,6 @@ Réponds uniquement avec le JSON.
                 return f"Erreur: {e}"
 
         prompt_titre = f"Donne un titre court (sans guillemets) pour un document sur : {query}"
-        title = self.ask_llm(prompt_titre).strip()
+        title = self.ask_llm(prompt_titre, model_role=self.model_role).strip()
         # FIX v2 : await obligatoire
         return await self._tool_create_word_document(title=title, content=content)

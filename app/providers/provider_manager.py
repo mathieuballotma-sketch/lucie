@@ -116,6 +116,7 @@ class HybridProviderManager:
         system: Optional[str] = None,
         priority: str = "auto",
         model: Optional[str] = None,
+        model_role: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 512,
         timeout: Optional[float] = None,
@@ -125,13 +126,15 @@ class HybridProviderManager:
 
         Utilise MLX pour les tâches rapides (routing, fast, auto, default).
         Bascule automatiquement vers Ollama si MLX échoue (CircuitBreaker).
-        Force Ollama pour "quality" et "fallback".
+        Force Ollama pour "quality", "fallback" et tout model_role spécifié
+        (les rôles sont Ollama-specific).
 
         Args:
             prompt: Le prompt utilisateur.
             system: Le prompt système (optionnel).
             priority: Priorité / type de tâche pour la sélection du provider.
             model: Modèle explicite (optionnel, transmis au provider sélectionné).
+            model_role: Rôle fonctionnel ("code", "generation", "router", ...) — force Ollama.
             temperature: Température de génération.
             max_tokens: Tokens maximum à générer.
             timeout: Timeout en secondes (optionnel).
@@ -139,6 +142,20 @@ class HybridProviderManager:
         Returns:
             Texte généré.
         """
+        # ── model_role → forcer Ollama (les rôles sont spécifiques à Ollama) ──
+        if model_role:
+            logger.debug(f"[Hybrid] model_role='{model_role}' → Ollama (forcé)")
+            return self._ollama.generate(
+                prompt=prompt,
+                system=system,
+                priority=priority,
+                model=model,
+                model_role=model_role,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout,
+            )
+
         # ── Forcer Ollama pour qualité / fallback explicite ────────────────────
         if priority in _OLLAMA_FORCED:
             logger.debug(f"[Hybrid] '{priority}' → Ollama (forcé)")
@@ -191,6 +208,7 @@ class HybridProviderManager:
             system=system,
             priority=priority,
             model=model,
+            model_role=model_role,
             temperature=temperature,
             max_tokens=max_tokens,
             timeout=timeout,

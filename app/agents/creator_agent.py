@@ -258,6 +258,8 @@ class CreatorAgent(BaseAgent):
     Pipeline : génération LLM → validation AST → tests → sauvegarde → événement.
     """
 
+    model_role = "generation"
+
     def __init__(
         self,
         llm_service: ProviderManager,
@@ -348,7 +350,8 @@ class CreatorAgent(BaseAgent):
         si activé — les deux sont synchrones, donc compatibles.
         """
         tools_str = ", ".join(self._available_tools) if self._available_tools else "aucun outil connu"
-        model     = self.model_profile if attempt == 0 else self.fallback_model
+        model             = self.model_profile if attempt == 0 else self.fallback_model
+        effective_role    = self.model_role if attempt == 0 else None
 
         prompt = f"""Tu es un générateur de code pour des agents IA.
 L'utilisateur veut créer un agent capable de :
@@ -372,7 +375,8 @@ Règles :
             return str(self.llm.generate(
                 prompt=prompt,
                 system="",
-                model=model,
+                model=None if effective_role else model,
+                model_role=effective_role,
                 temperature=0.2,
                 max_tokens=1500,
                 timeout=self.generation_timeout,

@@ -30,6 +30,14 @@ llm:
       name: "qwen2.5:0.5b"
       max_tokens: 512
       temperature: 0.1
+  # Modèles spécialisés par rôle fonctionnel
+  model_roles:
+    router:      "qwen3:8b"           # FrontalCortex, orchestration
+    code:        "qwen2.5-coder:7b"   # FileAgent, DocumentAgent, CodeDebugAgent
+    generation:  "mistral:7b"         # CreatorAgent, SafariResearchWorkflow
+    reasoning:   "phi4:14b"           # Finance, DataAnalyst, Research
+    translation: "gemma2:2b"          # Translator
+    lightweight: "qwen2.5:3b"         # KnowledgeAgent, classification
 
 audio:
   model_size: "small"

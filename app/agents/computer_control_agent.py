@@ -130,6 +130,8 @@ class ComputerControlArrangeWindowsContract(BaseModel):
 class ComputerControlAgent(BaseAgent):
     """Agent capable d'effectuer des actions visibles sur l'ordinateur."""
 
+    model_role = "code"
+
     def __init__(self, llm_service: Any, bus: Any, config: Dict[str, Any]) -> None:
         super().__init__("ComputerControlAgent", llm_service, bus)
         pyautogui.FAILSAFE = True
