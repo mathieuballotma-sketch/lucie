@@ -131,6 +131,18 @@ Multi-model architecture — different models handle different cognitive tasks. 
 
 ---
 
+## Security
+
+All inputs — emails, documents, and prompts — pass through a sanitization pipeline before reaching the LLM. `TextSanitizer` strips invisible HTML, decodes base64 and URL-encoded payloads, and normalizes unicode, eliminating the most common injection vectors. `PromptInjectionDetector` runs in two stages: Level 1 pattern matching produces a confidence score from 0 to 100; if that score exceeds a threshold, Level 2 triggers a dedicated LLM analysis pass. Each input receives a verdict — `SAFE`, `SUSPICIOUS`, or `MALICIOUS` — with a confidence score attached. All analysis runs locally. No data is sent externally for security evaluation.
+
+---
+
+## Auditability
+
+Every suspicious action is logged to a local SQLite database at `~/.lucie/sandbox_memory.db`. Fuzzy matching via `SequenceMatcher` (threshold > 0.8) detects variants of known attack patterns that evade exact-match rules. The log is queryable for audit and continuous improvement. No log data leaves the machine.
+
+---
+
 ## What Was Built
 
 Lucie is the result of continuous engineering, not a weekend prototype.
