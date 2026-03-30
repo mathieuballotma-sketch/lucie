@@ -40,6 +40,7 @@ class ReminderAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("ReminderAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — rappels et alertes
         self.default_list = config.get("reminders_default_list", "Rappels")
 
     def get_tools(self) -> list[Tool]:

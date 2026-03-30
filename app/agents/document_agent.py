@@ -29,6 +29,7 @@ class DocumentAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("DocumentAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — lecture PDF/Word/Excel
         base_dir   = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         output_dir = os.path.join(base_dir, "Lucid_Docs")
         self.writer     = WriterAgent(output_dir)

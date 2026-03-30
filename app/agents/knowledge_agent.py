@@ -52,6 +52,7 @@ class KnowledgeAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("KnowledgeAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — RAG et base de connaissances
         self.user_agent = "LucidAgent/1.0 (contact@example.com)"
         self.news_api_key = config.get("news_api_key")
         self.max_results = config.get("max_results", 3)

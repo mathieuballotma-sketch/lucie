@@ -60,6 +60,7 @@ class CalendarAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("CalendarAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — gestion de l'agenda
         self.store: Any = None
         self.default_calendar: Any = None
         if HAS_EVENTKIT:

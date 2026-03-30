@@ -153,6 +153,7 @@ class SafariResearchWorkflow:
     def __init__(self, computer_agent: Any, provider_manager: Any) -> None:
         self.computer = computer_agent
         self.manager = provider_manager
+        self.stability: str = "core"  # Agent prioritaire — recherche web visible
         self.speed = ACTIVE_PROFILE
         self.subject: str = ""
         self._frequency: str = "general_query"
