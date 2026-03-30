@@ -17,9 +17,11 @@
 [![Tests](https://img.shields.io/badge/tests-435_passed-brightgreen?style=flat-square)]()
 [![License](https://img.shields.io/badge/license-BSL_1.1-amber?style=flat-square)](LICENSE)
 
+<sub>Test badge is a local snapshot — run <code>pytest</code> locally to verify. No CI pipeline is active yet.</sub>
+
 <br/>
 
-> **Kill your WiFi. Lucie still works.**
+> **Your data never leaves your Mac.**
 
 <br/>
 
@@ -209,11 +211,11 @@ Voice-activate any task. Triage your inbox intelligently. Run autonomous researc
 |---------|:-----:|:-----------:|:---------------:|:-------:|
 | 100% Local | ✅ | ✅ | ❌ | ❌ |
 | Native macOS control | ✅ | ❌ | ❌ | ❌ |
-| Multi-agent (10 core + 19 exp.) | ✅ | Basic | ❌ | ❌ |
-| Multi-model (7+) | ✅ | ❌ | ❌ | ❌ |
-| Mail + Calendar integration | ✅ | ❌ | ❌ | ❌ |
+| Multi-agent (10 core + 19 exp.) | ✅ | Basic | ❌ | Basic |
+| Multi-model (7+) | ✅ | ❌ | ❌ | Cloud only |
+| Mail + Calendar integration | ✅ | ❌ | ❌ | Via plugins |
 | Voice control | ✅ | ❌ | ❌ | ✅ (cloud) |
-| Accounting automation | ✅ | ❌ | ❌ | ❌ |
+| Accounting automation | ✅ | ❌ | ❌ | Limited |
 | No cloud data transfer | ✅ | ✅ | ❌ | ❌ |
 | Cross-platform | macOS | ✅ | ✅ | ✅ |
 

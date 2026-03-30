@@ -4,10 +4,11 @@ topics:
   - autonomous-agent
   - privacy-first
   - ollama
-  - open-source
   - python
   - macos
-  - multiplatform
+  - macos-only
   - llm
   - data-sovereignty
+  - multi-agent
+  - accounting-automation
 ...
