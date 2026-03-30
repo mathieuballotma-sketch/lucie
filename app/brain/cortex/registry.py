@@ -27,6 +27,7 @@ from app.agents.reminder_agent import ReminderAgent
 from app.agents.watch_agent import WatchAgent
 from app.agents.vision.text_extractor import TextExtractorAgent
 from app.agents.apple_ecosystem_agent import AppleEcosystemAgent
+from app.agents.accounting_agent import AccountingAgent
 from app.agents.deception_agent import DeceptionAgent
 from app.brain.synapses.event_bus import EventBus
 from ...services.web_search import WebSearch
@@ -112,6 +113,7 @@ class AgentRegistry:
             WatchAgent(self.manager, self.bus, {}),
             SmartMailAgent(self.manager, self.bus, {}),
             CodeDebugAgent(self.manager, self.bus, {}),
+            AccountingAgent(self.manager, self.bus, {}),
             # FeedbackAgent — boucle de rétroaction, token injecté par la boucle après
             FeedbackAgent(
                 llm_service=self.manager,
