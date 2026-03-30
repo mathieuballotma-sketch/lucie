@@ -47,12 +47,12 @@ Until now.
 
 ## The Solution
 
-Lucie runs **100% on your Mac**. No API keys. No cloud calls. No data leaks. Ever.
+Lucie runs **100% on your Mac**. No API keys. No cloud dependency — your data stays on your Mac.
 
-- **30 specialized agents** — each powered by the right model for the job
+- **10 core agents + 19 experimental** — each powered by the right model for the job
 - **Native macOS integration** — Mail, Calendar, Reminders, Safari, Finder, any app via Accessibility APIs
-- **Bio-inspired orchestration** — adaptive routing, associative memory, intelligent signal prioritization
-- **Compliant by design** — your data never leaves the machine. Legally defensible for regulated professionals.
+- **Adaptive orchestration** — intelligent routing, associative memory, priority-based signal handling
+- **Designed for GDPR compliance** — no data leaves your machine. Consult your DPO for your specific use case.
 
 ---
 
@@ -63,7 +63,7 @@ Lucie runs **100% on your Mac**. No API keys. No cloud calls. No data leaks. Eve
 | Agent | Capability |
 |-------|-----------|
 | **SmartMailAgent** | Reads Apple Mail, classifies messages by urgency with LLM intelligence (4 levels), suggests contextual replies |
-| **AccountingAgent** | Processes invoices in bulk — extracts structured data, auto-categorizes, reconciles with bank statements. No human in the loop. |
+| **AccountingAgent** | Processes invoices in bulk — extracts structured data, auto-categorizes, reconciles with bank statements. Human review recommended for financial decisions. |
 | **CalendarAgent** | Full read/write access to Calendar.app via natural language |
 | **ReminderAgent** | Creates and manages reminders from conversational input |
 | **FileAgent** | File CRUD, smart renaming, directory analysis, bulk operations |
@@ -118,7 +118,7 @@ FrontalCortex  ─────────────────────�
      ├── Memory Graph        (associative, persistent)  │
      └── Event Bus           (authenticated pub/sub)    │
                                                          │
-                    30 Specialized Agents ───────────────┘
+           10 Core + 19 Experimental Agents ──────────────┘
                          │
                          ▼
               Ollama  ·  FAISS  ·  SQLite
@@ -141,7 +141,7 @@ Lucie is the result of continuous engineering, not a weekend prototype.
 - **RAG pipeline** — FAISS vector store with Ollama embeddings, fully offline
 - **435 tests** — full test suite passing, 0 failures
 - **0 static errors** — ruff clean, mypy strict mode passing on all 162 source files
-- **EventBus hardened** — HMAC-authenticated message passing between all agents
+- **Event-driven messaging hardened** — authenticated message passing between all agents
 - **Stability pass** — every agent ships with graceful fallbacks, circuit breakers, and recovery logic
 
 ---
@@ -158,6 +158,8 @@ Lucie is the result of continuous engineering, not a weekend prototype.
 | Wake word detection | <100ms |
 | Test suite | **435 passed, 0 failed** |
 | Static analysis | **ruff 0 · mypy 0** across 162 files |
+
+> Latency figures measured on Apple M4 24GB. Results will vary by hardware.
 
 ---
 
@@ -191,10 +193,10 @@ PYTHONPATH=. python3 main_hud.py
 ## Use Cases
 
 **For Accountants**
-Drop 200 invoices into a folder. Lucie processes each one — extracts vendor, amount, date, and VAT, categorizes by type, then reconciles against your bank export. Fully offline. No subscription. No upload. Compliant with CNOEC data handling requirements.
+Drop 200 invoices into a folder. Lucie processes each one — extracts vendor, amount, date, and VAT, categorizes by type, then reconciles against your bank export. Fully offline. No subscription. No upload. Human review recommended before acting on financial output.
 
 **For Lawyers**
-Read case files, draft summaries, research applicable law — entirely on your machine. Attorney-client privilege preserved by architecture, not policy.
+Read case files, draft summaries, research applicable law — entirely on your machine. No data is sent externally. Designed for GDPR compliance — consult your DPO for your specific use case.
 
 **For Anyone on a Mac**
 Voice-activate any task. Triage your inbox intelligently. Run autonomous research. Manage your files. All of it without a single cloud call.
@@ -207,12 +209,12 @@ Voice-activate any task. Triage your inbox intelligently. Run autonomous researc
 |---------|:-----:|:-----------:|:---------------:|:-------:|
 | 100% Local | ✅ | ✅ | ❌ | ❌ |
 | Native macOS control | ✅ | ❌ | ❌ | ❌ |
-| Multi-agent (30+) | ✅ | Basic | ❌ | ❌ |
+| Multi-agent (10 core + 19 exp.) | ✅ | Basic | ❌ | ❌ |
 | Multi-model (7+) | ✅ | ❌ | ❌ | ❌ |
 | Mail + Calendar integration | ✅ | ❌ | ❌ | ❌ |
 | Voice control | ✅ | ❌ | ❌ | ✅ (cloud) |
 | Accounting automation | ✅ | ❌ | ❌ | ❌ |
-| GDPR / CNIL compliant | ✅ | Partial | ❌ | ❌ |
+| No cloud data transfer | ✅ | ✅ | ❌ | ❌ |
 | Cross-platform | macOS | ✅ | ✅ | ✅ |
 
 ---
@@ -229,7 +231,7 @@ PYTHONPATH=. python -m pytest tests/ -x -q                # 435 passed
 
 ## Roadmap
 
-- [x] 30 agents operational
+- [x] 10 core agents + 19 experimental agents operational
 - [x] Multi-model architecture (7 specialized models)
 - [x] SmartMailAgent with LLM-based classification
 - [x] AccountingAgent MVP — invoice extraction + bank reconciliation
