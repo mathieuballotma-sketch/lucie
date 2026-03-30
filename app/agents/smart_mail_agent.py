@@ -8,7 +8,6 @@ Connecté à : CalendarAgent, AppleEcosystemAgent, VoiceManager.
 """
 
 import asyncio
-import json
 import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -51,21 +50,51 @@ class ConfirmMailContract(BaseModel):
     action: str = Field("confirm", description="confirm ou cancel")
 
 
-# ── Prompt de classification ─────────────────────────────────────────────────
+# ── Prompt de classification zero-shot ──────────────────────────────────────
 
-_CLASSIFICATION_PROMPT = """Analyse ce mail et réponds UNIQUEMENT en JSON :
-{{
-  "type": "spam|pub|pro|urgent|personnel",
-  "priorite": 1-5,
-  "resume": "1 phrase max",
-  "action": "ignorer|lire|repondre|urgent",
-  "contient_reunion": true/false,
-  "contient_deadline": true/false
-}}
+_CLASSIFICATION_PROMPT_ZEROSHOT = """Tu es un assistant pour professions réglementées (avocats, notaires).
+Classe ce mail en UN seul niveau parmi les quatre suivants :
+
+CRITIQUE : délai procédural, audience imminente, mise en demeure, signification, huissier, assignation
+URGENT   : client en attente, relance adverse, échéance proche, demande de réponse urgente
+NORMAL   : suivi courant, échanges confrères, confirmations, dossiers en cours
+BASSE    : newsletters, publicité, administratif, notifications automatiques
 
 Expéditeur : {sender}
 Sujet : {subject}
-Corps : {body}"""
+Corps : {body}
+
+Réponds UNIQUEMENT avec : NIVEAU | raison en 1 ligne
+Exemple : URGENT | Client Dupont relance pour signature de l'acte de vente"""
+
+# Alias pour compatibilité benchmark (importe _CLASSIFICATION_PROMPT)
+_CLASSIFICATION_PROMPT = _CLASSIFICATION_PROMPT_ZEROSHOT
+
+# ── Mots-clés de fallback (classification sans LLM) ─────────────────────────
+
+_KW_CRITIQUE = [
+    "mise en demeure", "signification", "audience", "délai procédural",
+    "huissier", "saisie", "injonction", "assignation", "référé",
+    "citation à comparaître", "procédure d'urgence",
+]
+_KW_URGENT = [
+    "urgent", "relance", "échéance", "en attente de votre",
+    "réponse attendue", "rappel", "asap", "dès que possible",
+    "sans délai", "immédiatement", "avant demain",
+]
+_KW_BASSE = [
+    "newsletter", "unsubscribe", "désabonner", "publicité", "offre spéciale",
+    "promotion", "noreply", "no-reply", "notification automatique",
+    "ne pas répondre", "mailing",
+]
+_KW_REUNION = [
+    "réunion", "rendez-vous", "rdv", "meeting", "convocation",
+    "entretien", "conférence", "visio", "appel téléphonique",
+]
+_KW_DEADLINE = [
+    "deadline", "avant le", "pour le", "échéance", "date limite",
+    "délai de", "à remettre", "à rendre", "à retourner",
+]
 
 
 # ── Agent ────────────────────────────────────────────────────────────────────
@@ -259,26 +288,34 @@ end tell
     # ── Traitement UN PAR UN ─────────────────────────────────────────────
 
     async def _process_single_mail(self, mail: Dict[str, str]) -> Dict[str, Any]:
-        """Traite UN seul mail : analyse → classification → action."""
+        """Traite UN seul mail : classification zero-shot → action."""
         sender = mail.get("sender", "inconnu")
         subject = mail.get("subject", "(sans sujet)")
         body = mail.get("body", "")
 
-        # 1. Classifier avec LLM (sémaphore 3 slots max pour ne pas saturer Ollama)
-        prompt = _CLASSIFICATION_PROMPT.format(
-            sender=sender, subject=subject, body=body[:500]
-        )
-        async with self._ollama_sem:
-            response = await self.ask_llm_async(
-                prompt,
-                system_prompt="Tu es un classificateur de mails. JSON uniquement.",
-                model="speed",
-                temperature=0.2,
-                max_tokens=200,
-            )
+        # 1. Détecter réunion/deadline par mots-clés (rapide, sans appel LLM)
+        texte_bas = f"{subject} {body}".lower()
+        contient_reunion = any(kw in texte_bas for kw in _KW_REUNION)
+        contient_deadline = any(kw in texte_bas for kw in _KW_DEADLINE)
 
-        # 2. Parser le JSON
-        classification = self._parse_classification(response)
+        # 2. Classification zero-shot via LLM, fallback mots-clés si indisponible
+        try:
+            niveau, raison = await self._classify_with_llm(sender, subject, body)
+            source = "llm"
+        except Exception as e:
+            logger.warning(f"📧 Fallback mots-clés (LLM indisponible) : {e}")
+            niveau, raison = self._classify_with_keywords(sender, subject, body)
+            source = "keywords"
+
+        logger.debug(f"📧 [{source}] {niveau} — {subject[:40]}")
+
+        classification: Dict[str, Any] = {
+            "niveau": niveau,
+            "raison": raison,
+            "contient_reunion": contient_reunion,
+            "contient_deadline": contient_deadline,
+            "source": source,
+        }
 
         # 3. Agir selon la classification
         action_taken = await self._act_on_classification(mail, classification)
@@ -290,41 +327,92 @@ end tell
             "action_taken": action_taken,
         }
 
-    def _parse_classification(self, response: str) -> Dict[str, Any]:
-        """Parse la réponse LLM en dict de classification."""
-        try:
-            match = re.search(r'\{[^}]+\}', response, re.DOTALL)
-            if match:
-                result: Dict[str, Any] = json.loads(match.group())
-                return result
-        except (json.JSONDecodeError, AttributeError):
-            pass
-        # Fallback si parsing échoue
-        return {"type": "pro", "priorite": 3, "action": "lire",
-                "resume": "classification échouée", "contient_reunion": False,
-                "contient_deadline": False}
+    async def _classify_with_llm(
+        self, sender: str, subject: str, body: str
+    ) -> Tuple[str, str]:
+        """Classifie le mail via LLM zero-shot. Retourne (niveau, raison)."""
+        prompt = _CLASSIFICATION_PROMPT_ZEROSHOT.format(
+            sender=sender,
+            subject=subject,
+            body=body[:400],
+        )
+        async with self._ollama_sem:
+            response = await self.ask_llm_async(
+                prompt,
+                system_prompt=(
+                    "Tu es un assistant juridique. "
+                    "Réponds uniquement avec le niveau et la raison."
+                ),
+                model_role="speed",
+                temperature=0.1,
+                max_tokens=60,
+            )
+        return self._parse_niveau(response)
+
+    def _parse_niveau(self, response: str) -> Tuple[str, str]:
+        """Parse la réponse LLM 'NIVEAU | raison'. Retourne (niveau, raison)."""
+        niveaux_valides = {"CRITIQUE", "URGENT", "NORMAL", "BASSE"}
+        response = response.strip()
+
+        # Format attendu : NIVEAU | raison
+        if "|" in response:
+            parts = response.split("|", 1)
+            niveau = parts[0].strip().upper()
+            raison = parts[1].strip() if len(parts) > 1 else ""
+            if niveau in niveaux_valides:
+                return niveau, raison
+
+        # Niveau en début de réponse (sans pipe)
+        for niv in niveaux_valides:
+            if response.upper().startswith(niv):
+                raison = response[len(niv):].strip().lstrip(":- ")
+                return niv, raison
+
+        # Niveau quelque part dans la réponse
+        for niv in niveaux_valides:
+            if niv in response.upper():
+                return niv, response
+
+        # Niveau indéterminable
+        logger.debug(f"📧 Niveau LLM non reconnu : {response[:60]}")
+        return "NORMAL", "classification LLM ambiguë"
+
+    def _classify_with_keywords(
+        self, sender: str, subject: str, body: str
+    ) -> Tuple[str, str]:
+        """Fallback par mots-clés si le LLM est indisponible."""
+        texte = f"{sender} {subject} {body}".lower()
+
+        for kw in _KW_CRITIQUE:
+            if kw in texte:
+                return "CRITIQUE", f"mot-clé détecté : {kw}"
+
+        for kw in _KW_URGENT:
+            if kw in texte:
+                return "URGENT", f"mot-clé détecté : {kw}"
+
+        for kw in _KW_BASSE:
+            if kw in texte:
+                return "BASSE", f"mot-clé détecté : {kw}"
+
+        return "NORMAL", "classification par défaut"
 
     async def _act_on_classification(
         self, mail: Dict[str, str], classification: Dict[str, Any]
     ) -> str:
-        """Agit selon la classification du mail."""
-        mail_type = classification.get("type", "pro")
+        """Agit selon le niveau de classification du mail."""
+        niveau = classification.get("niveau", "NORMAL")
         subject = mail.get("subject", "")
         sender = mail.get("sender", "")
         actions = []
 
-        # Spam → ignorer silencieusement
-        if mail_type == "spam":
-            logger.info(f"📧 Spam ignoré : {subject[:50]}")
-            return "ignoré (spam)"
+        # Basse priorité → ignorer silencieusement
+        if niveau == "BASSE":
+            logger.info(f"📧 Basse priorité ignorée : {subject[:50]}")
+            return "ignoré (basse priorité)"
 
-        # Pub → noter en 1 ligne
-        if mail_type == "pub":
-            logger.info(f"📢 Pub : {subject[:50]}")
-            return "pub notée"
-
-        # Urgent → notification vocale immédiate (non bloquante)
-        if mail_type == "urgent" or classification.get("priorite", 0) >= 4:
+        # Critique ou urgent → notification macOS + voix (non bloquante)
+        if niveau in ("CRITIQUE", "URGENT"):
             asyncio.create_task(self._notify_urgent(sender, subject))
             actions.append("notification urgente")
 
@@ -338,8 +426,8 @@ end tell
             result = await self._notify_reminder(subject, sender)
             actions.append(result)
 
-        # Suggestion de réponse pour mails pro/urgent
-        if mail_type in ("pro", "urgent", "personnel") and classification.get("priorite", 0) >= 3:
+        # Suggestion de réponse pour tous les niveaux sauf BASSE
+        if niveau in ("CRITIQUE", "URGENT", "NORMAL"):
             suggestion = await self._suggest_reply(sender, subject, mail.get("body", ""))
             if suggestion:
                 # Stocker la suggestion dans la classification pour le résumé
@@ -526,13 +614,15 @@ end tell
         result = await self._process_single_mail(mail)
         cl = result["classification"]
 
-        type_emoji = {"spam": "🚫", "pub": "📢", "pro": "💼", "urgent": "🔴", "personnel": "👤"}
-        emoji = type_emoji.get(cl.get("type", ""), "📧")
-        prio = cl.get("priorite", 3)
+        niveau = cl.get("niveau", "NORMAL")
+        niveau_emoji = {"CRITIQUE": "🚨", "URGENT": "🔴", "NORMAL": "💼", "BASSE": "📭"}
+        emoji = niveau_emoji.get(niveau, "📧")
+        source = cl.get("source", "llm")
+        source_label = "(LLM)" if source == "llm" else "(mots-clés)"
 
         output = (
-            f"{emoji} **{cl.get('type', '?').upper()}** — Priorité {'🔴' * prio}{'⚪' * (5 - prio)}\n"
-            f"📝 {cl.get('resume', subject)}\n"
+            f"{emoji} **{niveau}** {source_label}\n"
+            f"⚖️ {cl.get('raison', '')}\n"
             f"⚡ Action : {result['action_taken']}\n"
         )
         if cl.get("contient_reunion"):
@@ -759,20 +849,33 @@ end tell
         if not results:
             return "📮 Aucun mail traité."
 
-        urgent = [r for r in results if "urgent" in r.get("action_taken", "")]
-        spam = [r for r in results if "spam" in r.get("action_taken", "")]
-        pub = [r for r in results if "pub" in r.get("action_taken", "")]
-        reunions = [r for r in results if "réunion" in r.get("action_taken", "")]
-        deadlines = [r for r in results if "deadline" in r.get("action_taken", "")]
-        autres = [r for r in results if r not in urgent + spam + pub + reunions + deadlines]
+        critiques = [r for r in results if r.get("classification", {}).get("niveau") == "CRITIQUE"]
+        urgents = [r for r in results if r.get("classification", {}).get("niveau") == "URGENT"]
+        normaux = [r for r in results if r.get("classification", {}).get("niveau") == "NORMAL"]
+        basses = [r for r in results if r.get("classification", {}).get("niveau") == "BASSE"]
+        reunions = [r for r in results if r.get("classification", {}).get("contient_reunion")]
+        deadlines = [r for r in results if r.get("classification", {}).get("contient_deadline")]
 
-        summary = f"📧 **{len(results)} mails traités** ({unread} non lus au total) — {duration:.1f}s\n\n"
+        summary = f"📧 **{len(results)} mails traités** ({unread} non lus) — {duration:.1f}s\n\n"
 
-        if urgent:
-            summary += f"🔴 **{len(urgent)} URGENT(S)**\n"
-            for r in urgent:
+        if critiques:
+            summary += f"🚨 **{len(critiques)} CRITIQUE(S)**\n"
+            for r in critiques:
+                cl = r.get("classification", {})
                 summary += f"  → {r['sender']}: {r['subject']}\n"
-                suggestion = r.get("classification", {}).get("suggestion_reponse")
+                summary += f"    ⚖️ {cl.get('raison', '')}\n"
+                suggestion = cl.get("suggestion_reponse")
+                if suggestion:
+                    summary += f"    💡 {suggestion[:100]}\n"
+            summary += "\n"
+
+        if urgents:
+            summary += f"🔴 **{len(urgents)} URGENT(S)**\n"
+            for r in urgents:
+                cl = r.get("classification", {})
+                summary += f"  → {r['sender']}: {r['subject']}\n"
+                summary += f"    ⚡ {cl.get('raison', '')}\n"
+                suggestion = cl.get("suggestion_reponse")
                 if suggestion:
                     summary += f"    💡 {suggestion[:100]}\n"
             summary += "\n"
@@ -789,20 +892,18 @@ end tell
                 summary += f"  → {r['subject']}\n"
             summary += "\n"
 
-        if autres:
-            summary += f"💼 **{len(autres)} professionnel(s)/personnel(s)**\n"
-            for r in autres:
+        if normaux:
+            summary += f"💼 **{len(normaux)} normal(aux)**\n"
+            for r in normaux:
                 cl = r.get("classification", {})
-                summary += f"  → {r['sender']}: {cl.get('resume', r['subject'])}\n"
+                summary += f"  → {r['sender']}: {cl.get('raison', r['subject'])}\n"
                 suggestion = cl.get("suggestion_reponse")
                 if suggestion:
                     summary += f"    💡 Réponse suggérée : {suggestion[:100]}\n"
             summary += "\n"
 
-        if spam:
-            summary += f"🚫 {len(spam)} spam(s) ignoré(s)\n"
-        if pub:
-            summary += f"📢 {len(pub)} pub(s) notée(s)\n"
+        if basses:
+            summary += f"📭 {len(basses)} mail(s) basse priorité ignoré(s)\n"
 
         return summary.strip()
 
