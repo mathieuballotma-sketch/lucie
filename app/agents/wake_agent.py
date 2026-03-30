@@ -123,6 +123,7 @@ class WakeAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: Any) -> None:
         super().__init__("WakeAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — wake word et transcription vocale
         # Callbacks injectés depuis engine.py
         self._engine_callback: Optional[Callable[[str], None]] = None
         self._voice_speak_callback: Optional[Callable[[str], None]] = None

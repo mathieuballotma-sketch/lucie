@@ -20,6 +20,7 @@ class FileAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("FileAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — gestion des fichiers
         self.working_directory = config.get("working_directory", str(Path.home()))
         # Moteur de recherche — injecte par l'engine
         self.search_engine: Any = None

@@ -59,6 +59,7 @@ class CodeDebugAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("CodeDebugAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — debug et génération de code
         self.generation_timeout = config.get("code_timeout", 30.0)
         # Résoudre le modèle depuis model_roles si disponible
         model_roles: Dict[str, str] = getattr(llm_service, "model_roles", {})

@@ -56,6 +56,10 @@ class BaseAgent(ABC):
         # CircuitBreaker pour protéger les appels LLM contre les pannes répétées
         self._llm_cb = CircuitBreaker(name=f"llm_{name}", failure_threshold=5, recovery_timeout=60.0)
 
+        # Niveau de stabilité : "core" (prioritaire, stable) ou "experimental" (secondaire)
+        # Les agents core surchargent cette valeur dans leur propre __init__
+        self.stability: str = "experimental"
+
         logger.info(f"🤖 Agent '{self.name}' initialisé")
 
     # --- FIX v5 : méthode d'injection du token par le registre ---

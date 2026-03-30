@@ -134,6 +134,7 @@ class ComputerControlAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: Dict[str, Any]) -> None:
         super().__init__("ComputerControlAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — contrôle macOS
         pyautogui.FAILSAFE = True
 
         self.visible_mode                = config.get("visible_actions", True)

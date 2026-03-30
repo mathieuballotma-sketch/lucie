@@ -78,6 +78,7 @@ class SmartMailAgent(BaseAgent):
 
     def __init__(self, llm_service: Any, bus: Any, config: Dict[str, Any]) -> None:
         super().__init__("SmartMailAgent", llm_service, bus)
+        self.stability = "core"  # Agent prioritaire — cas d'usage principal avocats
         self._watch_task: Optional[asyncio.Task[None]] = None
         self._last_unread: int = 0
         # Référence au registre injectée par le cortex
