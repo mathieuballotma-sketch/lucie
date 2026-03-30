@@ -1,7 +1,17 @@
 """
-Event Bus asynchrone et sécurisé avec permissions dynamiques, rate limiting,
-gestion des abonnements traçables et capacité de révocation immunitaire.
-Incarne les principes :
+Event Bus asynchrone v3 — file unique + consommateur permanent + concurrence bornée.
+
+Améliorations par rapport à la v2 :
+- asyncio.Queue unique avec _dispatch_loop() comme consommateur permanent
+  (élimine la création de tâches ad-hoc pour chaque publication).
+- Sémaphore par canal pour borner la concurrence (default_max_concurrent=10).
+- Tracking des tâches actives (globales) pour un arrêt propre via stop().
+- _bounded_callback() : libère le sémaphore via try/finally même en cas d'exception.
+- _safe_callback() : isole les exceptions des callbacks individuels.
+- set_channel_concurrency() : configure le sémaphore d'un canal à chaud.
+- Stats enrichies : semaphore_waits, active_tasks, channel_concurrency.
+
+Principes conservés :
 - Homéostasie : rate limiting, gestion des erreurs, nettoyage des tâches orphelines.
 - Immunité adaptative : révocation des sources, annulation des callbacks en cours.
 - Symbiose : communication structurée entre composants avec authentification.
@@ -132,7 +142,6 @@ class PermissionManager:
             expected = self._source_tokens.get(source)
             if not expected:
                 return False
-            # Comparaison en temps constant
             return hmac.compare_digest(token, expected)
 
     async def can_publish(self, source: str, channel: str) -> bool:
@@ -148,9 +157,7 @@ class PermissionManager:
                                token: str) -> Subscription:
         """Ajoute un abonnement après vérification du token."""
         async with self._lock:
-            # Inline auth/acl checks to avoid re-acquiring the same lock (asyncio.Lock
-            # is not reentrant — calling authenticate() or can_subscribe() here would
-            # deadlock because both also do `async with self._lock`).
+            # Inline auth/acl checks pour éviter le deadlock (asyncio.Lock non réentrant).
             expected = self._source_tokens.get(source)
             if not expected or not hmac.compare_digest(token, expected):
                 raise SecurityError(f"Authentification échouée pour {source}")
@@ -179,7 +186,6 @@ class PermissionManager:
             result = []
             for source, channels in self._active_subs.items():
                 if channel in channels:
-                    # On fait une copie superficielle, les objets Subscription sont immuables
                     result.extend(channels[channel])
             return result
 
@@ -190,15 +196,12 @@ class PermissionManager:
         """
         async with self._lock:
             logger.warning(f"🛡️ Révocation de la source {source}")
-            # Retirer des ACL
             self._publish_acl.pop(source, None)
             self._subscribe_acl.pop(source, None)
             self._source_tokens.pop(source, None)
-            # Retirer des services
             for svc, s in list(self._service_map.items()):
                 if s == source:
                     del self._service_map[svc]
-            # Récupérer les abonnements et tâches actives
             tasks_to_cancel: List[asyncio.Task[None]] = []
             if source in self._active_subs:
                 for channel, subs in self._active_subs[source].items():
@@ -215,17 +218,213 @@ class PermissionManager:
 
 class EventBus:
     """
-    Bus d'événements asynchrone avec canaux, permissions, rate limiting,
-    historique, et mécanisme de requête/réponse sécurisé.
+    Bus d'événements asynchrone v3.
+
+    Architecture :
+    - Une asyncio.Queue unique reçoit tous les événements publiés.
+    - Un _dispatch_loop() permanent consomme la queue et dispatche vers les abonnés.
+    - Un sémaphore par canal borne la concurrence (default_max_concurrent=10).
+    - Les tâches actives sont tracées globalement pour un arrêt propre via stop().
+
+    L'API publique (publish, subscribe, unsubscribe, request, respond,
+    kill_source, get_history, register_source) reste identique à la v2.
     """
 
-    def __init__(self, max_history: int = 100):
+    DEFAULT_MAX_CONCURRENT: int = 10
+    CALLBACK_TIMEOUT: float = 2.0
+
+    def __init__(self, max_history: int = 100, default_max_concurrent: int = DEFAULT_MAX_CONCURRENT):
         self._permissions = PermissionManager()
         self._rate_limiter = RateLimiter()
         self._history: List[Event] = []
         self.max_history = max_history
-        self._lock = asyncio.Lock()  # Pour l'historique et autres opérations globales
-        self._response_futures: Dict[str, tuple[asyncio.Future[Any], str]] = {}  # request_id -> (future, expected_source)
+        self._lock = asyncio.Lock()
+
+        # File unique et boucle de dispatch
+        self._queue: asyncio.Queue[Event] = asyncio.Queue()
+        self._dispatch_task: Optional[asyncio.Task[None]] = None
+        self._running: bool = False
+
+        # Concurrence bornée par canal
+        self._default_max_concurrent = default_max_concurrent
+        self._channel_semaphores: Dict[str, asyncio.Semaphore] = {}
+        self._channel_concurrency: Dict[str, int] = {}  # config mémorisée
+
+        # Tracking global des tâches actives (pour stop())
+        self._active_tasks: Set[asyncio.Task[None]] = set()
+        self._tasks_lock = asyncio.Lock()
+
+        # Futures pour request/response
+        self._response_futures: Dict[str, tuple[asyncio.Future[Any], str]] = {}
+
+        # Stats
+        self._stats: Dict[str, Any] = {
+            "semaphore_waits": 0,
+            "active_tasks": 0,
+            "channel_concurrency": {},
+            "events_dispatched": 0,
+            "events_dropped_rate_limit": 0,
+        }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Cycle de vie
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def start(self) -> None:
+        """Démarre le consommateur de queue. À appeler une fois au démarrage."""
+        if self._running:
+            return
+        self._running = True
+        self._dispatch_task = asyncio.create_task(self._dispatch_loop(), name="event_bus.dispatch_loop")
+        logger.info("✅ EventBus v3 démarré (dispatch_loop actif)")
+
+    async def stop(self, timeout: float = 5.0) -> None:
+        """
+        Arrête proprement le bus :
+        1. Arrête d'accepter de nouveaux événements.
+        2. Attend que la queue soit vide (drain).
+        3. Attend les tâches actives ou les annule si timeout.
+        """
+        self._running = False
+
+        # Drain de la queue
+        try:
+            await asyncio.wait_for(self._queue.join(), timeout=timeout)
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ EventBus stop() : timeout drain de la queue")
+
+        # Annuler la boucle de dispatch
+        if self._dispatch_task and not self._dispatch_task.done():
+            self._dispatch_task.cancel()
+            try:
+                await self._dispatch_task
+            except asyncio.CancelledError:
+                pass
+
+        # Attendre ou annuler les tâches actives restantes
+        async with self._tasks_lock:
+            remaining = list(self._active_tasks)
+
+        if remaining:
+            done, pending = await asyncio.wait(remaining, timeout=timeout)
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, Exception):
+                    pass
+
+        logger.info("EventBus v3 arrêté proprement")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Boucle de dispatch
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def _dispatch_loop(self) -> None:
+        """Consommateur permanent de la queue d'événements."""
+        logger.debug("EventBus _dispatch_loop démarrée")
+        while True:
+            try:
+                event = await self._queue.get()
+                try:
+                    await self._dispatch_event(event)
+                finally:
+                    self._queue.task_done()
+            except asyncio.CancelledError:
+                logger.debug("EventBus _dispatch_loop annulée")
+                break
+            except Exception as e:
+                logger.error(f"❌ EventBus _dispatch_loop erreur inattendue: {e}")
+
+    async def _dispatch_event(self, event: Event) -> None:
+        """Dispatche un événement vers tous ses abonnés."""
+        subscribers = await self._permissions.get_subscribers(event.channel)
+        sem = self._get_semaphore(event.channel)
+
+        for sub in subscribers:
+            task = asyncio.create_task(
+                self._bounded_callback(sem, sub, event),
+                name=f"event_bus.cb.{event.channel}.{sub.source}"
+            )
+            sub.active_tasks.add(task)
+            task.add_done_callback(lambda t, s=sub: s.active_tasks.discard(t))
+
+            async with self._tasks_lock:
+                self._active_tasks.add(task)
+            task.add_done_callback(lambda t: asyncio.create_task(self._remove_active_task(t)))
+
+        self._stats["events_dispatched"] += 1
+
+    async def _remove_active_task(self, task: asyncio.Task[None]) -> None:
+        """Retire une tâche terminée du set global."""
+        async with self._tasks_lock:
+            self._active_tasks.discard(task)
+        self._stats["active_tasks"] = len(self._active_tasks)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Callbacks bornés
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def _bounded_callback(self, sem: asyncio.Semaphore, sub: Subscription, event: Event) -> None:
+        """
+        Acquiert le sémaphore du canal avant d'appeler le callback.
+        Libère le sémaphore via try/finally même en cas d'exception.
+        Incrémente semaphore_waits si l'acquisition n'est pas immédiate.
+        """
+        if sem.locked():
+            self._stats["semaphore_waits"] += 1
+
+        async with sem:
+            await self._safe_callback(sub, event)
+
+    async def _safe_callback(self, sub: Subscription, event: Event) -> None:
+        """
+        Appelle le callback avec timeout et isole les exceptions
+        pour qu'une erreur d'un abonné n'affecte pas les autres.
+        """
+        try:
+            await asyncio.wait_for(sub.callback(event), timeout=self.CALLBACK_TIMEOUT)
+        except asyncio.TimeoutError:
+            logger.error(
+                f"⏱️ Callback timeout (>{self.CALLBACK_TIMEOUT}s) "
+                f"canal={event.channel} source={event.source} abonné={sub.source}"
+            )
+        except asyncio.CancelledError:
+            raise  # Laisser remonter les annulations
+        except Exception as e:
+            logger.error(
+                f"❌ Callback error canal={event.channel} source={event.source} "
+                f"abonné={sub.source}: {e}"
+            )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sémaphores par canal
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _get_semaphore(self, channel: str) -> asyncio.Semaphore:
+        """Retourne (ou crée) le sémaphore associé à un canal."""
+        if channel not in self._channel_semaphores:
+            limit = self._channel_concurrency.get(channel, self._default_max_concurrent)
+            self._channel_semaphores[channel] = asyncio.Semaphore(limit)
+            self._stats["channel_concurrency"][channel] = limit
+        return self._channel_semaphores[channel]
+
+    def set_channel_concurrency(self, channel: str, max_concurrent: int) -> None:
+        """
+        Configure la concurrence maximale pour un canal.
+        Si un sémaphore existe déjà pour ce canal, il sera remplacé au prochain accès.
+        """
+        if max_concurrent < 1:
+            raise ValueError(f"max_concurrent doit être ≥ 1, reçu: {max_concurrent}")
+        self._channel_concurrency[channel] = max_concurrent
+        # Invalider le sémaphore existant pour qu'il soit recréé avec la nouvelle valeur
+        self._channel_semaphores.pop(channel, None)
+        self._stats["channel_concurrency"][channel] = max_concurrent
+        logger.debug(f"Canal '{channel}' : concurrence max → {max_concurrent}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # API publique (identique à la v2)
+    # ─────────────────────────────────────────────────────────────────────────
 
     async def register_source(self, source: str, token: Optional[str] = None,
                               publish_channels: Optional[List[str]] = None,
@@ -237,73 +436,59 @@ class EventBus:
         """
         if token is None:
             token = secrets.token_urlsafe(32)
-        await self._permissions.register_source(source, token,
-                                                publish_channels or [],
-                                                subscribe_channels or [],
-                                                services or [])
+        await self._permissions.register_source(
+            source, token,
+            publish_channels or [],
+            subscribe_channels or [],
+            services or []
+        )
         return token
 
-    async def publish(self, channel: str, data: Any = None, source: str = "system", token: Optional[str] = None) -> None:
+    async def publish(self, channel: str, data: Any = None,
+                      source: str = "system", token: Optional[str] = None) -> None:
         """
         Publie un événement sur un canal.
         Nécessite que la source soit authentifiée et autorisée.
+        L'événement est enfilé dans la queue ; le dispatch est asynchrone.
         """
-        # Authentification et autorisation
         if not await self._permissions.authenticate(source, token or ""):
             raise SecurityError(f"Authentification échouée pour {source}")
         if not await self._permissions.can_publish(source, channel):
             raise SecurityError(f"Source {source} non autorisée à publier sur {channel}")
 
-        # Rate limiting
         if not self._rate_limiter.allow(source):
-            logger.warning(f"Rate limit exceeded for {source} on {channel}")
-            # On peut choisir de jeter l'événement silencieusement
+            logger.warning(f"Rate limit dépassé pour {source} sur {channel}")
+            self._stats["events_dropped_rate_limit"] += 1
             return
 
-        # Créer l'événement avec une copie profonde des données
-        event_id = str(uuid.uuid4())
         event = Event(
-            id=event_id,
+            id=str(uuid.uuid4()),
             channel=channel,
             data=copy.deepcopy(data),
             source=source,
             timestamp=time.time()
         )
 
-        # Historique (avec copie)
+        # Historique (avec verrou)
         async with self._lock:
             self._history.append(event)
             if len(self._history) > self.max_history:
                 self._history.pop(0)
 
-        # Récupérer les abonnés
-        subscribers = await self._permissions.get_subscribers(channel)
-
-        # Lancer les callbacks en parallèle, avec timeout et suivi des tâches
-        for sub in subscribers:
-            # Créer une tâche avec timeout
-            async def wrapped_cb() -> None:
-                try:
-                    await asyncio.wait_for(sub.callback(event), timeout=2.0)
-                except asyncio.TimeoutError:
-                    logger.error(f"Callback timeout for {event.channel} from {event.source} (subscriber {sub.source})")
-                except Exception as e:
-                    logger.error(f"Callback error: {e}")
-
-            task = asyncio.create_task(wrapped_cb())
-            # Ajouter la tâche à la subscription pour pouvoir l'annuler plus tard
-            sub.active_tasks.add(task)
-            task.add_done_callback(lambda t: sub.active_tasks.discard(t))
+        # Enfile dans la queue — le _dispatch_loop s'en charge
+        if not self._running:
+            logger.warning(f"EventBus arrêté, événement {channel} ignoré")
+            return
+        await self._queue.put(event)
 
     async def subscribe(self, channel: str, callback: Callable[[Event], Awaitable[None]],
                         source: str, token: str) -> Subscription:
-        """
-        Abonne une source à un canal. Retourne l'objet Subscription.
-        """
+        """Abonne une source à un canal. Retourne l'objet Subscription."""
         return await self._permissions.add_subscription(source, channel, callback, token)
 
-    async def unsubscribe(self, channel: str, callback: Callable[..., Any], source: str, token: str) -> None:
-        """Se désabonne."""
+    async def unsubscribe(self, channel: str, callback: Callable[..., Any],
+                          source: str, token: str) -> None:
+        """Se désabonne d'un canal."""
         if not await self._permissions.authenticate(source, token):
             raise SecurityError(f"Authentification échouée pour {source}")
         await self._permissions.remove_subscription(source, channel, callback)
@@ -313,54 +498,47 @@ class EventBus:
         Envoie une requête à un service et attend une réponse.
         Le service doit être enregistré via register_source avec le nom du service.
         """
-        # Déterminer la source du service
         target_source = await self._permissions.get_service_source(service)
         if not target_source:
             raise SecurityError(f"Service {service} inconnu")
 
         request_id = str(uuid.uuid4())
         future = asyncio.get_running_loop().create_future()
-        # On enregistre la future avec la source attendue
         self._response_futures[request_id] = (future, target_source)
 
-        # Publier la requête sur le canal dédié
-        await self.publish(f"request.{service}",
-                           {"request_id": request_id, "data": data},
-                           source="system",
-                           token=None)  # Le bus n'a pas besoin de token pour system?
+        await self.publish(
+            f"request.{service}",
+            {"request_id": request_id, "data": data},
+            source="system",
+            token=None
+        )
 
         try:
             return await asyncio.wait_for(future, timeout=timeout)
         except asyncio.TimeoutError:
-            raise TimeoutError(f"Request to {service} timed out")
+            raise TimeoutError(f"Requête vers {service} expirée")
         finally:
             self._response_futures.pop(request_id, None)
 
     async def respond(self, request_id: str, data: Any, source: str, token: str) -> None:
-        """
-        Permet à un agent de répondre à une requête.
-        Vérifie que la source correspond à celle attendue.
-        """
+        """Permet à un agent de répondre à une requête."""
         entry = self._response_futures.get(request_id)
         if not entry:
-            logger.warning(f"Response to unknown request {request_id}")
+            logger.warning(f"Réponse à un request_id inconnu: {request_id}")
             return
         future, expected_source = entry
         if source != expected_source:
-            raise SecurityError(f"Source {source} not allowed to respond to request {request_id}")
+            raise SecurityError(f"Source {source} non autorisée à répondre à {request_id}")
         if not await self._permissions.authenticate(source, token):
             raise SecurityError(f"Authentification échouée pour {source}")
-
         if not future.done():
             future.set_result(data)
 
     async def kill_source(self, source: str, admin_token: str) -> None:
         """
         Action immunitaire : révoque une source et annule ses tâches en cours.
-        Nécessite un jeton d'administrateur (à définir). Pour l'instant, on suppose
-        que l'appelant est autorisé (ex: HealerAgent).
+        Nécessite un jeton d'administrateur (l'appelant est responsable de l'autorisation).
         """
-        # TODO: vérifier admin_token
         tasks = await self._permissions.kill_source(source)
         for task in tasks:
             if not task.done():
@@ -375,3 +553,9 @@ class EventBus:
         """Retourne une copie de l'historique."""
         async with self._lock:
             return self._history[-limit:]
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Retourne les statistiques courantes du bus."""
+        self._stats["active_tasks"] = len(self._active_tasks)
+        self._stats["queue_size"] = self._queue.qsize()
+        return dict(self._stats)
