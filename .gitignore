@@ -42,13 +42,22 @@ logs/
 *.jsonl
 
 # ===== LUCIE — SPÉCIFIQUE =====
+CLAUDE.md
 _backups/
-*.bak
-*.bak2
-*.bak3
-*.bak4
-*.bak5
+*.bak*
+*.deprecated
 *.cache
+*.pkl
+*.joblib
+data_dev/
+chroma_data/
+rag_data/
+short_term_memory.json
+*.save
+PROMPT_*.md
+lucie-project.skill
+prompt.txt
+prompt_v2.txt
 
 # ===== macOS =====
 .DS_Store
@@ -74,6 +83,10 @@ build/
 *.app
 tmp/
 temp/
+
+# ===== CACHE OUTILS =====
+.mypy_cache/
+.ruff_cache/
 
 # ===== TESTS =====
 .pytest_cache/
