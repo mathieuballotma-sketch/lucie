@@ -199,45 +199,49 @@ class TestTaxReporter:
 class TestMiningMonitor:
     """Test MiningMonitor profitability calculation."""
 
-    async def test_profitable(self):
-        monitor = MiningMonitor(electricity_cost_kwh=0.22)
-        metrics = await monitor.check_metrics(
-            hashrate_mhs=100, gpu_temp=65,
-            power_watts=200, estimated_daily_revenue=5.0,
-        )
-        # Cost = 0.2kW × 24h × 0.22 = 1.056EUR
-        assert metrics.status == MiningStatus.PROFITABLE
-        assert metrics.daily_profit_eur > 0
-        print("✓ test_profitable passed")
+    def test_profitable(self):
+        async def _run():
+            monitor = MiningMonitor(electricity_cost_kwh=0.22)
+            metrics = await monitor.check_metrics(
+                hashrate_mhs=100, gpu_temp=65,
+                power_watts=200, estimated_daily_revenue=5.0,
+            )
+            # Cost = 0.2kW × 24h × 0.22 = 1.056EUR
+            assert metrics.status == MiningStatus.PROFITABLE
+            assert metrics.daily_profit_eur > 0
+        asyncio.run(_run())
 
-    async def test_unprofitable(self):
-        monitor = MiningMonitor(electricity_cost_kwh=0.30)
-        metrics = await monitor.check_metrics(
-            hashrate_mhs=50, gpu_temp=70,
-            power_watts=300, estimated_daily_revenue=1.0,
-        )
-        # Cost = 0.3kW × 24h × 0.30 = 2.16EUR > 1.0EUR
-        assert metrics.status == MiningStatus.UNPROFITABLE
-        print("✓ test_unprofitable passed")
+    def test_unprofitable(self):
+        async def _run():
+            monitor = MiningMonitor(electricity_cost_kwh=0.30)
+            metrics = await monitor.check_metrics(
+                hashrate_mhs=50, gpu_temp=70,
+                power_watts=300, estimated_daily_revenue=1.0,
+            )
+            # Cost = 0.3kW × 24h × 0.30 = 2.16EUR > 1.0EUR
+            assert metrics.status == MiningStatus.UNPROFITABLE
+        asyncio.run(_run())
 
-    async def test_overheating(self):
-        monitor = MiningMonitor()
-        metrics = await monitor.check_metrics(
-            hashrate_mhs=100, gpu_temp=95,
-            power_watts=200, estimated_daily_revenue=5.0,
-        )
-        assert metrics.status == MiningStatus.OVERHEATING
-        print("✓ test_overheating passed")
+    def test_overheating(self):
+        async def _run():
+            monitor = MiningMonitor()
+            metrics = await monitor.check_metrics(
+                hashrate_mhs=100, gpu_temp=95,
+                power_watts=200, estimated_daily_revenue=5.0,
+            )
+            assert metrics.status == MiningStatus.OVERHEATING
+        asyncio.run(_run())
 
-    async def test_recommendation_text(self):
-        monitor = MiningMonitor()
-        metrics = await monitor.check_metrics(
-            hashrate_mhs=100, gpu_temp=95,
-            power_watts=200, estimated_daily_revenue=5.0,
-        )
-        rec = monitor.get_recommendation(metrics)
-        assert "STOP" in rec or "ARRÊTER" in rec
-        print("✓ test_recommendation_text passed")
+    def test_recommendation_text(self):
+        async def _run():
+            monitor = MiningMonitor()
+            metrics = await monitor.check_metrics(
+                hashrate_mhs=100, gpu_temp=95,
+                power_watts=200, estimated_daily_revenue=5.0,
+            )
+            rec = monitor.get_recommendation(metrics)
+            assert "STOP" in rec or "ARRÊTER" in rec
+        asyncio.run(_run())
 
     def run_all(self):
         """Run all MiningMonitor tests."""
