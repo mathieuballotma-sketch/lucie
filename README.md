@@ -35,7 +35,7 @@ Lucie est différente :
 
 ⚡ **Fonctionne avec Ollama** — 7 modèles locaux, chacun optimisé pour sa tâche. Aucun abonnement requis.
 
-🛡️ **Sécurité en profondeur** — sandboxing des agents, chiffrement au repos, détection d'exfiltration, protection mémoire.
+🛡️ **Local-first par design** — vos données ne quittent jamais votre machine. Chiffrement AES-256 au repos, sandbox macOS natif, filtrage de données sensibles.
 
 ---
 
@@ -143,7 +143,7 @@ PYTHONPATH=. python3 main_hud.py
 | **SmartMailAgent** | ✅ | Classification intelligente des mails (4 niveaux d'urgence) via LLM |
 | **QuantumRouter** | ✅ | Routage adaptatif avec fusion et superposition quantique |
 | **CryptoInvestorAgent** | ✅ | Suivi de portefeuille crypto, analyse de risque, reporting fiscal |
-| **Sandboxing agents** | ✅ | Isolation des agents avec IPC chiffré |
+| **Sandboxing agents** | ✅ | Sous-processus isolés via `sandbox-exec` macOS + IPC chiffré AES-256-GCM |
 | **Chiffrement au repos** | ✅ | AES-256 pour toutes les données persistées |
 | **Commande vocale** | ✅ | Wake word local ("Hey Jarvis") + Whisper |
 | **RAG local** | ✅ | FAISS + embeddings Ollama, 100% offline |
@@ -158,16 +158,29 @@ PYTHONPATH=. python3 main_hud.py
 
 ## 🛡 Sécurité
 
-Lucie intègre 6 couches de sécurité, toutes exécutées localement :
+### Le vrai argument sécurité : local-first
 
-| Module | Code | Description |
-|--------|------|-------------|
-| **Agent Sandboxing** | SEC-01 | Chaque agent tourne dans un sandbox isolé avec IPC chiffré |
-| **Chiffrement au repos** | SEC-02 | AES-256 via `cryptography` — données, mémoire, logs |
-| **Protection mémoire** | SEC-03 | Isolation de la mémoire inter-agents, nettoyage automatique |
-| **Integrity Monitor** | SEC-04 | Détection de modification non autorisée des fichiers agents |
-| **Security Response** | SEC-05 | Réponse automatisée aux incidents détectés |
-| **Content Filter** | SEC-06 | Détection d'exfiltration, filtrage de contenu, threat intelligence |
+La garantie principale de Lucie est architecturale : **vos données ne quittent jamais votre machine.** Aucun cloud, aucune API externe, aucune possibilité d'exfiltration vers des serveurs tiers. Pour un professionnel réglementé, c'est la seule garantie qui vaille vraiment.
+
+### Ce qui est sécurisé au niveau système
+
+| Module | Code | Ce que ça fait réellement |
+|--------|------|--------------------------|
+| **Agent Sandboxing** | SEC-01 | `sandbox-exec` macOS — chaque agent tourne dans un sous-processus isolé avec profil `.sb` restrictif (filesystem, réseau, syscalls limités). IPC via socket Unix + AES-256-GCM. |
+| **Chiffrement au repos** | SEC-02 | AES-256 via `cryptography` (backed by OpenSSL/C) — toutes les données de `~/.lucie/` sont chiffrées au repos. |
+| **Protection mémoire clés** | SEC-03 | Clés cryptographiques dans des buffers `ctypes` verrouillés en RAM via `mlock` (prévient le swap sur disque). Secrets scannés et redactés avant tout traitement LLM. |
+| **Intégrité des agents** | SEC-04 | Hachage SHA-256 des fichiers agents au démarrage — détecte toute modification non autorisée. |
+
+### Garde-fous applicatifs (Python, pas OS-level)
+
+Ces modules apportent une valeur réelle, mais sont implémentés en Python : un attaquant avec accès système peut les contourner. Ce sont des **garde-fous applicatifs**, pas des protections système :
+
+| Module | Code | Ce que ça fait |
+|--------|------|----------------|
+| **Security Response** | SEC-05 | Réponse automatisée aux événements internes — termine les agents anormaux, publie des alertes via EventBus. |
+| **Content Filter** | SEC-06 | Heuristiques réseau (psutil) sur les connexions sortantes + filtrage regex de données sensibles (NIR, IBAN, CB, clés API). Alerte — ne bloque pas au niveau OS. |
+
+> **Sur `sandbox-exec`** : utilisé par Lucie pour l'isolation inter-processus, `sandbox-exec` est officiellement déprécié depuis macOS 13 mais continue de fonctionner. Il sera remplacé par le vrai **macOS App Sandbox** lors de la distribution en `.dmg` — c'est là que résidera l'isolation système certifiée Apple.
 
 **Pipeline de sanitisation** : chaque entrée (mail, document, prompt) passe par `TextSanitizer` (HTML, base64, unicode) puis `PromptInjectionDetector` (scoring + analyse LLM). Verdicts : `SAFE`, `SUSPICIOUS`, `MALICIOUS`.
 
