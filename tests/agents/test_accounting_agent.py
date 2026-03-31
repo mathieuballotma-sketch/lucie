@@ -596,10 +596,10 @@ async def test_process_batch_missing_folder(agent: AccountingAgent, tmp_path: Pa
 # ── get_tools ─────────────────────────────────────────────────────────────────
 
 
-def test_get_tools_returns_three(agent: AccountingAgent) -> None:
+def test_get_tools_returns_four(agent: AccountingAgent) -> None:
     tools = agent.get_tools()
     names = {t.name for t in tools}
-    assert names == {"process_batch", "extract_invoice", "reconcile"}
+    assert names == {"process_batch", "extract_invoice", "reconcile", "export_fec"}
 
 
 def test_valid_categories_count() -> None:
