@@ -27,6 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from pydantic.v1 import BaseModel, Field
 
 from app.agents.base_agent import BaseAgent, Tool
+from app.services.fec_export import FECExporter, FECInvoice
 from app.utils.logger import logger
 
 
@@ -66,6 +67,15 @@ class ReconcileContract(BaseModel):
 
     csv_path: str = Field(..., description="Chemin vers l'export CSV bancaire")
     invoices_json: str = Field(..., description="JSON des factures extraites (liste)")
+
+
+class ExportFECContract(BaseModel):
+    """Contrat pour l'export FEC (Fichier des Écritures Comptables)."""
+
+    invoices_json: str = Field(..., description="JSON des factures extraites (liste)")
+    output_path: str = Field(..., description="Chemin de sortie pour le fichier FEC")
+    siren: str = Field("000000000", description="Numéro SIREN de l'entreprise (9 chiffres)")
+    close_date: Optional[str] = Field(None, description="Date de clôture (YYYYMMDD)")
 
 
 # ── Structure de données interne ──────────────────────────────────────────────
@@ -173,6 +183,14 @@ class AccountingAgent(BaseAgent):
                 name="reconcile",
                 description="Réconcilie les factures extraites avec un export CSV bancaire",
                 contract=ReconcileContract,
+            ),
+            Tool(
+                name="export_fec",
+                description=(
+                    "Exporte les écritures comptables au format FEC "
+                    "(Fichier des Écritures Comptables, conforme DGFiP)"
+                ),
+                contract=ExportFECContract,
             ),
         ]
 
@@ -643,6 +661,7 @@ class AccountingAgent(BaseAgent):
         total_files: int,
         elapsed: float,
         reconciliation: Optional[Dict[str, Any]] = None,
+        fec_summary: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Génère le rapport Markdown final du traitement comptable."""
         success_count = sum(1 for inv in invoices if inv.amount_ttc is not None)
@@ -683,6 +702,25 @@ class AccountingAgent(BaseAgent):
                 for ambiguous in ambiguous_list:
                     lines.append(f"  - {ambiguous}")
             lines.append("")
+
+        if fec_summary and "error" not in fec_summary:
+            lines += [
+                "## Export FEC (Fichier des Écritures Comptables)",
+                "",
+                f"- **Fichier** : {fec_summary.get('filename', '—')}",
+                f"- **Écritures** : {fec_summary.get('total_entries', 0)}",
+                f"- **Écritures uniques** : {fec_summary.get('unique_ecritures', 0)}",
+                f"- **Total débit** : {fec_summary.get('total_debit', '—')}€",
+                f"- **Total crédit** : {fec_summary.get('total_credit', '—')}€",
+                f"- **Équilibré** : {'✅ Oui' if fec_summary.get('balanced') else '❌ Non'}",
+                "",
+            ]
+            fec_errors = fec_summary.get("validation_errors", [])
+            if fec_errors:
+                lines.append("### ⚠️ Erreurs de validation FEC")
+                for err in fec_errors:
+                    lines.append(f"  - {err}")
+                lines.append("")
 
         lines += [
             "## Détail des factures",
@@ -812,6 +850,69 @@ class AccountingAgent(BaseAgent):
         )
         return json.dumps(report, ensure_ascii=False)
 
+    async def _tool_export_fec(
+        self,
+        invoices_json: str,
+        output_path: str,
+        siren: str = "000000000",
+        close_date: Optional[str] = None,
+    ) -> str:
+        """
+        Exporte les factures extraites au format FEC conforme DGFiP.
+
+        Génère les écritures comptables pour chaque facture :
+        - Débit charge HT (compte 6xxx selon catégorie)
+        - Débit TVA déductible (44566) si TVA > 0
+        - Crédit fournisseur (401000) pour TTC
+        - Si réconciliée : écritures de paiement (journal BQ)
+        """
+        try:
+            raw_list: List[Dict[str, Any]] = json.loads(invoices_json)
+        except json.JSONDecodeError as e:
+            return json.dumps({"error": f"JSON invalide : {e}"})
+
+        exporter = FECExporter(siren=siren, delimiter="\t")
+
+        for inv in raw_list:
+            try:
+                amount_ttc = Decimal(str(inv.get("amount_ttc", 0)))
+                vat_raw = inv.get("vat_amount")
+                vat_amount = Decimal(str(vat_raw)) if vat_raw is not None else None
+                date = inv.get("date")
+                if not date:
+                    continue
+
+                fec_inv = FECInvoice(
+                    vendor=str(inv.get("vendor", "Inconnu")),
+                    date=date,
+                    amount_ttc=amount_ttc,
+                    vat_amount=vat_amount,
+                    category=str(inv.get("category", "Autre")),
+                    piece_ref=str(inv.get("piece_ref", "")),
+                    reconciled=inv.get("reconciliation_status") == "RECONCILED",
+                )
+                exporter.add_invoice(fec_inv)
+            except Exception as e:
+                logger.warning(f"FEC: facture ignorée — {e}")
+
+        if exporter.entry_count == 0:
+            return json.dumps({"error": "Aucune écriture FEC générée"})
+
+        # Générer le nom de fichier conforme
+        filename = exporter.generate_filename(close_date)
+        fec_path = Path(output_path) / filename
+        result_path = exporter.export(str(fec_path))
+
+        summary = exporter.summary()
+        summary["file_path"] = result_path
+        summary["filename"] = filename
+
+        logger.info(
+            f"FEC exporte: {summary['total_entries']} ecritures, "
+            f"equilibre={'OK' if summary['balanced'] else 'KO'}"
+        )
+        return json.dumps(summary, ensure_ascii=False)
+
     async def _tool_process_batch(
         self,
         input_folder: str,
@@ -876,8 +977,30 @@ class AccountingAgent(BaseAgent):
             else:
                 logger.warning(f"Fichier CSV bancaire introuvable : {bank_csv}")
 
+        # Export FEC automatique
+        fec_summary: Optional[Dict[str, Any]] = None
+        if invoices:
+            try:
+                invoices_json = json.dumps(
+                    [inv.to_dict() for inv in invoices],
+                    ensure_ascii=False,
+                )
+                fec_result = await self._tool_export_fec(
+                    invoices_json=invoices_json,
+                    output_path=str(output_path),
+                )
+                fec_summary = json.loads(fec_result)
+                if "error" not in fec_summary:
+                    logger.info(
+                        f"FEC auto-genere: {fec_summary.get('total_entries', 0)} ecritures"
+                    )
+            except Exception as e:
+                logger.warning(f"Export FEC automatique echoue: {e}")
+
         elapsed = time.time() - start_time
-        report = self._generate_report(invoices, len(files), elapsed, reconciliation)
+        report = self._generate_report(
+            invoices, len(files), elapsed, reconciliation, fec_summary
+        )
 
         # Sauvegarder le rapport dans le dossier de sortie
         report_path = output_path / "rapport_comptable.md"
