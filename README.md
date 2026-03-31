@@ -1,278 +1,246 @@
 <div align="center">
 
-```
-██╗     ██╗   ██╗ ██████╗██╗███████╗
-██║     ██║   ██║██╔════╝██║██╔════╝
-██║     ██║   ██║██║     ██║█████╗
-██║     ██║   ██║██║     ██║██╔══╝
-███████╗╚██████╔╝╚██████╗██║███████╗
-╚══════╝ ╚═════╝  ╚═════╝╚═╝╚══════╝
-```
+# 🧠 Lucie
 
-**Confidential-First AI Assistant. 100% Local Multi-Agent System for macOS.**
+**L'IA locale qui respecte vos données.**
 
-[![Python](https://img.shields.io/badge/python-3.13-blue?style=flat-square&logo=python)](https://python.org)
-[![macOS](https://img.shields.io/badge/macOS-Apple_Silicon_only-black?style=flat-square&logo=apple)](https://apple.com)
-[![Local](https://img.shields.io/badge/cloud-0%25-brightgreen?style=flat-square)]()
-[![Tests](https://img.shields.io/badge/tests-435_passed-brightgreen?style=flat-square)]()
-[![License](https://img.shields.io/badge/license-BSL_1.1-amber?style=flat-square)](LICENSE)
+Assistant multi-agents pour macOS — conçu pour les experts-comptables et professions réglementées.
 
-<sub>Test badge is a local snapshot — run <code>pytest</code> locally to verify. No CI pipeline is active yet.</sub>
+[![Version](https://img.shields.io/badge/version-0.2.0--beta-blue?style=flat-square)](https://github.com/mathieuballotma-sketch/Agent-Lucie/releases)
+[![Tests](https://img.shields.io/badge/tests-642_passed-brightgreen?style=flat-square)]()
+[![Python](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![macOS](https://img.shields.io/badge/macOS-Apple_Silicon-black?style=flat-square&logo=apple)](https://apple.com)
+[![License](https://img.shields.io/badge/license-BSL_1.1-orange?style=flat-square)](LICENSE)
 
 <br/>
 
-> **Your data never leaves your Mac.**
-
-<br/>
-
-[**The Problem**](#the-problem) · [**What Lucie Does**](#what-lucie-does) · [**Architecture**](#architecture) · [**Quick Start**](#quick-start) · [**Use Cases**](#use-cases) · [**Roadmap**](#roadmap)
+[Pourquoi Lucie ?](#-pourquoi-lucie) · [Architecture](#-architecture) · [Installation](#-installation) · [Fonctionnalités](#-fonctionnalités) · [Sécurité](#-sécurité) · [Roadmap](#-roadmap)
 
 </div>
 
 ---
 
-## The Problem
+## 🔥 Pourquoi Lucie ?
 
-Every AI assistant you use today — ChatGPT, Claude, Gemini — sends your data to a server you don't control.
+Chaque assistant IA envoie vos données sur un serveur que vous ne contrôlez pas.
+Pour un expert-comptable, un avocat ou un médecin, c'est un problème réglementaire. Pour tout le monde, c'est un problème de confiance.
 
-That's a dealbreaker for:
-- **Lawyers** — attorney-client privilege. Every prompt is a potential breach.
-- **Accountants** — client financial data. CNOEC regulations require local processing.
-- **Doctors** — patient records. CNIL + GDPR impose strict data residency.
-- **Anyone who values privacy** — your conversations, files, and habits are your business.
+Lucie est différente :
 
-**No existing solution combines:** local LLM + native macOS control + multi-agent orchestration + regulated-professional compliance.
+🔒 **100% local** — vos données ne quittent jamais votre Mac. Zéro cloud, zéro API externe.
 
-Until now.
+🧠 **30 agents spécialisés** — comptabilité, sécurité, planning, mail, code, crypto, recherche web, et plus.
 
----
+📊 **Export FEC conforme DGFiP** — traitement de factures, catégorisation, rapprochement bancaire automatisé.
 
-## The Solution
+⚡ **Fonctionne avec Ollama** — 7 modèles locaux, chacun optimisé pour sa tâche. Aucun abonnement requis.
 
-Lucie runs **100% on your Mac**. No API keys. No cloud dependency — your data stays on your Mac.
-
-- **10 core agents + 19 experimental** — each powered by the right model for the job
-- **Native macOS integration** — Mail, Calendar, Reminders, Safari, Finder, any app via Accessibility APIs
-- **Adaptive orchestration** — intelligent routing, associative memory, priority-based signal handling
-- **Designed for GDPR compliance** — no data leaves your machine. Consult your DPO for your specific use case.
+🛡️ **Sécurité en profondeur** — sandboxing des agents, chiffrement au repos, détection d'exfiltration, protection mémoire.
 
 ---
 
-## What Lucie Does
+## 📸 Démo
 
-### Core Agents — Production-Stable
-
-| Agent | Capability |
-|-------|-----------|
-| **SmartMailAgent** | Reads Apple Mail, classifies messages by urgency with LLM intelligence (4 levels), suggests contextual replies |
-| **AccountingAgent** | Processes invoices in bulk — extracts structured data, auto-categorizes, reconciles with bank statements. Human review recommended for financial decisions. |
-| **CalendarAgent** | Full read/write access to Calendar.app via natural language |
-| **ReminderAgent** | Creates and manages reminders from conversational input |
-| **FileAgent** | File CRUD, smart renaming, directory analysis, bulk operations |
-| **DocumentAgent** | Reads PDF, Word, Excel — returns intelligent summaries and extracts |
-| **SafariResearchWorkflow** | Autonomous multi-step web research via Safari, citation-aware |
-| **ComputerControlAgent** | Controls any macOS application — clicks, types, reads UI state — without screen sharing |
-| **WakeAgent** | Always-on wake word detection ("Hey Jarvis") + speech recognition + macOS text-to-speech, fully local |
-| **KnowledgeAgent** | Semantic search across 600+ personal knowledge vectors via FAISS |
-| **CodeDebugAgent** | Reads error traces, identifies root cause, suggests minimal fix |
-
-### Experimental Agents — In Active Development
-
-<details>
-<summary>19 additional agents</summary>
-
-| Agent | Domain |
-|-------|--------|
-| PlannerAgent | Multi-step task decomposition and sequencing |
-| CreatorAgent | Long-form content generation and editing |
-| ProfileAgent | User preference modeling, persistent across sessions |
-| CyberAgent | Real-time security monitoring and anomaly detection |
-| HealerAgent | Autonomous agent self-repair — detects and recovers from degraded state |
-| DeceptionAgent | Honeypot infrastructure, unauthorized access detection |
-| P2PNode | Distributed agent mesh networking |
-| PrivacyGateway | Data flow auditing — blocks accidental external calls |
-| WorkspaceAgent | macOS multi-window workspace orchestration |
-| AnalyzerAgent | Log aggregation and pattern analysis |
-| FixerAgent | Autonomous code correction workflows |
-| RAGAgent | Context injection layer for any agent |
-| VisionAgent | Screenshot interpretation and UI understanding |
-| AudioAgent | Local audio transcription via Whisper |
-| SchedulerAgent | Time-based task automation |
-| WebSearchAgent | Intelligent web browsing via local browser instance |
-| NotificationAgent | macOS Notification Center integration |
-| ContactAgent | Contacts.app read/write access |
-| LegalResearchAgent | Légifrance statutory search *(in progress)* |
-
-</details>
+> *Capture d'écran / GIF à venir — le HUD natif macOS est en cours de polish.*
 
 ---
 
-## Architecture
+## 🏗 Architecture
 
 ```
-User Input
-     │
-     ▼
-FrontalCortex  ─────────────────────────────────────────┐
-     │                                                   │
-     ├── Adaptive Router     (5 execution paths)        │
-     ├── Signal Thalamus     (priority filtering)       │
-     ├── Memory Graph        (associative, persistent)  │
-     └── Event Bus           (authenticated pub/sub)    │
-                                                         │
-           10 Core + 19 Experimental Agents ──────────────┘
-                         │
-                         ▼
-              Ollama  ·  FAISS  ·  SQLite
-              (all local, all offline)
+                        ┌─────────────────────┐
+                        │     Utilisateur      │
+                        └──────────┬──────────┘
+                                   │
+                        ┌──────────▼──────────┐
+                        │    HUD (AppKit)      │
+                        │  Interface native    │
+                        └──────────┬──────────┘
+                                   │
+              ┌────────────────────▼────────────────────┐
+              │            FrontalCortex                 │
+              │                                          │
+              │  QuantumRouter ─── Classifier             │
+              │  Thalamus ─────── EventBus               │
+              │  ContextWave ──── MemoryGraph             │
+              └──────────┬───────────────────┬───────────┘
+                         │                   │
+            ┌────────────▼──┐          ┌─────▼────────────┐
+            │  30 Agents    │          │  Security Layer   │
+            │               │          │                   │
+            │ Accounting    │          │ Sandbox Manager   │
+            │ SmartMail     │          │ Encryption (AES)  │
+            │ Calendar      │          │ Memory Protection │
+            │ CryptoInvest  │          │ Exfiltration Det. │
+            │ CodeDebug     │          │ Integrity Monitor │
+            │ ...           │          │ Threat Intel      │
+            └───────┬───────┘          └──────────────────┘
+                    │
+         ┌──────────▼──────────┐
+         │  Ollama · FAISS ·   │
+         │  SQLite · Whisper   │
+         │  (tout local)       │
+         └─────────────────────┘
 ```
 
-Multi-model architecture — different models handle different cognitive tasks. Seven models available, each assigned where it delivers the best performance-to-resource ratio.
+### Les 30 agents
+
+| Catégorie | Agents | Description |
+|-----------|--------|-------------|
+| **Productivité** | SmartMail, Calendar, Reminder, File, Document, Workspace | Intégration native macOS — Mail, Calendrier, Rappels, Finder |
+| **Comptabilité** | Accounting, FEC Export | Extraction factures, catégorisation, export FEC conforme DGFiP |
+| **Intelligence** | Knowledge, Safari Research, Creator, Planner, Strategist | Recherche sémantique FAISS, recherche web, création de contenu |
+| **Développement** | CodeDebug, Fixer, Analyzer | Diagnostic d'erreurs, correction automatique, analyse de logs |
+| **Finance** | CryptoInvestor, MiningMonitor, RiskGuard, TaxReporter | Suivi crypto, analyse de risque, reporting fiscal |
+| **Sécurité** | Cyber, Deception, Watch | Monitoring temps réel, honeypots, surveillance |
+| **Système** | ComputerControl, Wake, Apple Ecosystem, Clipboard, Notification | Contrôle macOS via Accessibility, commande vocale, notifications |
+| **Meta** | Healer, Profile, Feedback, Soul, TeamLeader, Consolidator | Auto-réparation, profil utilisateur, coordination inter-agents |
 
 ---
 
-## Security
+## 🚀 Installation
 
-All inputs — emails, documents, and prompts — pass through a sanitization pipeline before reaching the LLM. `TextSanitizer` strips invisible HTML, decodes base64 and URL-encoded payloads, and normalizes unicode, eliminating the most common injection vectors. `PromptInjectionDetector` runs in two stages: Level 1 pattern matching produces a confidence score from 0 to 100; if that score exceeds a threshold, Level 2 triggers a dedicated LLM analysis pass. Each input receives a verdict — `SAFE`, `SUSPICIOUS`, or `MALICIOUS` — with a confidence score attached. All analysis runs locally. No data is sent externally for security evaluation.
+### Prérequis
 
----
+- macOS avec Apple Silicon (M1/M2/M3/M4)
+- Python 3.11+
+- [Ollama](https://ollama.com) installé
 
-## Auditability
-
-Every suspicious action is logged to a local SQLite database at `~/.lucie/sandbox_memory.db`. Fuzzy matching via `SequenceMatcher` (threshold > 0.8) detects variants of known attack patterns that evade exact-match rules. The log is queryable for audit and continuous improvement. No log data leaves the machine.
-
----
-
-## What Was Built
-
-Lucie is the result of continuous engineering, not a weekend prototype.
-
-**Recent milestones:**
-- **157 bugs identified and resolved** in a systematic quality audit (ruff + mypy + pytest across 162 files)
-- **SmartMailAgent** upgraded with zero-shot LLM classification — genuine intelligence, not keyword matching
-- **AccountingAgent MVP** — end-to-end invoice processing pipeline with bank reconciliation
-- **Multi-model architecture** — 7 Ollama models, each specialized for its domain
-- **RAG pipeline** — FAISS vector store with Ollama embeddings, fully offline
-- **435 tests** — full test suite passing, 0 failures
-- **0 static errors** — ruff clean, mypy strict mode passing on all 162 source files
-- **Event-driven messaging hardened** — authenticated message passing between all agents
-- **Stability pass** — every agent ships with graceful fallbacks, circuit breakers, and recovery logic
-
----
-
-## Performance
-
-| Metric | Value |
-|--------|-------|
-| Greeting (fast path) | 0ms |
-| Agent routing | 0.05ms |
-| Simple query | ~1s |
-| Complex reasoning | 10–30s |
-| Invoice extraction | <1s per document |
-| Wake word detection | <100ms |
-| Test suite | **435 passed, 0 failed** |
-| Static analysis | **ruff 0 · mypy 0** across 162 files |
-
-> Latency figures measured on Apple M4 24GB. Results will vary by hardware.
-
----
-
-## Hardware Requirements
-
-Apple Silicon required (M1 / M2 / M3 / M4).
-
-| Config | RAM | Experience |
-|--------|-----|------------|
-| Minimum | 8 GB | Core agents, 2–3 models active |
-| Recommended | 16 GB | Full multi-agent, all stable agents |
-| Optimal | 24 GB+ | All 7 models, on-demand coding agent |
-
----
-
-## Quick Start
+### Démarrage rapide
 
 ```bash
+# 1. Installer Ollama et tirer un modèle
+brew install ollama
+ollama pull qwen2.5:3b
+
+# 2. Cloner et installer
 git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
 cd Agent-Lucie
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-ollama pull qwen3.5:9b
+
+# 3. Lancer Lucie
 PYTHONPATH=. python3 main_hud.py
 ```
 
-> Lucie creates its local memory store at `~/.lucie/` on first run. No configuration required.
+> Lucie crée son stockage local dans `~/.lucie/` au premier lancement. Aucune configuration requise.
+
+### Configuration matérielle
+
+| Config | RAM | Expérience |
+|--------|-----|------------|
+| Minimum | 8 Go | Agents de base, 2-3 modèles actifs |
+| Recommandé | 16 Go | Multi-agents complet |
+| Optimal | 24 Go+ | 7 modèles simultanés, tous les agents |
 
 ---
 
-## Use Cases
+## ✨ Fonctionnalités
 
-**For Accountants**
-Drop 200 invoices into a folder. Lucie processes each one — extracts vendor, amount, date, and VAT, categorizes by type, then reconciles against your bank export. Fully offline. No subscription. No upload. Human review recommended before acting on financial output.
-
-**For Lawyers**
-Read case files, draft summaries, research applicable law — entirely on your machine. No data is sent externally. Designed for GDPR compliance — consult your DPO for your specific use case.
-
-**For Anyone on a Mac**
-Voice-activate any task. Triage your inbox intelligently. Run autonomous research. Manage your files. All of it without a single cloud call.
-
----
-
-## Comparison
-
-| Feature | Lucie | AgenticSeek | OpenInterpreter | ChatGPT |
-|---------|:-----:|:-----------:|:---------------:|:-------:|
-| 100% Local | ✅ | ✅ | ❌ | ❌ |
-| Native macOS control | ✅ | ❌ | ❌ | ❌ |
-| Multi-agent (10 core + 19 exp.) | ✅ | Basic | ❌ | Basic |
-| Multi-model (7+) | ✅ | ❌ | ❌ | Cloud only |
-| Mail + Calendar integration | ✅ | ❌ | ❌ | Via plugins |
-| Voice control | ✅ | ❌ | ❌ | ✅ (cloud) |
-| Accounting automation | ✅ | ❌ | ❌ | Limited |
-| No cloud data transfer | ✅ | ✅ | ❌ | ❌ |
-| Cross-platform | macOS | ✅ | ✅ | ✅ |
+| Fonctionnalité | Statut | Description |
+|----------------|--------|-------------|
+| **AccountingAgent + FEC** | ✅ | Traitement de factures en lot, export FEC conforme DGFiP |
+| **SmartMailAgent** | ✅ | Classification intelligente des mails (4 niveaux d'urgence) via LLM |
+| **QuantumRouter** | ✅ | Routage adaptatif avec fusion et superposition quantique |
+| **CryptoInvestorAgent** | ✅ | Suivi de portefeuille crypto, analyse de risque, reporting fiscal |
+| **Sandboxing agents** | ✅ | Isolation des agents avec IPC chiffré |
+| **Chiffrement au repos** | ✅ | AES-256 pour toutes les données persistées |
+| **Commande vocale** | ✅ | Wake word local ("Hey Jarvis") + Whisper |
+| **RAG local** | ✅ | FAISS + embeddings Ollama, 100% offline |
+| **EventBus authentifié** | ✅ | Communication inter-agents sécurisée |
+| **CircuitBreaker** | ✅ | Résilience automatique avec fallback gracieux |
+| **Contrôle macOS natif** | ✅ | Clic, frappe, lecture d'UI via Accessibility APIs |
+| **Export FacturX** | 🚧 | Factures électroniques au format FacturX |
+| **LegalResearchAgent** | 🚧 | Recherche Légifrance |
+| **Installeur .dmg** | 🚧 | Distribution native macOS |
 
 ---
 
-## Validation
+## 🛡 Sécurité
+
+Lucie intègre 6 couches de sécurité, toutes exécutées localement :
+
+| Module | Code | Description |
+|--------|------|-------------|
+| **Agent Sandboxing** | SEC-01 | Chaque agent tourne dans un sandbox isolé avec IPC chiffré |
+| **Chiffrement au repos** | SEC-02 | AES-256 via `cryptography` — données, mémoire, logs |
+| **Protection mémoire** | SEC-03 | Isolation de la mémoire inter-agents, nettoyage automatique |
+| **Integrity Monitor** | SEC-04 | Détection de modification non autorisée des fichiers agents |
+| **Security Response** | SEC-05 | Réponse automatisée aux incidents détectés |
+| **Content Filter** | SEC-06 | Détection d'exfiltration, filtrage de contenu, threat intelligence |
+
+**Pipeline de sanitisation** : chaque entrée (mail, document, prompt) passe par `TextSanitizer` (HTML, base64, unicode) puis `PromptInjectionDetector` (scoring + analyse LLM). Verdicts : `SAFE`, `SUSPICIOUS`, `MALICIOUS`.
+
+**Audit** : toutes les actions suspectes sont logées dans SQLite (`~/.lucie/sandbox_memory.db`), consultable pour audit.
+
+---
+
+## 🔧 Stack technique
+
+| Composant | Technologie |
+|-----------|-------------|
+| Langage | Python 3.11+ |
+| LLM | Ollama (7 modèles locaux) |
+| Embeddings | FAISS + Ollama embeddings |
+| Interface | PyObjC / AppKit (HUD natif macOS) |
+| Validation | Pydantic |
+| Async | asyncio |
+| Chiffrement | `cryptography` (AES-256, Fernet) |
+| Audio | faster-whisper (STT local) |
+| Base de données | SQLite |
+| Recherche web | DuckDuckGo (via duckduckgo_search) |
+
+**Patterns d'architecture** : EventBus authentifié, CircuitBreaker, AuditTrail, Saga, Resilience Policy, QuantumRouter (routage adaptatif multi-critères).
+
+---
+
+## 🧪 Validation
 
 ```bash
-ruff check app/ --fix                                     # 0 errors
-python -m mypy app/ --ignore-missing-imports --strict     # 0 errors
-PYTHONPATH=. python -m pytest tests/ -x -q                # 435 passed
+# Tests
+PYTHONPATH=. python -m pytest tests/ -x -q          # 642 passed
+
+# Analyse statique
+ruff check app/ --fix                                # 0 errors
+python -m mypy app/ --ignore-missing-imports         # strict mode
 ```
 
 ---
 
-## Roadmap
+## 🗺 Roadmap
 
-- [x] 10 core agents + 19 experimental agents operational
-- [x] Multi-model architecture (7 specialized models)
-- [x] SmartMailAgent with LLM-based classification
-- [x] AccountingAgent MVP — invoice extraction + bank reconciliation
-- [x] 157 bugs resolved, 435 tests passing
-- [x] ruff 0 · mypy 0 across 162 files
-- [ ] LegalResearchAgent — Légifrance integration
-- [ ] Demo video
-- [ ] Beta release (.dmg installer)
-
----
-
-## Built by
-
-**Mathieu Bellot** — 18, France. Solo developer.
-
-> *"I built Lucie because I believe AI should run where your data lives — on your machine."*
+- [x] 30 agents opérationnels (productivité, comptabilité, finance, sécurité, système)
+- [x] Architecture multi-modèles (7 modèles spécialisés Ollama)
+- [x] AccountingAgent + export FEC conforme DGFiP
+- [x] QuantumRouter v2 avec fusion et superposition
+- [x] 6 modules de sécurité (SEC-01 à SEC-06)
+- [x] 642 tests, ruff clean, mypy strict
+- [ ] LegalResearchAgent — intégration Légifrance
+- [ ] Installeur .dmg natif macOS
+- [ ] Vidéo de démonstration
+- [ ] Mode multi-utilisateurs (cabinet comptable)
+- [ ] Plugin Notion / Obsidian
 
 ---
 
-## License
+## 📄 Licence
 
-[Business Source License 1.1](LICENSE) — free for personal use and research. Commercial use requires agreement.
+[Business Source License 1.1](LICENSE) — usage personnel et recherche autorisés. Usage commercial sur accord.
+
+---
+
+## 👤 Contact
+
+**Mathieu Bellot** — développeur, 18 ans, France.
+
+> *« J'ai créé Lucie parce que l'IA devrait tourner là où vivent vos données — sur votre machine. »*
 
 ---
 
 <div align="center">
 
-⭐ **Star this repo if you believe in local-first AI.**
+⭐ **Star ce repo si vous croyez en l'IA locale.**
+
+*Lucie v0.2.0-beta — données 100% locales, chiffrées, souveraines.*
 
 </div>
