@@ -1,0 +1,86 @@
+# Politique réseau par agent — SEC-QW-02
+# Politique par défaut : deny-all sauf localhost + Ollama.
+#
+# Champs disponibles par agent :
+#   allow_localhost: bool    (défaut: true)   accès à 127.0.0.1 / localhost
+#   allow_ollama: bool       (défaut: true)   accès à localhost:11434
+#   allowed_hosts: [str]     domaines/IPs autorisés (wildcard *.domain supporté)
+#   allowed_ports: [int]     ports autorisés pour les hôtes ci-dessus
+#
+# Note : si un agent n'est pas listé ici, la politique "default" s'applique.
+
+policies:
+
+  # ── Politique par défaut ─────────────────────────────────────────────────
+  default:
+    allow_localhost: true
+    allow_ollama: true
+    allowed_hosts: []
+    allowed_ports: []
+
+  # ── Agents métier ────────────────────────────────────────────────────────
+  accounting_agent:
+    allow_localhost: true
+    allow_ollama: true
+    allowed_hosts:
+      - "api.impots.gouv.fr"
+      - "aife.economie.gouv.fr"   # Chorus Pro (facturation publique)
+    allowed_ports: [443]
+
+  crypto_agent:
+    allow_localhost: true
+    allow_ollama: true
+    allowed_hosts:
+      - "api.coingecko.com"
+      - "api.binance.com"
+      - "api.kraken.com"
+    allowed_ports: [443]
+
+  search_agent:
+    allow_localhost: true
+    allow_ollama: true
+    allowed_hosts:
+      - "api.duckduckgo.com"
+      - "html.duckduckgo.com"
+      - "newsapi.org"
+    allowed_ports: [443, 80]
+
+  rag_agent:
+    allow_localhost: true
+    allow_ollama: true
+    allowed_hosts: []
+    allowed_ports: []
+
+  vision_agent:
+    allow_localhost: true
+    allow_ollama: true
+    allowed_hosts: []
+    allowed_ports: []
+
+  consolidator_agent:
+    allow_localhost: true
+    allow_ollama: true
+    allowed_hosts: []
+    allowed_ports: []
+
+  # ── Checker de version (accès GitHub) ───────────────────────────────────
+  version_checker:
+    allow_localhost: false
+    allow_ollama: false
+    allowed_hosts:
+      - "api.github.com"
+    allowed_ports: [443]
+
+  # ── Agents réseau avancés ─────────────────────────────────────────────────
+  p2p_agent:
+    allow_localhost: true
+    allow_ollama: true
+    allowed_hosts: []
+    allowed_ports: [9000]
+
+  # ── Sandbox / tests : aucun accès externe ────────────────────────────────
+  sandbox_agent:
+    allow_localhost: true
+    allow_ollama: false
+    allowed_hosts: []
+    allowed_ports: []
