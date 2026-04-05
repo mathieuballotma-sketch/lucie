@@ -11,10 +11,6 @@ from .memory_protection import (
 )
 from .integrity_monitor import IntegrityMonitor, CodeSignatureVerifier
 from .security_response import SecurityResponseEngine, SecurityEvent, SecuritySeverity, ResponseAction
-# SEC-QW: Quick Wins sécurité (audit DeepSeek)
-from .model_integrity import ModelIntegrityChecker, IntegrityError
-from .network_policy import NetworkPolicy, NetworkPolicyViolation, network_restricted
-from .version_checker import VersionChecker, VersionCheckResult, SemanticVersion
 
 __all__ = [
     # SEC-01: Sandboxing + IPC
@@ -43,15 +39,4 @@ __all__ = [
     "SecurityEvent",
     "SecuritySeverity",
     "ResponseAction",
-    # SEC-QW-01: Model Integrity
-    "ModelIntegrityChecker",
-    "IntegrityError",
-    # SEC-QW-02: Network Policy
-    "NetworkPolicy",
-    "NetworkPolicyViolation",
-    "network_restricted",
-    # SEC-QW-03: Version Checker
-    "VersionChecker",
-    "VersionCheckResult",
-    "SemanticVersion",
 ]

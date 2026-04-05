@@ -13,9 +13,6 @@ from app.core.engine import LucidEngine
 from app.services.audio import AudioService
 from app.utils.logger import setup_logger
 from app.agents.consolidator_agent import ConsolidatorAgent
-from app.security.model_integrity import ModelIntegrityChecker
-from app.security.network_policy import NetworkPolicy
-from app.security.version_checker import VersionChecker
 
 def clear_screen():
     """Nettoie l'écran du terminal."""
@@ -41,42 +38,6 @@ def main():
 
     logger = setup_logger(cfg.app.logs_dir)
     logger.info("Démarrage de l'agent (terminal)")
-
-    # ── SEC-QW-03 : vérification de version (non-bloquant) ───────────────────
-    try:
-        version_checker = VersionChecker(current_version=cfg.app.version)
-        vc_result = version_checker.check()
-        if vc_result.update_available:
-            print(f"⬆️  Mise à jour disponible : {cfg.app.version} → {vc_result.latest}")
-            logger.info("Mise à jour disponible : %s → %s", cfg.app.version, vc_result.latest)
-    except Exception as e:
-        logger.debug("Version check ignoré : %s", e)
-
-    # ── SEC-QW-01 : vérification d'intégrité des modèles Ollama ─────────────
-    try:
-        integrity_checker = ModelIntegrityChecker()
-        integrity_result = integrity_checker.verify_all()
-        if integrity_result["tampered"]:
-            print(f"⚠️  ALERTE SÉCURITÉ : modèle(s) altéré(s) : {integrity_result['tampered']}")
-            logger.error("Modèles altérés détectés : %s", integrity_result["tampered"])
-        elif integrity_result["missing_from_disk"]:
-            logger.warning("Modèles absents du disque : %s", integrity_result["missing_from_disk"])
-        else:
-            logger.info("Intégrité des modèles OK.")
-    except Exception as e:
-        logger.debug("Vérification d'intégrité ignorée : %s", e)
-
-    # ── SEC-QW-02 : journalisation de la politique réseau active ─────────────
-    try:
-        default_policy = NetworkPolicy.for_agent("default")
-        logger.info(
-            "Politique réseau par défaut : localhost=%s ollama=%s hosts_autorisés=%s",
-            default_policy.allow_localhost,
-            default_policy.allow_ollama,
-            default_policy.allowed_hosts or "aucun",
-        )
-    except Exception as e:
-        logger.debug("Chargement politique réseau ignoré : %s", e)
 
     # Initialisation du moteur
     try:
