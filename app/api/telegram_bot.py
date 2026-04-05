@@ -104,8 +104,7 @@ class TelegramBot:
             if response.status_code == 200:
                 logger.info("✅ Webhook Telegram configuré")
             else:
-                logger.error(f"❌ Erreur configuration webhook: {
-                        response.text}")
+                logger.error(f"❌ Erreur configuration webhook: {response.text}")
         except Exception as e:
             logger.error(f"❌ Exception configuration webhook: {e}")
 

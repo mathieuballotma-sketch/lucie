@@ -404,6 +404,8 @@ class LucidEngine:
                 "max_short_term": getattr(self.config.memory, "max_short_term", 5),
                 "max_long_term": getattr(self.config.memory, "max_long_term", 3),
                 "max_plan_steps": getattr(self.config.planner, "max_plan_steps", 5),
+                "profile": {"active": self.config.profile.active},
+                "profiles": self.config.profile.profiles,
             },
         )
 
@@ -598,7 +600,12 @@ class LucidEngine:
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
         # Enrichir le system prompt avec le contexte utilisateur
-        enriched_system = system_prompt
+        _DEFAULT_SYSTEM = (
+            "Tu es Lucie, une assistante IA locale sur macOS. "
+            "Tu DOIS toujours répondre en français. Ne réponds JAMAIS en chinois, anglais ou autre langue. "
+            "Sois concise et utile."
+        )
+        enriched_system = system_prompt if system_prompt else _DEFAULT_SYSTEM
         try:
             user_ctx = await self.contextual_memory.get_context_for_query(query)
             if user_ctx:

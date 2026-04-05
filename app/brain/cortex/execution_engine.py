@@ -166,6 +166,13 @@ class ExecutionEngine:
         "code": "Visual Studio Code", "vscode": "Visual Studio Code",
         "visual studio code": "Visual Studio Code",
         "pages": "Pages", "numbers": "Numbers", "keynote": "Keynote",
+        "word": "Microsoft Word", "microsoft word": "Microsoft Word",
+        "excel": "Microsoft Excel", "microsoft excel": "Microsoft Excel",
+        "powerpoint": "Microsoft PowerPoint", "microsoft powerpoint": "Microsoft PowerPoint",
+        "cursor": "Cursor", "iterm": "iTerm",
+        "textedit": "TextEdit", "éditeur de texte": "TextEdit",
+        "préférences": "System Preferences", "réglages": "System Preferences",
+        "app store": "App Store",
     }
 
     def __init__(

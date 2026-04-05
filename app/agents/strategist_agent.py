@@ -64,8 +64,7 @@ class StrategistAgent(BaseAgent):
         suggestions = await self._analyze(mode)
         for sug in suggestions:
             await self._publish_suggestion(sug)
-        logger.info(f"✅ Analyse terminée, {
-                len(suggestions)} suggestion(s) publiée(s)")
+        logger.info(f"✅ Analyse terminée, {len(suggestions)} suggestion(s) publiée(s)")
 
     async def _analyze(self, mode: str = "balanced") -> List[Dict[str, Any]]:
         """

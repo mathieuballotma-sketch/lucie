@@ -247,6 +247,13 @@ class PlannerConfig:
 
 
 @dataclass
+class ProfileConfig:
+    """Configuration du système de profils agents."""
+    active: str = "personal"
+    profiles: Dict[str, Dict] = field(default_factory=dict)
+
+
+@dataclass
 class Config:
     app: AppConfig = field(default_factory=AppConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
@@ -264,6 +271,7 @@ class Config:
     energy: EnergyConfig = field(default_factory=EnergyConfig)
     search: SearchConfig = field(default_factory=SearchConfig)
     hardware: HardwareConfig = field(default_factory=detect_hardware)
+    profile: ProfileConfig = field(default_factory=ProfileConfig)
 
     @classmethod
     def load(cls, path: Optional[str] = None) -> "Config":
@@ -348,6 +356,11 @@ class Config:
         # Search
         search_data = data.get("search", {})
         config.search = SearchConfig(**search_data)
+
+        # Profile
+        profile_data = data.get("profile", {})
+        profiles_data = data.get("profiles", {})
+        config.profile = ProfileConfig(active=profile_data.get("active", "personal"), profiles=profiles_data)
 
         return config
     def validate(self) -> None:

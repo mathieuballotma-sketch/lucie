@@ -22,9 +22,7 @@ class SearchEngine:
         self.last_failure = time.time()
         if self.failures >= self.max_retries:
             self.is_available = False
-            logger.warning(f"🔴 Moteur {
-                    self.name} temporairement désactivé après {
-                    self.failures} échecs")
+            logger.warning(f"🔴 Moteur {self.name} temporairement désactivé après {self.failures} échecs")
 
     def mark_success(self) -> None:
         self.failures = 0

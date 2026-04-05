@@ -91,51 +91,96 @@ class AgentRegistry:
         self._register_standard_agents()
 
     def _register_standard_agents(self) -> None:
-        web_search = WebSearch() if self.config.get("web_search", True) else None
-        agents_list: List[BaseAgent] = [
-            ReminderAgent(self.manager, self.bus, {}),
-            KnowledgeAgent(
+        # Get the active profile from config
+        active_profile_name = self.config.get("profile", {}).get("active", "personal")
+        profiles = self.config.get("profiles", {})
+        active_profile = profiles.get(active_profile_name, {})
+        active_agents_list = active_profile.get("active_agents", [])
 
+        # Helper function to check if an agent should be loaded
+        def should_load_agent(agent_class_name: str) -> bool:
+            # If active_agents list is empty, load all agents (backward compatibility)
+            if not active_agents_list:
+                return True
+            # Only load agents that are in the active_agents list
+            return agent_class_name in active_agents_list
+
+        web_search = WebSearch() if self.config.get("web_search", True) else None
+        agents_list: List[BaseAgent] = []
+
+        # Define all standard agents with their class names
+        if should_load_agent("ReminderAgent"):
+            agents_list.append(ReminderAgent(self.manager, self.bus, {}))
+
+        if should_load_agent("KnowledgeAgent"):
+            agents_list.append(KnowledgeAgent(
                 self.manager, self.bus,
                 {
                     "max_results": 3,
                     "web_search": web_search,
                     "news_api_key": self.config.get("api_keys", {}).get("news_api_key"),
                 },
-            ),
-            DocumentAgent(self.manager, self.bus, {"web_search": web_search}),
-            TextExtractorAgent(self.manager, self.bus, self.config.get("vision", {})),
-            ComputerControlAgent(self.manager, self.bus, {}),
-            FileAgent(self.manager, self.bus, {"working_directory": str(Path.home())}),
-            WorkspaceAgent(self.manager, self.bus, {}),
-            AppleEcosystemAgent(self.manager, self.bus, self.config),
-            CalendarAgent(self.manager, self.bus, {}),
-            WatchAgent(self.manager, self.bus, {}),
-            SmartMailAgent(self.manager, self.bus, {}),
-            CodeDebugAgent(self.manager, self.bus, {}),
-            AccountingAgent(self.manager, self.bus, {}),
-            # FeedbackAgent — boucle de rétroaction, token injecté par la boucle après
-            FeedbackAgent(
-                llm_service=self.manager,
-                bus=self.bus,
-                event_bus=self.event_bus,
-                token=None,
-            ),
-            # DeceptionAgent — agent de leurre, NE PAS modifier deception_agent.py
-            DeceptionAgent(
-                llm_service=self.manager,
-                bus=self.bus,
-                event_bus=self.event_bus,
-                config=self.config,
-            ),
-        ]
-        available_tools = self._get_all_tool_names()
-        creator = CreatorAgent(
-            self.manager, self.bus, self.event_bus, self.config,
-            agents_dir=self.custom_agents_dir,
-            available_tools=available_tools
-        )
-        agents_list.append(creator)
+            ))
+
+        if should_load_agent("DocumentAgent"):
+            agents_list.append(DocumentAgent(self.manager, self.bus, {"web_search": web_search}))
+
+        if should_load_agent("TextExtractorAgent"):
+            agents_list.append(TextExtractorAgent(self.manager, self.bus, self.config.get("vision", {})))
+
+        if should_load_agent("ComputerControlAgent"):
+            agents_list.append(ComputerControlAgent(self.manager, self.bus, {}))
+
+        if should_load_agent("FileAgent"):
+            agents_list.append(FileAgent(self.manager, self.bus, {"working_directory": str(Path.home())}))
+
+        if should_load_agent("WorkspaceAgent"):
+            agents_list.append(WorkspaceAgent(self.manager, self.bus, {}))
+
+        if should_load_agent("AppleEcosystemAgent"):
+            agents_list.append(AppleEcosystemAgent(self.manager, self.bus, self.config))
+
+        if should_load_agent("CalendarAgent"):
+            agents_list.append(CalendarAgent(self.manager, self.bus, {}))
+
+        if should_load_agent("WatchAgent"):
+            agents_list.append(WatchAgent(self.manager, self.bus, {}))
+
+        if should_load_agent("SmartMailAgent"):
+            agents_list.append(SmartMailAgent(self.manager, self.bus, {}))
+
+        if should_load_agent("CodeDebugAgent"):
+            agents_list.append(CodeDebugAgent(self.manager, self.bus, {}))
+
+        if should_load_agent("AccountingAgent"):
+            agents_list.append(AccountingAgent(self.manager, self.bus, {}))
+
+        # FeedbackAgent — boucle de rétroaction, token injecté par la boucle après
+        # Note: FeedbackAgent is not in active_agents list but should be loaded for infrastructure
+        agents_list.append(FeedbackAgent(
+            llm_service=self.manager,
+            bus=self.bus,
+            event_bus=self.event_bus,
+            token=None,
+        ))
+
+        # DeceptionAgent — agent de leurre, NE PAS modifier deception_agent.py
+        # Note: DeceptionAgent is not in active_agents list but should be loaded for security
+        agents_list.append(DeceptionAgent(
+            llm_service=self.manager,
+            bus=self.bus,
+            event_bus=self.event_bus,
+            config=self.config,
+        ))
+
+        if should_load_agent("CreatorAgent"):
+            available_tools = self._get_all_tool_names()
+            creator = CreatorAgent(
+                self.manager, self.bus, self.event_bus, self.config,
+                agents_dir=self.custom_agents_dir,
+                available_tools=available_tools
+            )
+            agents_list.append(creator)
 
         for agent in agents_list:
             token = str(_uuid.uuid4())
@@ -144,6 +189,9 @@ class AgentRegistry:
             self.agents[agent.name] = agent
             self._pending_registrations.append((agent.name, token))
             logger.debug(f"Agent {agent.name} enregistré avec token {token[:8]}...")
+
+        # Log the active profile and loaded agents
+        logger.info(f"✅ Profil actif: {active_profile_name} ({len(agents_list)} agents chargés)")
 
     async def register_agents_on_bus(self) -> None:
         """Enregistre tous les agents en attente comme sources sur l'EventBus.

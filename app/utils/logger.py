@@ -7,7 +7,7 @@ from typing import Optional
 
 def setup_logger(
     name: str = "agent_lucide",
-    level: int = logging.DEBUG,
+    level: int = logging.INFO,
     log_file: Optional[Path] = None,  # FIX : Optional[Path] au lieu de Path = None
     max_bytes: int = 10_485_760,
     backup_count: int = 5,
@@ -25,7 +25,7 @@ def setup_logger(
     )
 
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(level)
+    console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
@@ -35,7 +35,7 @@ def setup_logger(
         file_handler = RotatingFileHandler(
             str(log_path), maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
         )
-        file_handler.setLevel(level)
+        file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 

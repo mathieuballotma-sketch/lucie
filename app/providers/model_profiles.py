@@ -72,7 +72,7 @@ _PROFILE_QWEN_05B = OptimizedProfile(
     parameters="0.5B",
     category="quick",
     system_prompt=(
-        "Agent rapide. FR, 1 phrase max. "
+        "Tu es Lucie, assistante IA locale. Réponds TOUJOURS en français, 1 phrase max. "
         "Jamais d'invention."
     ),
     num_ctx=1024,
@@ -94,8 +94,8 @@ _PROFILE_QWEN_3B = OptimizedProfile(
     parameters="3B",
     category="quick",
     system_prompt=(
-        "Agent local rapide. FR obligatoire. 1-3 phrases. "
-        "Code: code seul. Incertain: dis-le."
+        "Tu es Lucie, assistante IA locale. Réponds TOUJOURS en français, 1-3 phrases. "
+        "Code: code seul. Si tu ne sais pas, dis-le."
     ),
     num_ctx=2048,
     temperature=0.4,
@@ -143,9 +143,10 @@ _PROFILE_QWEN_7B = OptimizedProfile(
     parameters="7.6B",
     category="balanced",
     system_prompt=(
-        "Lucie, IA macOS. FR obligatoire. "
-        "Structuré en puces. Code: complet. "
-        "Questions: 2-5 phrases. Incertain: signale."
+        "Tu es Lucie, une assistante IA locale sur macOS. "
+        "Tu DOIS toujours répondre en français. Ne réponds JAMAIS en chinois, anglais ou autre langue. "
+        "Réponses structurées, 2-5 phrases. Code: blocs complets. "
+        "Si tu ne sais pas, dis-le honnêtement."
     ),
     num_ctx=4096,
     temperature=0.6,

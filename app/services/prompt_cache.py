@@ -88,12 +88,7 @@ class PromptCache:
         }
 
         self._lock = threading.RLock()
-        logger.info(f"✅ PromptCache optimisé initialisé ({
-                len(
-                    self.exact_cache)} exactes, {
-                len(
-                    self.exact_plan_cache)} plans exacts, {
-                        self.index.ntotal} vectorielles)")
+        logger.info(f"✅ PromptCache optimisé initialisé ({len(self.exact_cache)} exactes, {len(self.exact_plan_cache)} plans exacts, {self.index.ntotal} vectorielles)")
 
     # ----------------------------------------------------------------------
     # Gestion de l'index FAISS
@@ -249,8 +244,7 @@ class PromptCache:
                     cached_response: str = str(entry["response"])
                     self.stats["hits_vector"] += 1
                     record_cache_hit("vector")
-                    logger.debug(f"🎯 Cache vectoriel trouvé (score: {
-                            scores[0][0]:.3f})")
+                    logger.debug(f"🎯 Cache vectoriel trouvé (score: {scores[0][0]:.3f})")
                     self.put(prompt, system, model, cached_response, from_vector=True)
                     return cached_response
 
@@ -338,8 +332,7 @@ class PromptCache:
                     self.put_plan(query, found_plan, from_vector=True)
                     self.stats["plan_hits_vector"] += 1
                     record_plan_cache_hit()
-                    logger.debug(f"📋 Plan vectoriel trouvé (score: {
-                            score:.3f})")
+                    logger.debug(f"📋 Plan vectoriel trouvé (score: {score:.3f})")
                     return found_plan
         self.stats["plan_misses"] += 1
         record_plan_cache_miss()
@@ -390,8 +383,7 @@ class PromptCache:
                     del self.access_count[key]
             if to_delete:
                 self._save_exact_cache()
-                logger.info(f"🧹 {
-                        len(to_delete)} entrées exactes expirées supprimées")
+                logger.info(f"🧹 {len(to_delete)} entrées exactes expirées supprimées")
 
     def get_stats(self) -> Dict[str, Any]:
         total = (

@@ -32,8 +32,7 @@ class SynapseBus:
             self._context = text
             self._last_update = time.time()
             self._update_count += 1
-            logger.debug(f"BUS: mise à jour (ancien: {old_len}, nouveau: {
-                    len(text)})")
+            logger.debug(f"BUS: mise à jour (ancien: {old_len}, nouveau: {len(text)})")
 
     def get_context(self) -> str:
         """

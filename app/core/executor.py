@@ -92,9 +92,7 @@ class TaskExecutor:
             self._persist_thread.start()
         self._cleanup_thread = threading.Thread(target=self._cleanup_loop, daemon=True)
         self._cleanup_thread.start()
-        logger.info(f"✅ TaskExecutor démarré avec {max_workers} workers, {
-                len(
-                    self.tasks)} tâches restaurées, rétention={retention_seconds}s")
+        logger.info(f"✅ TaskExecutor démarré avec {max_workers} workers, {len(self.tasks)} tâches restaurées, rétention={retention_seconds}s")
 
     def _load_persisted_tasks(self) -> None:
         if self.persist_path and self.persist_path.exists():
@@ -181,8 +179,7 @@ class TaskExecutor:
             for task_id in to_delete:
                 del self.tasks[task_id]
             if to_delete:
-                logger.debug(f"🧹 Nettoyage de {
-                        len(to_delete)} anciennes tâches")
+                logger.debug(f"🧹 Nettoyage de {len(to_delete)} anciennes tâches")
 
     def submit(self, task: Task, priority: Optional[int] = None) -> str:
         """
@@ -202,10 +199,7 @@ class TaskExecutor:
             self.task_queue.put((-task.priority, task.id))
             self.metrics["total_submitted"] += 1
             set_task_queue_size(self.task_queue.qsize())
-            logger.debug(f"📤 Tâche soumise: {
-                    task.name} (id: {
-                    task.id}, priorité: {
-                    task.priority})")
+            logger.debug(f"📤 Tâche soumise: {task.name} (id: {task.id}, priorité: {task.priority})")
         return task.id
 
     def submit_batch(self, tasks: List[Task]) -> List[str]:
@@ -292,9 +286,7 @@ class TaskExecutor:
             tasks_completed_total.labels(task_name=task.name).inc()
             task_execution_duration.labels(task_name=task.name).observe(execution_time)
             future.set_result(result)
-            logger.info(f"✅ Tâche terminée: {
-                    task.name} ({
-                    execution_time:.2f}s)")
+            logger.info(f"✅ Tâche terminée: {task.name} ({execution_time:.2f}s)")
         except Exception as e:
             task.status = TaskStatus.FAILED
             task.error = str(e)
@@ -317,8 +309,7 @@ class TaskExecutor:
         for dep_id in task.dependencies:
             dep_task = self.tasks.get(dep_id)
             if not dep_task:
-                logger.warning(f"Dépendance {dep_id} introuvable pour {
-                        task.id}")
+                logger.warning(f"Dépendance {dep_id} introuvable pour {task.id}")
                 continue
             if dep_task.status == TaskStatus.FAILED:
                 task.status = TaskStatus.FAILED
