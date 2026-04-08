@@ -54,7 +54,6 @@ from ..core.config import Config
 from ..core.elasticity import ElasticityEngine
 from ..memory import ConsolidationEngine, ContextualMemory, EpisodicMemory, MemoryService, WorkingMemory
 from ..memory.memory_manager import MemoryManager
-from ..p2p.node import P2PNode
 from ..providers.manager import ProviderManager
 
 
@@ -204,7 +203,6 @@ class LucidEngine:
         self._init_services()
         self._init_agents()
         self._init_cortex()
-        self._init_p2p()
 
         # FIX v2 : _register_event_handlers est désormais async,
         # elle sera appelée depuis set_loop() via create_task.
@@ -420,17 +418,6 @@ class LucidEngine:
             agent.event_bus = self.event_bus
             agent.time_tracker = self.time_tracker
 
-    def _init_p2p(self) -> None:
-        self.p2p_node: Optional[P2PNode] = None
-        if hasattr(self.config, "p2p") and self.config.p2p.enabled:
-            data_dir = Path(self.config.app.data_dir) / "p2p"
-            self.p2p_node = P2PNode(
-                config=asdict(self.config.p2p),
-                crypto=self.crypto,
-                event_bus=self.event_bus,
-                data_dir=data_dir,
-            )
-
     # -----------------------------------------------------------------------
     # Enregistrement des handlers
     # FIX v2 : async, enregistre l'engine + CyberAgent + HealerAgent comme sources
@@ -539,9 +526,6 @@ class LucidEngine:
                 await self.file_watcher.start()
         loop.create_task(_register_then_start())
 
-        if self.p2p_node:
-            self.p2p_node.run_in_thread()
-
         logger.debug("Boucle asyncio définie")
 
     async def start_async(self) -> None:
@@ -560,8 +544,6 @@ class LucidEngine:
         if self.proactive_engine:
             await self.proactive_engine.stop()
         await self.energy.stop()
-        if self.p2p_node:
-            await self.p2p_node.stop()
         await self.healer_agent.stop()
         await self.cyber_agent.stop()
         if hasattr(self.strategist, 'stop'):
@@ -860,8 +842,6 @@ class LucidEngine:
             if solution:
                 logger.info(f"   Solution : {solution}")
 
-            if self.p2p_node:
-                await self.p2p_node.broadcast_threat(data)
         except Exception as e:
             logger.error(f"_handle_cyber_threat: {e}")
 
