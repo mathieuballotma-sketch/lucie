@@ -1,4 +1,5 @@
 # app/ui/hud_native.py
+# HUD v2 — Bloc 6 BMAD — Design modernisé
 
 from __future__ import annotations
 
@@ -7,7 +8,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import AppKit
 import Foundation
@@ -19,18 +20,33 @@ from ..core.config import Config
 from ..core.engine import LucidEngine
 from ..utils.logger import logger
 
-print("📦 Chargement du module hud_native")
-
-WINDOW_W = 420
-WINDOW_H = 460
-CORNER_R = 24.0
-PADDING = 16
+# ─── Layout constants ────────────────────────────────────────────────────────
+WINDOW_W = 520
+WINDOW_H = 500
+CORNER_R = 16.0
+PADDING = 14
 HEADER_H = 56
-INPUT_H = 38
-STATUS_H = 16
-ALPHA = 0.75
+INPUT_H = 40
+STATUS_H = 20
+AGENT_BAR_H = 22
+ALPHA = 0.78
+
+# Pre-computed Y positions (0 = bottom of window in AppKit coords)
+_STATUS_Y = 6                                        # bottom status bar
+_INPUT_Y = _STATUS_Y + STATUS_H + 6                 # 32
+_INPUT_TOP = _INPUT_Y + INPUT_H                     # 72
+_TEXT_Y = _INPUT_TOP + PADDING                      # 86
+_HEADER_Y = WINDOW_H - HEADER_H                     # 444
+_AGENT_BAR_Y = _HEADER_Y - AGENT_BAR_H             # 422
+_TEXT_H = _AGENT_BAR_Y - 2 - _TEXT_Y               # 334
+_TEXT_W = WINDOW_W - PADDING * 2                    # 492
+
+# Streaming parameters — word-chunk feel
+_STREAM_CHUNK = 4        # chars advanced per timer tick
+_STREAM_INTERVAL = 0.04  # seconds between ticks (~100 chars/s)
 
 
+# ─── Color helpers ───────────────────────────────────────────────────────────
 def ns_color(r: float, g: float, b: float, a: float = 1.0) -> Any:
     return AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(r, g, b, a)
 
@@ -43,6 +59,24 @@ def make_rect(x: float, y: float, w: float, h: float) -> Any:
     return AppKit.NSMakeRect(x, y, w, h)
 
 
+def _accent(a: float = 0.9) -> Any:
+    """macOS system blue accent."""
+    return ns_color(0.27, 0.52, 0.97, a)
+
+
+def _green(a: float = 0.9) -> Any:
+    return ns_color(0.2, 0.85, 0.40, a)
+
+
+def _orange(a: float = 0.9) -> Any:
+    return ns_color(1.0, 0.60, 0.00, a)
+
+
+def _red(a: float = 0.9) -> Any:
+    return ns_color(1.0, 0.25, 0.20, a)
+
+
+# ─── DraggableView ───────────────────────────────────────────────────────────
 class DraggableView(AppKit.NSView):  # type: ignore[misc]
     def initWithFrame_(self, frame: Any) -> Any:
         self = objc.super(DraggableView, self).initWithFrame_(frame)
@@ -71,8 +105,9 @@ class DraggableView(AppKit.NSView):  # type: ignore[misc]
         return False
 
 
+# ─── ThinkingIndicatorView ───────────────────────────────────────────────────
 class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
-    """Indicateur animé (point qui pulse)"""
+    """Pulsing dot indicator shown during LLM processing."""
 
     def initWithFrame_(self, frame: Any) -> Any:
         self = objc.super(ThinkingIndicatorView, self).initWithFrame_(frame)
@@ -84,21 +119,23 @@ class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
         return self
 
     def startAnimating(self) -> None:
-        self.layer().setBackgroundColor_(ns_color(0.3, 0.6, 1.0, 0.9).CGColor())
+        self.layer().setBackgroundColor_(_accent().CGColor())
         anim = Quartz.CABasicAnimation.animationWithKeyPath_("transform.scale")
         anim.setFromValue_(1.0)
-        anim.setToValue_(1.4)
-        anim.setDuration_(0.8)
+        anim.setToValue_(1.5)
+        anim.setDuration_(0.7)
         anim.setAutoreverses_(True)
         anim.setRepeatCount_(float("inf"))
         self.layer().addAnimation_forKey_(anim, "pulse")
 
     def stopAnimating(self) -> None:
         self.layer().removeAllAnimations()
-        self.layer().setBackgroundColor_(ns_white(1.0, 0.2).CGColor())
+        self.layer().setBackgroundColor_(ns_white(1.0, 0.15).CGColor())
 
 
+# ─── HUDWindow ───────────────────────────────────────────────────────────────
 class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
+
     def init(self) -> Any:
         rect = make_rect(
             100,
@@ -134,21 +171,23 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._is_dragging: bool = False
         self._is_processing: bool = False
         self._processing_start_time: float = 0.0
-        self.engine: Optional[Any] = None  # sera injecté plus tard
+        self.engine: Optional[Any] = None
 
-        # Variables pour le streaming de réponse
+        # Streaming state
         self._streaming_text: str = ""
         self._streaming_index: int = 0
         self._streaming_timer: Optional[Any] = None
         self._streaming_sender: str = ""
         self._streaming_full_text: str = ""
-        self._streaming_range: Optional[Tuple[int, int]] = None  # plage (début, fin) du message en cours
+        self._streaming_range: Optional[Tuple[int, int]] = None
 
         self._setup_ui()
         self._setup_space_observer()
-        self._setup_watchdog()
+        # NOTE: watchdog intentionally removed — window level is maintained by
+        # _setup_space_observer + NSWindowCollectionBehaviorCanJoinAllSpaces.
+        # The old 2s orderFrontRegardless was intrusive (stole focus from other apps).
 
-        print("✅ HUDPanel initialisé avec effet verre")
+        logger.info("HUD v2 initialisé (520×500)")
         return self
 
     def canBecomeKeyWindow(self) -> bool:
@@ -157,88 +196,88 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     def canBecomeMainWindow(self) -> bool:
         return True
 
+    # ── UI construction ───────────────────────────────────────────────────────
+
     def _setup_ui(self) -> None:
         content = self.contentView()
         content.setWantsLayer_(True)
         content.layer().setCornerRadius_(CORNER_R)
         content.layer().setMasksToBounds_(True)
 
-        # Effet verre (vibrancy)
+        # ── Vibrancy background ──────────────────────────────────────────────
         vfx = AppKit.NSVisualEffectView.alloc().initWithFrame_(
             make_rect(0, 0, WINDOW_W, WINDOW_H)
         )
-        vfx.setMaterial_(AppKit.NSVisualEffectMaterialHUDWindow)
+        # NSVisualEffectMaterialSidebar (7) — modern, adapts to light/dark mode
+        vfx.setMaterial_(7)
         vfx.setBlendingMode_(AppKit.NSVisualEffectBlendingModeBehindWindow)
         vfx.setState_(AppKit.NSVisualEffectStateActive)
         vfx.setWantsLayer_(True)
         vfx.layer().setCornerRadius_(CORNER_R)
         vfx.layer().setBorderWidth_(0.5)
-        vfx.layer().setBorderColor_(ns_white(0.3, 0.2).CGColor())
+        vfx.layer().setBorderColor_(ns_white(1.0, 0.08).CGColor())
         content.addSubview_(vfx)
 
-        # Vue pour le drag (par-dessus)
+        # Drag overlay (full window, transparent)
         drag_view = DraggableView.alloc().initWithFrame_(
             make_rect(0, 0, WINDOW_W, WINDOW_H)
         )
         content.addSubview_(drag_view)
 
-        # En-tête avec icône, indicateur et titre
-        icon_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(16, WINDOW_H - HEADER_H + 16, 28, 22)
-        )
-        icon_label.setStringValue_("✦")
-        icon_label.setEditable_(False)
-        icon_label.setBezeled_(False)
-        icon_label.setDrawsBackground_(False)
-        icon_label.setFont_(
-            AppKit.NSFont.systemFontOfSize_weight_(20, AppKit.NSFontWeightLight)
-        )
-        icon_label.setTextColor_(ns_white(0.9, 0.8))
-        content.addSubview_(icon_label)
+        # ══ HEADER ═══════════════════════════════════════════════════════════
+        header_center_y = _HEADER_Y + (HEADER_H - 22) / 2  # vertically center 22px text
 
-        # Titre
-        title = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(48, WINDOW_H - HEADER_H + 16, 100, 22)
+        icon_lbl = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(PADDING, header_center_y, 26, 22)
         )
-        title.setStringValue_("LUCIDE")
-        title.setEditable_(False)
-        title.setBezeled_(False)
-        title.setDrawsBackground_(False)
-        title.setFont_(
-            AppKit.NSFont.monospacedDigitSystemFontOfSize_weight_(
-                16, AppKit.NSFontWeightRegular
-            )
+        icon_lbl.setStringValue_("✦")
+        icon_lbl.setEditable_(False)
+        icon_lbl.setBezeled_(False)
+        icon_lbl.setDrawsBackground_(False)
+        icon_lbl.setFont_(
+            AppKit.NSFont.systemFontOfSize_weight_(17, AppKit.NSFontWeightLight)
         )
-        title.setTextColor_(ns_white(0.95, 0.9))
-        content.addSubview_(title)
+        icon_lbl.setTextColor_(ns_white(0.9, 0.75))
+        content.addSubview_(icon_lbl)
 
-        # Indicateur de réflexion (point animé)
-        indicator_size = 12
-        indicator_x = 48 + 100 + 12
-        indicator_y = WINDOW_H - HEADER_H + 16 + (22 - indicator_size) / 2
+        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(PADDING + 32, header_center_y, 80, 22)
+        )
+        title_lbl.setStringValue_("LUCIE")
+        title_lbl.setEditable_(False)
+        title_lbl.setBezeled_(False)
+        title_lbl.setDrawsBackground_(False)
+        title_lbl.setFont_(
+            AppKit.NSFont.monospacedDigitSystemFontOfSize_weight_(14, AppKit.NSFontWeightRegular)
+        )
+        title_lbl.setTextColor_(ns_white(0.95, 0.9))
+        content.addSubview_(title_lbl)
+
+        # Thinking indicator (pulsing dot)
+        ind_size = 10
+        ind_x = PADDING + 32 + 80 + 10
+        ind_y = header_center_y + (22 - ind_size) / 2
         self._thinking_indicator = ThinkingIndicatorView.alloc().initWithFrame_(
-            make_rect(indicator_x, indicator_y, indicator_size, indicator_size)
+            make_rect(ind_x, ind_y, ind_size, ind_size)
         )
         content.addSubview_(self._thinking_indicator)
 
-        # Label de statut "En cours de réflexion"
+        # Thinking status label
         self._thinking_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(
-                indicator_x + indicator_size + 8, WINDOW_H - HEADER_H + 16, 140, 22
-            )
+            make_rect(ind_x + ind_size + 6, header_center_y, 120, 20)
         )
         self._thinking_label.setStringValue_("")
         self._thinking_label.setEditable_(False)
         self._thinking_label.setBezeled_(False)
         self._thinking_label.setDrawsBackground_(False)
-        self._thinking_label.setFont_(AppKit.NSFont.systemFontOfSize_(11))
-        self._thinking_label.setTextColor_(ns_white(0.7, 0.8))
+        self._thinking_label.setFont_(AppKit.NSFont.systemFontOfSize_(10))
+        self._thinking_label.setTextColor_(ns_white(0.65, 0.8))
         self._thinking_label.setAlphaValue_(0.0)
         content.addSubview_(self._thinking_label)
 
-        # Latence
+        # Latency display (right-aligned)
         self._latency_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(WINDOW_W - 90, WINDOW_H - HEADER_H + 17, 80, 18)
+            make_rect(WINDOW_W - 88, header_center_y + 1, 80, 18)
         )
         self._latency_label.setStringValue_("")
         self._latency_label.setEditable_(False)
@@ -246,56 +285,112 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._latency_label.setDrawsBackground_(False)
         self._latency_label.setAlignment_(AppKit.NSTextAlignmentRight)
         self._latency_label.setFont_(
-            AppKit.NSFont.monospacedDigitSystemFontOfSize_weight_(
-                10, AppKit.NSFontWeightLight
-            )
+            AppKit.NSFont.monospacedDigitSystemFontOfSize_weight_(9, AppKit.NSFontWeightLight)
         )
-        self._latency_label.setTextColor_(ns_white(0.5, 0.7))
+        self._latency_label.setTextColor_(ns_white(0.45, 0.7))
         content.addSubview_(self._latency_label)
 
-        # Séparateur
-        sep = AppKit.NSBox.alloc().initWithFrame_(
-            make_rect(PADDING, WINDOW_H - HEADER_H - 2, WINDOW_W - 2 * PADDING, 1)
+        # Separator: header / agent bar
+        sep1 = AppKit.NSBox.alloc().initWithFrame_(
+            make_rect(0, _HEADER_Y - 1, WINDOW_W, 1)
         )
-        sep.setBoxType_(AppKit.NSBoxSeparator)
-        sep.setAlphaValue_(0.15)
-        content.addSubview_(sep)
+        sep1.setBoxType_(AppKit.NSBoxSeparator)
+        sep1.setAlphaValue_(0.08)
+        content.addSubview_(sep1)
 
-        # Zone de texte (historique)
-        text_y = INPUT_H + STATUS_H + PADDING * 2 + 10
-        text_h = WINDOW_H - HEADER_H - text_y - PADDING
-        text_w = WINDOW_W - PADDING * 2
+        # ══ AGENT STATUS BAR ═════════════════════════════════════════════════
+        bar_center_y = _AGENT_BAR_Y + (AGENT_BAR_H - 12) / 2
 
+        self._llm_dot = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(PADDING, bar_center_y, 10, 12)
+        )
+        self._llm_dot.setStringValue_("●")
+        self._llm_dot.setEditable_(False)
+        self._llm_dot.setBezeled_(False)
+        self._llm_dot.setDrawsBackground_(False)
+        self._llm_dot.setFont_(AppKit.NSFont.systemFontOfSize_(8))
+        self._llm_dot.setTextColor_(_green())
+        content.addSubview_(self._llm_dot)
+
+        self._llm_label = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(PADDING + 14, bar_center_y, 70, 12)
+        )
+        self._llm_label.setStringValue_("Ollama")
+        self._llm_label.setEditable_(False)
+        self._llm_label.setBezeled_(False)
+        self._llm_label.setDrawsBackground_(False)
+        self._llm_label.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._llm_label.setTextColor_(ns_white(0.55, 0.8))
+        content.addSubview_(self._llm_label)
+
+        # Active agents (right-aligned)
+        self._agents_label = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(PADDING + 90, bar_center_y, WINDOW_W - PADDING * 2 - 90, 12)
+        )
+        self._agents_label.setStringValue_("")
+        self._agents_label.setEditable_(False)
+        self._agents_label.setBezeled_(False)
+        self._agents_label.setDrawsBackground_(False)
+        self._agents_label.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._agents_label.setTextColor_(ns_white(0.45, 0.7))
+        self._agents_label.setAlignment_(AppKit.NSTextAlignmentRight)
+        content.addSubview_(self._agents_label)
+
+        # Separator: agent bar / text area
+        sep2 = AppKit.NSBox.alloc().initWithFrame_(
+            make_rect(0, _AGENT_BAR_Y - 1, WINDOW_W, 1)
+        )
+        sep2.setBoxType_(AppKit.NSBoxSeparator)
+        sep2.setAlphaValue_(0.08)
+        content.addSubview_(sep2)
+
+        # ══ TEXT AREA (results scroll view) ══════════════════════════════════
         self._text_view = AppKit.NSTextView.alloc().initWithFrame_(
-            make_rect(0, 0, text_w, 9999)
+            make_rect(0, 0, _TEXT_W, 9999)
         )
         self._text_view.setEditable_(False)
         self._text_view.setSelectable_(True)
         self._text_view.setBackgroundColor_(AppKit.NSColor.clearColor())
         self._text_view.setTextColor_(ns_white(0.92, 0.9))
         self._text_view.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
-        self._text_view.textContainer().setLineFragmentPadding_(8)
+        self._text_view.textContainer().setLineFragmentPadding_(6)
         self._text_view.setTextContainerInset_(AppKit.NSMakeSize(4, 8))
+        self._text_view.setLinkTextAttributes_({
+            AppKit.NSForegroundColorAttributeName: _accent(),
+            AppKit.NSUnderlineStyleAttributeName: 1,
+        })
+        self._text_view.setDelegate_(self)
 
         scroll = AppKit.NSScrollView.alloc().initWithFrame_(
-            make_rect(PADDING, text_y, text_w, text_h)
+            make_rect(PADDING, _TEXT_Y, _TEXT_W, _TEXT_H)
         )
         scroll.setDocumentView_(self._text_view)
         scroll.setHasVerticalScroller_(True)
         scroll.setBackgroundColor_(AppKit.NSColor.clearColor())
         scroll.setDrawsBackground_(False)
-        scroll.verticalScroller().setAlphaValue_(0.2)
+        scroll.verticalScroller().setAlphaValue_(0.15)
         content.addSubview_(scroll)
 
-        # Champ de saisie
-        input_y = PADDING + STATUS_H + 8
-        self._input = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(PADDING, input_y, WINDOW_W - PADDING * 2 - 88, INPUT_H)
+        # Separator: text area / input
+        sep3 = AppKit.NSBox.alloc().initWithFrame_(
+            make_rect(0, _INPUT_TOP + 6, WINDOW_W, 1)
         )
-        self._input.setPlaceholderString_("Votre message…")
+        sep3.setBoxType_(AppKit.NSBoxSeparator)
+        sep3.setAlphaValue_(0.08)
+        content.addSubview_(sep3)
+
+        # ══ INPUT ROW ════════════════════════════════════════════════════════
+        btn_w = 36
+        wf_btn_w = 36
+        input_w = WINDOW_W - PADDING * 2 - btn_w - wf_btn_w - 12  # 12 = gaps
+
+        self._input = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(PADDING, _INPUT_Y, input_w, INPUT_H)
+        )
+        self._input.setPlaceholderString_("Commande ou question…")
         self._input.setBezeled_(True)
         self._input.setBezelStyle_(AppKit.NSTextFieldRoundedBezel)
-        self._input.setBackgroundColor_(ns_white(0.15, 0.3))
+        self._input.setBackgroundColor_(ns_white(0.12, 0.25))
         self._input.setTextColor_(ns_white(0.95, 0.9))
         self._input.setFont_(AppKit.NSFont.systemFontOfSize_(13))
         self._input.setEditable_(True)
@@ -304,124 +399,85 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._input.setAction_("sendQuery:")
         content.addSubview_(self._input)
 
-        # Bouton d'envoi
-        btn_x = WINDOW_W - PADDING - 38
+        btn_x = PADDING + input_w + 6
         self._send_btn = AppKit.NSButton.alloc().initWithFrame_(
-            make_rect(btn_x, input_y, 38, INPUT_H)
+            make_rect(btn_x, _INPUT_Y, btn_w, INPUT_H)
         )
         self._send_btn.setBezelStyle_(AppKit.NSRoundedBezelStyle)
         self._send_btn.setTitle_("↗")
         self._send_btn.setFont_(
-            AppKit.NSFont.systemFontOfSize_weight_(16, AppKit.NSFontWeightLight)
+            AppKit.NSFont.systemFontOfSize_weight_(15, AppKit.NSFontWeightLight)
         )
         self._send_btn.setTarget_(self)
         self._send_btn.setAction_("sendQuery:")
-        attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(
-            "↗", {AppKit.NSForegroundColorAttributeName: ns_white(0.8, 0.7)}
+        self._send_btn.setAttributedTitle_(
+            AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                "↗", {AppKit.NSForegroundColorAttributeName: ns_white(0.8, 0.7)}
+            )
         )
-        self._send_btn.setAttributedTitle_(attr_title)
         content.addSubview_(self._send_btn)
 
-        # Bouton Workflows (⚡)
-        wf_btn_x = btn_x - 42
+        wf_x = btn_x + btn_w + 4
         self._workflow_btn = AppKit.NSButton.alloc().initWithFrame_(
-            make_rect(wf_btn_x, input_y, 38, INPUT_H)
+            make_rect(wf_x, _INPUT_Y, wf_btn_w, INPUT_H)
         )
         self._workflow_btn.setBezelStyle_(AppKit.NSRoundedBezelStyle)
         self._workflow_btn.setToolTip_("Ouvrir l'éditeur de workflows")
         self._workflow_btn.setTarget_(self)
         self._workflow_btn.setAction_("openWorkflowEditor:")
-        wf_attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(
-            "⚡", {AppKit.NSForegroundColorAttributeName: ns_color(1.0, 0.85, 0.2, 0.85)}
+        self._workflow_btn.setAttributedTitle_(
+            AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                "⚡", {AppKit.NSForegroundColorAttributeName: ns_color(1.0, 0.85, 0.2, 0.85)}
+            )
         )
-        self._workflow_btn.setAttributedTitle_(wf_attr_title)
         content.addSubview_(self._workflow_btn)
 
-        # Indicateur de statut (point)
+        # ══ BOTTOM STATUS BAR ════════════════════════════════════════════════
         self._status = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(PADDING, PADDING, 20, STATUS_H)
+            make_rect(PADDING, _STATUS_Y + 4, 14, 14)
         )
         self._status.setStringValue_("●")
         self._status.setEditable_(False)
         self._status.setBezeled_(False)
         self._status.setDrawsBackground_(False)
-        self._status.setFont_(AppKit.NSFont.systemFontOfSize_(12))
-        self._status.setTextColor_(ns_color(0.2, 0.9, 0.4, 0.9))
+        self._status.setFont_(AppKit.NSFont.systemFontOfSize_(10))
+        self._status.setTextColor_(_green())
         content.addSubview_(self._status)
 
         self._status_text = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(PADDING + 22, PADDING, 150, STATUS_H)
+            make_rect(PADDING + 18, _STATUS_Y + 4, 140, 14)
         )
         self._status_text.setStringValue_("Prêt")
         self._status_text.setEditable_(False)
         self._status_text.setBezeled_(False)
         self._status_text.setDrawsBackground_(False)
-        self._status_text.setFont_(AppKit.NSFont.systemFontOfSize_(10))
-        self._status_text.setTextColor_(ns_white(0.7, 0.8))
+        self._status_text.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._status_text.setTextColor_(ns_white(0.65, 0.8))
         content.addSubview_(self._status_text)
 
-        # Indicateur energie (a droite du statut)
         self._energy_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(WINDOW_W - PADDING - 120, PADDING, 120, STATUS_H)
+            make_rect(WINDOW_W - PADDING - 120, _STATUS_Y + 4, 120, 14)
         )
         self._energy_label.setStringValue_("")
         self._energy_label.setEditable_(False)
         self._energy_label.setBezeled_(False)
         self._energy_label.setDrawsBackground_(False)
-        self._energy_label.setFont_(AppKit.NSFont.systemFontOfSize_(10))
-        self._energy_label.setTextColor_(ns_color(0.2, 0.9, 0.4, 0.8))
+        self._energy_label.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._energy_label.setTextColor_(_green())
         self._energy_label.setAlignment_(AppKit.NSTextAlignmentRight)
         content.addSubview_(self._energy_label)
 
-        # Timer de mise a jour de l'indicateur energie
+        # Energy timer — every 15s (not too frequent)
         self._energy_timer = Foundation.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            10.0, self, "updateEnergyIndicator:", None, True
+            15.0, self, "updateEnergyIndicator:", None, True
         )
 
-        # Initialisation pour le prédicteur
+        # Predictor monitor — reschedules itself in typingTimerFired_
         self._last_text: str = ""
         self._typing_timer: Optional[Any] = None
         self._start_typing_monitor()
 
-    def _start_typing_monitor(self) -> None:
-        """Lance le timer de surveillance de la frappe."""
-
-        def check_text() -> None:
-            current = self._input.stringValue()
-            if current != self._last_text:
-                self._last_text = current
-                threading.Thread(
-                    target=self._send_to_predictor, args=(current,), daemon=True
-                ).start()
-            self._typing_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-                0.5, self, "typingTimerFired:", None, False
-            )
-
-        check_text()
-
-    @objc.IBAction  # type: ignore[untyped-decorator]
-    def typingTimerFired_(self, timer: Any) -> None:
-        """Appelé par le timer toutes les 0.5s."""
-        current = self._input.stringValue()
-        if current != self._last_text:
-            self._last_text = current
-            threading.Thread(
-                target=self._send_to_predictor, args=(current,), daemon=True
-            ).start()
-        # Relancer le timer
-        self._typing_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            0.5, self, "typingTimerFired:", None, False
-        )
-
-    def _send_to_predictor(self, text: str) -> None:
-        """Envoie le texte partiel au prédicteur (via l'engine)."""
-        if (
-            hasattr(self, "engine")
-            and self.engine
-            and hasattr(self.engine, "cortex")
-            and getattr(self.engine.cortex, "predictor", None) is not None
-        ):
-            self.engine.cortex.predictor.update_partial_input(text)
+    # ── Space observer ────────────────────────────────────────────────────────
 
     def _setup_space_observer(self) -> None:
         nc = AppKit.NSWorkspace.sharedWorkspace().notificationCenter()
@@ -431,60 +487,57 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             AppKit.NSWorkspaceActiveSpaceDidChangeNotification,
             None,
         )
-        print("👂 Observateur d'espace configuré")
 
     def spaceDidChange_(self, notification: Any) -> None:
-        print("🔄 Changement d'espace")
-        self.orderFrontRegardless()
-        self.setLevel_(Quartz.kCGFloatingWindowLevel + 1)
+        """Passive: re-assert floating level on space change (no orderFrontRegardless)."""
+        if self.isVisible():
+            self.setLevel_(Quartz.kCGFloatingWindowLevel + 1)
 
-    def _setup_watchdog(self) -> None:
-        self._watchdog: Any = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            2.0, self, "watchdogTick:", None, True
-        )
-        AppKit.NSRunLoop.currentRunLoop().addTimer_forMode_(
-            self._watchdog, AppKit.NSRunLoopCommonModes
-        )
-        print("🐶 Watchdog activé (2s)")
+    # ── Typing predictor monitor ──────────────────────────────────────────────
 
-    def watchdogTick_(self, timer: Any) -> None:
-        if self._is_dragging or self._is_processing:
-            return
-        if not self.isVisible():
-            self.setHidden_(False)
-        self.setLevel_(Quartz.kCGFloatingWindowLevel + 1)
-        self.orderFrontRegardless()
+    def _start_typing_monitor(self) -> None:
+        self._typing_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            0.5, self, "typingTimerFired:", None, False
+        )
 
     @objc.IBAction  # type: ignore[untyped-decorator]
-    def onboardCleanup_(self, timer: Any) -> None:
-        """Timer callback pour le nettoyage post-animation onboarding."""
-        cleanup_fn: Optional[Any] = getattr(self, "_onboard_cleanup", None)
-        if cleanup_fn is not None:
-            cleanup_fn()
-            self._onboard_cleanup = None
+    def typingTimerFired_(self, timer: Any) -> None:
+        current = self._input.stringValue()
+        if not current:
+            # Field is empty — reset, do NOT call predictor
+            self._last_text = ""
+        elif current != self._last_text:
+            self._last_text = current
+            threading.Thread(
+                target=self._send_to_predictor, args=(current,), daemon=True
+            ).start()
+        # Reschedule (non-repeating to avoid accumulation)
+        self._typing_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            0.5, self, "typingTimerFired:", None, False
+        )
 
-    @objc.IBAction  # type: ignore[untyped-decorator]
-    def onboardNextStep_(self, timer: Any) -> None:
-        """Timer callback pour enchaîner l'étape suivante de l'onboarding."""
-        fn: Optional[Any] = getattr(self, "_onboard_next_step_fn", None)
-        if fn is not None:
-            self._onboard_next_step_fn = None
-            fn()
+    def _send_to_predictor(self, text: str) -> None:
+        if (
+            hasattr(self, "engine")
+            and self.engine
+            and hasattr(self.engine, "cortex")
+            and getattr(self.engine.cortex, "predictor", None) is not None
+        ):
+            self.engine.cortex.predictor.update_partial_input(text)
+
+    # ── Send query ────────────────────────────────────────────────────────────
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def sendQuery_(self, sender: Any) -> None:
-        print("🚀 sendQuery_ appelée")
         if self._is_processing:
-            print("⚠️ Requête déjà en cours, ignorée")
             return
         query = self._input.stringValue().strip()
-        print(f"Requête: '{query}'")
         if not query:
-            print("⚠️ Requête vide, ignorée")
             return
         self._input.setStringValue_("")
+        self._last_text = ""
 
-        # Intercepter pour l'onboarding si actif
+        # Intercept during onboarding
         onboarding = getattr(self, "_onboarding_flow", None)
         if onboarding is not None:
             onboarding.handle_input(query)
@@ -492,40 +545,29 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         self._is_processing = True
         self._processing_start_time = float(time.time())
-        print("📝 Appel de append_message_safe pour utilisateur")
         self.append_message_safe("Toi", query, user=True)
 
-        # Mise à jour de l'UI : point orange, message "Réflexion..." et
-        # indicateur qui pulse
-        self._set_status("●", ns_color(1.0, 0.6, 0.0), "Réflexion…")
+        self._set_status("●", _orange(), "Traitement…")
         self._send_btn.setEnabled_(False)
         self._thinking_indicator.startAnimating()
-        self._thinking_label.setStringValue_("En cours de réflexion")
+        self._thinking_label.setStringValue_("En cours…")
         self._thinking_label.setAlphaValue_(1.0)
 
-        print("🚀 Lancement du thread pour _process_query")
         threading.Thread(target=self._process_query, args=(query,), daemon=True).start()
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def openWorkflowEditor_(self, sender: Any) -> None:
-        """Ouvre l'éditeur de workflows dans un processus séparé."""
-
         def _launch() -> None:
             import importlib.util
-
             spec = importlib.util.find_spec("webview")
             if spec is None:
-                logger.warning(
-                    "pywebview non installé — installer avec: pip install pywebview"
-                )
                 AppHelper.callAfter(
                     self.append_message_safe,
-                    "Lucide",
+                    "Lucie",
                     "⚡ L'éditeur de workflows nécessite pywebview.\nInstallez-le avec : pip install pywebview",
                     False,
                 )
                 return
-
             try:
                 project_root = os.path.dirname(
                     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -533,53 +575,35 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 env = os.environ.copy()
                 env.setdefault("PYTHONPATH", project_root)
                 subprocess.Popen(
-                    [
-                        sys.executable,
-                        "-c",
-                        "from app.workflows.bridge import launch_editor; launch_editor()",
-                    ],
-                    cwd=project_root,
-                    env=env,
+                    [sys.executable, "-c",
+                     "from app.workflows.bridge import launch_editor; launch_editor()"],
+                    cwd=project_root, env=env,
                 )
                 logger.info("Éditeur de workflows lancé")
             except Exception as e:
                 logger.error(f"Erreur lancement éditeur workflows : {e}")
                 AppHelper.callAfter(
-                    self.append_message_safe,
-                    "Lucide",
-                    f"⚡ Erreur lors de l'ouverture de l'éditeur : {e}",
-                    False,
+                    self.append_message_safe, "Lucie",
+                    f"⚡ Erreur lors de l'ouverture de l'éditeur : {e}", False,
                 )
-
         threading.Thread(target=_launch, daemon=True).start()
 
+    # ── Query processing ──────────────────────────────────────────────────────
+
     def _process_query(self, query: str) -> None:
-        print(f"🧵 Thread _process_query démarré pour: '{query}'")
         try:
-            print("Appel de self.engine.process...")
             assert self.engine is not None
             response, latency = self.engine.process(query, use_rag=True)
-            print(f"✅ Réponse reçue: '{str(response)[:100]}…', latence={latency:.2f}s")
-
             if not response or not str(response).strip():
                 response = "(Aucune réponse générée)"
-                print("⚠️ Réponse vide, message par défaut utilisé")
-
-            # Convertir en str au cas où ce serait un coroutine ou autre objet
-            response = str(response)
-
-            # Lancer le streaming de la réponse
-            AppHelper.callAfter(self._start_streaming, "Agent", response, False)
-
+            AppHelper.callAfter(self._start_streaming, "Lucie", str(response), False)
         except Exception as e:
-            print(f"❌ Exception dans _process_query: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.error(f"Erreur _process_query: {e}", exc_info=True)
             AppHelper.callAfter(self._on_response_error, f"Erreur : {e}")
 
+    # ── Streaming (word-chunk mode) ───────────────────────────────────────────
+
     def _start_streaming(self, sender: str, full_text: Any, user: bool = False) -> None:
-        """Démarre le streaming caractère par caractère."""
         if self._streaming_timer is not None:
             self._streaming_timer.invalidate()
             self._streaming_timer = None
@@ -589,25 +613,20 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._streaming_text = ""
         self._streaming_index = 0
 
-        # Capturer la position avant d'ajouter le message vide
         storage = self._text_view.textStorage()
         start_pos = len(storage.string())
-
-        # Ajouter un message vide pour le sender
         self.append_message_safe(sender, "", user)
-
-        # Calculer la plage immédiatement (ne pas attendre le premier tick)
         end_pos = len(storage.string())
         self._streaming_range = (start_pos, end_pos)
 
-        # Lancer le timer
         self._streaming_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            0.03, self, "streamingTimerFired:", None, True
+            _STREAM_INTERVAL, self, "streamingTimerFired:", None, True
         )
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def streamingTimerFired_(self, timer: Any) -> None:
-        if self._streaming_index >= len(self._streaming_full_text):
+        remaining = len(self._streaming_full_text) - self._streaming_index
+        if remaining <= 0:
             timer.invalidate()
             self._streaming_timer = None
             self._is_processing = False
@@ -615,40 +634,42 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._thinking_indicator.stopAnimating()
             self._thinking_label.setAlphaValue_(0.0)
             self._latency_label.setStringValue_(f"{latency:.2f}s")
-            self._set_status("●", ns_color(0.2, 0.9, 0.4), "Prêt")
+            self._set_status("●", _green(), "Prêt")
             self._send_btn.setEnabled_(True)
             self._is_dragging = False
-            # Si onboarding en cours, enchaîner l'étape suivante
+            # Onboarding: schedule next step
             next_step = getattr(self, "_onboard_next_step", None)
             if next_step is not None:
                 self._onboard_next_step = None
-                # Petite pause avant la prochaine étape
                 AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
                     1.5, self, "onboardNextStep:", None, False
                 )
                 self._onboard_next_step_fn = next_step
-            print("✅ Interface prête")
             return
 
-        char = self._streaming_full_text[self._streaming_index]
-        self._streaming_text += char
-        self._streaming_index += 1
+        # Advance by chunk (word-boundary-friendly: 4 chars)
+        chunk_size = min(_STREAM_CHUNK, remaining)
+        chunk = self._streaming_full_text[
+            self._streaming_index: self._streaming_index + chunk_size
+        ]
+        self._streaming_text += chunk
+        self._streaming_index += chunk_size
 
         storage = self._text_view.textStorage()
-
         if self._streaming_range is None:
             return
         start, end = self._streaming_range
 
-        # Construire le nouveau message complet (sender + texte courant)
+        is_user = self._streaming_sender == "Toi"
+        sender_color = ns_color(0.6, 0.8, 1.0, 0.9) if is_user else _accent(0.9)
         sender_attrs = {
             AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
-                11, AppKit.NSFontWeightLight
+                10, AppKit.NSFontWeightMedium
             ),
-            AppKit.NSForegroundColorAttributeName: ns_color(0.7, 1.0, 0.7, 0.9),  # vert pour l'agent
+            AppKit.NSForegroundColorAttributeName: sender_color,
         }
         msg_attrs = {
-            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12),
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12.5),
             AppKit.NSForegroundColorAttributeName: ns_white(0.92, 0.9),
         }
         new_attributed = AppKit.NSMutableAttributedString.alloc().init()
@@ -662,36 +683,30 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 f"{self._streaming_text}\n", msg_attrs
             )
         )
-
-        # Remplacer la plage
         storage.replaceCharactersInRange_withAttributedString_(
             Foundation.NSMakeRange(start, end - start), new_attributed
         )
-
-        # Mettre à jour la plage pour le prochain tick (la nouvelle longueur)
         new_len = len(new_attributed.string())
         self._streaming_range = (start, start + new_len)
 
         self._text_view.setNeedsDisplay_(True)
-        # Scroll en bas
         total_len = len(storage.string())
         self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(total_len, 0))
 
     def _on_response_error(self, error_text: str) -> None:
-        """Gère une erreur pendant la réponse."""
-        self.append_message_safe("Agent", error_text, False)
+        self.append_message_safe("Lucie", error_text, False)
         self._thinking_indicator.stopAnimating()
         self._thinking_label.setAlphaValue_(0.0)
-        self._set_status("●", ns_color(1.0, 0.2, 0.2), "Erreur")
+        self._set_status("●", _red(), "Erreur")
         self._send_btn.setEnabled_(True)
         self._is_processing = False
         self._is_dragging = False
 
+    # ── Message display ───────────────────────────────────────────────────────
+
     @objc.python_method  # type: ignore[untyped-decorator]
     def append_message_safe(self, sender: str, text: str, user: bool = True) -> None:
-        """Ajoute un message en garantissant l'exécution sur le main thread."""
-        import threading
-
+        """Thread-safe append to text area."""
         if threading.current_thread().name != "MainThread":
             self.performSelectorOnMainThread_withObject_waitUntilDone_(
                 self._append_message_on_main, (sender, text, user), False
@@ -701,22 +716,20 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def _append_message_on_main(self, args: Any) -> None:
-        """Réelle mise à jour du NSTextView (exécutée sur main thread)."""
         sender, text, user = args
-        print(f"📝 _append_message_on_main: {sender} -> '{text[:60]}…'")
         storage = self._text_view.textStorage()
         current = storage.string()
         prefix = "\n" if current else ""
+
+        sender_color = ns_color(0.6, 0.8, 1.0, 0.9) if user else _accent(0.9)
         sender_attrs = {
             AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
-                11, AppKit.NSFontWeightLight
+                10, AppKit.NSFontWeightMedium
             ),
-            AppKit.NSForegroundColorAttributeName: (
-                ns_color(0.6, 0.8, 1.0, 0.9) if user else ns_color(0.7, 1.0, 0.7, 0.9)
-            ),
+            AppKit.NSForegroundColorAttributeName: sender_color,
         }
         msg_attrs = {
-            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12),
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12.5),
             AppKit.NSForegroundColorAttributeName: ns_white(0.92, 0.9),
         }
         full = AppKit.NSMutableAttributedString.alloc().init()
@@ -735,11 +748,100 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._text_view.displayIfNeeded()
         end = storage.length()
         self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(end, 0))
-        scrollView = self._text_view.enclosingScrollView()
-        if scrollView:
-            scrollView.setNeedsDisplay_(True)
-            scrollView.displayIfNeeded()
-        print(f"   ✅ Message ajouté, total caractères: {end}")
+        sv = self._text_view.enclosingScrollView()
+        if sv:
+            sv.setNeedsDisplay_(True)
+            sv.displayIfNeeded()
+
+    # ── File card display ─────────────────────────────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def format_file_card(self, filepath: str, agent_name: str = "Agent") -> Any:
+        """Build an NSAttributedString card for a file result.
+
+        The filename is rendered as a clickable link (file:// URL).
+        The textView_clickedOnLink_atIndex_ delegate method opens it.
+        """
+        filename = os.path.basename(filepath)
+        ext = os.path.splitext(filename)[1].lower()
+        icon_map = {
+            ".pdf": "📄", ".docx": "📝", ".doc": "📝", ".txt": "📋",
+            ".xlsx": "📊", ".csv": "📊", ".py": "🐍", ".md": "📖",
+            ".png": "🖼", ".jpg": "🖼", ".jpeg": "🖼",
+            ".mp3": "🎵", ".mp4": "🎬", ".zip": "📦",
+        }
+        icon = icon_map.get(ext, "📁")
+
+        card = AppKit.NSMutableAttributedString.alloc().init()
+
+        # Agent badge line
+        badge_attrs = {
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
+                9, AppKit.NSFontWeightMedium
+            ),
+            AppKit.NSForegroundColorAttributeName: _accent(0.8),
+        }
+        storage = self._text_view.textStorage()
+        prefix = "\n" if storage.string() else ""
+        card.appendAttributedString_(
+            AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                f"{prefix}{agent_name}  →  ", badge_attrs
+            )
+        )
+
+        # Filename as clickable link
+        file_url = AppKit.NSURL.fileURLWithPath_(filepath)
+        link_attrs = {
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12.5),
+            AppKit.NSForegroundColorAttributeName: ns_white(0.92, 0.95),
+            AppKit.NSLinkAttributeName: file_url,
+        }
+        card.appendAttributedString_(
+            AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                f"{icon} {filename}", link_attrs
+            )
+        )
+
+        # Directory path hint
+        dir_path = os.path.dirname(filepath)
+        path_attrs = {
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(9),
+            AppKit.NSForegroundColorAttributeName: ns_white(0.45, 0.7),
+        }
+        card.appendAttributedString_(
+            AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                f"\n{dir_path}\n", path_attrs
+            )
+        )
+        return card
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def show_file_card(self, filepath: str, agent_name: str = "Agent") -> None:
+        """Display a file result card. Thread-safe."""
+        def _on_main() -> None:
+            card = self.format_file_card(filepath, agent_name)
+            storage = self._text_view.textStorage()
+            storage.appendAttributedString_(card)
+            self._text_view.setNeedsDisplay_(True)
+            end = storage.length()
+            self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(end, 0))
+        AppHelper.callAfter(_on_main)
+
+    # ── NSTextView delegate — clickable file links ────────────────────────────
+
+    def textView_clickedOnLink_atIndex_(
+        self, text_view: Any, link: Any, char_index: int
+    ) -> bool:
+        """Open file:// links in Finder/default app when clicked in the text view."""
+        try:
+            if isinstance(link, AppKit.NSURL) and link.isFileURL():
+                AppKit.NSWorkspace.sharedWorkspace().openURL_(link)
+                return True
+        except Exception as e:
+            logger.debug(f"Link click: {e}")
+        return False
+
+    # ── Status helpers ────────────────────────────────────────────────────────
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def _set_status(self, dot: str, color: Any, label: str) -> None:
@@ -747,8 +849,23 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._status.setTextColor_(color)
         self._status_text.setStringValue_(label)
 
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def update_agent_status(self, agents: Dict[str, bool]) -> None:
+        """Update the agent strip. agents = {name: is_active}"""
+        parts = [("● " if active else "○ ") + name for name, active in agents.items()]
+        self._agents_label.setStringValue_("  ".join(parts))
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def set_llm_status(self, connected: bool) -> None:
+        """Update Ollama connection indicator."""
+        if connected:
+            self._llm_dot.setTextColor_(_green())
+            self._llm_label.setStringValue_("Ollama")
+        else:
+            self._llm_dot.setTextColor_(_red())
+            self._llm_label.setStringValue_("Ollama ✗")
+
     def updateEnergyIndicator_(self, timer: Any) -> None:
-        """Met a jour l'indicateur energie dans le HUD."""
         engine = getattr(self, "engine", None)
         if engine is None or not hasattr(engine, "energy"):
             return
@@ -756,48 +873,57 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             status = engine.energy.get_status_for_hud()
             mode = status.get("mode", "balanced")
             thermal = status.get("thermal_name", "nominal")
-
             mode_labels = {
-                "performance": "Performance",
-                "balanced": "Balanced",
-                "eco": "Eco",
-                "critical": "Chauffe",
-            }
-            mode_colors = {
-                "performance": ns_color(0.2, 0.9, 0.4, 0.8),   # vert
-                "balanced": ns_color(0.2, 0.9, 0.4, 0.8),       # vert
-                "eco": ns_color(1.0, 0.85, 0.2, 0.8),           # jaune
-                "critical": ns_color(1.0, 0.2, 0.2, 0.8),       # rouge
+                "performance": "Perf", "balanced": "Balanced",
+                "eco": "Eco", "critical": "Chauffe",
             }
             thermal_colors = {
-                "nominal": ns_color(0.2, 0.9, 0.4, 0.8),
+                "nominal": _green(),
                 "fair": ns_color(1.0, 0.85, 0.2, 0.8),
-                "serious": ns_color(1.0, 0.6, 0.0, 0.8),
-                "critical": ns_color(1.0, 0.2, 0.2, 0.8),
+                "serious": _orange(),
+                "critical": _red(),
             }
-
             label = mode_labels.get(mode, mode)
-            color = thermal_colors.get(thermal, mode_colors.get(mode, ns_white(0.7)))
-
+            color = thermal_colors.get(thermal, _green())
             battery_pct = status.get("battery_percent")
             if battery_pct is not None and status.get("on_battery"):
                 text = f"{label} | {battery_pct}%"
             else:
                 text = label
-
             self._energy_label.setStringValue_(text)
             self._energy_label.setTextColor_(color)
         except Exception:
             pass
 
+    # ── Onboarding timer callbacks ────────────────────────────────────────────
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def onboardCleanup_(self, timer: Any) -> None:
+        fn: Optional[Any] = getattr(self, "_onboard_cleanup", None)
+        if fn is not None:
+            fn()
+            self._onboard_cleanup = None
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def onboardNextStep_(self, timer: Any) -> None:
+        fn: Optional[Any] = getattr(self, "_onboard_next_step_fn", None)
+        if fn is not None:
+            self._onboard_next_step_fn = None
+            fn()
+
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
     def close(self) -> None:
-        if hasattr(self, "_watchdog") and self._watchdog:
-            self._watchdog.invalidate()
+        if hasattr(self, "_energy_timer") and self._energy_timer:
+            self._energy_timer.invalidate()
+        if hasattr(self, "_typing_timer") and self._typing_timer:
+            self._typing_timer.invalidate()
         nc = AppKit.NSWorkspace.sharedWorkspace().notificationCenter()
         nc.removeObserver_(self)
         objc.super(HUDWindow, self).close()
 
 
+# ─── AppDelegate ─────────────────────────────────────────────────────────────
 class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
     def initWithEngine_(self, engine: Any) -> Any:
         self = objc.super(AppDelegate, self).init()
@@ -806,11 +932,9 @@ class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
         return self
 
     def applicationDidFinishLaunching_(self, notification: Any) -> None:
-        print("🚀 Application lancée")
         try:
             self.window = HUDWindow.alloc().init()
             self.window.engine = self.engine
-            print("✅ Fenêtre créée, engine injecté")
 
             self.window.makeKeyAndOrderFront_(None)
             self.window.orderFrontRegardless()
@@ -818,52 +942,39 @@ class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
 
             if hasattr(self.window, "_input"):
                 self.window.makeFirstResponder_(self.window._input)
-                print("🎯 Focus donné au champ de saisie")
-            else:
-                print("⚠️ _input introuvable")
 
             centre = AppKit.NSUserNotificationCenter.defaultUserNotificationCenter()
             centre.setDelegate_(self)
-            print("🔔 Délégué des notifications configuré")
-
-            print("✅ HUD prêt")
+            logger.info("HUD prêt")
         except Exception as e:
-            print(f"❌ Erreur initialisation : {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.error(f"Erreur initialisation : {e}", exc_info=True)
             sys.exit(1)
 
-    def userNotificationCenter_didActivateNotification_(self, center: Any, notification: Any) -> None:
+    def userNotificationCenter_didActivateNotification_(
+        self, center: Any, notification: Any
+    ) -> None:
         user_info = notification.userInfo()
         if user_info and user_info.get("action") == "open_file":
             filepath = user_info.get("filepath")
             if filepath and os.path.exists(filepath):
                 subprocess.run(["open", filepath])
-                print(f"📂 Ouverture du fichier : {filepath}")
-            else:
-                print(f"⚠️ Fichier introuvable : {filepath}")
 
     def applicationWillTerminate_(self, notification: Any) -> None:
-        print("👋 Arrêt de l'application")
         if hasattr(self, "engine"):
             self.engine.stop()
 
 
+# ─── Entry point ─────────────────────────────────────────────────────────────
 def run_hud(engine: Optional[Any] = None) -> None:
-    print("🚀 Lancement de run_hud")
     app = AppKit.NSApplication.sharedApplication()
     app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
 
     if engine is None:
-        # Fallback pour compatibilité
         config = Config()
         engine = LucidEngine(config)
 
     delegate = AppDelegate.alloc().initWithEngine_(engine)
     app.setDelegate_(delegate)
-
-    print("✅ Démarrage du runloop")
     AppHelper.runEventLoop()
 
 

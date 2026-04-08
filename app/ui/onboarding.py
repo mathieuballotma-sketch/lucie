@@ -22,8 +22,8 @@ from ..services.onboarding import run_onboarding, save_profile, load_profile
 # Dimensions
 COCOON_W = 300
 COCOON_H = 180
-HUD_W = 420
-HUD_H = 460
+HUD_W = 520
+HUD_H = 500
 CORNER_R = 24.0
 
 
@@ -296,7 +296,7 @@ def animate_cocoon_to_hud(
         AppKit.NSAnimationContext.beginGrouping()
         ctx2 = AppKit.NSAnimationContext.currentContext()
         ctx2.setDuration_(0.5)
-        hud_window.animator().setAlphaValue_(0.75)  # ALPHA du HUD normal
+        hud_window.animator().setAlphaValue_(0.78)  # ALPHA du HUD normal
         cocoon.animator().setAlphaValue_(0.0)
         AppKit.NSAnimationContext.endGrouping()
 
