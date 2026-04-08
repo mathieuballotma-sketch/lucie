@@ -303,14 +303,10 @@ websocket-client==1.9.0
 websockets==16.0
 wrapt==1.17.3
 zipp==3.23.0
-torch>=2.0.0
-transformers>=4.30.0
-scikit-learn>=1.0.0
-numpy>=1.21.0
+aiofiles
+aiohttp
+aiosqlite
 json5>=0.9.14
-aiofiles
+openwakeword
 yara-python
-psutil  # déjà présent
-aiofiles
-sqlite3  # déjà inclus dans Python
 beautifulsoup4
