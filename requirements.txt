@@ -313,3 +313,4 @@ yara-python
 psutil  # déjà présent
 aiofiles
 sqlite3  # déjà inclus dans Python
+beautifulsoup4

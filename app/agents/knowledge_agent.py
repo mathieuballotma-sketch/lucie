@@ -1,23 +1,45 @@
 """
-Agent spécialisé dans la recherche d'informations.
-Utilise la validation Pydantic pour les paramètres des outils.
+Agent spécialisé dans la recherche d'informations web.
+
+Pilier #3 BMAD — Recherche Web :
+  - web_search      : recherche via DuckDuckGo (service WebSearch)
+  - fetch_page      : récupère et nettoie le contenu texte d'une page web
+  - answer_question : synthèse LLM avec contexte web et sources
+  - wikipedia_summary, wikipedia_search, arxiv_search, news_headlines
+
+Flow handle() en 4 étapes :
+  1. Analyse la requête LLM → intention de recherche optimisée
+  2. Recherche web via DuckDuckGo
+  3. Fetch les 2-3 pages les plus pertinentes
+  4. Synthétise une réponse sourcée via LLM
 """
 
 import asyncio
-from typing import Any, Optional
-
-import httpx
-import requests
+import re
+from typing import Any, List, Optional
 from urllib.parse import quote as url_quote
+
+import requests
 from pydantic.v1 import BaseModel, Field
 
 from app.agents.base_agent import BaseAgent, Tool
 from app.utils.logger import logger
 
 
+# ── Contrats Pydantic ─────────────────────────────────────────────────────────
+
+
 class KnowledgeAgentWebSearchContract(BaseModel):
     query: str = Field(..., description="La requête de recherche")
     max_results: int = Field(3, description="Nombre maximum de résultats", ge=1, le=10)
+
+
+class KnowledgeAgentFetchPageContract(BaseModel):
+    url: str = Field(..., description="URL de la page à récupérer")
+
+
+class KnowledgeAgentAnswerQuestionContract(BaseModel):
+    question: str = Field(..., description="La question à répondre avec contexte web")
 
 
 class KnowledgeAgentWikipediaSummaryContract(BaseModel):
@@ -43,29 +65,46 @@ class KnowledgeAgentNewsHeadlinesContract(BaseModel):
     query: str = Field(..., description="Sujet des actualités")
 
 
+# ── Agent ─────────────────────────────────────────────────────────────────────
+
+
 class KnowledgeAgent(BaseAgent):
     """
     Agent de connaissances : recherche web, Wikipedia, arXiv, actualités.
     """
 
     model_role = "lightweight"
+    _MAX_PAGE_CHARS = 4000
+    _FETCH_TIMEOUT = 10
 
     def __init__(self, llm_service: Any, bus: Any, config: dict[str, Any]) -> None:
         super().__init__("KnowledgeAgent", llm_service, bus)
-        self.stability = "core"  # Agent prioritaire — RAG et base de connaissances
+        self.stability = "core"  # Agent prioritaire — recherche web et RAG
         self.user_agent = "LucidAgent/1.0 (contact@example.com)"
         self.news_api_key = config.get("news_api_key")
         self.max_results = config.get("max_results", 3)
-        self.web_search = config.get("web_search")  # ancien service (fallback)
-        self.search_api_url = "http://127.0.0.1:8000/search"
+        self.web_search = config.get("web_search")
         self.timeout = config.get("timeout", 10)
+        # Contexte web interne pour answer_question (alimenté par handle)
+        self._web_context: str = ""
+        self._web_sources: List[str] = []
 
     def get_tools(self) -> list[Tool]:
         return [
             Tool(
                 name="web_search",
-                description="Recherche sur le web (via API locale ou DuckDuckGo)",
+                description="Recherche sur le web via DuckDuckGo",
                 contract=KnowledgeAgentWebSearchContract,
+            ),
+            Tool(
+                name="fetch_page",
+                description="Récupère et nettoie le contenu texte d'une page web (tronqué à 4000 chars)",
+                contract=KnowledgeAgentFetchPageContract,
+            ),
+            Tool(
+                name="answer_question",
+                description="Synthétise une réponse sourcée à partir du contexte web collecté",
+                contract=KnowledgeAgentAnswerQuestionContract,
             ),
             Tool(
                 name="wikipedia_summary",
@@ -89,32 +128,118 @@ class KnowledgeAgent(BaseAgent):
             ),
         ]
 
-    # Implémentations des outils
+    # ── can_handle ────────────────────────────────────────────────────────────
+
+    def can_handle(self, query: str) -> bool:
+        q = query.lower()
+        # Exclure les requêtes de création de documents Word/PDF
+        doc_keywords = [
+            "document word", "crée un document", "fais un document",
+            "résumé word", "fais un résumé", "word document",
+        ]
+        if any(kw in q for kw in doc_keywords):
+            return False
+        keywords = [
+            # Français
+            "cherche", "recherche", "trouve", "c'est quoi", "qu'est-ce que",
+            "actualité", "actualités", "news", "infos sur", "information sur",
+            "définition", "définir", "explique", "savoir", "wikipédia",
+            "arxiv", "article", "donne moi des infos",
+            # Anglais
+            "who is", "what is", "search", "find", "google", "look up",
+        ]
+        return any(kw in q for kw in keywords)
+
+    # ── Outils principaux ─────────────────────────────────────────────────────
+
     async def _tool_web_search(self, query: str, max_results: int = 3) -> str:
-        # Essayer l'API locale
-        api_result = await self._call_search_api(query, max_results)
-        if api_result is not None:
-            return api_result
-        # Fallback DuckDuckGo
-        if self.web_search:
-            logger.info("Fallback sur DuckDuckGo direct")
-            try:
-                # web_search.search est async — appel direct avec await
-                results = await self.web_search.search(query, max_results)
-                if not results:
-                    return f"Aucun résultat web trouvé pour '{query}'."
-                output = f"Résultats web pour '{query}':\n"
-                for r in results:
-                    title = r.get("title", "")
-                    body = r.get("body", "")[:200]
-                    url = r.get("url", "")
-                    output += f"- {title}\n  {body}...\n  ({url})\n\n"
-                return output
-            except Exception as e:
-                logger.error(f"Erreur fallback web_search: {e}")
-                return f"Erreur lors de la recherche web: {e}"
-        else:
+        """Recherche web via le service WebSearch (DuckDuckGo)."""
+        if not self.web_search:
             return "Recherche web non disponible."
+        try:
+            results = await self.web_search.search(query, max_results)
+            if not results:
+                return f"Aucun résultat web trouvé pour '{query}'."
+            output = f"Résultats web pour '{query}':\n"
+            for r in results:
+                title = r.get("title", "")
+                body = r.get("body", "")[:200]
+                url = r.get("url", "")
+                output += f"- {title}\n  {body}...\n  ({url})\n\n"
+            return output
+        except Exception as e:
+            logger.error(f"Erreur web_search: {e}")
+            return f"Erreur lors de la recherche web: {e}"
+
+    async def _tool_fetch_page(self, url: str) -> str:
+        """Récupère et nettoie le contenu texte d'une page web, tronqué à _MAX_PAGE_CHARS."""
+        try:
+            from bs4 import BeautifulSoup  # noqa: PLC0415 — import tardif optionnel
+        except ImportError:
+            logger.warning("beautifulsoup4 non installé — fetch_page indisponible")
+            return "❌ beautifulsoup4 non installé. Installez-le avec : pip install beautifulsoup4"
+
+        loop = asyncio.get_running_loop()
+        try:
+            def _fetch() -> str:
+                resp = requests.get(
+                    url,
+                    headers={"User-Agent": self.user_agent},
+                    timeout=self._FETCH_TIMEOUT,
+                )
+                resp.raise_for_status()
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                    tag.decompose()
+                text = soup.get_text(separator="\n", strip=True)
+                text = re.sub(r'\n{3,}', '\n\n', text)
+                return text[:self._MAX_PAGE_CHARS]
+
+            text = await loop.run_in_executor(None, _fetch)
+            return f"📄 Contenu de {url} :\n\n{text}"
+        except requests.exceptions.Timeout:
+            logger.warning(f"Timeout fetch_page: {url}")
+            return f"❌ Timeout lors de la récupération de la page : {url}"
+        except requests.exceptions.ConnectionError:
+            logger.warning(f"Connexion impossible: {url}")
+            return f"❌ Impossible de se connecter à : {url}"
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else "?"
+            logger.warning(f"HTTP error fetch_page {url}: {status}")
+            return f"❌ Erreur HTTP ({status}) pour : {url}"
+        except Exception as e:
+            logger.error(f"Erreur fetch_page {url}: {e}")
+            return f"❌ Impossible de récupérer la page : {e}"
+
+    async def _tool_answer_question(self, question: str) -> str:
+        """Synthétise une réponse sourcée à partir du contexte web interne."""
+        context = self._web_context
+        sources = self._web_sources
+
+        if not context:
+            logger.info("Pas de contexte web — fallback Wikipedia")
+            return await self._tool_wikipedia_summary(query=question)
+
+        sources_text = "\n".join(f"- {url}" for url in sources) if sources else "Aucune source"
+        prompt = (
+            f"Tu es un assistant de recherche. Réponds à la question suivante en te basant "
+            f"UNIQUEMENT sur le contexte web fourni. Cite les sources si pertinent.\n\n"
+            f"Question : {question}\n\n"
+            f"Contexte web :\n{context[:3500]}\n\n"
+            f"Sources consultées :\n{sources_text}\n\n"
+            f"Réponse (en français, concise et sourcée) :"
+        )
+        try:
+            answer = self.ask_llm(prompt, model_role=self.model_role, max_tokens=1024)
+            if sources:
+                sources_footer = "\n\n📚 Sources :\n" + "\n".join(f"• {s}" for s in sources)
+                return answer + sources_footer
+            return answer
+        except Exception as e:
+            logger.error(f"Erreur answer_question LLM: {e}")
+            return f"❌ Erreur lors de la synthèse : {e}"
+
+    # ── Outils secondaires ────────────────────────────────────────────────────
 
     async def _tool_wikipedia_summary(self, query: str) -> str:
         return await self._wikipedia_summary(query)
@@ -130,40 +255,92 @@ class KnowledgeAgent(BaseAgent):
             return "Clé API News non configurée."
         return await self._news_headlines(query)
 
-    # Méthodes privées asynchrones
-    async def _call_search_api(self, query: str, max_results: int = 3) -> Optional[str]:
+    # ── handle() — 4-step web research flow ──────────────────────────────────
+
+    async def handle(self, query: str) -> str:
+        """
+        Recherche web en 4 étapes :
+          1. Analyse la requête → intention de recherche optimisée
+          2. Recherche web DuckDuckGo
+          3. Fetch les 2-3 pages les plus pertinentes
+          4. Synthèse LLM avec sources
+        """
+        logger.info(f"KnowledgeAgent.handle() — requête: {query}")
+
+        # Étape 1 — Extraire l'intention de recherche
+        search_query = await self._extract_search_intent(query)
+        logger.info(f"🔍 Intention de recherche : {search_query}")
+
+        # Étape 2 — Recherche web
+        if not self.web_search:
+            logger.warning("WebSearch non disponible — fallback Wikipedia")
+            return await self._tool_wikipedia_summary(query=search_query)
+
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(
-                    self.search_api_url, params={"q": query, "max_results": max_results}
-                )
-                if resp.status_code != 200:
-                    logger.error(f"API recherche erreur {resp.status_code}")
-                    return None
-                data = resp.json()
-                results = data.get("results", [])
-                if not results:
-                    return f"Aucun résultat trouvé pour '{query}'."
-                output = f"Résultats web pour '{query}':\n"
-                for r in results:
-                    title = r.get("title", "")
-                    snippet = r.get("snippet", "")[:200]
-                    url = r.get("url", "")
-                    source = r.get("source", "")
-                    output += f"- [{source}] {title}\n  {snippet}...\n  ({url})\n\n"
-                return output
+            results = await self.web_search.search(search_query, self.max_results)
         except Exception as e:
-            logger.error(f"Erreur appel API recherche: {e}")
-            return None
+            logger.error(f"Erreur recherche web: {e}")
+            return await self._tool_wikipedia_summary(query=search_query)
+
+        if not results:
+            logger.info("Aucun résultat web — fallback Wikipedia")
+            return await self._tool_wikipedia_summary(query=search_query)
+
+        # Étape 3 — Fetch les 2-3 pages les plus pertinentes
+        pages_content: List[str] = []
+        sources: List[str] = []
+
+        for r in results[:min(3, len(results))]:
+            url = r.get("url", "")
+            if not url:
+                snippet = r.get("body", "")[:400]
+                title = r.get("title", "")
+                if snippet:
+                    pages_content.append(f"[{title}]\n{snippet}")
+                continue
+            sources.append(url)
+            page_text = await self._tool_fetch_page(url=url)
+            if not page_text.startswith("❌"):
+                pages_content.append(page_text[:1200])
+
+        # Fallback sur les snippets si aucun fetch réussi
+        if not pages_content:
+            for r in results:
+                title = r.get("title", "")
+                body = r.get("body", "")[:300]
+                url = r.get("url", "")
+                if body:
+                    pages_content.append(f"[{title}] {body}")
+                    if url and url not in sources:
+                        sources.append(url)
+
+        self._web_context = "\n\n---\n\n".join(pages_content)
+        self._web_sources = sources
+
+        # Étape 4 — Synthèse LLM avec sources
+        return await self._tool_answer_question(question=query)
+
+    # ── Méthodes privées ──────────────────────────────────────────────────────
+
+    async def _extract_search_intent(self, query: str) -> str:
+        """Extrait une requête de recherche web optimisée depuis la requête utilisateur."""
+        prompt = (
+            f"Extrais la requête de recherche web optimale (en 2-5 mots) pour répondre à :\n"
+            f'"{query}"\n\n'
+            f"Réponds UNIQUEMENT avec la requête de recherche, sans ponctuation ni guillemets."
+        )
+        try:
+            result = self.ask_llm(prompt, temperature=0.2, max_tokens=32, model_role=self.model_role)
+            intent = result.strip().strip('"').strip("'")
+            return intent if intent else query
+        except Exception as e:
+            logger.warning(f"Erreur extraction intention: {e}")
+            return query
 
     async def _wikipedia_summary(self, query: str) -> str:
         try:
             loop = asyncio.get_event_loop()
-            # Essayer français
-            url = (
-                "https://fr.wikipedia.org/api/rest_v1/page/summary/"
-                + url_quote(query)
-            )
+            url = "https://fr.wikipedia.org/api/rest_v1/page/summary/" + url_quote(query)
             resp = await loop.run_in_executor(
                 None,
                 lambda: requests.get(
@@ -172,15 +349,8 @@ class KnowledgeAgent(BaseAgent):
             )
             if resp.status_code == 200:
                 data = resp.json()
-                return (
-                    "Wikipédia (fr) : "
-                    f"{data.get('extract', 'Pas de résumé disponible.')}"
-                )
-            # Sinon anglais
-            url = (
-                "https://en.wikipedia.org/api/rest_v1/page/summary/"
-                + url_quote(query)
-            )
+                return "Wikipédia (fr) : " + data.get("extract", "Pas de résumé disponible.")
+            url = "https://en.wikipedia.org/api/rest_v1/page/summary/" + url_quote(query)
             resp = await loop.run_in_executor(
                 None,
                 lambda: requests.get(
@@ -189,10 +359,7 @@ class KnowledgeAgent(BaseAgent):
             )
             if resp.status_code == 200:
                 data = resp.json()
-                return (
-                    "Wikipedia (en) : "
-                    f"{data.get('extract', 'No summary available.')}"
-                )
+                return "Wikipedia (en) : " + data.get("extract", "No summary available.")
             return f"Impossible de trouver une page Wikipedia pour '{query}'."
         except Exception as e:
             logger.error(f"Erreur Wikipedia: {e}")
@@ -212,8 +379,7 @@ class KnowledgeAgent(BaseAgent):
             resp = await loop.run_in_executor(
                 None,
                 lambda: requests.get(
-                    url,
-                    params=params,
+                    url, params=params,
                     headers={"User-Agent": self.user_agent},
                     timeout=self.timeout,
                 ),
@@ -292,83 +458,6 @@ class KnowledgeAgent(BaseAgent):
             logger.error(f"Erreur NewsAPI: {e}")
             return f"Erreur lors de la récupération des actualités : {str(e)}"
 
-    # Logique de décision
-    def can_handle(self, query: str) -> bool:
-        q = query.lower()
-        doc_keywords = [
-            "document word",
-            "crée un document",
-            "fais un document",
-            "résumé word",
-            "fais un résumé",
-            "word document",
-        ]
-        if any(kw in q for kw in doc_keywords):
-            return False
-        keywords = [
-            "recherche",
-            "wikipédia",
-            "actualité",
-            "définition",
-            "information sur",
-            "qu'est-ce que",
-            "c'est quoi",
-            "news",
-            "arxiv",
-            "article",
-            "savoir",
-            "trouve",
-            "donne moi des infos",
-            "explique",
-        ]
-        return any(kw in q for kw in keywords)
-
-    async def handle(self, query: str) -> str:
-        q_lower = query.lower()
-        # Cas spécial actualités sans clé API
-        if (
-            "actualité" in q_lower or "actualités" in q_lower or "news" in q_lower
-        ) and not self.news_api_key:
-            if self.web_search:
-                logger.info("🔍 Utilisation de la recherche web pour les actualités")
-                results = await self._run_web_search(query, self.max_results)
-                if results:
-                    summary = await self._summarize_results(query, results)
-                    return f"📰 Résumé de l'actualité :\n{summary}"
-                else:
-                    return "Aucune actualité trouvée."
-            else:
-                return "La recherche web n'est pas disponible pour les actualités."
-
-        # Construction du prompt pour choisir l'outil
-        tools_desc = "\n".join(
-            [f"- {t.name}: {t.description}" for t in self.get_tools()]
-        )
-        prompt = f"""
-Tu es un assistant spécialisé dans la recherche d'informations. Voici la demande : "{query}"
-
-Outils disponibles :
-{tools_desc}
-
-Choisis l'outil le plus adapté et fournis les paramètres nécessaires.
-Réponds UNIQUEMENT avec un JSON de la forme :
-{{"tool": "nom_outil", "parameters": {{"param1": "valeur1", ...}}}}
-Si aucun outil n'est pertinent, réponds {{"tool": "none"}}.
-"""
-        try:
-            response = self.ask_llm(prompt, temperature=0.3, model_role=self.model_role)
-            data = self.extract_json_from_response(response)
-            if data and isinstance(data, dict):
-                tool = data.get("tool")
-                params = data.get("parameters", {})
-                if tool and tool != "none":
-                    return await self.execute_tool(tool, params)
-            # Fallback : recherche Wikipedia par défaut
-            return await self._tool_wikipedia_summary(query=query)
-        except Exception as e:
-            logger.error(f"Erreur dans KnowledgeAgent.handle: {e}")
-            return f"Erreur lors de la recherche : {str(e)}"
-
     async def _run_web_search(self, query: str, max_results: int) -> list[Any]:
         if not self.web_search:
             return []
@@ -377,9 +466,9 @@ Si aucun outil n'est pertinent, réponds {{"tool": "none"}}.
 
     async def _summarize_results(self, query: str, results: list[Any]) -> str:
         content = "\n".join([f"- {r['title']}: {r['body'][:200]}" for r in results])
-        prompt = f"""
-Voici des résultats de recherche pour la requête "{query}" :
-{content}
-Fais un résumé concis et informatif de ces informations.
-"""
+        prompt = (
+            f'Voici des résultats de recherche pour la requête "{query}" :\n'
+            f"{content}\n"
+            f"Fais un résumé concis et informatif de ces informations."
+        )
         return self.ask_llm(prompt, model_role=self.model_role)
