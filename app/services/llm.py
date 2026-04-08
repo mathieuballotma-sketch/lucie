@@ -1,6 +1,6 @@
 # app/services/llm.py
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -20,15 +20,21 @@ class LLMService:
         self,
         host: str,
         default_model: str,
-        timeout: int = 60,
+        timeout: int = 120,
         retry_attempts: int = 2,
         retry_delay: float = 1.0,
+        keep_alive: Any = "5m",
+        num_ctx: int = 8192,
+        num_gpu: int = -1,
     ) -> None:
         self.host = host.rstrip("/")
         self.default_model = default_model
         self.timeout = timeout
         self.retry_attempts = retry_attempts
         self.retry_delay = retry_delay
+        self.keep_alive = keep_alive    # durée de maintien modèle en RAM
+        self.num_ctx = num_ctx          # fenêtre de contexte par défaut
+        self.num_gpu = num_gpu          # -1 = toutes couches GPU (Metal/CUDA)
         self._session = requests.Session()
         self._check_connection()
 
@@ -86,18 +92,34 @@ class LLMService:
         model: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
+        keep_alive: Optional[Any] = None,
+        num_ctx: Optional[int] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
-        """Génère une réponse à partir d'un prompt système et utilisateur."""
+        """Génère une réponse à partir d'un prompt système et utilisateur.
+
+        Args:
+            tools: Liste de tool definitions au format Ollama (Gemma 4 native tool calling).
+                   Réservé pour usage futur — non activé par défaut.
+        """
         model = model or self.default_model
-        payload = {
+        payload: Dict[str, Any] = {
             "model": model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "options": {"temperature": temperature, "num_predict": max_tokens},
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+                "num_ctx": num_ctx if num_ctx is not None else self.num_ctx,
+                "num_gpu": self.num_gpu,   # Metal/CUDA — -1 = toutes couches
+            },
+            "keep_alive": keep_alive if keep_alive is not None else self.keep_alive,
             "stream": False,
         }
+        if tools:
+            payload["tools"] = tools
         logger.debug(
             f"Requête LLM (model={model}) : system={system[:50]}..., user={user[:50]}..."
         )

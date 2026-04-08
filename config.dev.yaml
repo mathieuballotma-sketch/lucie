@@ -8,36 +8,49 @@ app:
 
 llm:
   host: "http://localhost:11434"
-  default_model: "qwen2.5:7b"
-  timeout: 60
+  default_model: "gemma4:26b"    # Gemma 4 26B MoE — modèle principal
+  # Fallback si Gemma 4 non disponible : "qwen2.5:7b"
+  timeout: 120
   retry_attempts: 2
   retry_delay: 1.0
-  keep_alive: -1
+  keep_alive: "5m"               # Maintien en RAM entre les requêtes
+  num_ctx: 8192                  # Contexte par défaut
+  num_gpu: -1                    # Toutes les couches sur GPU (Metal)
   models:
     speed:
-      name: "qwen2.5:3b"
+      name: "gemma4:e4b"         # Gemma E4B (4.5B actifs) — Cortex/routage
+      # Fallback : "qwen2.5:3b"
       max_tokens: 1024
-      temperature: 0.7
+      temperature: 0.1           # Déterministe pour le routage
+      keep_alive: "1m"
+      num_ctx: 4096
     balanced:
-      name: "qwen2.5:7b"
+      name: "gemma4:26b"         # Gemma 4 26B MoE
+      # Fallback : "qwen2.5:7b"
       max_tokens: 2048
-      temperature: 0.6
+      temperature: 0.7
+      keep_alive: "5m"
+      num_ctx: 8192
     quality:
-      name: "qwen2.5:14b"
+      name: "gemma4:26b"         # Gemma 4 26B MoE — tâches complexes
       max_tokens: 4096
-      temperature: 0.5
-    sentinel:
-      name: "qwen2.5:0.5b"
-      max_tokens: 512
-      temperature: 0.1
+      temperature: 0.3           # Factuel : KnowledgeAgent, DocumentAgent
+      keep_alive: "5m"
+      num_ctx: 32768             # Contexte étendu pour résumés longs
+    code:
+      name: "deepseek-coder:6.7b"
+      max_tokens: 4096
+      temperature: 0.2
+      keep_alive: "5m"
+      num_ctx: 8192
   # Modèles spécialisés par rôle fonctionnel
   model_roles:
-    router:      "qwen3:8b"           # FrontalCortex, orchestration
-    code:        "qwen2.5-coder:7b"   # FileAgent, DocumentAgent, CodeDebugAgent
-    generation:  "mistral:7b"         # CreatorAgent, SafariResearchWorkflow
-    reasoning:   "phi4:14b"           # Finance, DataAnalyst, Research
-    translation: "gemma2:2b"          # Translator
-    lightweight: "qwen2.5:3b"         # KnowledgeAgent, classification
+    router:      "gemma4:e4b"         # FrontalCortex — rapide, déterministe
+    code:        "deepseek-coder:6.7b"
+    generation:  "gemma4:26b"         # CreatorAgent
+    reasoning:   "gemma4:26b"         # Finance, DataAnalyst, Research
+    translation: "gemma4:e4b"
+    lightweight: "gemma4:e4b"
 
 audio:
   model_size: "small"
@@ -104,10 +117,10 @@ metrics:
 elasticity:
   base_workers: 3
   monitor_interval: 2
-  speed_model: "qwen2.5:3b"
-  balanced_model: "qwen2.5:7b"
-  quality_model: "qwen2.5:14b"
-  sentinel_model: "qwen2.5:0.5b"
+  speed_model: "gemma4:e4b"
+  balanced_model: "gemma4:26b"
+  quality_model: "gemma4:26b"
+  sentinel_model: "gemma4:e4b"
 
 telegram:
   bot_token: ""             # désactivé en développement

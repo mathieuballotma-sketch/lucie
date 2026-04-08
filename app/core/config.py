@@ -6,7 +6,7 @@ Gère le chargement depuis un fichier YAML et fournit des objets de configuratio
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml  # type: ignore[import-untyped]
 
@@ -100,30 +100,45 @@ def detect_hardware() -> HardwareConfig:
 
 
 @dataclass
+class AudioConfig:
+    model_size: str = "small"
+    device: str = "cpu"
+    compute_type: str = "int8"
+    sample_rate: int = 16000
+    language: str = "fr"
+    beam_size: int = 5
+    temp_dir: str = "./data/temp"
+
+
+@dataclass
 class LLMModelConfig:
     name: str
     max_tokens: int = 2048
     temperature: float = 0.7
+    keep_alive: Any = "5m"    # durée de maintien en RAM (str "5m"/"1m" ou int -1)
+    num_ctx: int = 8192        # fenêtre de contexte (256K max pour Gemma 4)
 
 
 @dataclass
 class LLMConfig:
     host: str = "http://localhost:11434"
-    default_model: str = "qwen2.5:7b"
+    default_model: str = "gemma4:26b"
     mlx_model: str = "mlx-community/Qwen2.5-7B-Instruct-4bit"
-    timeout: int = 60
+    timeout: int = 120
     retry_attempts: int = 2
     retry_delay: float = 1.0
-    keep_alive: int = -1
+    keep_alive: Any = "5m"     # str ("5m", "1m") ou int (-1 = forever)
+    num_ctx: int = 8192         # contexte par défaut — extensible à 32768
+    num_gpu: int = -1           # -1 = toutes les couches sur GPU (Metal/CUDA)
     models: Dict[str, LLMModelConfig] = field(default_factory=dict)
     # Mapping rôle → modèle Ollama spécialisé
     model_roles: Dict[str, str] = field(default_factory=lambda: {
-        "router":     "qwen3:8b",
-        "code":       "qwen2.5-coder:7b",
-        "generation": "mistral:7b",
-        "reasoning":  "phi4:14b",
-        "translation": "gemma2:2b",
-        "lightweight": "qwen2.5:3b",
+        "router":      "gemma4:e4b",        # FrontalCortex — rapide, déterministe
+        "code":        "deepseek-coder:6.7b",
+        "generation":  "gemma4:26b",
+        "reasoning":   "gemma4:26b",
+        "translation": "gemma4:e4b",
+        "lightweight": "gemma4:e4b",
     })
 
 
@@ -257,6 +272,7 @@ class ProfileConfig:
 class Config:
     app: AppConfig = field(default_factory=AppConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
+    audio: AudioConfig = field(default_factory=AudioConfig)
     metrics: MetricsConfig = field(default_factory=MetricsConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
     elasticity: ElasticityConfig = field(default_factory=ElasticityConfig)
@@ -328,6 +344,10 @@ class Config:
         # Vision
         vision_data = data.get("vision", {})
         config.vision = VisionConfig(**vision_data)
+
+        # Audio
+        audio_data = data.get("audio", {})
+        config.audio = AudioConfig(**audio_data)
 
         # API Keys
         api_keys_data = data.get("api_keys", {})
