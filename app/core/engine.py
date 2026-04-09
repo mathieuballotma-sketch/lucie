@@ -37,6 +37,7 @@ from app.services.rag import RAGService
 from app.services.scheduler_service import SchedulerService
 from app.utils.circuit_breaker import CircuitBreaker
 from app.utils.crypto import CryptoManager
+from app.utils.error_humanizer import humanize_error
 from app.utils.logger import logger
 from app.utils.memory_monitor import monitor_memory
 from app.services.energy_manager import EnergyOrchestrator, PowerMode
@@ -310,6 +311,20 @@ class LucidEngine:
             "retry_delay": self.config.llm.retry_delay,
             "keep_alive": self.config.llm.keep_alive,
         })
+
+        # Warmup silencieux du modèle nano pour pré-charger en VRAM
+        try:
+            self.manager.generate(
+                prompt="ping",
+                system="Réponds 'pong'.",
+                priority="speed",
+                max_tokens=4,
+                temperature=0.0,
+                timeout=30.0,
+            )
+            logger.info("🔥 Warmup E4B terminé — modèle pré-chargé en VRAM")
+        except Exception as e:
+            logger.warning(f"Warmup E4B échoué (non-bloquant): {e}")
 
     def _init_executor(self) -> None:
         data_dir = Path(self.config.app.data_dir)
@@ -798,7 +813,7 @@ class LucidEngine:
         except Exception as e:
             future.cancel()
             logger.error(f"Erreur process: {e}")
-            return f"Erreur: {e}", time.time() - start
+            return humanize_error(f"Erreur: {e}"), time.time() - start
 
         action_executed, final_response = self.action_router.parse_and_execute(raw_response)
         latency = time.time() - start
@@ -863,10 +878,10 @@ class LucidEngine:
             )
         except asyncio.TimeoutError:
             logger.error(f"Timeout process_async après {effective_timeout}s")
-            return "Désolé, la requête a pris trop de temps.", time.time() - start
+            return humanize_error("timeout"), time.time() - start
         except Exception as e:
             logger.error(f"Erreur process_async: {e}")
-            return f"Erreur: {e}", time.time() - start
+            return humanize_error(f"Erreur: {e}"), time.time() - start
 
         action_executed, final_response = self.action_router.parse_and_execute(raw_response)
         latency = time.time() - start
