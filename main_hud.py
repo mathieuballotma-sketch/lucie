@@ -85,7 +85,7 @@ def main():
         t = threading.Thread(target=asyncio_thread, daemon=True)
         t.start()
 
-        if not engine_ready.wait(timeout=15):
+        if not engine_ready.wait(timeout=60):
             print("❌ Timeout en attendant l'engine")
             sys.exit(1)
 
