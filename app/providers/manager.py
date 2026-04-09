@@ -11,6 +11,9 @@ import httpx
 import ollama
 from ollama import Message, Options
 
+# Constante interne pour les appels vision (API /api/generate)
+_OLLAMA_GENERATE_ENDPOINT = "/api/generate"
+
 from ..utils.exceptions import (
     LLMConnectionError,
     LLMModelNotFoundError,
@@ -107,6 +110,7 @@ class ProviderManager:
         temperature: float = 0.7,
         max_tokens: int = 512,
         timeout: Optional[float] = None,
+        images: Optional[List[str]] = None,
     ) -> str:
         """
         Génère une réponse à partir d'un prompt.
@@ -120,6 +124,7 @@ class ProviderManager:
             temperature: Température pour la génération.
             max_tokens: Nombre maximum de tokens à générer.
             timeout: Timeout spécifique pour cette requête (en secondes).
+            images: Liste de chaînes base64 (images) pour les requêtes multimodales.
         """
         start_time = time.time()
         routed = False
@@ -192,15 +197,28 @@ class ProviderManager:
         last_error: Optional[Exception] = None
         for attempt in range(self.retry_attempts + 1):
             try:
-                response = client.chat(
-                    model=model_name,
-                    messages=messages,
-                    options=options,
-                    keep_alive=self.keep_alive,
-                )
-                elapsed = time.time() - start_time
-                msg = response.get("message", {})  # noqa: E501
-                result = str(msg.get("content", "")).strip()  # noqa: E501
+                if images:
+                    # Appel multimodal via /api/generate (images non supportées par /api/chat)
+                    response = client.generate(
+                        model=model_name,
+                        prompt=prompt,
+                        system=effective_system,
+                        images=images,
+                        options=options,
+                        keep_alive=self.keep_alive,
+                    )
+                    elapsed = time.time() - start_time
+                    result = str(response.get("response", "")).strip()
+                else:
+                    response = client.chat(
+                        model=model_name,
+                        messages=messages,
+                        options=options,
+                        keep_alive=self.keep_alive,
+                    )
+                    elapsed = time.time() - start_time
+                    msg = response.get("message", {})  # noqa: E501
+                    result = str(msg.get("content", "")).strip()  # noqa: E501
 
                 # Enregistrer la latence pour les stats
                 self.router.record_latency(model_name, elapsed)
