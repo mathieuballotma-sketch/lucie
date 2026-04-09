@@ -179,9 +179,10 @@ _SIMPLE_QUERY_BLACKLIST: tuple[str, ...] = (
 
 # Verbes d'action système → pipeline obligatoire
 _ACTION_VERBS: tuple[str, ...] = (
-    "crée", "ouvre", "envoie", "supprime", "recherche", "résume",
+    "crée", "ouvre", "ouvr", "envoie", "supprime", "recherche", "résume",
     "sauvegarde", "organise", "trie", "déplace", "copie", "renomme",
     "lis", "écris", "rédige", "génère",
+    "lance", "démarre", "ferme", "quitte",
 )
 
 # Mots-clés agents → pipeline obligatoire

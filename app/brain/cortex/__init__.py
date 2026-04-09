@@ -11,6 +11,7 @@ import re
 import time
 import uuid as _uuid
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
@@ -34,6 +35,58 @@ from .classifier import EmbeddingClassifier
 from .predictor import NanoPredictor
 from .router import PathRouter as PathRouter, RoutePath as RoutePath, RouteResult as RouteResult
 from .execution_engine import ExecutionEngine
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fuzzy matching pour commandes d'action système macOS
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Verbes d'action reconnus (exacts + variantes typo)
+_MAC_ACTION_STEMS: tuple[str, ...] = (
+    "ouvre", "ouvr", "lance", "démarre", "va sur", "montre", "ferme", "quitte",
+)
+
+# Apps macOS connues pour valider le fuzzy match
+_MAC_KNOWN_APPS: tuple[str, ...] = (
+    "mail", "safari", "notes", "finder", "chrome", "slack", "discord",
+    "spotify", "terminal", "calendar", "messages", "facetime",
+    "calculatrice", "photos", "musique", "contacts", "keynote",
+    "pages", "numbers", "code", "xcode",
+)
+
+_MAC_FUZZY_THRESHOLD = 0.75
+
+
+def _is_mac_action(query: str) -> bool:
+    """Détecte les commandes d'action macOS avec fuzzy matching.
+
+    Reconnaît: 'ouvre X', 'ouvr X', 'lance X', 'démarre X', 'va sur X', 'montre X'
+    où X est un nom d'app macOS connu.
+
+    Utilise difflib.SequenceMatcher pour absorber les fautes de frappe.
+    """
+    q = query.lower().strip()
+
+    # 1. Match exact sur les stems — < 1ms
+    for stem in _MAC_ACTION_STEMS:
+        if q.startswith(stem):
+            return True
+
+    # 2. Fuzzy match sur le premier mot (fautes de frappe type "ouvr" → "ouvre")
+    words = q.split()
+    if not words:
+        return False
+    first_word = words[0]
+    for stem in _MAC_ACTION_STEMS:
+        if " " in stem:
+            continue  # stems multi-mots déjà couverts au-dessus
+        ratio = SequenceMatcher(None, first_word, stem).ratio()
+        if ratio >= _MAC_FUZZY_THRESHOLD:
+            # Exiger qu'une app connue soit mentionnée pour éviter les faux positifs
+            if any(app in q for app in _MAC_KNOWN_APPS):
+                return True
+
+    return False
+
 
 # Alias pour compatibilite avec l'ancien cortex
 class PathManager:
@@ -139,6 +192,11 @@ class PathManager:
         is_creation = any(kw in q_lower for kw in _creation_kw)
         if is_creation:
             return [("creation", creation_path), ("llm", llm_path)]
+
+        # ── Commandes d'action macOS — fuzzy routing prioritaire ──────────
+        # "ouvr mail", "va sur safari", "démarre notes", etc.
+        if _is_mac_action(query):
+            return [("direct", direct_path), ("agent", agent_path), ("llm", llm_path)]
 
         # ── Recherche visuelle Safari → PRIORITAIRE sur multi-action ─────
         # Détection par co-occurrence : recherche + synthèse/résumé, ou safari + recherche
