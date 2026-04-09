@@ -16,6 +16,7 @@ Incarne les lois universelles :
 """
 
 import asyncio
+import datetime
 import random
 import time
 from dataclasses import asdict
@@ -162,6 +163,66 @@ def _check_capabilities(query: str) -> Optional[str]:
         if kw in q:
             return _CAPABILITY_RESPONSE
     return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fast-path questions simples — bypass pipeline lourd, réponse < 1s via E4B
+# ─────────────────────────────────────────────────────────────────────────────
+_SIMPLE_QUERY_MAX_WORDS = 20
+
+# Mots-clés qui forcent le pipeline normal même si la requête semble simple
+_SIMPLE_QUERY_BLACKLIST: tuple[str, ...] = (
+    "rendez-vous", "calendrier", "rappel", "fichier", "mail", "email",
+    "pdf", "agenda", "document",
+)
+
+# Verbes d'action système → pipeline obligatoire
+_ACTION_VERBS: tuple[str, ...] = (
+    "crée", "ouvre", "envoie", "supprime", "recherche", "résume",
+    "sauvegarde", "organise", "trie", "déplace", "copie", "renomme",
+    "lis", "écris", "rédige", "génère",
+)
+
+# Mots-clés agents → pipeline obligatoire
+_AGENT_KEYWORDS: tuple[str, ...] = (
+    "fichier", "dossier", "mail", "email", "pdf", "word", "agenda",
+    "calendrier", "rappel", "safari", "rendez-vous", "document",
+    "photo", "image", "écran",
+)
+
+# Patterns multi-étapes → pipeline obligatoire
+_MULTI_STEP_PATTERNS: tuple[str, ...] = ("et puis", "ensuite", "après ça")
+
+
+def _is_simple_query(query: str) -> bool:
+    """Détecte les questions simples qui n'ont pas besoin du pipeline lourd.
+
+    Critères : pas de verbe d'action système, pas de mot-clé agent,
+    pas de pattern multi-étapes, moins de 20 mots, et aucun mot de la blacklist.
+    """
+    q = query.lower().strip()
+
+    # Trop long → pipeline normal
+    if len(q.split()) >= _SIMPLE_QUERY_MAX_WORDS:
+        return False
+
+    # Blacklist explicite
+    if any(kw in q for kw in _SIMPLE_QUERY_BLACKLIST):
+        return False
+
+    # Verbes d'action système
+    if any(verb in q for verb in _ACTION_VERBS):
+        return False
+
+    # Mots-clés agents
+    if any(kw in q for kw in _AGENT_KEYWORDS):
+        return False
+
+    # Patterns multi-étapes
+    if any(pat in q for pat in _MULTI_STEP_PATTERNS):
+        return False
+
+    return True
 
 
 # Requêtes brèves qui ne nécessitent pas de RAG
@@ -699,6 +760,28 @@ class LucidEngine:
             logger.info(f"⚡ Question capacités détectée → {latency*1000:.0f}ms")
             return capability_resp, latency
 
+        # ── Fast path questions simples — E4B direct < 1s ────────────
+        if _is_simple_query(query):
+            q_lower = query.lower()
+            if any(kw in q_lower for kw in ("quelle heure", "l'heure", "il est quelle heure", "heure actuelle")):
+                now = datetime.datetime.now()
+                return f"Il est {now.strftime('%H:%M')}.", time.time() - start
+            if any(kw in q_lower for kw in ("quel jour", "quelle date", "on est quel jour", "date aujourd'hui")):
+                now = datetime.datetime.now()
+                jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+                mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+                return f"On est {jours[now.weekday()]} {now.day} {mois[now.month-1]} {now.year}.", time.time() - start
+            response = self.manager.generate(
+                prompt=query,
+                system="Tu es Lucie, une IA locale macOS. Réponds de façon concise et utile en français. Si on te demande l'heure, utilise l'heure système.",
+                priority="speed",
+                max_tokens=256,
+                temperature=0.3,
+            )
+            latency = time.time() - start
+            logger.info(f"⚡ Question simple → E4B direct {latency:.1f}s")
+            return response, latency
+
         if self._loop is None:
             raise RuntimeError("set_loop() doit être appelé avant process().")
 
@@ -745,6 +828,28 @@ class LucidEngine:
             latency = time.time() - start
             logger.info(f"⚡ Question capacités détectée → {latency*1000:.0f}ms")
             return capability_resp, latency
+
+        # ── Fast path questions simples — E4B direct < 1s ────────────
+        if _is_simple_query(query):
+            q_lower = query.lower()
+            if any(kw in q_lower for kw in ("quelle heure", "l'heure", "il est quelle heure", "heure actuelle")):
+                now = datetime.datetime.now()
+                return f"Il est {now.strftime('%H:%M')}.", time.time() - start
+            if any(kw in q_lower for kw in ("quel jour", "quelle date", "on est quel jour", "date aujourd'hui")):
+                now = datetime.datetime.now()
+                jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+                mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+                return f"On est {jours[now.weekday()]} {now.day} {mois[now.month-1]} {now.year}.", time.time() - start
+            response = self.manager.generate(
+                prompt=query,
+                system="Tu es Lucie, une IA locale macOS. Réponds de façon concise et utile en français. Si on te demande l'heure, utilise l'heure système.",
+                priority="speed",
+                max_tokens=256,
+                temperature=0.3,
+            )
+            latency = time.time() - start
+            logger.info(f"⚡ Question simple → E4B direct {latency:.1f}s")
+            return response, latency
 
         # Timeout adaptatif : 15s simple, 60s pipeline/recherche
         effective_timeout = 120.0 if self._is_multi_step(query) else 45.0
