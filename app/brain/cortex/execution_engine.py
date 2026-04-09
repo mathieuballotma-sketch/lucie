@@ -64,8 +64,14 @@ class ExecutionEngine:
 
     SIMPLE_ACTIONS: Dict[str, Tuple[str, str]] = {
         "ouvre": ("ComputerControlAgent", "open_application"),
+        "ouvrir": ("ComputerControlAgent", "open_application"),
         "open": ("ComputerControlAgent", "open_application"),
         "lance": ("ComputerControlAgent", "open_application"),
+        "lancer": ("ComputerControlAgent", "open_application"),
+        "démarre": ("ComputerControlAgent", "open_application"),
+        "démarrer": ("ComputerControlAgent", "open_application"),
+        "va sur": ("ComputerControlAgent", "open_application"),
+        "aller sur": ("ComputerControlAgent", "open_application"),
         "tape": ("ComputerControlAgent", "type_text"),
         "écris": ("ComputerControlAgent", "type_text"),
         "ecris": ("ComputerControlAgent", "type_text"),
@@ -151,7 +157,7 @@ class ExecutionEngine:
     APP_ALIASES: Dict[str, str] = {
         "note": "Notes", "notes": "Notes",
         "calculatrice": "Calculator", "calculette": "Calculator",
-        "safari": "Safari", "mail": "Mail",
+        "safari": "Safari", "mail": "Mail", "mails": "Mail", "email": "Mail", "emails": "Mail",
         "calendrier": "Calendar", "rappels": "Reminders",
         "reminders": "Reminders", "calendar": "Calendar",
         "rappel": "Reminders",
@@ -626,6 +632,48 @@ class ExecutionEngine:
             logger.debug(f"LLM classification échouée (non bloquant): {e}")
         return None
 
+    # Mots à ignorer lors de l'extraction du nom d'app
+    _OPEN_NOISE_WORDS: frozenset = frozenset({
+        "moi", "mes", "mon", "ma", "les", "des", "un", "une", "le", "la",
+        "l", "s'il", "te", "plaît", "stp", "svp", "please", "bien",
+        "app", "application", "l'app", "l'application",
+        "veux", "voudrais", "aimerais", "peux", "tu",
+    })
+
+    def _extract_app_name(self, raw: str) -> Optional[str]:
+        """Extrait le nom canonique d'une app depuis une chaîne bruitée.
+
+        Gère : "moi mes mails", "l'app mail", "l'application Mail", etc.
+        """
+        # Normalisation : supprimer les préfixes l'app / l'application
+        cleaned = re.sub(r"^(l'app(?:lication)?\s+)", "", raw.strip(), flags=re.IGNORECASE)
+        cleaned = re.sub(r'^["\'](.*)["\']$', r"\1", cleaned).strip()
+
+        # 1. Match direct dans APP_ALIASES
+        normalized = self.APP_ALIASES.get(cleaned.lower())
+        if normalized:
+            return normalized
+
+        # 2. Scan mot par mot (gère "moi mes mails" → trouve "mail")
+        words = cleaned.split()
+        for word in words:
+            alias = self.APP_ALIASES.get(word.lower())
+            if alias:
+                return alias
+
+        # 3. Filtrer les mots parasites et réessayer
+        filtered_words = [w for w in words if w.lower() not in self._OPEN_NOISE_WORDS]
+        filtered = " ".join(filtered_words).strip()
+        if filtered:
+            alias = self.APP_ALIASES.get(filtered.lower())
+            if alias:
+                return alias
+            # Un seul mot restant après filtrage
+            if len(filtered_words) == 1:
+                return filtered_words[0].capitalize()
+
+        return cleaned.strip() if cleaned.strip() else None
+
     def _route_simple_action(self, query: str) -> Optional[Tuple[str, Dict[str, Any]]]:
         q = query.lower()
         for keyword, (agent_name, tool_name) in self.SIMPLE_ACTIONS.items():
@@ -638,11 +686,10 @@ class ExecutionEngine:
                     rest = match.group(1).strip()
                 if not rest:
                     continue
-                rest = re.sub(r'^["\'](.*)["\']$', r"\1", rest)
-                normalized = self.APP_ALIASES.get(rest.lower())
-                if normalized:
-                    rest = normalized
-                return agent_name, {"tool": tool_name, "parameters": {"app_name": rest}}
+                app_name = self._extract_app_name(rest)
+                if not app_name:
+                    continue
+                return agent_name, {"tool": tool_name, "parameters": {"app_name": app_name}}
             elif tool_name == "type_text":
                 pattern = r"\b" + re.escape(keyword) + r'\s*"([^"]+)"'
                 m = re.search(pattern, query, re.IGNORECASE)

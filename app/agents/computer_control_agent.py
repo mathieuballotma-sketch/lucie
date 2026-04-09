@@ -34,7 +34,8 @@ except ImportError:
 # ─────────────────────────────────────────────────────────────────────────────
 # Constantes
 # ─────────────────────────────────────────────────────────────────────────────
-OPEN_KEYWORDS       = ["ouvre", "lance", "open", "launch"]
+OPEN_KEYWORDS       = ["ouvre", "ouvrir", "lance", "lancer", "open", "launch",
+                        "va sur", "aller sur", "démarre", "démarrer", "affiche", "montre"]
 TYPE_KEYWORDS       = ["tape", "écris", "type"]
 CLICK_KEYWORDS      = ["clique", "click"]
 SCREENSHOT_KEYWORDS = ["screenshot", "capture écran"]
@@ -45,7 +46,8 @@ SAFARI_KEYWORDS     = ["safari", "navigateur", "internet", "page web", "url"]
 
 NOTES_APPS = ["notes"]
 KNOWN_APPS = [
-    "notes", "calculatrice", "safari", "mail", "calendar", "terminal",
+    "notes", "calculatrice", "safari", "mail", "mails", "email", "emails",
+    "calendar", "terminal",
     "finder", "chrome", "firefox", "slack", "discord", "spotify",
     "visual studio code", "code", "pages", "numbers", "keynote",
     "app store", "calendrier", "contacts", "messages", "facetime",
@@ -54,11 +56,22 @@ KNOWN_APPS = [
 ]
 
 OPEN_PATTERNS = [
-    r"ouvre (?:l'application\s+)?([a-zA-Z0-9\s]+)",
-    r"lance (?:l'application\s+)?([a-zA-Z0-9\s]+)",
-    r"open (?:the )?([a-zA-Z0-9\s]+)",
-    r"launch (?:the )?([a-zA-Z0-9\s]+)",
+    r"(?:ouvre|ouvrir)\s+(?:l'app(?:lication)?\s+)?([a-zA-Z0-9\s]+)",
+    r"(?:lance|lancer)\s+(?:l'app(?:lication)?\s+)?([a-zA-Z0-9\s]+)",
+    r"(?:démarre|démarrer)\s+(?:l'app(?:lication)?\s+)?([a-zA-Z0-9\s]+)",
+    r"(?:affiche|montre)\s+(?:l'app(?:lication)?\s+)?([a-zA-Z0-9\s]+)",
+    r"va\s+sur\s+([a-zA-Z0-9\s]+)",
+    r"aller\s+sur\s+([a-zA-Z0-9\s]+)",
+    r"open\s+(?:the\s+)?([a-zA-Z0-9\s]+)",
+    r"launch\s+(?:the\s+)?([a-zA-Z0-9\s]+)",
 ]
+
+# Mots parasites à filtrer lors de l'extraction du nom d'app
+_APP_NOISE_WORDS: frozenset = frozenset({
+    "moi", "mes", "mon", "ma", "les", "des", "un", "une", "le", "la",
+    "app", "application", "s'il", "te", "plaît", "stp", "svp", "please",
+    "veux", "voudrais", "aimerais", "bien", "là", "maintenant",
+})
 TYPE_PATTERNS  = [r"tape (.*)", r"écris (.*)", r"type (.*)"]
 QUOTE_PATTERN  = r"['\"](.+?)['\"]"
 COORDS_PATTERN = r"(\d+)\s*[,\s]\s*(\d+)"
@@ -74,6 +87,14 @@ ARRANGE_PATTERNS = {
 }
 
 APPS_NEEDING_WINDOW = ["mail", "notes", "calendar", "messages", "facetime"]
+
+# Formes canoniques pour les variantes plurielles ou alias d'apps
+_APP_CANONICAL: dict[str, str] = {
+    "mails": "Mail", "emails": "Mail", "email": "Mail",
+    "notes": "Notes", "rappels": "Reminders", "calendrier": "Calendar",
+    "calculatrice": "Calculator", "calculette": "Calculator",
+    "chrome": "Google Chrome", "musique": "Music",
+}
 
 # Caractères interdits dans les chaînes injectées dans les scripts AppleScript.
 # Vecteurs d'injection : " (délimiteur de chaîne), \ (escape), & (concat AS), { } (enregistrement AS)
@@ -710,9 +731,33 @@ end tell
         for pat in OPEN_PATTERNS:
             match = re.search(pat, query, re.IGNORECASE)
             if match and match.lastindex:
-                app = match.group(match.lastindex).strip()
-                app = re.sub(ARTICLE_PATTERN, "", app, flags=re.IGNORECASE)
-                return app.strip()
+                raw = match.group(match.lastindex).strip()
+                raw = re.sub(ARTICLE_PATTERN, "", raw, flags=re.IGNORECASE).strip()
+
+                # 1. Match direct dans KNOWN_APPS (ex: "mail" → "mail")
+                canonical = _APP_CANONICAL.get(raw.lower())
+                if canonical:
+                    return canonical
+                if raw.lower() in KNOWN_APPS:
+                    return raw.strip()
+
+                # 2. Scan mot par mot — gère "moi mes mails", "l'app mail"
+                for word in raw.split():
+                    canonical = _APP_CANONICAL.get(word.lower())
+                    if canonical:
+                        return canonical
+                    if word.lower() in KNOWN_APPS:
+                        return word.capitalize()
+
+                # 3. Filtrer les mots parasites et réessayer
+                filtered = " ".join(
+                    w for w in raw.split() if w.lower() not in _APP_NOISE_WORDS
+                ).strip()
+                if filtered and filtered.lower() in KNOWN_APPS:
+                    return filtered.strip()
+                if filtered:
+                    return filtered
+
         return None
 
     def _parse_type_text(self, query: str) -> Optional[str]:

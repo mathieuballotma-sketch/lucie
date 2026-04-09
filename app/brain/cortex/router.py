@@ -42,6 +42,21 @@ class RouteResult:
     via_fast_path: bool = False
 
 
+def _levenshtein(a: str, b: str) -> int:
+    """Distance de Levenshtein entre deux chaînes (< 1µs sur mots courts)."""
+    if len(a) < len(b):
+        return _levenshtein(b, a)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for ca in a:
+        curr = [prev[0] + 1]
+        for j, cb in enumerate(b):
+            curr.append(min(prev[j + 1] + 1, curr[j] + 1, prev[j] + (ca != cb)))
+        prev = curr
+    return prev[-1]
+
+
 class PathRouter:
     """
     Router 9 chemins avec Fast Path.
@@ -72,9 +87,10 @@ class PathRouter:
             "recherche et syntese",
         ],
         "computer_control": [
-            "ouvre", "ferme", "lance", "quitte", "volume", "son",
+            "ouvre", "ouvrir", "ferme", "lance", "lancer", "quitte", "volume", "son",
             "screenshot", "capture", "luminosité", "wifi", "bluetooth",
-            "redémarre", "éteins", "verrouille", "dock", "spotlight"
+            "redémarre", "éteins", "verrouille", "dock", "spotlight",
+            "va sur", "aller sur", "affiche", "montre", "démarre", "démarrer",
         ],
         "reminder": [
             "rappelle", "rappel", "alarme", "alerte", "réveille",
@@ -181,6 +197,23 @@ class PathRouter:
                 via_fast_path=True,
             )
 
+        # ── Étape 1b : Fuzzy keyword match (typos distance ≤ 1) ──
+        fuzzy_agent = self._fuzzy_keyword_match(query_lower)
+        if fuzzy_agent:
+            latency = (time.perf_counter() - t0) * 1000
+            self._stats["fast_path"] += 1
+            route_path = (RoutePath.VISUAL_RESEARCH
+                          if fuzzy_agent == "visual_research"
+                          else RoutePath.FAST_PATH)
+            logger.debug(f"🔤 Fuzzy match → {fuzzy_agent} ({latency:.1f}ms)")
+            return RouteResult(
+                path=route_path,
+                agent=fuzzy_agent,
+                confidence=0.80,
+                latency_ms=latency,
+                via_fast_path=True,
+            )
+
         # ── Étape 2 : Embedding classify ──────────────────────────
         if self._fast_path_enabled and self._classifier:
             label, confidence = self._classifier.classify(query)
@@ -263,6 +296,23 @@ class PathRouter:
         if has_search and (has_visit or has_synthesis):
             return "visual_research"
 
+        return None
+
+    def _fuzzy_keyword_match(self, query: str) -> Optional[str]:
+        """Fuzzy match (Levenshtein ≤ 1) sur les mots-clés mono-mots de longueur ≥ 4.
+
+        Détecte les typos courants : 'ouvr' → 'ouvre', 'lanc' → 'lance', etc.
+        Ne tente pas le fuzzy sur les mots-clés multi-mots (trop de faux positifs).
+        """
+        words = query.lower().split()
+        for agent, keywords in self._KEYWORD_MAP.items():
+            for kw in keywords:
+                if " " in kw or len(kw) < 4:
+                    continue  # Ignorer multi-mots et mots très courts
+                for word in words:
+                    if abs(len(word) - len(kw)) <= 1:
+                        if _levenshtein(word, kw) <= 1:
+                            return agent
         return None
 
     @property
