@@ -99,6 +99,8 @@ class PathManager:
             "finance_query": "KnowledgeAgent",
             "watch_query": "WatchAgent",
             "mail_query": "SmartMailAgent",
+            "mac_query": "ComputerControlAgent",
+            "memory_query": "KnowledgeAgent",
         }
 
         async def agent_path(q: Optional[str] = None) -> str:
@@ -110,11 +112,18 @@ class PathManager:
             if not ctx_signals or not ctx_signals.signals:
                 raise ValueError("Pas de signal Thalamus")
             freqs = ctx_signals.signals.get("frequencies", [])
-            for freq in freqs:
+            # Ignorer les fréquences génériques — pas d'agent Thalamus dédié
+            non_generic = [f for f in freqs if f != "general_query"]
+            if not non_generic:
+                raise ValueError("Requête générique — LLM direct")
+            for freq in non_generic:
                 agent_name = _THALAMUS_TO_AGENT.get(freq)
                 if not agent_name:
                     continue
                 agent = engine.registry.agents.get(agent_name)
+                if not agent:
+                    # Fallback : KnowledgeAgent si l'agent principal n'est pas chargé
+                    agent = engine.registry.agents.get("KnowledgeAgent")
                 if agent and hasattr(agent, "handle"):
                     result = await agent.handle(q or query)
                     if result:

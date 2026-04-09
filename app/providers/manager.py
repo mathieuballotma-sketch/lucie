@@ -43,7 +43,7 @@ class ProviderManager:
         self.host = config.get("host", "http://localhost:11434")
         self.models = config.get("models", {})
         self.model_roles: Dict[str, str] = config.get("model_roles", {})
-        self.timeout = config.get("timeout", 30)
+        self.timeout = config.get("timeout", 60)
         self.retry_attempts = config.get("retry_attempts", 3)
         self.retry_delay = config.get("retry_delay", 1.0)
         self.keep_alive = config.get("keep_alive", -1)
