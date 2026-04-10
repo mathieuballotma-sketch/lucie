@@ -1,12 +1,12 @@
 # Lucie v1 — Spécification technique
 ## Cible : Août 2026
 
-**Version** : 2.2 — base de connaissances curatée + agents contraints + deux tailles de modèle  
+**Version** : 2.3 — offline-first + arbre hiérarchique + refresh quotidien + stratégie étroite-profonde  
 **Date de mise à jour** : 2026-04-10  
 **Auteur** : Mathieu Bellot  
 **Statut** : Spécification de travail — à tenir à jour jusqu'au lancement  
 
-> **Note de version.** La v1.x décrivait une architecture multi-agents avec orchestration complexe, 7 modèles simultanés, 29 agents en RAM. Un audit externe a montré que c'était infaisable pour un dev solo à horizon 4 mois. La v2.0 a simplifié radicalement. La v2.1 a introduit les agents contraints et deux tailles de modèle Gemma 4. La v2.2 ajoute le levier de performance central : une base de connaissances curatée pré-indexée locale, et une couche de réflexion et d'auto-amélioration des prompts exploitant les temps morts de l'E4B. Ces quatre décisions se renforcent mutuellement.
+> **Note de version.** La v1.x décrivait une architecture multi-agents avec orchestration complexe, 7 modèles simultanés, 29 agents en RAM. Un audit externe a montré que c'était infaisable pour un dev solo à horizon 4 mois. La v2.0 a simplifié radicalement. La v2.1 : agents contraints + deux tailles Gemma 4. La v2.2 : base curatée + couche réflexion. La v2.3 acte la garantie offline-first, bascule le refresh quotidien, restructure la base en arbre hiérarchique sémantique, et adopte la stratégie "étroite et profonde" (8-10 intersections magistrales plutôt que 40 superficielles) comme décision explicite de tenue du jalon août 2026.
 
 ---
 
@@ -20,7 +20,9 @@
 
 **Des agents contraints par domaine avec clause de refus.** Chaque agent a un prompt système court (≤ 300 tokens), un domaine défini, et retourne `out_of_scope` si la requête sort de ce domaine. Le routeur est le seul à décider quel agent appeler.
 
-**Une base de connaissances curatée pré-indexée, locale.** Au lieu de faire chercher le LLM dans le vide, Lucie lui sert directement des sources officielles pré-sélectionnées et pré-fetchées. Le LLM passe de "explorer + synthétiser" à "synthétiser seulement". C'est le principal levier de vitesse et de précision de l'architecture.
+**Une base de connaissances curatée pré-indexée, locale, structurée en arbre hiérarchique.** Au lieu de faire chercher le LLM dans le vide, Lucie lui sert directement des sources officielles pré-sélectionnées et pré-fetchées. Le LLM passe de "explorer + synthétiser" à "synthétiser seulement". La base est organisée en arbre `profession / type_client / matière / sous-matière` — le Retriever descend dans la feuille correspondante et remonte les sources. Mise à jour quotidienne par script batch séparé.
+
+**Une garantie offline-first.** Entre le lancement de Lucie et la livraison d'un livrable, aucun appel réseau n'est requis. La seule connexion sortante autorisée est le refresh nocturne de la base. Cette garantie est architecturalement vraie et commercialement différenciante.
 
 **Une vérification externe déterministe obligatoire (Règle 19).** Toute affirmation factuelle dans un livrable est confrontée à une source externe avant d'être montrée à l'utilisateur. Voir §9.
 
@@ -45,8 +47,8 @@ Le Vérificateur ne "juge" pas le Rédacteur via un LLM. Il compare le texte à 
 _Pourquoi_ : un LLM ne détecte pas les hallucinations d'un LLM du même modèle avec les mêmes biais — il valide les mêmes erreurs. Limite structurelle, pas corrigible par prompt.
 
 **4. Pas de recherche web en ligne pendant l'exécution normale.**  
-L'Agent Retriever travaille sur l'index local. La mise à jour de l'index est un script batch hebdomadaire séparé, pas une opération runtime.  
-_Pourquoi_ : la latence réseau pendant une session utilisateur est imprévisible, le mode offline doit fonctionner, et l'exploration web ouverte est le principal vecteur d'hallucination.
+L'Agent Retriever travaille exclusivement sur l'index local. La mise à jour de l'index est un script batch quotidien séparé, jamais une opération runtime.  
+_Pourquoi_ : garantie offline-first — aucun appel réseau n'est requis pendant une session utilisateur. La latence réseau est imprévisible, le mode offline doit fonctionner intégralement, et l'exploration web ouverte est le principal vecteur d'hallucination.
 
 **5. Pas de bulletin inter-agents comme mémoire distribuée.**  
 Le journal par dossier (journal.md) est la seule mémoire partagée. Les agents ne communiquent pas entre eux directement.  
@@ -85,30 +87,52 @@ Avec base curatée : l'exploration est remplacée par un lookup déterministe da
 
 > **Note honnête :** ces ratios sont des estimations raisonnées. La traduction en latence perçue (de ~8-10s à ~2-3s de génération sur une rédaction type) sera confirmée par benchmark une fois la base construite. Ne pas les présenter à l'utilisateur comme des engagements.
 
-### 4.2 Structure de stockage
+### 4.2 Structure de stockage — arbre hiérarchique sémantique
+
+La base n'est pas une table plate. C'est un arbre indexé par `profession / type_client / matière / sous-matière`. Les **feuilles** contiennent les fichiers JSON. Les **nœuds intermédiaires** contiennent uniquement un `README.md` décrivant le périmètre couvert. **On ne crée un dossier que s'il a du vrai contenu** — pas de coquilles vides.
 
 ```
 ~/Lucie/Knowledge/
     avocat/
-        jurisprudence_cass/       # arrêts Cour de cassation
-        articles_codes/           # articles des codes (Civil, Commerce, Travail…)
-        doctrine/                 # commentaires et notes sélectionnés
-        arrets_recents/           # jurisprudence des 12 derniers mois
-        legifrance_index/         # textes consolidés à jour
-        dila/                     # publications DILA (JO, Legifrance)
+        entreprise/
+            litige_commercial/
+                rupture_brutale_relations/   ← feuille : fichiers JSON
+                bail_commercial/             ← feuille
+                concurrence_deloyale/        ← feuille
+            contentieux_social/
+                prudhommes/                  ← feuille — PoC v1 initial
+                licenciement_economique/     ← feuille
+                rupture_conventionnelle/     ← feuille
+            penal_affaires/
+        particulier/
+            famille/
+                divorce/
+                succession/
+                autorite_parentale/
+            immobilier/
+            consommation/
+        association/
+        collectivite/
 
     comptable/
-        pcg/                      # Plan Comptable Général en vigueur
-        crc/                      # textes CRC / ANC
-        bofip/                    # BOFiP (Bulletin Officiel des Finances Publiques)
-        dgfip_bulletins/          # bulletins et circulaires DGFiP
-        urssaf/                   # barèmes et bulletins URSSAF
-        baremes_fiscaux/          # barèmes IS, IR, TVA, contributions
-        conventions_collectives/  # CCN fréquentes dans les dossiers types
+        tpe_pme/
+            bilan_comptable/                 ← feuille
+            tva/                             ← feuille
+            is_bic/                          ← feuille
+        profession_liberale/
+        association/
 
-    digests/                      # rapports hebdomadaires de mise à jour
-        knowledge_digest_YYYY-MM-DD.md
+    common/
+        articles_codes/    # sources transverses référencées par plusieurs feuilles
+        # (art. 1240 Code civil, L.1225-4 Code du travail, etc.)
+
+    digests/               # rapports quotidiens de mise à jour
+        YYYY-MM-DD.md
 ```
+
+**Principe de sélectivité :** Lucie a accès à toute la base, mais le Retriever ne consulte que la feuille correspondant à la situation spécifique du client. Un dossier de prudhommes ne consulte pas les sources en bail commercial — même si les deux sont dans la base. C'est à la fois un argument commercial (largeur) et une garantie opérationnelle (précision).
+
+<!-- À TRANCHER: sources transverses — option A : dossier `common/` avec index de références depuis les feuilles vers les entrées communes (plus propre, pas de duplication). Option B : symlinks Unix depuis les feuilles vers les entrées communes (plus simple, moins portable). À décider avant d'implémenter le Retriever. -->
 
 ### 4.3 Format d'une entrée
 
@@ -132,88 +156,119 @@ Chaque entrée est un petit fichier JSON :
 
 <!-- À TRANCHER: format JSON par fichier (un fichier par entrée) ou base SQLite avec schéma équivalent ? Le JSON est plus lisible et versionnable par git, SQLite est plus rapide en lookup. Décision à prendre avant d'implémenter le Retriever. -->
 
-### 4.4 Volume cible v1
+### 4.4 Volume et stratégie v1 — étroite et profonde
 
-- Quelques milliers d'entrées par profession (cible : 3000-5000 par domaine)
-- Couverture : ~80% des requêtes fréquentes d'un avocat ou d'un expert-comptable standard
-- La base n'est PAS exhaustive. Elle est large sur les cas courants, pas complète sur les cas rares.
+**Tenir août 2026 avec une base large et superficielle est impossible à qualité crédible.** Tenir août 2026 avec une base étroite et profonde est réaliste.
 
-**Ce que signifie "80% de couverture" de façon honnête :**  
-Un avocat en droit des affaires pose 20 types de questions répétitives (clauses de non-concurrence, délais de paiement, rupture brutale de relation commerciale, etc.). La base couvre ces 20 types bien. Pour une question rare ou ultra-spécialisée hors de ce périmètre, le Retriever retourne "non trouvé" et le routeur le signale à l'utilisateur.
+**Stratégie retenue :** démarrer par une preuve de concept sur **une seule intersection ultra-spécifique** — proposition initiale : `avocat/entreprise/contentieux_social/prudhommes/`. La peupler complètement avec 20-30 sources bien choisies (arrêts Cass. Soc. clés, articles L.1232 à L.1243, procédure CPH). Tester le retrieval bout en bout. Valider la qualité avec un vrai avocat si possible.
 
-### 4.5 Ce que la base curatée n'est PAS
+Si la preuve de concept est concluante en 2 semaines : industrialiser en déroulant 5-6 intersections supplémentaires par profession.
+
+**Cible réaliste v1 : 8 à 10 intersections métier couvertes magistralement**, choisies avec les premiers pilotes, plutôt que 40 couvertes médiocrement.
+
+<!-- À TRANCHER: choix exact des 8-10 intersections à couvrir en v1 — à définir avec les pilotes utilisateurs (avocat + expert-comptable bêta) avant Jalon 2. -->
+
+**Ce que cette décision signifie pour le discours produit (défendable devant un critique) :**  
+> "Lucie v1 ne prétend pas couvrir tout le droit français et toute la comptabilité française. Lucie v1 couvre 8 à 10 intersections métier précises, choisies avec les premiers pilotes, avec une profondeur qui permet à Lucie d'être réellement utile sur ces cas."
+
+C'est une position honnête, buildable, et mesurable.
+
+### 4.5 Risques et mitigations de la base curatée
+
+**a) Explosion combinatoire**  
+Profession × type_client × matière × sous-matière peut monter à 200-300 dossiers dans l'arbre complet. Mitigation : règle stricte "on ne crée un dossier que s'il a du vrai contenu". Démarrer avec les 8-10 intersections PoC, étendre au fil des besoins observés en production.
+
+**b) Sources transverses — risque de duplication**  
+L'article 1240 du Code civil (responsabilité extracontractuelle) est pertinent dans au moins 5 feuilles différentes. Dupliquer crée de la maintenance. Mitigation : dossier `common/` + index de références depuis les feuilles, ou symlinks Unix.
+
+<!-- À TRANCHER: index de références vs symlinks — voir §4.2 -->
+
+**c) Politesse réseau du pipeline quotidien**  
+Légifrance, BOFiP, URSSAF, JuriCA peuvent bloquer les scrapers automatisés. Mitigation :  
+- Respect strict des `robots.txt`  
+- Backoff exponentiel sur HTTP 429  
+- Étalement nocturne sur plusieurs heures (pas tout en même temps)  
+- Cache par `hash_contenu` : pas de re-fetch si le contenu n'a pas changé  
+- Note : certaines sources professionnelles (Doctrine, Lexbase, Lamyline) nécessitent un abonnement. À budgéter pour v2 si les sources gratuites ne couvrent pas assez.
+
+**d) Qualité éditoriale — le code ne fait pas tout**  
+Choisir quelle jurisprudence inclure dans `prudhommes/`, quels arrêts sont vraiment les arrêts de principe, quelle doctrine retenir — ce ne sont pas des décisions automatisables. Mitigation : approche "étroite et profonde" qui permet un travail éditorial sérieux sur chaque intersection, vs une approche large qui garantit la superficialité.
+
+### 4.6 Ce que la base curatée n'est PAS
 
 - Pas un moteur de recherche exhaustif du droit français
-- Pas infaillible : les entrées périmées sont taguées mais peuvent exister en cas de bug du pipeline de mise à jour
+- Pas infaillible : les entrées peuvent être périmées en cas de bug du pipeline quotidien
 - Pas un remplacement de l'expertise humaine : elle fournit des sources, pas des avis juridiques
+- Pas exhaustive sur les premières versions : 8-10 intersections couvertes profondément, pas tout le droit
 
 ---
 
-## 5. Pipeline hebdomadaire de mise à jour
+## 5. Pipeline quotidien de mise à jour
+
+**Motif du passage à la fréquence quotidienne :** dans le juridique et le comptable, une circulaire BOFiP publiée le matin ou un arrêt de Cass rendu la veille peuvent changer la réponse à donner aujourd'hui. Une base datant de 6 jours est un risque professionnel pour l'utilisateur. Le Mac dort 8-10h par nuit — ce temps est largement suffisant pour un run de refresh.
 
 ### 5.1 Architecture du pipeline
 
-Le pipeline de mise à jour est un **script Python séparé**, déclenché par `launchd` (macOS) chaque dimanche soir. Il ne tourne PAS dans le processus Lucie. Il n'a aucun contact avec les agents runtime.
+Le pipeline de mise à jour est un **script Python séparé**, déclenché par `launchd` (macOS) chaque nuit. Il ne tourne PAS dans le processus Lucie. Il n'a aucun contact avec les agents runtime.
 
 ```
-launchd (dimanche 23h)
+launchd (chaque nuit, heure configurable — défaut 2h00)
     │
     ▼
 update_knowledge.py (script batch)
     │
-    ├──► Scan Légifrance — nouvelles publications, textes modifiés
-    ├──► Scan JuriCA — arrêts récents semaine écoulée
+    ├──► Scan Légifrance — publications du jour
+    ├──► Scan JuriCA — arrêts publiés depuis le dernier run
     ├──► Scan BOFiP — bulletins DGFiP mis à jour
-    ├──► Scan URSSAF — nouveaux barèmes
+    ├──► Scan URSSAF — nouveaux barèmes ou communications
     └──► Scan ANC/CRC — bulletins comptables
     │
     ▼
-Mise à jour de ~/Lucie/Knowledge/ :
-    - Nouvelles entrées JSON ajoutées
-    - Entrées obsolètes taguées statut="supersede"
-    - hash_contenu mis à jour pour les textes modifiés
+Pour chaque entrée scannée :
+    - hash_contenu comparé à l'entrée existante
+    - Si identique : skip (pas de re-fetch)
+    - Si nouveau ou modifié : mise à jour du fichier JSON + statut
+    - Entrées obsolètes : taguées statut="supersede"
     │
     ▼
-Génération du digest hebdomadaire :
-    ~/Lucie/Knowledge/digests/knowledge_digest_YYYY-MM-DD.md
+Génération du digest quotidien :
+    ~/Lucie/Knowledge/digests/YYYY-MM-DD.md
+    (5-10 entrées de changements par jour — lisible en 2 minutes)
     │
     ▼
 Notification Lucie → présentée à l'utilisateur à la prochaine ouverture :
-    "5 textes mis à jour cette semaine. Voir le digest."
+    "2 textes mis à jour cette nuit. Voir le digest du 2026-07-15."
 ```
 
-### 5.2 Format du digest hebdomadaire
+### 5.2 Format du digest quotidien
 
 ```markdown
-# Knowledge Digest — 2026-07-14
+# Knowledge Digest — 2026-07-15
 
-## Résumé de la semaine
-- 3 nouveaux arrêts Cass. Com. ajoutés (jurisprudence_cass)
-- 1 barème fiscal mis à jour (baremes_fiscaux/tva_2026.json)
-- 2 articles de code modifiés (articles_codes/l442*.json)
+## Changements de la nuit
+- **[nouveau]** Cass. Soc. 14/07/2026 — Licenciement économique : ordre des critères
+  Feuille : avocat/entreprise/contentieux_social/licenciement_economique/
+  Source : JuriCA | Mots-clés : licenciement, ordre critères, L.1233-5
 
-## Détail
+- **[mis à jour]** Art. L.442-1 Code commerce — version consolidée 2026-07-01
+  Feuille : common/articles_codes/
+  Source : Légifrance
 
-### Droit des affaires
-- **[nouveau]** Cass. Com. 08/07/2026 — Rupture brutale de relation commerciale, préavis insuffisant
-  Source : JuriCA | Mots-clés : rupture, préavis, L.442-1
-
-### Comptabilité
-- **[mis à jour]** Taux TVA intermédiaire — confirmation du taux à 10% pour catégorie X
-  Source : BOFiP mise à jour 05/07/2026
-
-## Entrées périmées cette semaine
+## Entrées obsolètes
 - Aucune
+
+## Run suivant : 2026-07-16 02:00
 ```
 
-Le digest est lisible par l'utilisateur professionnel pour sa propre veille, pas seulement pour Lucie.
+Le digest quotidien est lisible par l'utilisateur professionnel pour sa propre veille — remplace un abonnement à une newsletter juridique pour les cas couverts par la base.
 
-### 5.3 Séparation stricte batch / runtime
+### 5.3 Séparation stricte batch / runtime — garantie offline-first
 
-Le pipeline de mise à jour ne peut pas être déclenché depuis un agent runtime. Il n'y a pas d'API interne entre `update_knowledge.py` et le processus Lucie. La seule communication est la modification des fichiers dans `~/Lucie/Knowledge/` et la création du digest. Cette séparation protège :
-- La réactivité utilisateur (pas de mise à jour qui bloque une session)
-- L'intégrité de l'index (pas de concurrent writes entre runtime et batch)
-- La prévisibilité (le batch tourne à heure fixe, jamais pendant une session)
+Le pipeline de mise à jour ne peut pas être déclenché depuis un agent runtime. Il n'y a pas d'API interne entre `update_knowledge.py` et le processus Lucie. La seule communication est la modification des fichiers dans `~/Lucie/Knowledge/` et la création du digest.
+
+**Cette séparation est la garantie architecturale de l'offline-first.** Si le Mac n'a pas accès à internet pendant une session, Lucie fonctionne normalement avec la base locale déjà présente. Le refresh quotidien se déclenche la nuit suivante si le réseau est disponible.
+
+Règle d'implémentation : **aucun agent runtime ne peut jamais déclencher une connexion réseau.** Toute dépendance réseau introduite dans le process Lucie casse la garantie offline-first. Cette règle est une ligne rouge architecturale, à vérifier à chaque pull request.
 
 ---
 
@@ -339,34 +394,52 @@ Si on te demande de rédiger ou d'émettre un avis, retourne {"status": "out_of_
 
 ---
 
-### 7.3 Agent Retriever
+### 7.3 Agent Retriever — marcheur d'arbre sémantique
 
 | Propriété | Valeur |
 |---|---|
-| Modèle | Gemma 4 E2B (classification fine de requête) |
-| Domaine autorisé | Lookup déterministe dans la base de connaissances locale + retour des sources pertinentes |
-| Entrée | Question ou contexte de requête + secteur (avocat / comptable) |
-| Sortie | Liste de 3-5 entrées JSON avec leurs extraits pré-fetchés |
-| Clause de refus | Si hors périmètre de la base ou demande de rédaction → `out_of_scope` ou `no_source_found` |
-| Lookup | Déterministe sur mots-clés + type_recherche dans les fichiers JSON de la base curatée |
-| Pas de web search | Zéro requête réseau pendant l'exécution normale. Tout est local. |
-| Écrit dans journal | Oui — sources retournées + timestamp |
+| Modèle | Gemma 4 E2B (classification de requête en tuple hiérarchique) |
+| Domaine autorisé | Classifie la requête → descend dans l'arbre → retourne les sources de la feuille |
+| Entrée | Question ou contexte + secteur (avocat / comptable) |
+| Sortie | Liste de 3-5 entrées JSON pré-fetchées depuis la feuille correspondante |
+| Clause de refus | Si feuille inexistante ou hors périmètre → `no_source_found` ; si demande de rédaction → `out_of_scope` |
+| Lookup | Local uniquement. Zéro requête réseau. |
+| Écrit dans journal | Oui — tuple (profession, client_type, matière, sous-matière) + sources retournées |
+
+**Comportement de marcheur d'arbre :**
+
+Le Retriever ne fait pas une recherche globale dans toute la base. Il suit trois étapes séquentielles :
+
+```
+1. Classification de la requête
+   → produit un tuple : (profession, client_type, matière, sous-matière)
+   → ex : ("avocat", "entreprise", "contentieux_social", "prudhommes")
+
+2. Navigation dans l'arbre
+   → descend dans ~/Lucie/Knowledge/avocat/entreprise/contentieux_social/prudhommes/
+   → si la feuille n'existe pas : retourne no_source_found, le routeur informe l'utilisateur
+
+3. Lecture des fichiers de la feuille
+   → lit les 3-5 fichiers JSON présents dans la feuille
+   → retourne leurs champs {titre, extrait_pre_fetche, source_officielle, date_derniere_verification}
+   → ne remonte jamais dans les nœuds parents sauf si la feuille est vide
+```
 
 **Ce que le Retriever ne fait PAS :**
-- Il ne synthétise pas les sources (c'est le Rédacteur)
-- Il n'émet pas de jugement sur leur pertinence au-delà du lookup
-- Il ne fait pas de requête réseau en temps réel
+- Il ne fait pas d'exploration latérale (il ne regarde pas `licenciement_economique/` si on lui demande `prudhommes/`)
+- Il ne synthétise pas les sources — c'est le Rédacteur
+- Il ne fait aucune requête réseau
 
-**Prompt système (forme simplifiée) :**
-```
-Tu reçois une question ou un contexte de recherche et une liste de catégories de la base de connaissances.
-Tu identifies les 3-5 catégories et mots-clés les plus pertinents pour répondre.
-Tu retournes la liste de lookup à effectuer au format JSON.
-Tu ne rédiges rien. Tu ne juges pas. Tu classes.
-Si la question est hors périmètre de la base, retourne {"status": "out_of_scope"}.
-```
+<!-- À TRANCHER: la classification initiale en tuple hiérarchique — option A : code déterministe (regex + dictionnaire de mots-clés sectoriels) pour les cas couverts, E2B uniquement en fallback pour les cas ambiguës. Option B : E2B systématiquement pour la classification, plus robuste aux formulations imprévues. L'option A est plus rapide et plus prévisible ; l'option B couvre mieux les cas rares. À décider pendant l'implémentation du Jalon 2. -->
 
-> Note : la classification fine peut être faite par du code seul (regex + dictionnaire) si les cas sont bien couverts, sans appel LLM. L'E2B n'est utilisé que pour les requêtes ambiguës où le code seul ne suffit pas. À valider pendant l'implémentation.
+**Prompt système (forme simplifiée — utilisé si E2B requis pour classification) :**
+```
+Tu reçois une question juridique ou comptable.
+Tu retournes exactement un tuple JSON : {"profession": ..., "client_type": ..., "matiere": ..., "sous_matiere": ...}
+Les valeurs possibles sont celles de l'arbre ~/Lucie/Knowledge/ — liste fournie en contexte.
+Si la question ne correspond à aucune feuille connue, retourne {"status": "no_source_found"}.
+Tu ne rédiges rien. Tu ne cherches pas. Tu classes.
+```
 
 ---
 
@@ -566,7 +639,43 @@ Statut par affirmation : confirmed | divergence | unverifiable
 
 ---
 
-## 12. Positionnement produit vs architecture interne
+## 12. Garantie offline-first
+
+### 12.1 La garantie
+
+**Lucie fonctionne à 100% hors ligne pendant une session de travail normale.** Entre le lancement de Lucie et la livraison d'un livrable, aucun appel réseau n'est requis. L'utilisateur peut travailler en salle d'audience, en cabinet client rural, dans le train, dans une zone à wifi médiocre — Lucie fonctionne.
+
+**La seule connexion sortante autorisée** est le pipeline quotidien de mise à jour de la base (`update_knowledge.py`), qui tourne la nuit quand le Mac est en veille et connecté au réseau domestique ou de bureau. Si le réseau n'est pas disponible la nuit en question, le refresh est différé à la nuit suivante. Ce n'est pas bloquant.
+
+### 12.2 Pourquoi cette garantie est architecturalement vraie
+
+Elle n'est pas une promesse marketing ajoutée après coup — elle découle directement des décisions architecturales :
+
+- **Base curatée locale** : les sources sont pré-fetchées et stockées dans `~/Lucie/Knowledge/`. Le Retriever fait un lookup sur des fichiers locaux. Zéro requête réseau.
+- **Gemma 4 via Ollama** : le modèle tourne localement. Zéro appel API cloud.
+- **Séparation batch/runtime** : le pipeline de refresh est un script séparé qui ne tourne jamais pendant une session utilisateur.
+
+### 12.3 Limites honnêtes de la garantie
+
+La garantie offline-first couvre la session de travail. Elle ne couvre pas :
+- La fraîcheur de la base (si le Mac n'a pas eu de réseau depuis 5 jours, la base a 5 jours de retard)
+- Les requêtes hors des intersections couvertes (Lucie dit "non trouvé" sans réseau)
+- Le premier setup (Ollama + Gemma 4 + base initiale nécessitent un téléchargement initial)
+
+**Ce que cette garantie n'est jamais :** "Lucie connaît tout le droit en permanence à jour en temps réel hors ligne." Ce claim est faux et ne sera jamais fait.
+
+### 12.4 Argument commercial
+
+La garantie offline-first est un avantage différentiant réel vs les concurrents cloud (ChatGPT Plus, Gemini, Copilot, etc.) pour les professionnels réglementés :
+- Confidentialité des données client (les dossiers ne transitent pas par des serveurs tiers)
+- Conformité RGPD simplifiée (traitement 100% local)
+- Disponibilité sans dépendance réseau
+
+Ces trois points sont vrais et défendables. Ne pas en rajouter.
+
+---
+
+## 13. Positionnement produit vs architecture interne
 
 **Principe :** vérité absolue vers l'utilisateur sur ce que Lucie fait, discrétion légitime sur comment elle le fait.
 
@@ -593,7 +702,7 @@ Cette phrase est défendable devant un audit d'honnêteté :
 
 ---
 
-## 13. Moat produit
+## 14. Moat produit
 
 La base de connaissances curatée constitue le premier actif durable non-reproductible en quelques jours par un concurrent.
 
@@ -610,7 +719,7 @@ Le moat est réel pour la fenêtre août 2026 — premiers utilisateurs réels. 
 
 ---
 
-## 14. Couche de réflexion et auto-amélioration
+## 15. Couche de réflexion et auto-amélioration
 
 ### 14.1 Principe
 
@@ -822,7 +931,7 @@ Tous les 15 jours (à la bascule semaine ISO paire), le processus suivant se dé
 
 ---
 
-## 15. Choix de chargement des modèles — Option A vs Option B
+## 16. Choix de chargement des modèles — Option A vs Option B
 
 Décision reportée au bench Gemma 4 (session en cours au 2026-04-10).
 
@@ -857,7 +966,7 @@ Décision reportée au bench Gemma 4 (session en cours au 2026-04-10).
 
 ---
 
-## 16. Contraintes hardware
+## 17. Contraintes hardware
 
 **Budget RAM estimé (à confirmer par bench) :**
 
@@ -871,7 +980,7 @@ Décision reportée au bench Gemma 4 (session en cours au 2026-04-10).
 
 ---
 
-## 17. Périmètre v1 strict
+## 18. Périmètre v1 strict
 
 **Lucie v1 fait exactement quatre choses :**
 
@@ -892,7 +1001,7 @@ Décision reportée au bench Gemma 4 (session en cours au 2026-04-10).
 
 ---
 
-## 18. Jalons août 2026
+## 19. Jalons août 2026
 
 ### Jalon 1 — Socle (mai 2026)
 
@@ -937,7 +1046,7 @@ Décision reportée au bench Gemma 4 (session en cours au 2026-04-10).
 
 ---
 
-## 19. Vision long terme (annexe, non engageante pour v1)
+## 20. Vision long terme (annexe, non engageante pour v1)
 
 <!-- Vision à 18-36 mois — ne pas laisser influencer les décisions v1. -->
 
@@ -971,15 +1080,19 @@ Ces évolutions ne seront considérées qu'après validation des 4 jalons.
 
 | Élément ajouté | Justification |
 |---|---|
-| Base de connaissances curatée (§4) | Principal levier de vitesse et de précision |
-| Agent Retriever avec fiche technique (§7.3) | Lookup déterministe, pas d'exploration ouverte |
-| Pipeline hebdomadaire batch (§5) | Mise à jour de la base séparée du runtime |
+| Base de connaissances curatée en arbre hiérarchique (§4) | Retriever sémantique, pas de table plate |
+| Agent Retriever marcheur d'arbre (§7.3) | Lookup déterministe par tuple (profession/client/matière/sous-matière) |
+| Pipeline quotidien batch (§5) | Refresh nocturne — base datant de 6 jours = risque professionnel |
+| Garantie offline-first (§12) | Aucun appel réseau en runtime — décision architecturale et argument commercial |
+| Stratégie étroite-profonde (§4.4) | 8-10 intersections magistrales pour tenir août 2026 |
+| Risques et mitigations base curatée (§4.5) | 4 risques documentés honnêtement |
 | Impact sur budget tokens (§11) | Quantifie le gain, honnêteté sur les limites |
-| Positionnement produit vs architecture (§12) | Clarifie ce qui est dit / non dit / jamais dit |
-| Moat produit (§13) | Actif durable, valeur réaliste définie |
+| Positionnement produit vs architecture (§13) | Clarifie ce qui est dit / non dit / jamais dit |
+| Moat produit (§14) | Actif durable, valeur réaliste définie |
 | Définition stricte "agent" (§3) | Évite la confusion avec vocabulaire orchestral |
 | Garanties d'isolation (§9) | Défense contre dérive + injection |
-| Jalons avec critères binaires (§17) | Remplace estimations subjectives |
+| Couche de réflexion et auto-amélioration (§15) | Exploitation des temps morts E4B + path compression |
+| Jalons avec critères binaires (§19) | Remplace estimations subjectives |
 
 ### Reformulé
 
@@ -1023,4 +1136,10 @@ Le routeur lit le journal pour décider du dispatch. Si le format Markdown des e
 Mathieu a décidé d'ajouter une couche de réflexion exploitant les temps morts de l'E4B. Motif double : (1) exploiter le temps d'inactivité de l'E4B qui dort en RAM entre sessions sans produire de valeur ; (2) mettre en œuvre concrètement le pilier "path compression par apprentissage" de la roadmap long terme. Les prompts améliorés progressivement narrowent la distribution de sortie des agents, les fast-paths du routeur deviennent plus fiables, et Lucie devient non-remplaçable pour SON utilisateur après quelques mois d'usage. La ligne rouge absolue : le Réflecteur ne peut jamais modifier un prompt sans validation humaine explicite — structurellement enforced par le versioning des prompts en fichiers séparés.
 
 **D10 — Interaction entre base curatée et couche réflexion à penser.**  
-La couche réflexion peut identifier des lacunes dans la base curatée ("Retriever retourne no_source_found trop souvent sur droit URSSAF"). Le Réflecteur pourrait donc proposer non seulement des améliorations de prompt mais aussi des additions à la base curatée. Ce cas d'usage n'est pas documenté dans la spec v2.2 — à trancher avant d'implémenter le Réflecteur (Jalon 3 ou Jalon 4 ?).
+La couche réflexion peut identifier des lacunes dans la base curatée ("Retriever retourne no_source_found trop souvent sur droit URSSAF"). Le Réflecteur pourrait donc proposer non seulement des améliorations de prompt mais aussi des additions à la base curatée. Ce cas d'usage n'est pas documenté dans la spec v2.3 — à trancher avant d'implémenter le Réflecteur (Jalon 3 ou Jalon 4 ?).
+
+**D11 — Décisions architecturales du 2026-04-10 (4e brief) : offline-first + quotidien + arbre hiérarchique + stratégie étroite-profonde.**  
+Quatre décisions prises simultanément : (1) garantie offline-first actée explicitement — aucun agent runtime ne peut déclencher de connexion réseau, la séparation batch/runtime est la garantie architecturale ; (2) refresh quotidien plutôt qu'hebdomadaire — dans le juridique et le comptable, 6 jours de retard est un risque professionnel ; (3) arbre hiérarchique `profession/client_type/matière/sous-matière` à la place d'une table plate — le Retriever devient un marcheur d'arbre déterministe, plus précis et plus rapide ; (4) stratégie étroite-profonde : 8-10 intersections magistralement couvertes valent mieux que 40 couvertes médiocrement pour tenir août 2026.
+
+**D12 — Prudhommes comme PoC initial : vérifier la disponibilité des sources.**  
+L'intersection `avocat/entreprise/contentieux_social/prudhommes/` est proposée comme preuve de concept initiale. Avant de commencer, vérifier que les sources clés (Cass. Soc. récents, articles L.1232-L.1243, procédure CPH) sont disponibles gratuitement sur JuriCA et Légifrance sans abonnement. Si certains arrêts de principe ne sont accessibles que via Lexbase ou Doctrine, documenter l'écart avant de commencer la construction de la feuille.
