@@ -70,6 +70,11 @@ async def main() -> None:
 
     # Import ici pour ne pas payer le coût au --help
     from .pipeline import run
+    from .setup import ensure_ready
+
+    status = await ensure_ready(verbose=not args.quiet)
+    if "ollama_not_running" in status["errors"] or "model_pull_failed" in status["errors"]:
+        sys.exit(1)
 
     result = await run(
         query=args.query,
