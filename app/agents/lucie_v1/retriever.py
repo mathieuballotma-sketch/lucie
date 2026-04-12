@@ -23,7 +23,7 @@ _MODEL = "speed"       # gemma4:e4b — léger et rapide
 _MAX_SOURCES = 5
 _BM25_K1 = 1.5
 _BM25_B = 0.75
-_LEGAL_REF_RE = re.compile(r'L\s*\d{4}(?:-\d+)?', re.IGNORECASE)
+_LEGAL_REF_RE = re.compile(r'L\.?\s*\d{4}(?:-\d+)?', re.IGNORECASE)
 
 
 class RetrieverAgent(TerrainMixin, BaseAgent):
@@ -115,10 +115,20 @@ class RetrieverAgent(TerrainMixin, BaseAgent):
 
     @staticmethod
     def _extract_legal_refs(text: str) -> List[str]:
-        """Extrait les références légales type L1233-2."""
+        """Extrait les références légales type L1233-2 ou L.1233-2.
+
+        Normalise vers la forme canonique L.NNNN-N (avec point)
+        pour correspondre aux noms de fichiers knowledge/L.1233-X.md.
+        """
         raw = _LEGAL_REF_RE.findall(text)
-        # Normaliser : supprimer espaces internes
-        return [re.sub(r'\s+', '', r).upper() for r in raw]
+        normalized = []
+        for r in raw:
+            n = re.sub(r'\s+', '', r).upper()
+            # Ajoute le point si absent : L1233-3 → L.1233-3
+            if re.match(r'^L\d', n):
+                n = 'L.' + n[1:]
+            normalized.append(n)
+        return normalized
 
     @staticmethod
     def _extract_title(content: str, default_id: str) -> str:
