@@ -111,3 +111,22 @@ README.zh.md
 
 # ===== ARCHIVES & TEMP =====
 _archive/
+
+# ===== HORS-PIPELINE (retirés du repo le 12 avril 2026) =====
+Entreprise/
+demo/
+assets/lucie.icns
+assets/lucie.iconset/
+docs/Lucie_Analyse_Strategique_Mars2026.docx
+docs/Lucie_LLM_Models_Mapping.md
+docs/lucie_architecture_reelle.svg
+docs/orchestration_lucie_schema*.svg
+docs/prompts_debat_lucie.md
+hooks/hook-numpy.testing.py
+hooks/hook-unittest.py
+scripts/check_accessibility.py
+scripts/check_demo_ready.py
+scripts/check_groupe_0.py
+scripts/check_groupe_1.py
+tests/diagnostic_results.txt
+app/services/p2p/MOBILE_SPEC.md
