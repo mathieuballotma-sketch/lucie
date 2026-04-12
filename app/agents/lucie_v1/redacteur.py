@@ -15,7 +15,7 @@ from ..base_agent import BaseAgent
 from .terrain import TerrainMixin
 
 _SYSTEM_PROMPT_PATH = Path(__file__).parent / "prompts" / "redacteur_system.txt"
-_MODEL = "quality"   # gemma4:26b — qualité maximale
+_MODEL = "speed"     # gemma4:e4b — gemma4:26b timeouts on current hardware (31% CPU / 69% GPU)
 
 
 class RedacteurAgent(TerrainMixin, BaseAgent):
