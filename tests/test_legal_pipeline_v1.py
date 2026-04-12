@@ -142,17 +142,17 @@ class TestRetrieverIndex:
 
     def test_extract_legal_refs_single(self):
         refs = RetrieverAgent._extract_legal_refs("Voir l'article L1233-1 du Code du travail")
-        assert "L1233-1" in refs
+        assert "L.1233-1" in refs
 
     def test_extract_legal_refs_multiple(self):
         refs = RetrieverAgent._extract_legal_refs("Articles L1233-1 et L1233-5 applicables")
-        assert "L1233-1" in refs
-        assert "L1233-5" in refs
+        assert "L.1233-1" in refs
+        assert "L.1233-5" in refs
 
     def test_extract_legal_refs_with_spaces(self):
-        """Normalise les références avec espaces internes (ex: L 1233-3 → L1233-3)."""
+        """Normalise les références avec espaces internes (ex: L 1233-3 → L.1233-3)."""
         refs = RetrieverAgent._extract_legal_refs("Voir L 1233-3")
-        assert "L1233-3" in refs
+        assert "L.1233-3" in refs
 
     def test_extract_legal_refs_empty(self):
         refs = RetrieverAgent._extract_legal_refs("Aucune référence légale ici")
@@ -215,7 +215,7 @@ class TestRetrieverIndex:
         raw = await retriever.handle(faits_json)
         result = json.loads(raw)
         assert "non_trouve" in result
-        assert "L9999-99" in result["non_trouve"]
+        assert "L.9999-99" in result["non_trouve"]
 
     @pytest.mark.asyncio
     async def test_max_5_sources_returned(self, retriever):
