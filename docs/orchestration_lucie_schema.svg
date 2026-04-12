@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1700" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#111"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0a66ff"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a8a4a"/>
+    </marker>
+  </defs>
+
+  <rect width="1400" height="1700" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="700" y="50" text-anchor="middle" font-size="32" font-weight="700" fill="#111">Orchestration Lucie — comment je travaille</text>
+  <text x="700" y="80" text-anchor="middle" font-size="16" fill="#666">chef de chantier → briefs → ouvriers → livrables sur ton Mac</text>
+
+  <!-- STEP 1: Mathieu -->
+  <rect x="550" y="120" width="300" height="90" rx="12" fill="#fff3cd" stroke="#b8860b" stroke-width="3"/>
+  <text x="700" y="155" text-anchor="middle" font-size="22" font-weight="700" fill="#111">👤 MATHIEU</text>
+  <text x="700" y="180" text-anchor="middle" font-size="14" fill="#555">iPhone / Mac</text>
+  <text x="700" y="200" text-anchor="middle" font-size="13" fill="#555">envoie un message, reçoit des réponses</text>
+
+  <!-- Arrow Mathieu -> Moi -->
+  <line x1="700" y1="215" x2="700" y2="265" stroke="#111" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="715" y="245" font-size="13" fill="#444">« rends Lucie prête pour avocats/comptables »</text>
+
+  <!-- STEP 2: MOI (orchestrateur) -->
+  <rect x="350" y="275" width="700" height="190" rx="12" fill="#e8f0ff" stroke="#0a66ff" stroke-width="3"/>
+  <text x="700" y="310" text-anchor="middle" font-size="22" font-weight="700" fill="#0a66ff">🛠  MOI — Chef de chantier</text>
+  <text x="700" y="332" text-anchor="middle" font-size="13" fill="#333">(tourne dans une VM Cowork, ne touche pas ton disque)</text>
+
+  <text x="380" y="365" font-size="14" fill="#222" font-weight="600">Mon boulot :</text>
+  <text x="380" y="388" font-size="13" fill="#333">1. Découper ta demande en tâches indépendantes</text>
+  <text x="380" y="408" font-size="13" fill="#333">2. Choisir un rôle précis pour chaque ouvrier (ingénieur sécu, staff engineer, rédacteur…)</text>
+  <text x="380" y="428" font-size="13" fill="#333">3. Écrire un brief (rôle + expertise + pourquoi + livrable attendu)</text>
+  <text x="380" y="448" font-size="13" fill="#333">4. Auditer chaque retour contre la règle d'or : « vérité, pas de complaisance »</text>
+
+  <!-- Arrow down to dispatch -->
+  <line x1="700" y1="475" x2="700" y2="520" stroke="#0a66ff" stroke-width="3" marker-end="url(#arrowBlue)"/>
+  <text x="715" y="505" font-size="13" fill="#0a66ff" font-weight="600">start_code_task (une fois par ouvrier)</text>
+
+  <!-- STEP 3: branches to workers -->
+  <line x1="700" y1="525" x2="180" y2="570" stroke="#0a66ff" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <line x1="700" y1="525" x2="520" y2="570" stroke="#0a66ff" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <line x1="700" y1="525" x2="880" y2="570" stroke="#0a66ff" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <line x1="700" y1="525" x2="1220" y2="570" stroke="#0a66ff" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+
+  <!-- WORKERS -->
+  <!-- Worker 1 -->
+  <rect x="60" y="580" width="240" height="200" rx="10" fill="#fff" stroke="#444" stroke-width="2"/>
+  <text x="180" y="610" text-anchor="middle" font-size="16" font-weight="700" fill="#111">🧑‍🔧 Ouvrier 1</text>
+  <text x="180" y="632" text-anchor="middle" font-size="14" fill="#0a66ff" font-weight="600">Rédacteur stratégique</text>
+  <text x="180" y="655" text-anchor="middle" font-size="12" fill="#555">Rôle : CEO communication</text>
+  <text x="180" y="680" text-anchor="middle" font-size="12" fill="#333">Mission :</text>
+  <text x="180" y="700" text-anchor="middle" font-size="12" fill="#333">écrire la spec v1 août 2026</text>
+  <text x="180" y="720" text-anchor="middle" font-size="12" fill="#333">(6 piliers + timeline)</text>
+  <text x="180" y="755" text-anchor="middle" font-size="12" font-weight="600" fill="#1a8a4a">✅ TERMINÉ</text>
+
+  <!-- Worker 2 -->
+  <rect x="400" y="580" width="240" height="200" rx="10" fill="#fff" stroke="#444" stroke-width="2"/>
+  <text x="520" y="610" text-anchor="middle" font-size="16" font-weight="700" fill="#111">🧑‍💻 Ouvrier 2</text>
+  <text x="520" y="632" text-anchor="middle" font-size="14" fill="#0a66ff" font-weight="600">Ingénieur sécurité</text>
+  <text x="520" y="655" text-anchor="middle" font-size="12" fill="#555">Rôle : 15 ans pentesting</text>
+  <text x="520" y="680" text-anchor="middle" font-size="12" fill="#333">Mission :</text>
+  <text x="520" y="700" text-anchor="middle" font-size="12" fill="#333">localiser et patcher les</text>
+  <text x="520" y="720" text-anchor="middle" font-size="12" fill="#333">2 failles RCE dans Lucie</text>
+  <text x="520" y="755" text-anchor="middle" font-size="12" font-weight="600" fill="#d97706">⏳ EN COURS</text>
+
+  <!-- Worker 3 -->
+  <rect x="760" y="580" width="240" height="200" rx="10" fill="#fff" stroke="#444" stroke-width="2"/>
+  <text x="880" y="610" text-anchor="middle" font-size="16" font-weight="700" fill="#111">🧑‍🔬 Ouvrier 3</text>
+  <text x="880" y="632" text-anchor="middle" font-size="14" fill="#0a66ff" font-weight="600">Staff eng. Apple Silicon</text>
+  <text x="880" y="655" text-anchor="middle" font-size="12" fill="#555">Rôle : benchmarks honnêtes</text>
+  <text x="880" y="680" text-anchor="middle" font-size="12" fill="#333">Mission :</text>
+  <text x="880" y="700" text-anchor="middle" font-size="12" fill="#333">bench Gemma 4 E4B/E2B</text>
+  <text x="880" y="720" text-anchor="middle" font-size="12" fill="#333">+ matrice Mac M1→M5</text>
+  <text x="880" y="755" text-anchor="middle" font-size="12" font-weight="600" fill="#d97706">⏳ EN COURS (long)</text>
+
+  <!-- Worker 4 -->
+  <rect x="1100" y="580" width="240" height="200" rx="10" fill="#fff" stroke="#444" stroke-width="2"/>
+  <text x="1220" y="610" text-anchor="middle" font-size="16" font-weight="700" fill="#111">🧑‍🏫 Ouvrier 4</text>
+  <text x="1220" y="632" text-anchor="middle" font-size="14" fill="#0a66ff" font-weight="600">Architecte vérité</text>
+  <text x="1220" y="655" text-anchor="middle" font-size="12" fill="#555">Rôle : exigence d'honnêteté</text>
+  <text x="1220" y="680" text-anchor="middle" font-size="12" fill="#333">Mission :</text>
+  <text x="1220" y="700" text-anchor="middle" font-size="12" fill="#333">note d'architecture</text>
+  <text x="1220" y="720" text-anchor="middle" font-size="12" fill="#333">« vérité comme axiome »</text>
+  <text x="1220" y="755" text-anchor="middle" font-size="12" font-weight="600" fill="#1a8a4a">✅ TERMINÉ</text>
+
+  <!-- Step 4: Mac physique -->
+  <text x="700" y="830" text-anchor="middle" font-size="20" font-weight="700" fill="#111">📍 Où chaque ouvrier bosse vraiment — sur TON Mac</text>
+
+  <!-- Big Mac box -->
+  <rect x="80" y="855" width="1240" height="520" rx="14" fill="#f0f0f0" stroke="#111" stroke-width="2.5"/>
+  <text x="700" y="890" text-anchor="middle" font-size="15" fill="#444" font-style="italic">chaque session Claude Code reçoit son propre dossier isolé (git worktree)</text>
+
+  <!-- Worktrees path -->
+  <rect x="110" y="915" width="1180" height="220" rx="10" fill="#fff" stroke="#666" stroke-width="1.5"/>
+  <text x="130" y="945" font-size="15" font-weight="700" fill="#111">📁 /Users/mathieu/Desktop/mon-agence-ia/.claude/worktrees/</text>
+  <text x="130" y="968" font-size="13" fill="#555">(chacun est un clone git isolé du projet, pour que les ouvriers ne se marchent pas dessus)</text>
+
+  <rect x="140" y="985" width="270" height="65" rx="6" fill="#eef6ff" stroke="#0a66ff" stroke-width="1.5"/>
+  <text x="155" y="1008" font-size="13" font-weight="700" fill="#0a66ff">quirky-hoover/</text>
+  <text x="155" y="1028" font-size="12" fill="#333">↳ Ouvrier 3 : Bench Gemma 4</text>
+
+  <rect x="430" y="985" width="270" height="65" rx="6" fill="#eef6ff" stroke="#0a66ff" stroke-width="1.5"/>
+  <text x="445" y="1008" font-size="13" font-weight="700" fill="#0a66ff">adoring-taussig/</text>
+  <text x="445" y="1028" font-size="12" fill="#333">↳ Ouvrier 2 : Fix RCE</text>
+
+  <rect x="720" y="985" width="270" height="65" rx="6" fill="#eef6ff" stroke="#0a66ff" stroke-width="1.5"/>
+  <text x="735" y="1008" font-size="13" font-weight="700" fill="#0a66ff">tender-kepler/</text>
+  <text x="735" y="1028" font-size="12" fill="#333">↳ Phase A — vision vérifiable</text>
+
+  <rect x="1010" y="985" width="270" height="65" rx="6" fill="#eef6ff" stroke="#0a66ff" stroke-width="1.5"/>
+  <text x="1025" y="1008" font-size="13" font-weight="700" fill="#0a66ff">hardcore-wu/</text>
+  <text x="1025" y="1028" font-size="12" fill="#333">↳ Phase B — audit code</text>
+
+  <text x="140" y="1100" font-size="13" fill="#666" font-style="italic">Isolation : si un ouvrier casse quelque chose par erreur, ça n'affecte pas les autres ni</text>
+  <text x="140" y="1118" font-size="13" fill="#666" font-style="italic">ton projet principal. Le merge revient à toi quand tu es sûr.</text>
+
+  <!-- Deliverables path -->
+  <rect x="110" y="1160" width="1180" height="195" rx="10" fill="#fff" stroke="#666" stroke-width="1.5"/>
+  <text x="130" y="1190" font-size="15" font-weight="700" fill="#111">📚 /Users/mathieu/Documents/Lucie/Suivi Lucie/ — tes livrables consolidés</text>
+  <text x="130" y="1212" font-size="13" fill="#555">(c'est là que tu vas lire les documents finaux une fois que j'ai audité)</text>
+
+  <text x="140" y="1245" font-size="13" fill="#1a8a4a">✅</text>
+  <text x="165" y="1245" font-size="13" fill="#111">17_Vision_Verifiable_Lucie.md  (Phase A — 811 lignes, 96 assertions vérifiées)</text>
+
+  <text x="140" y="1268" font-size="13" fill="#1a8a4a">✅</text>
+  <text x="165" y="1268" font-size="13" fill="#111">15_Audit_Etat_Code_Lucie.md  (Phase B — 449 lignes)</text>
+
+  <text x="140" y="1291" font-size="13" fill="#1a8a4a">✅</text>
+  <text x="165" y="1291" font-size="13" fill="#111">18_Verite_Comme_Axiome_de_Conception.md  (note archi)</text>
+
+  <text x="140" y="1314" font-size="13" fill="#1a8a4a">✅</text>
+  <text x="165" y="1314" font-size="13" fill="#111">19_Lucie_v1_Aout_2026_Specification.md  (spec v1 — en attente d'audit vérité)</text>
+
+  <text x="140" y="1337" font-size="13" fill="#d97706">⏳</text>
+  <text x="165" y="1337" font-size="13" fill="#111">20_Bench_Gemma4_Lucie_v1.md  (bench + matrice Mac — en cours)</text>
+
+  <text x="750" y="1337" font-size="13" fill="#d97706">⏳</text>
+  <text x="775" y="1337" font-size="13" fill="#111">21_Audit_Securite_RCE_Fix_2026-04-10.md  (fix failles — en cours)</text>
+
+  <!-- Return flow -->
+  <line x1="700" y1="1390" x2="700" y2="1440" stroke="#1a8a4a" stroke-width="3" marker-end="url(#arrowGreen)"/>
+  <text x="715" y="1420" font-size="13" fill="#1a8a4a" font-weight="600">chaque livrable revient à moi pour audit vérité</text>
+
+  <!-- Final step: truth audit -->
+  <rect x="350" y="1450" width="700" height="140" rx="12" fill="#e8ffe8" stroke="#1a8a4a" stroke-width="3"/>
+  <text x="700" y="1485" text-anchor="middle" font-size="20" font-weight="700" fill="#1a8a4a">🔍 AUDIT VÉRITÉ (mon filet de sécurité)</text>
+  <text x="700" y="1510" text-anchor="middle" font-size="13" fill="#222">Je relis chaque livrable en cherchant les affirmations fausses, pas les fautes de grammaire.</text>
+  <text x="700" y="1530" text-anchor="middle" font-size="13" fill="#222">Si un chiffre est inventé, une promesse vide, un Ψ qui n'existe pas en code → je barre.</text>
+  <text x="700" y="1555" text-anchor="middle" font-size="13" fill="#222">Je te renvoie une synthèse tranchée : ce qui est validé / douteux / faux.</text>
+  <text x="700" y="1578" text-anchor="middle" font-size="13" fill="#555" font-style="italic">Règle d'or : pas de complaisance, pas d'omission, pas aller dans ton sens par confort.</text>
+
+  <!-- Final arrow back to Mathieu -->
+  <line x1="700" y1="1600" x2="700" y2="1645" stroke="#1a8a4a" stroke-width="3" marker-end="url(#arrowGreen)"/>
+
+  <rect x="480" y="1650" width="440" height="40" rx="8" fill="#fff3cd" stroke="#b8860b" stroke-width="2"/>
+  <text x="700" y="1676" text-anchor="middle" font-size="15" font-weight="700" fill="#111">👤 Synthèse livrée à Mathieu — tu décides</text>
+</svg>

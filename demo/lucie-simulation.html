@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lucie — Simulation Interactive</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #34d399;
+    --orange: #fb923c;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --border: #2a2a3a;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Fake macOS desktop */
+  .desktop {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    overflow: hidden;
+  }
+
+  .desktop-icons {
+    position: absolute;
+    top: 40px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .desktop-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  .desktop-icon:hover { opacity: 1; }
+  .desktop-icon .ico { font-size: 40px; }
+  .desktop-icon span { font-size: 11px; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+
+  /* Menu bar */
+  .menubar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    background: rgba(30, 30, 45, 0.85);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 13px;
+    z-index: 100;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .menubar .apple { font-size: 15px; margin-right: 16px; }
+  .menubar .app-name { font-weight: 600; margin-right: 16px; }
+  .menubar .menu-items { display: flex; gap: 14px; color: var(--text2); }
+  .menubar .right { margin-left: auto; display: flex; gap: 12px; align-items: center; color: var(--text2); }
+  .menubar .lucie-indicator {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* HUD Lucie */
+  .hud {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 520px;
+    background: rgba(18, 18, 26, 0.92);
+    backdrop-filter: blur(40px);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 25px 80px rgba(0,0,0,0.6), 0 0 40px rgba(99, 102, 241, 0.08);
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 50;
+  }
+
+  .hud.compact {
+    width: 320px;
+    border-radius: 24px;
+  }
+
+  .hud-header {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+
+  .hud-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+  }
+
+  .hud-title { font-size: 14px; font-weight: 600; }
+  .hud-status { font-size: 11px; color: var(--text2); }
+  .hud-status.listening { color: var(--green); }
+  .hud-status.thinking { color: var(--orange); }
+  .hud-status.executing { color: var(--accent2); }
+
+  .hud-close {
+    margin-left: auto;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+
+  /* Chat area */
+  .hud-chat {
+    padding: 12px 18px;
+    max-height: 360px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .msg {
+    max-width: 88%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    animation: msg-in 0.3s ease;
+  }
+
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg.lucie {
+    align-self: flex-start;
+    background: var(--surface2);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg .agent-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent2);
+  }
+
+  .msg .latency {
+    display: block;
+    font-size: 10px;
+    color: var(--text2);
+    margin-top: 4px;
+    text-align: right;
+  }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 10px 14px;
+    align-self: flex-start;
+  }
+  .typing-indicator span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text2);
+    animation: typing-bounce 1.4s infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* Input */
+  .hud-input-area {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+
+  .hud-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .hud-input:focus { border-color: var(--accent); }
+  .hud-input::placeholder { color: var(--text2); }
+
+  .hud-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 16px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .hud-btn:hover { background: var(--accent2); }
+
+  /* Wave animation */
+  .wave-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 24px;
+    margin: 4px 0;
+  }
+  .wave-bar {
+    width: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: wave-anim 1s ease-in-out infinite;
+  }
+  .wave-bar:nth-child(1) { animation-delay: 0s; }
+  .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+  .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+  .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+  .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+
+  @keyframes wave-anim {
+    0%, 100% { height: 6px; }
+    50% { height: 20px; }
+  }
+
+  /* Sidebar agents */
+  .sidebar {
+    position: absolute;
+    top: 28px;
+    left: 0;
+    bottom: 0;
+    width: 240px;
+    background: rgba(18, 18, 26, 0.9);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    overflow-y: auto;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .sidebar h3 {
+    padding: 0 16px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+    margin-bottom: 8px;
+  }
+
+  .agent-item {
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .agent-item:hover { background: rgba(255,255,255,0.04); }
+  .agent-item .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .agent-item .dot.active { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .agent-item .dot.idle { background: var(--text2); }
+  .agent-item .dot.busy { background: var(--orange); animation: pulse-dot 1s infinite; }
+
+  /* Quick actions */
+  .quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 18px;
+  }
+  .quick-action {
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quick-action:hover {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  /* Metrics bar */
+  .metrics-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    background: rgba(18, 18, 26, 0.85);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 20px;
+    font-size: 11px;
+    color: var(--text2);
+    z-index: 40;
+  }
+  .metric { display: flex; align-items: center; gap: 4px; }
+  .metric .val { color: var(--text); font-weight: 600; }
+  .metric .val.good { color: var(--green); }
+  .metric .val.warn { color: var(--orange); }
+
+  /* Notification toast */
+  .toast {
+    position: absolute;
+    top: 40px;
+    right: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    max-width: 300px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    z-index: 200;
+    animation: toast-in 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; pointer-events: auto; }
+
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .toast .toast-icon { font-size: 20px; }
+  .toast .toast-title { font-size: 12px; font-weight: 600; }
+  .toast .toast-body { font-size: 11.5px; color: var(--text2); margin-top: 2px; }
+
+  /* Action overlay */
+  .action-overlay {
+    position: absolute;
+    top: 28px;
+    left: 0;
+    right: 0;
+    bottom: 32px;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 45;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .action-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .action-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 32px;
+    text-align: center;
+    max-width: 400px;
+  }
+  .action-card .action-icon { font-size: 48px; margin-bottom: 12px; }
+  .action-card .action-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .action-card .action-desc { font-size: 13px; color: var(--text2); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Keyboard hint */
+  .kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--text2);
+  }
+</style>
+</head>
+<body>
+
+<div class="desktop" id="desktop">
+  <!-- Menu bar -->
+  <div class="menubar">
+    <span class="apple"></span>
+    <span class="app-name">Lucie</span>
+    <div class="menu-items">
+      <span>Fichier</span>
+      <span>Édition</span>
+      <span>Agents</span>
+      <span>Aide</span>
+    </div>
+    <div class="right">
+      <div class="lucie-indicator" title="Lucie active"></div>
+      <span>⌥Space</span>
+      <span id="clock"></span>
+    </div>
+  </div>
+
+  <!-- Desktop icons -->
+  <div class="desktop-icons">
+    <div class="desktop-icon"><span class="ico">📁</span><span>Documents</span></div>
+    <div class="desktop-icon"><span class="ico">🧠</span><span>Lucie.app</span></div>
+    <div class="desktop-icon"><span class="ico">📊</span><span>Métriques</span></div>
+  </div>
+
+  <!-- Agent sidebar -->
+  <div class="sidebar" id="sidebar">
+    <h3>🧠 Agents actifs (28)</h3>
+    <div id="agent-list"></div>
+  </div>
+
+  <!-- Action overlay -->
+  <div class="action-overlay" id="action-overlay">
+    <div class="action-card">
+      <div class="action-icon" id="action-icon">📧</div>
+      <div class="action-title" id="action-title">Traitement des mails...</div>
+      <div class="action-desc" id="action-desc">SmartMailAgent analyse vos mails non lus</div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast">
+    <div class="toast-icon" id="toast-icon">✅</div>
+    <div>
+      <div class="toast-title" id="toast-title">Action terminée</div>
+      <div class="toast-body" id="toast-body">Safari ouvert</div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud" id="hud">
+    <div class="hud-header">
+      <div class="hud-avatar">L</div>
+      <div>
+        <div class="hud-title">Lucie</div>
+        <div class="hud-status" id="hud-status">● Prête — 100% local</div>
+      </div>
+      <button class="hud-close" onclick="toggleSidebar()">☰</button>
+    </div>
+
+    <div class="hud-chat" id="chat"></div>
+
+    <div class="quick-actions" id="quick-actions">
+      <div class="quick-action" onclick="simulate('brief')">☀️ Brief du matin</div>
+      <div class="quick-action" onclick="simulate('mail')">📧 Traite mes mails</div>
+      <div class="quick-action" onclick="simulate('safari')">🌐 Recherche web</div>
+      <div class="quick-action" onclick="simulate('note')">📝 Crée une note</div>
+      <div class="quick-action" onclick="simulate('rappel')">⏰ Rappel</div>
+      <div class="quick-action" onclick="simulate('vision')">👁️ Que vois-tu ?</div>
+      <div class="quick-action" onclick="simulate('4actions')">🎬 Démo 4 actions</div>
+      <div class="quick-action" onclick="simulate('debug')">🐛 Debug ce code</div>
+    </div>
+
+    <div class="hud-input-area">
+      <input class="hud-input" id="user-input" placeholder="Demandez quelque chose à Lucie..." onkeydown="if(event.key==='Enter')sendMessage()">
+      <button class="hud-btn" onclick="sendMessage()">Envoyer</button>
+    </div>
+  </div>
+
+  <!-- Metrics bar -->
+  <div class="metrics-bar">
+    <div class="metric">Routage: <span class="val good" id="m-route">0.05ms</span></div>
+    <div class="metric">Agents: <span class="val" id="m-agents">28</span></div>
+    <div class="metric">Ollama: <span class="val" id="m-slots">0/3</span></div>
+    <div class="metric">RAM: <span class="val" id="m-ram">8.2 Go</span></div>
+    <div class="metric">FAISS: <span class="val">603 vecteurs</span></div>
+    <div class="metric">Réseau: <span class="val good">0 requête externe</span></div>
+  </div>
+</div>
+
+<script>
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Agents
+const agents = [
+  { name: 'QuantumRouter', status: 'active' },
+  { name: 'FrontalCortex', status: 'active' },
+  { name: 'Thalamus', status: 'active' },
+  { name: 'ContextWave', status: 'active' },
+  { name: 'MemoryGraph', status: 'idle' },
+  { name: 'SmartMailAgent', status: 'idle' },
+  { name: 'CalendarAgent', status: 'idle' },
+  { name: 'ReminderAgent', status: 'idle' },
+  { name: 'FileAgent', status: 'idle' },
+  { name: 'SafariResearch', status: 'idle' },
+  { name: 'ComputerControl', status: 'idle' },
+  { name: 'PlannerAgent', status: 'idle' },
+  { name: 'ImageDescriber', status: 'idle' },
+  { name: 'CodeDebugAgent', status: 'idle' },
+  { name: 'WatchAgent', status: 'idle' },
+  { name: 'WriterAgent', status: 'idle' },
+  { name: 'CyberAgent', status: 'idle' },
+  { name: 'KnowledgeAgent', status: 'idle' },
+  { name: 'WorkspaceAgent', status: 'idle' },
+  { name: 'DocumentAgent', status: 'idle' },
+  { name: 'AccessibilityLayer', status: 'idle' },
+  { name: 'ActionBroker', status: 'active' },
+  { name: 'ProfileAgent', status: 'idle' },
+  { name: 'CreatorAgent', status: 'idle' },
+  { name: 'HealerAgent', status: 'idle' },
+  { name: 'StrategistAgent', status: 'idle' },
+  { name: 'FeedbackAgent', status: 'idle' },
+  { name: 'DefaultModeNet', status: 'idle' },
+];
+
+function renderAgents() {
+  const list = document.getElementById('agent-list');
+  list.innerHTML = agents.map(a =>
+    `<div class="agent-item"><div class="dot ${a.status}"></div>${a.name}</div>`
+  ).join('');
+}
+renderAgents();
+
+function setAgentStatus(name, status) {
+  const agent = agents.find(a => a.name === name);
+  if (agent) { agent.status = status; renderAgents(); }
+}
+
+// Sidebar
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// Chat
+const chat = document.getElementById('chat');
+let isProcessing = false;
+
+function addMsg(text, type, agent, latency) {
+  const div = document.createElement('div');
+  div.className = `msg ${type}`;
+  let html = '';
+  if (agent) html += `<div class="agent-tag">${agent}</div>`;
+  html += text;
+  if (latency) html += `<span class="latency">${latency}</span>`;
+  div.innerHTML = html;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTyping() {
+  const div = document.createElement('div');
+  div.className = 'typing-indicator';
+  div.id = 'typing';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typing');
+  if (el) el.remove();
+}
+
+function setStatus(text, cls) {
+  const el = document.getElementById('hud-status');
+  el.textContent = text;
+  el.className = 'hud-status ' + (cls || '');
+}
+
+function setSlots(n) {
+  document.getElementById('m-slots').textContent = `${n}/3`;
+  document.getElementById('m-slots').className = 'val' + (n >= 3 ? ' warn' : n > 0 ? '' : ' good');
+}
+
+function showToast(icon, title, body) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-title').textContent = title;
+  document.getElementById('toast-body').textContent = body;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+function showAction(icon, title, desc) {
+  document.getElementById('action-icon').textContent = icon;
+  document.getElementById('action-title').textContent = title;
+  document.getElementById('action-desc').textContent = desc;
+  document.getElementById('action-overlay').classList.add('show');
+}
+
+function hideAction() {
+  document.getElementById('action-overlay').classList.remove('show');
+}
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Simulations
+const scenarios = {
+  brief: async () => {
+    addMsg("Brief du matin", "user");
+    setStatus("🎯 Routage → multi_path", "thinking");
+    await wait(50);
+    setStatus("🧠 FrontalCortex → think()", "thinking");
+
+    // Mail
+    setAgentStatus('SmartMailAgent', 'busy');
+    setAgentStatus('CalendarAgent', 'busy');
+    setSlots(2);
+    showAction('📧', 'Lecture des mails...', 'SmartMailAgent — classification en cours');
+    await wait(800);
+
+    addMsg("📧 <b>3 mails importants</b> ce matin :<br>• <b>Client Marchand</b> — deadline vendredi, contrat à signer<br>• <b>GitHub</b> — PR #42 merge prêt<br>• <b>Banque</b> — virement reçu 2 400€", "lucie", "SmartMailAgent", "7.2s");
+    setAgentStatus('SmartMailAgent', 'idle');
+
+    // Calendar
+    showAction('📅', 'Calendrier du jour...', 'CalendarAgent — lecture EventKit');
+    await wait(600);
+    addMsg("📅 <b>Aujourd'hui</b> :<br>• 10h00 — Call avec Marchand (Teams)<br>• 14h30 — Review code avec Lucas<br>• Rien ce soir, soirée libre", "lucie", "CalendarAgent", "0.4s");
+    setAgentStatus('CalendarAgent', 'idle');
+    setSlots(1);
+
+    // Synthèse
+    setAgentStatus('FrontalCortex', 'busy');
+    showAction('🧠', 'Synthèse...', 'Cortex — génération de la synthèse vocale');
+    await wait(500);
+    hideAction();
+    addMsg("☀️ <b>Résumé</b> : Journée chargée. Priorité #1 : préparer le call Marchand à 10h. Le contrat est urgent. Soirée libre — profites-en.", "lucie", "FrontalCortex", "6.9s total");
+    setAgentStatus('FrontalCortex', 'active');
+    setSlots(0);
+    setStatus("● Prête — 100% local", "");
+    showToast("☀️", "Brief terminé", "3 mails + 2 rdv + synthèse en 14.5s");
+  },
+
+  mail: async () => {
+    addMsg("Traite mes mails non lus", "user");
+    setStatus("📧 SmartMailAgent actif", "executing");
+    setAgentStatus('SmartMailAgent', 'busy');
+    setSlots(1);
+    showAction('📧', 'Analyse des mails...', 'Classification LLM en cours — 5 mails');
+
+    await wait(600);
+    addMsg("📧 Analyse de <b>5 mails</b> en cours...", "lucie", "SmartMailAgent");
+
+    await wait(400);
+    addMsg("1/5 — <b>Newsletter TechCrunch</b> → 🗑️ Pub (priorité 5)<br>2/5 — <b>Amazon</b> — Commande expédiée → 📦 Info (priorité 4)<br>3/5 — <b>Client Marchand</b> — Relance contrat → 🔴 Urgent (priorité 1)<br>4/5 — <b>GitHub</b> — Security alert → 🟠 Pro (priorité 2)<br>5/5 — <b>Maman</b> — Dîner dimanche ? → 💚 Personnel (priorité 3)", "lucie", "SmartMailAgent", "8.3s");
+
+    hideAction();
+    setAgentStatus('SmartMailAgent', 'idle');
+    setSlots(0);
+    setStatus("● Prête — 100% local", "");
+    showToast("📧", "5 mails traités", "1 urgent, 1 pro, 1 perso, 2 ignorés");
+  },
+
+  safari: async () => {
+    addMsg("Cherche le cours du Bitcoin aujourd'hui", "user");
+    setStatus("🌐 SafariResearch → 1 site", "executing");
+    setAgentStatus('SafariResearch', 'busy');
+    setSlots(1);
+    showAction('🌐', 'Recherche Safari...', 'Ouverture de Safari — extraction JavaScript');
+
+    await wait(1200);
+    hideAction();
+    addMsg("🌐 <b>Bitcoin (BTC)</b> : 87 432 $ (+2.3% 24h)<br>• Volume 24h : 28.4B $<br>• Dominance : 54.2%<br>• Tendance : haussière depuis 3 jours<br><br><i>Source : CoinGecko via Safari — 0 API externe</i>", "lucie", "SafariResearch", "12.1s");
+    setAgentStatus('SafariResearch', 'idle');
+    setSlots(0);
+    setStatus("● Prête — 100% local", "");
+    showToast("🌐", "Recherche terminée", "1 site consulté — 0 données envoyées");
+  },
+
+  note: async () => {
+    addMsg("Crée une note 'Idées projet Lucie'", "user");
+    setStatus("📝 ComputerControl → AppleScript", "executing");
+    setAgentStatus('ComputerControl', 'busy');
+    showAction('📝', 'Création de la note...', 'AppleScript → Notes.app');
+
+    await wait(400);
+    hideAction();
+    addMsg("✅ Note créée.", "lucie", "ComputerControl", "0.3s");
+    setAgentStatus('ComputerControl', 'idle');
+    setStatus("● Prête — 100% local", "");
+    showToast("📝", "Note créée", "'Idées projet Lucie' dans Notes");
+  },
+
+  rappel: async () => {
+    addMsg("Rappelle-moi d'appeler Marchand demain à 9h", "user");
+    setStatus("⏰ ReminderAgent → EventKit", "executing");
+    setAgentStatus('ReminderAgent', 'busy');
+
+    await wait(300);
+    addMsg("⏰ Rappel créé : <b>Appeler Marchand</b> — demain 9h00", "lucie", "ReminderAgent", "0.4s");
+    setAgentStatus('ReminderAgent', 'idle');
+    setStatus("● Prête — 100% local", "");
+    showToast("⏰", "Rappel créé", "Demain 9h00 — Appeler Marchand");
+  },
+
+  vision: async () => {
+    addMsg("Qu'est-ce que tu vois sur mon écran ?", "user");
+    setStatus("👁️ ImageDescriber → moondream", "executing");
+    setAgentStatus('ImageDescriber', 'busy');
+    setSlots(1);
+    showAction('👁️', 'Capture et analyse...', 'Vision locale — moondream:latest');
+
+    await wait(1500);
+    hideAction();
+    addMsg("👁️ Je vois un <b>bureau macOS</b> avec :<br>• Le HUD Lucie au centre (c'est moi !)<br>• 3 icônes sur le côté droit<br>• Une barre de menu en haut avec l'heure<br>• Un fond dégradé bleu foncé<br><br>Tout est analysé localement avec moondream — aucune image n'a quitté votre Mac.", "lucie", "ImageDescriber", "3.2s");
+    setAgentStatus('ImageDescriber', 'idle');
+    setSlots(0);
+    setStatus("● Prête — 100% local", "");
+  },
+
+  debug: async () => {
+    addMsg("Debug ce code : def fib(n): return fib(n-1) + fib(n-2)", "user");
+    setStatus("🐛 CodeDebugAgent → analyse", "thinking");
+    setAgentStatus('CodeDebugAgent', 'busy');
+    setSlots(1);
+
+    await wait(800);
+    addMsg("🐛 <b>Bug détecté</b> : récursion infinie.<br><br>Il manque le <b>cas de base</b>. Sans condition d'arrêt, fib(0) et fib(1) s'appellent indéfiniment → <code>RecursionError</code>.<br><br>✅ Fix :<br><code>def fib(n):<br>&nbsp;&nbsp;if n <= 1: return n<br>&nbsp;&nbsp;return fib(n-1) + fib(n-2)</code>", "lucie", "CodeDebugAgent", "2.1s");
+    setAgentStatus('CodeDebugAgent', 'idle');
+    setSlots(0);
+    setStatus("● Prête — 100% local", "");
+  },
+
+  '4actions': async () => {
+    addMsg("🎬 Démo 4 actions enchaînées", "user");
+    document.getElementById('quick-actions').style.display = 'none';
+
+    // Action 1 — Brief
+    setStatus("🎯 Action 1/4 — Brief du matin", "thinking");
+    setAgentStatus('SmartMailAgent', 'busy');
+    setAgentStatus('CalendarAgent', 'busy');
+    setSlots(2);
+    showAction('☀️', 'Action 1/4 — Brief du matin', 'SmartMailAgent + CalendarAgent');
+    await wait(1000);
+    addMsg("☀️ <b>Brief</b> : 1 mail urgent (Marchand), call à 10h, soirée libre.", "lucie", "Cortex", "6.8s");
+    hideAction();
+
+    // Action 2 — Note
+    setStatus("📝 Action 2/4 — Création note", "executing");
+    setAgentStatus('SmartMailAgent', 'idle');
+    setAgentStatus('CalendarAgent', 'idle');
+    setAgentStatus('ComputerControl', 'busy');
+    setSlots(1);
+    showAction('📝', 'Action 2/4 — Création note', 'ComputerControl → Notes.app');
+    await wait(400);
+    addMsg("✅ Note <b>'Prep call Marchand'</b> créée avec les points du brief.", "lucie", "ComputerControl", "0.3s");
+    hideAction();
+
+    // Action 3 — Vision
+    setStatus("👁️ Action 3/4 — Vision écran", "executing");
+    setAgentStatus('ComputerControl', 'idle');
+    setAgentStatus('ImageDescriber', 'busy');
+    showAction('👁️', 'Action 3/4 — Analyse visuelle', 'moondream:latest — capture locale');
+    await wait(1200);
+    addMsg("👁️ Je vois votre bureau avec la note ouverte. Tout est en ordre.", "lucie", "ImageDescriber", "3.1s");
+    hideAction();
+    setAgentStatus('ImageDescriber', 'idle');
+
+    // Action 4 — Privacy proof
+    setStatus("🔒 Action 4/4 — Preuve privacy", "executing");
+    setSlots(0);
+    showAction('🔒', 'Action 4/4 — Vérification réseau', '0 requête sortante — 100% local');
+    await wait(600);
+    addMsg("🔒 <b>Zéro donnée sortante.</b><br>4 actions exécutées. 0 API externe. 0 octet envoyé.<br>Tout est resté sur votre Mac M4.<br><br>⏱️ <b>Total : 10.2 secondes.</b>", "lucie", "SecurityCheck", "0.1s");
+    hideAction();
+
+    setStatus("● Prête — 100% local", "");
+    showToast("🎬", "Démo terminée", "4 actions en 10.2s — 0 cloud");
+
+    // Restore quick actions
+    await wait(2000);
+    document.getElementById('quick-actions').style.display = 'flex';
+  }
+};
+
+async function simulate(key) {
+  if (isProcessing) return;
+  isProcessing = true;
+  await scenarios[key]();
+  isProcessing = false;
+}
+
+function sendMessage() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text || isProcessing) return;
+  input.value = '';
+
+  // Match to scenario
+  const lower = text.toLowerCase();
+  if (lower.includes('brief') || lower.includes('programme') || lower.includes('matin')) {
+    simulate('brief');
+  } else if (lower.includes('mail') || lower.includes('mails') || lower.includes('courrier')) {
+    simulate('mail');
+  } else if (lower.includes('safari') || lower.includes('cherche') || lower.includes('recherche') || lower.includes('bitcoin') || lower.includes('cours')) {
+    simulate('safari');
+  } else if (lower.includes('note') || lower.includes('notes')) {
+    simulate('note');
+  } else if (lower.includes('rappel') || lower.includes('rappelle') || lower.includes('remind')) {
+    simulate('rappel');
+  } else if (lower.includes('vois') || lower.includes('écran') || lower.includes('vision') || lower.includes('screen')) {
+    simulate('vision');
+  } else if (lower.includes('debug') || lower.includes('code') || lower.includes('bug')) {
+    simulate('debug');
+  } else if (lower.includes('démo') || lower.includes('demo') || lower.includes('4 action')) {
+    simulate('4actions');
+  } else {
+    // Generic LLM response
+    (async () => {
+      isProcessing = true;
+      addMsg(text, 'user');
+      setStatus('🧠 FrontalCortex → think()', 'thinking');
+      setSlots(1);
+      showTyping();
+      await wait(1500);
+      hideTyping();
+      addMsg(`Je comprends ta demande. En tant qu'assistant 100% local, je peux t'aider avec ça. Voici ce que je ferais :<br><br>1. Analyser le contexte via MemoryGraph<br>2. Router vers l'agent approprié<br>3. Exécuter l'action sur ton Mac<br><br>Essaie les boutons rapides ci-dessous pour voir des actions concrètes !`, 'lucie', 'FrontalCortex', '1.2s');
+      setSlots(0);
+      setStatus('● Prête — 100% local', '');
+      isProcessing = false;
+    })();
+  }
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown', (e) => {
+  if (e.altKey && e.code === 'Space') {
+    e.preventDefault();
+    document.getElementById('user-input').focus();
+  }
+});
+</script>
+
+</body>
+</html>

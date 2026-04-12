@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 2050" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#111"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0a66ff"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a8a4a"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+  </defs>
+
+  <rect width="1400" height="2050" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="700" y="50" text-anchor="middle" font-size="32" font-weight="700" fill="#111">Orchestration Lucie — version corrigée (v2)</text>
+  <text x="700" y="78" text-anchor="middle" font-size="14" fill="#666">après audit critique — zones de faiblesse assumées, frontière VM/hôte clarifiée</text>
+
+  <!-- Mathieu -->
+  <rect x="550" y="100" width="300" height="80" rx="12" fill="#fff3cd" stroke="#b8860b" stroke-width="3"/>
+  <text x="700" y="135" text-anchor="middle" font-size="22" font-weight="700" fill="#111">👤 MATHIEU</text>
+  <text x="700" y="160" text-anchor="middle" font-size="13" fill="#555">iPhone / Mac — donne les ordres, valide, tranche</text>
+
+  <line x1="700" y1="185" x2="700" y2="225" stroke="#111" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- ====== LAYER 1 — VM COWORK ====== -->
+  <rect x="50" y="230" width="1300" height="260" rx="14" fill="#eef6ff" stroke="#0a66ff" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="80" y="258" font-size="14" font-weight="700" fill="#0a66ff">COUCHE 1 — VM COWORK (disque virtuel isolé, ne touche pas ton Mac)</text>
+
+  <rect x="350" y="280" width="700" height="180" rx="12" fill="#fff" stroke="#0a66ff" stroke-width="3"/>
+  <text x="700" y="312" text-anchor="middle" font-size="22" font-weight="700" fill="#0a66ff">🛠  MOI — Dispatcher</text>
+  <text x="700" y="334" text-anchor="middle" font-size="12" fill="#333">(Claude dans une VM Linux sandboxée, sans accès à ton disque Mac)</text>
+
+  <text x="380" y="362" font-size="13" fill="#222" font-weight="600">Ce que je fais vraiment :</text>
+  <text x="380" y="382" font-size="12" fill="#333">• Lire ton message, réfléchir, découper en tâches</text>
+  <text x="380" y="400" font-size="12" fill="#333">• Écrire des briefs enrichis (rôle, pourquoi, livrable attendu)</text>
+  <text x="380" y="418" font-size="12" fill="#333">• Auditer les retours contre la règle d'or « vérité »</text>
+
+  <text x="380" y="445" font-size="13" fill="#c0392b" font-weight="600">⚠ Ce que je ne peux PAS faire : toucher tes fichiers, exécuter du code chez toi.</text>
+
+  <!-- Boundary crossing -->
+  <line x1="700" y1="460" x2="700" y2="520" stroke="#0a66ff" stroke-width="4" marker-end="url(#arrowBlue)"/>
+  <text x="715" y="490" font-size="13" fill="#0a66ff" font-weight="700">start_code_task</text>
+  <text x="715" y="508" font-size="11" fill="#0a66ff">(appel inter-processus via Dispatch API)</text>
+
+  <!-- Divider line VM/Mac -->
+  <line x1="50" y1="525" x2="1350" y2="525" stroke="#c0392b" stroke-width="2" stroke-dasharray="12,6"/>
+  <text x="1340" y="520" text-anchor="end" font-size="11" fill="#c0392b" font-style="italic">frontière VM sandboxée / Mac hôte</text>
+
+  <!-- ====== LAYER 2 — MAC HÔTE ====== -->
+  <rect x="50" y="540" width="1300" height="920" rx="14" fill="#f6f6f6" stroke="#111" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="80" y="568" font-size="14" font-weight="700" fill="#111">COUCHE 2 — TON MAC (processus Claude Code réels, accès filesystem, exécution réelle)</text>
+
+  <text x="700" y="595" text-anchor="middle" font-size="13" fill="#555" font-style="italic">Chaque session ci-dessous est un vrai processus Claude Code avec tool access — pas ma VM, pas une simulation.</text>
+
+  <!-- Branch arrows -->
+  <line x1="700" y1="610" x2="180" y2="645" stroke="#0a66ff" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <line x1="700" y1="610" x2="520" y2="645" stroke="#0a66ff" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <line x1="700" y1="610" x2="880" y2="645" stroke="#0a66ff" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <line x1="700" y1="610" x2="1220" y2="645" stroke="#0a66ff" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+
+  <!-- Worker 1 -->
+  <rect x="60" y="655" width="240" height="190" rx="10" fill="#fff" stroke="#444" stroke-width="2"/>
+  <text x="180" y="682" text-anchor="middle" font-size="15" font-weight="700" fill="#111">Session Claude Code 1</text>
+  <text x="180" y="702" text-anchor="middle" font-size="13" fill="#0a66ff" font-weight="600">primée « rédacteur CEO »</text>
+  <text x="180" y="722" text-anchor="middle" font-size="11" fill="#666" font-style="italic">(role priming = réduction</text>
+  <text x="180" y="738" text-anchor="middle" font-size="11" fill="#666" font-style="italic">de l'espace des réponses,</text>
+  <text x="180" y="754" text-anchor="middle" font-size="11" fill="#666" font-style="italic">pas une vraie expertise)</text>
+  <text x="180" y="780" text-anchor="middle" font-size="12" fill="#333">Mission : spec v1 août 2026</text>
+  <text x="180" y="815" text-anchor="middle" font-size="12" font-weight="600" fill="#1a8a4a">✅ texte produit</text>
+
+  <!-- Worker 2 -->
+  <rect x="400" y="655" width="240" height="190" rx="10" fill="#fff" stroke="#444" stroke-width="2"/>
+  <text x="520" y="682" text-anchor="middle" font-size="15" font-weight="700" fill="#111">Session Claude Code 2</text>
+  <text x="520" y="702" text-anchor="middle" font-size="13" fill="#0a66ff" font-weight="600">primée « ingé sécurité »</text>
+  <text x="520" y="722" text-anchor="middle" font-size="11" fill="#666" font-style="italic">(patch proposé, pas patch</text>
+  <text x="520" y="738" text-anchor="middle" font-size="11" fill="#666" font-style="italic">certifié — revue humaine</text>
+  <text x="520" y="754" text-anchor="middle" font-size="11" fill="#666" font-style="italic">requise)</text>
+  <text x="520" y="780" text-anchor="middle" font-size="12" fill="#333">Mission : patch 2 RCE</text>
+  <text x="520" y="815" text-anchor="middle" font-size="12" font-weight="600" fill="#d97706">⏳ en cours</text>
+
+  <!-- Worker 3 -->
+  <rect x="760" y="655" width="240" height="190" rx="10" fill="#fff" stroke="#444" stroke-width="2"/>
+  <text x="880" y="682" text-anchor="middle" font-size="15" font-weight="700" fill="#111">Session Claude Code 3</text>
+  <text x="880" y="702" text-anchor="middle" font-size="13" fill="#0a66ff" font-weight="600">primée « staff bench ML »</text>
+  <text x="880" y="722" text-anchor="middle" font-size="11" fill="#1a8a4a" font-style="italic">(ollama run = vraie exécution</text>
+  <text x="880" y="738" text-anchor="middle" font-size="11" fill="#1a8a4a" font-style="italic">sur ton GPU, chiffres réels</text>
+  <text x="880" y="754" text-anchor="middle" font-size="11" fill="#1a8a4a" font-style="italic">lus depuis stdout)</text>
+  <text x="880" y="780" text-anchor="middle" font-size="12" fill="#333">Mission : bench Gemma 4</text>
+  <text x="880" y="815" text-anchor="middle" font-size="12" font-weight="600" fill="#d97706">⏳ en cours</text>
+
+  <!-- Worker 4 -->
+  <rect x="1100" y="655" width="240" height="190" rx="10" fill="#fff" stroke="#444" stroke-width="2"/>
+  <text x="1220" y="682" text-anchor="middle" font-size="15" font-weight="700" fill="#111">Session Claude Code 4</text>
+  <text x="1220" y="702" text-anchor="middle" font-size="13" fill="#0a66ff" font-weight="600">primée « architecte vérité »</text>
+  <text x="1220" y="722" text-anchor="middle" font-size="11" fill="#666" font-style="italic">(texte d'intention,</text>
+  <text x="1220" y="738" text-anchor="middle" font-size="11" fill="#666" font-style="italic">pas d'implémentation</text>
+  <text x="1220" y="754" text-anchor="middle" font-size="11" fill="#666" font-style="italic">vérifiée)</text>
+  <text x="1220" y="780" text-anchor="middle" font-size="12" fill="#333">Mission : note architecture</text>
+  <text x="1220" y="815" text-anchor="middle" font-size="12" font-weight="600" fill="#1a8a4a">✅ texte produit</text>
+
+  <!-- Worktrees -->
+  <rect x="110" y="880" width="1180" height="155" rx="10" fill="#fff" stroke="#666" stroke-width="1.5"/>
+  <text x="130" y="908" font-size="14" font-weight="700" fill="#111">📁 /Users/mathieu/Desktop/mon-agence-ia/.claude/worktrees/</text>
+  <text x="130" y="926" font-size="11" fill="#555">clones git isolés — git worktree add</text>
+
+  <text x="130" y="955" font-size="12" fill="#c0392b" font-weight="600">⚠ Isolation git seulement : pas d'isolation système (dépendances Python, ports, processus).</text>
+  <text x="130" y="973" font-size="12" fill="#c0392b" font-weight="600">⚠ Deux ouvriers peuvent se marcher dessus sur les dépendances ou l'environnement Python.</text>
+
+  <text x="130" y="1000" font-size="11" fill="#333">quirky-hoover/ (bench) • adoring-taussig/ (fix RCE) • tender-kepler/ (Phase A) • hardcore-wu/ (Phase B)</text>
+  <text x="130" y="1018" font-size="11" fill="#666" font-style="italic">Les merges vers main restent à ta charge — git handle la plupart, toi les conflits sémantiques.</text>
+
+  <!-- Deliverables -->
+  <rect x="110" y="1055" width="1180" height="210" rx="10" fill="#fff" stroke="#666" stroke-width="1.5"/>
+  <text x="130" y="1082" font-size="14" font-weight="700" fill="#111">📚 /Users/mathieu/Documents/Lucie/Suivi Lucie/ — livrables écrits</text>
+
+  <text x="140" y="1112" font-size="12" fill="#1a8a4a">✅</text>
+  <text x="165" y="1112" font-size="12" fill="#111">17_Vision_Verifiable_Lucie.md</text>
+  <text x="465" y="1112" font-size="11" fill="#c0392b">— 96 assertions <u>analysées</u> (pas vérifiées externement), 8 contradictions flagées</text>
+
+  <text x="140" y="1135" font-size="12" fill="#1a8a4a">✅</text>
+  <text x="165" y="1135" font-size="12" fill="#111">15_Audit_Etat_Code_Lucie.md</text>
+  <text x="465" y="1135" font-size="11" fill="#666">— inventaire du code réel (grep + lecture, pas exécution)</text>
+
+  <text x="140" y="1158" font-size="12" fill="#1a8a4a">✅</text>
+  <text x="165" y="1158" font-size="12" fill="#111">18_Verite_Comme_Axiome_de_Conception.md</text>
+  <text x="465" y="1158" font-size="11" fill="#666">— texte de principe, pas de code</text>
+
+  <text x="140" y="1181" font-size="12" fill="#1a8a4a">✅</text>
+  <text x="165" y="1181" font-size="12" fill="#111">19_Lucie_v1_Aout_2026_Specification.md</text>
+  <text x="465" y="1181" font-size="11" fill="#d97706">— en attente d'audit vérité, non validé</text>
+
+  <text x="140" y="1204" font-size="12" fill="#d97706">⏳</text>
+  <text x="165" y="1204" font-size="12" fill="#111">20_Bench_Gemma4_Lucie_v1.md</text>
+  <text x="465" y="1204" font-size="11" fill="#1a8a4a">— mesures réelles sur ton hardware (ollama run)</text>
+
+  <text x="140" y="1227" font-size="12" fill="#d97706">⏳</text>
+  <text x="165" y="1227" font-size="12" fill="#111">21_Audit_Securite_RCE_Fix_2026-04-10.md</text>
+  <text x="465" y="1227" font-size="11" fill="#c0392b">— patch proposé, doit passer bandit/semgrep + ta revue</text>
+
+  <text x="130" y="1253" font-size="11" fill="#c0392b" font-style="italic">Aucun de ces livrables n'est validé tant que l'audit vérité + validation humaine ne sont pas passés.</text>
+
+  <!-- Audit -->
+  <line x1="700" y1="1275" x2="700" y2="1315" stroke="#1a8a4a" stroke-width="3" marker-end="url(#arrowGreen)"/>
+
+  <rect x="250" y="1320" width="900" height="130" rx="12" fill="#e8ffe8" stroke="#1a8a4a" stroke-width="3"/>
+  <text x="700" y="1352" text-anchor="middle" font-size="18" font-weight="700" fill="#1a8a4a">🔍 AUDIT VÉRITÉ (premier filtre — pas le dernier)</text>
+  <text x="700" y="1377" text-anchor="middle" font-size="12" fill="#222">Je relis chaque livrable en cherchant contradictions internes, stubs déguisés, promesses vides, mots qui surjouent.</text>
+  <text x="700" y="1397" text-anchor="middle" font-size="12" fill="#c0392b" font-weight="600">⚠ Ce que l'audit LLM NE détecte PAS : hallucinations subtiles (numéro d'article faux, chiffre inventé plausible).</text>
+  <text x="700" y="1417" text-anchor="middle" font-size="12" fill="#222">Pour ça il faut des vérifs externes : tests, Légifrance, bandit/semgrep, relecture humaine.</text>
+  <text x="700" y="1438" text-anchor="middle" font-size="11" fill="#555" font-style="italic">L'audit bloque ou retourne au worker pour correction. Boucle de reprise = send_message avec la correction demandée.</text>
+
+  <!-- External verification -->
+  <line x1="700" y1="1460" x2="700" y2="1500" stroke="#c0392b" stroke-width="3" marker-end="url(#arrowRed)"/>
+
+  <rect x="250" y="1505" width="900" height="130" rx="12" fill="#fff0f0" stroke="#c0392b" stroke-width="3"/>
+  <text x="700" y="1537" text-anchor="middle" font-size="18" font-weight="700" fill="#c0392b">🛡  VÉRIFICATION EXTERNE (non optionnelle — règle 19)</text>
+  <text x="700" y="1562" text-anchor="middle" font-size="12" fill="#222">Chaque affirmation technique est confrontée à une source externe déterministe :</text>
+  <text x="700" y="1582" text-anchor="middle" font-size="12" fill="#222">• code RCE → bandit + semgrep + tests  • bench → mesures ollama réelles  • assertions juridiques → Légifrance/sources</text>
+  <text x="700" y="1602" text-anchor="middle" font-size="12" fill="#222">• refs croisées → grep dans le code  • promesses de features → recherche dans le code pour vérifier existence</text>
+  <text x="700" y="1623" text-anchor="middle" font-size="11" fill="#555" font-style="italic">Sans cette étape, l'audit vérité reste un filet à gros trous. C'est là qu'on tue les hallucinations subtiles.</text>
+
+  <!-- Human review -->
+  <line x1="700" y1="1650" x2="700" y2="1690" stroke="#111" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="300" y="1695" width="800" height="110" rx="12" fill="#fff3cd" stroke="#b8860b" stroke-width="3"/>
+  <text x="700" y="1727" text-anchor="middle" font-size="18" font-weight="700" fill="#111">👤 VALIDATION HUMAINE MATHIEU</text>
+  <text x="700" y="1753" text-anchor="middle" font-size="12" fill="#222">Je te signale explicitement les zones de faible confiance, pour que tu saches où relire en profondeur.</text>
+  <text x="700" y="1772" text-anchor="middle" font-size="12" fill="#222">Tu n'as pas à tout relire — tu relis en priorité : patch sécurité, affirmations techniques critiques, décisions irréversibles.</text>
+  <text x="700" y="1792" text-anchor="middle" font-size="11" fill="#c0392b" font-weight="600">Tu es le dernier filet. Si tu valides trop vite, la règle d'or est cassée.</text>
+
+  <!-- Legend -->
+  <rect x="60" y="1840" width="1280" height="180" rx="10" fill="#f0f0f0" stroke="#666" stroke-width="1.5"/>
+  <text x="80" y="1870" font-size="14" font-weight="700" fill="#111">Zones de faiblesse assumées (règle 15)</text>
+
+  <text x="80" y="1898" font-size="12" fill="#c0392b">•</text>
+  <text x="100" y="1898" font-size="12" fill="#222">Role priming ≠ vraie expertise. Les agents sont primés pour jouer un rôle, pas pour l'être. Concentration probabiliste, pas équivalence humaine.</text>
+
+  <text x="80" y="1918" font-size="12" fill="#c0392b">•</text>
+  <text x="100" y="1918" font-size="12" fill="#222">Worktrees isolent le git, pas l'OS. Deux ouvriers peuvent casser un environnement partagé si on n'y prend pas garde.</text>
+
+  <text x="80" y="1938" font-size="12" fill="#c0392b">•</text>
+  <text x="100" y="1938" font-size="12" fill="#222">Patch RCE produit par un LLM = proposition, pas certification. bandit/semgrep + relecture humaine sont obligatoires avant merge.</text>
+
+  <text x="80" y="1958" font-size="12" fill="#c0392b">•</text>
+  <text x="100" y="1958" font-size="12" fill="#222">Audit LLM-sur-LLM attrape les contradictions grossières, pas les hallucinations subtiles. La vérification externe est obligatoire.</text>
+
+  <text x="80" y="1978" font-size="12" fill="#c0392b">•</text>
+  <text x="100" y="1978" font-size="12" fill="#222">La validation humaine finale ne peut pas être esquivée. Moi + mes agents sommes faillibles, toi es le filet de dernier recours.</text>
+
+  <text x="80" y="2005" font-size="11" fill="#1a8a4a" font-style="italic">Reconnaître ces faiblesses explicitement est une application directe de la règle d'or : mieux vaut un schéma honnête incomplet qu'un schéma beau qui ment.</text>
+</svg>

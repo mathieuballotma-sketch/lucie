@@ -111,6 +111,8 @@ class ProviderManager:
         max_tokens: int = 512,
         timeout: Optional[float] = None,
         images: Optional[List[str]] = None,
+        top_p: Optional[float] = None,
+        repeat_penalty: Optional[float] = None,
     ) -> str:
         """
         Génère une réponse à partir d'un prompt.
@@ -176,11 +178,16 @@ class ProviderManager:
         # Options pour Ollama — inclure num_ctx du profil si routé
         profile = self.router.get_model_profile(model_name)
         num_ctx = profile.num_ctx if profile else 4096
-        options = Options(
-            num_predict=max_tokens,
-            temperature=temperature,
-            num_ctx=num_ctx,
-        )
+        options_kwargs: Dict[str, Any] = {
+            "num_predict": max_tokens,
+            "temperature": temperature,
+            "num_ctx": num_ctx,
+        }
+        if top_p is not None:
+            options_kwargs["top_p"] = top_p
+        if repeat_penalty is not None:
+            options_kwargs["repeat_penalty"] = repeat_penalty
+        options = Options(**options_kwargs)
 
         logger.debug(f"Appel LLM - model: {model_name}, max_tokens: {max_tokens}")
 

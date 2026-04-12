@@ -90,7 +90,9 @@ class RedacteurAgent(TerrainMixin, BaseAgent):
             prompt=prompt,
             system_prompt=self._system_prompt,
             model=_MODEL,
-            temperature=0.2,
+            temperature=0.3,
+            top_p=0.9,
+            repeat_penalty=1.1,
             max_tokens=2048,
         )
 
