@@ -10,6 +10,7 @@ Corrections v5 :
 """
 
 import asyncio
+import functools
 import inspect
 import json
 import re
@@ -233,6 +234,8 @@ class BaseAgent(ABC):
         model_role: Optional[str] = None,
         temperature: float = 0.5,
         max_tokens: int = 512,
+        top_p: Optional[float] = None,
+        repeat_penalty: Optional[float] = None,
     ) -> str:
         def _call() -> str:
             return str(self.llm.generate(
@@ -242,6 +245,8 @@ class BaseAgent(ABC):
                 model_role=model_role,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                top_p=top_p,
+                repeat_penalty=repeat_penalty,
             ))
 
         def _fallback() -> str:
@@ -262,19 +267,23 @@ class BaseAgent(ABC):
         model_role: Optional[str] = None,
         temperature: float = 0.5,
         max_tokens: int = 512,
+        top_p: Optional[float] = None,
+        repeat_penalty: Optional[float] = None,
     ) -> str:
         """Version asynchrone de ask_llm (exécute dans un thread)."""
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
+        fn = functools.partial(
             self.ask_llm,
-            prompt,
-            system_prompt,
-            model,
-            model_role,
-            temperature,
-            max_tokens,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            model=model,
+            model_role=model_role,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            repeat_penalty=repeat_penalty,
         )
+        result = await loop.run_in_executor(None, fn)
         return str(result)
 
     def extract_json_from_response(self, response: str) -> Optional[Dict[Any, Any]]:

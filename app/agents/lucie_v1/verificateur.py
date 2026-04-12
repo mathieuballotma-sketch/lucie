@@ -132,7 +132,8 @@ class VerificateurAgent(TerrainMixin, BaseAgent):
                 prompt=prompt,
                 system_prompt=self._system_prompt,
                 model=_MODEL,
-                temperature=0.0,
+                temperature=0,
+                top_p=1,
                 max_tokens=2048,
             )
             llm_parsed = self.extract_json_from_response(response)
