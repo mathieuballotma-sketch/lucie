@@ -17,7 +17,7 @@ KNOWLEDGE_BASE_PATH = Path("knowledge/droit_social/licenciement_economique")
 
 # ─── Timeouts ─────────────────────────────────────────────────────────────────
 PIPELINE_TIMEOUT = 300.0   # 5 minutes — confortable pour les gros modèles
-OLLAMA_TIMEOUT = 120.0     # Timeout par appel Ollama
+OLLAMA_TIMEOUT = 240.0     # Timeout par appel Ollama (2048 tokens sur gemma4:e4b ≈ 100-150s)
 
 # ─── BM25 ─────────────────────────────────────────────────────────────────────
 BM25_K1 = 1.5

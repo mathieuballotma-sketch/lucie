@@ -71,28 +71,34 @@ async def _run_pipeline(
             print(f"❌ Router : refus — {routing['refusal_reason'][:60]}…", flush=True)
         return str(routing["refusal_reason"])
 
-    doc = routing.get("document") or document_text or query
+    doc = routing.get("document") or document_text
     if verbose:
         print("✅ Router : scope validé", flush=True)
 
-    # ── Étape 2 : Lecteur (~3-5s) ─────────────────────────────────────────────
-    if verbose:
-        print("📄 Lecteur : extraction des faits…", flush=True)
-    faits_json = await lecteur.handle(doc)
+    # ── Étape 2 : Lecteur (~3-5s) — uniquement si un document est fourni ──────
+    if doc:
+        if verbose:
+            print("📄 Lecteur : extraction des faits…", flush=True)
+        faits_json = await lecteur.handle(doc)
 
-    try:
-        faits_data = json.loads(faits_json)
-        if "erreur" in faits_data:
-            return (
-                f"**Erreur Lecteur** : {faits_data['erreur']}\n\n"
-                "Le document fourni ne semble pas être une lettre "
-                "de licenciement économique."
-            )
-    except json.JSONDecodeError:
-        pass  # JSON mal formé mais on continue
+        try:
+            faits_data = json.loads(faits_json)
+            if "erreur" in faits_data:
+                return (
+                    f"**Erreur Lecteur** : {faits_data['erreur']}\n\n"
+                    "Le document fourni ne semble pas être une lettre "
+                    "de licenciement économique."
+                )
+        except json.JSONDecodeError:
+            pass  # JSON mal formé mais on continue
 
-    if verbose:
-        print("✅ Lecteur : faits extraits", flush=True)
+        if verbose:
+            print("✅ Lecteur : faits extraits", flush=True)
+    else:
+        # Mode question pure — pas de document à analyser
+        faits_json = json.dumps({"type_document": "requete", "query": query}, ensure_ascii=False)
+        if verbose:
+            print("ℹ️  Lecteur : mode requête (sans document)", flush=True)
 
     # ── Étape 3 : Retriever (~2-4s) ───────────────────────────────────────────
     if verbose:

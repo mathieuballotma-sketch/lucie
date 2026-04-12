@@ -65,7 +65,7 @@ async def _post(client: httpx.AsyncClient, payload: dict) -> str:
         data = resp.json()
         return data.get("response", "")
     except httpx.TimeoutException:
-        raise TimeoutError(
+        raise RuntimeError(
             f"Ollama timeout après {OLLAMA_TIMEOUT}s "
             f"(modèle: {payload.get('model')})"
         )
