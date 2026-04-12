@@ -233,6 +233,8 @@ class BaseAgent(ABC):
         model_role: Optional[str] = None,
         temperature: float = 0.5,
         max_tokens: int = 512,
+        top_p: float = 1.0,
+        repeat_penalty: float = 1.0,
     ) -> str:
         def _call() -> str:
             return str(self.llm.generate(
@@ -242,6 +244,8 @@ class BaseAgent(ABC):
                 model_role=model_role,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                top_p=top_p,
+                repeat_penalty=repeat_penalty,
             ))
 
         def _fallback() -> str:
@@ -262,6 +266,8 @@ class BaseAgent(ABC):
         model_role: Optional[str] = None,
         temperature: float = 0.5,
         max_tokens: int = 512,
+        top_p: float = 1.0,
+        repeat_penalty: float = 1.0,
     ) -> str:
         """Version asynchrone de ask_llm (exécute dans un thread)."""
         loop = asyncio.get_event_loop()
@@ -274,6 +280,8 @@ class BaseAgent(ABC):
             model_role,
             temperature,
             max_tokens,
+            top_p,
+            repeat_penalty,
         )
         return str(result)
 

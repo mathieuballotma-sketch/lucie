@@ -58,18 +58,20 @@ class LecteurAgent(TerrainMixin, BaseAgent):
             JSON string avec les faits structurés.
         """
         prompt = (
-            "Voici le document à analyser :\n\n"
-            f"---\n{document_text}\n---\n\n"
-            "Extrais les faits en JSON selon le schéma ci-dessus. "
-            "Réponds UNIQUEMENT avec le JSON, sans texte autour."
+            "TÂCHE : Extraire les faits structurés du document en JSON strict.\n"
+            "FORMAT : Réponds UNIQUEMENT avec le JSON valide selon le schéma du prompt système — aucun texte avant ou après.\n"
+            "RÈGLE : Si un champ est absent du document, laisse-le vide. N'invente rien.\n\n"
+            "## Document à analyser\n\n"
+            f"---\n{document_text}\n---"
         )
 
         response = await self.ask_llm_async(
             prompt=prompt,
             system_prompt=self._system_prompt,
             model=_MODEL,
-            temperature=0.1,
+            temperature=0.0,
             max_tokens=1024,
+            top_p=1.0,
         )
 
         parsed = self.extract_json_from_response(response)
@@ -82,6 +84,7 @@ class LecteurAgent(TerrainMixin, BaseAgent):
                 model=_MODEL,
                 temperature=0.0,
                 max_tokens=1024,
+                top_p=1.0,
             )
             parsed = self.extract_json_from_response(response)
 

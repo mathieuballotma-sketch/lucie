@@ -120,6 +120,8 @@ class HybridProviderManager:
         temperature: float = 0.7,
         max_tokens: int = 512,
         timeout: Optional[float] = None,
+        top_p: float = 1.0,
+        repeat_penalty: float = 1.0,
     ) -> str:
         """
         Génère une réponse via le meilleur backend disponible.
@@ -138,6 +140,8 @@ class HybridProviderManager:
             temperature: Température de génération.
             max_tokens: Tokens maximum à générer.
             timeout: Timeout en secondes (optionnel).
+            top_p: Nucleus sampling — 1.0 = désactivé.
+            repeat_penalty: Pénalité de répétition — 1.0 = désactivé.
 
         Returns:
             Texte généré.
@@ -154,6 +158,8 @@ class HybridProviderManager:
                 temperature=temperature,
                 max_tokens=max_tokens,
                 timeout=timeout,
+                top_p=top_p,
+                repeat_penalty=repeat_penalty,
             )
 
         # ── Forcer Ollama pour qualité / fallback explicite ────────────────────
@@ -167,6 +173,8 @@ class HybridProviderManager:
                 temperature=temperature,
                 max_tokens=max_tokens,
                 timeout=timeout,
+                top_p=top_p,
+                repeat_penalty=repeat_penalty,
             )
 
         mlx = self._mlx
@@ -184,6 +192,8 @@ class HybridProviderManager:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     timeout=timeout,
+                    top_p=top_p,
+                    repeat_penalty=repeat_penalty,
                 )
 
             def _ollama_fallback() -> str:
@@ -196,6 +206,8 @@ class HybridProviderManager:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     timeout=timeout,
+                    top_p=top_p,
+                    repeat_penalty=repeat_penalty,
                 )
 
             logger.debug(f"[Hybrid] '{priority}' → MLX (fallback Ollama)")
@@ -212,6 +224,8 @@ class HybridProviderManager:
             temperature=temperature,
             max_tokens=max_tokens,
             timeout=timeout,
+            top_p=top_p,
+            repeat_penalty=repeat_penalty,
         )
 
     def list_models(self) -> List[str]:

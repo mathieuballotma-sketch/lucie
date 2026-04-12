@@ -111,6 +111,8 @@ class ProviderManager:
         max_tokens: int = 512,
         timeout: Optional[float] = None,
         images: Optional[List[str]] = None,
+        top_p: float = 1.0,
+        repeat_penalty: float = 1.0,
     ) -> str:
         """
         Génère une réponse à partir d'un prompt.
@@ -125,6 +127,8 @@ class ProviderManager:
             max_tokens: Nombre maximum de tokens à générer.
             timeout: Timeout spécifique pour cette requête (en secondes).
             images: Liste de chaînes base64 (images) pour les requêtes multimodales.
+            top_p: Nucleus sampling — 1.0 = désactivé.
+            repeat_penalty: Pénalité de répétition — 1.0 = désactivé.
         """
         start_time = time.time()
         routed = False
@@ -180,6 +184,8 @@ class ProviderManager:
             num_predict=max_tokens,
             temperature=temperature,
             num_ctx=num_ctx,
+            top_p=top_p,
+            repeat_penalty=repeat_penalty,
         )
 
         logger.debug(f"Appel LLM - model: {model_name}, max_tokens: {max_tokens}")

@@ -78,6 +78,8 @@ class MLXProvider:
         temperature: float = 0.7,
         max_tokens: int = 512,
         timeout: Optional[float] = None,
+        top_p: float = 1.0,
+        repeat_penalty: float = 1.0,
     ) -> str:
         """
         Génère une réponse via mlx-lm.
@@ -90,6 +92,8 @@ class MLXProvider:
             temperature: Température pour la génération.
             max_tokens: Nombre maximum de tokens à générer.
             timeout: Non utilisé par mlx-lm — présent pour compatibilité.
+            top_p: Nucleus sampling — 1.0 = désactivé.
+            repeat_penalty: Pénalité de répétition — 1.0 = désactivé.
 
         Returns:
             Texte généré, strippé des espaces.
@@ -130,13 +134,21 @@ class MLXProvider:
             lm_model = cached[0]
             tokenizer = cached[1]
 
+            generate_kwargs: Dict[str, Any] = {
+                "max_tokens": max_tokens,
+                "temp": temperature,
+                "verbose": False,
+            }
+            if top_p < 1.0:
+                generate_kwargs["top_p"] = top_p
+            if repeat_penalty != 1.0:
+                generate_kwargs["repetition_penalty"] = repeat_penalty
+
             result: str = generate(
                 lm_model,
                 tokenizer,
                 prompt=full_prompt,
-                max_tokens=max_tokens,
-                temp=temperature,
-                verbose=False,
+                **generate_kwargs,
             )
 
             elapsed = time.time() - start_time
