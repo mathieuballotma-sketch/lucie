@@ -1,0 +1,106 @@
+{
+  "version": "1.0.0",
+  "domain": "droit_social",
+  "topic": "licenciement_economique",
+  "description": "Base curatée — Articles L.1233-1 à L.1233-16 du Code du travail (licenciement pour motif économique)",
+  "source": "Code du travail — Légifrance / code.travail.gouv.fr",
+  "last_updated": "2026-04-12",
+  "articles": [
+    {
+      "id": "L1233-1",
+      "title": "Définition du licenciement économique",
+      "path": "L1233-1.md",
+      "keywords": ["licenciement économique", "motif économique", "suppression emploi", "transformation emploi", "modification contrat de travail", "difficultés économiques", "mutations technologiques", "réorganisation", "compétitivité", "cessation activité", "groupe", "secteur activité"]
+    },
+    {
+      "id": "L1233-2",
+      "title": "Obligation d'adaptation et de reclassement",
+      "path": "L1233-2.md",
+      "keywords": ["cause réelle et sérieuse", "adaptation compétences", "formation professionnelle", "reclassement interne", "groupe", "obligation employeur", "validité licenciement économique"]
+    },
+    {
+      "id": "L1233-3",
+      "title": "Motifs économiques",
+      "path": "L1233-3.md",
+      "keywords": ["difficultés économiques", "baisse chiffre d'affaires", "baisse commandes", "pertes d'exploitation", "dégradation trésorerie", "EBE", "mutations technologiques", "réorganisation", "sauvegarde compétitivité", "cessation activité", "indicateurs économiques", "seuils", "durée baisse"]
+    },
+    {
+      "id": "L1233-4",
+      "title": "Ordre des licenciements (critères)",
+      "path": "L1233-4.md",
+      "keywords": ["ordre des licenciements", "critères de licenciement", "charges de famille", "ancienneté", "handicap", "réinsertion professionnelle", "qualités professionnelles", "catégorie professionnelle", "convention collective", "pondération critères"]
+    },
+    {
+      "id": "L1233-5",
+      "title": "Obligation de reclassement avant licenciement",
+      "path": "L1233-5.md",
+      "keywords": ["reclassement", "emploi disponible", "groupe", "territoire national", "emploi équivalent", "catégorie inférieure", "accord salarié", "offre écrite", "offre précise", "obligation employeur", "préalable licenciement"]
+    },
+    {
+      "id": "L1233-6",
+      "title": "Convocation à l'entretien préalable",
+      "path": "L1233-6.md",
+      "keywords": ["entretien préalable", "convocation", "lettre recommandée", "remise en main propre", "délai cinq jours ouvrables", "assistance", "conseiller du salarié", "représentant du personnel", "procédure licenciement économique"]
+    },
+    {
+      "id": "L1233-7",
+      "title": "Déroulement de l'entretien préalable",
+      "path": "L1233-7.md",
+      "keywords": ["entretien préalable", "motifs licenciement", "explications salarié", "contrat sécurisation professionnelle", "CSP", "congé de reclassement", "information salarié", "procédure contradictoire"]
+    },
+    {
+      "id": "L1233-8",
+      "title": "Notification du licenciement (délai, contenu)",
+      "path": "L1233-8.md",
+      "keywords": ["notification licenciement", "lettre recommandée LRAR", "délai sept jours ouvrables", "entretien préalable", "licenciement individuel", "licenciement collectif", "consultation CSE", "délai de réflexion", "procédure"]
+    },
+    {
+      "id": "L1233-9",
+      "title": "Mention du motif économique dans la lettre",
+      "path": "L1233-9.md",
+      "keywords": ["lettre de licenciement", "énoncé motif économique", "motif précis", "cause réelle et sérieuse", "limites du litige", "contenu lettre", "insuffisance de motivation", "absence de motif"]
+    },
+    {
+      "id": "L1233-10",
+      "title": "Priorité de réembauche",
+      "path": "L1233-10.md",
+      "keywords": ["priorité de réembauche", "réintégration", "un an", "demande salarié", "poste disponible", "qualification", "information salarié", "représentants du personnel", "dommages-intérêts", "obligation employeur"]
+    },
+    {
+      "id": "L1233-11",
+      "title": "CSE consultation (petits licenciements)",
+      "path": "L1233-11.md",
+      "keywords": ["CSE", "comité social et économique", "consultation", "petit licenciement collectif", "moins de dix salariés", "information", "avis", "propositions alternatives", "expert-comptable", "procédure", "régularité"]
+    },
+    {
+      "id": "L1233-12",
+      "title": "CSE consultation (grands licenciements)",
+      "path": "L1233-12.md",
+      "keywords": ["CSE", "grand licenciement collectif", "dix salariés et plus", "cinquante salariés", "deux réunions", "plan de sauvegarde de l'emploi", "PSE", "expert-comptable", "expert en organisation", "procédure obligatoire"]
+    },
+    {
+      "id": "L1233-13",
+      "title": "PSE — Plan de sauvegarde de l'emploi (seuils)",
+      "path": "L1233-13.md",
+      "keywords": ["PSE", "plan de sauvegarde de l'emploi", "seuil cinquante salariés", "seuil dix licenciements", "trente jours", "plan de reclassement", "territoire national", "salariés âgés", "vulnérabilité", "obligation légale", "nullité"]
+    },
+    {
+      "id": "L1233-14",
+      "title": "Contenu du PSE",
+      "path": "L1233-14.md",
+      "keywords": ["PSE", "contenu", "reclassement interne", "reclassement externe", "bassin d'emploi", "formation", "VAE", "reconversion", "création activités", "aménagement temps de travail", "mesures proportionnées", "contrôle DREETS"]
+    },
+    {
+      "id": "L1233-15",
+      "title": "Homologation DREETS du PSE",
+      "path": "L1233-15.md",
+      "keywords": ["homologation", "validation", "DREETS", "accord collectif majoritaire", "document unilatéral", "autorité administrative", "contrôle administratif", "délai 15 jours", "délai 21 jours", "silence vaut homologation", "tribunal administratif", "recours", "PSE"]
+    },
+    {
+      "id": "L1233-16",
+      "title": "Indemnités de licenciement",
+      "path": "L1233-16.md",
+      "keywords": ["indemnité de licenciement", "indemnité légale", "ancienneté", "calcul indemnité", "quart de mois", "tiers de mois", "dix ans ancienneté", "rémunération brute", "douze mois", "trois mois", "formule favorable", "exonération charges sociales", "PASS", "non imposable", "convention collective"]
+    }
+  ]
+}
