@@ -115,12 +115,8 @@ metrics:
   memory_interval: 60
 
 elasticity:
-  base_workers: 3
-  monitor_interval: 2
-  speed_model: "gemma4:e4b"
-  balanced_model: "gemma4:26b"
-  quality_model: "gemma4:26b"
-  sentinel_model: "gemma4:e4b"
+  min_workers: 1
+  max_workers: 3
 
 telegram:
   bot_token: ""             # désactivé en développement

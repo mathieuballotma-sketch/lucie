@@ -19,7 +19,7 @@ from .retriever import RetrieverAgent
 from .router import LegalRouter
 from .verificateur import VerificateurAgent
 
-_PIPELINE_TIMEOUT = 60.0  # secondes
+_PIPELINE_TIMEOUT = 600.0  # secondes
 
 
 class LegalPipeline:
