@@ -17,7 +17,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from . import ollama_client, retriever
 from .config import (
@@ -132,56 +132,57 @@ def _split_into_sentences(text: str) -> List[str]:
 
 def chunk_text(text: str, source_file: str, max_tokens: int = MAX_CHUNK_TOKENS) -> List[ChunkInfo]:
     """
-    Découpe un texte en chunks de max_tokens.
+    Découpe un texte en chunks de max_tokens avec overlap 15% (~100 tokens).
     Ne coupe jamais au milieu d'une phrase.
+    Overlap pattern : les 15% derniers tokens du chunk N sont inclus au début du chunk N+1.
     """
+    _OVERLAP_RATIO = 0.15  # 15% overlap entre chunks consécutifs
+
     if _estimate_tokens(text) <= max_tokens:
         return [ChunkInfo(text=text, source_file=source_file, chunk_index=0, total_chunks=1)]
 
     sentences = _split_into_sentences(text)
-    chunks: List[ChunkInfo] = []
-    current_chunk: List[str] = []
+    chunks_text: List[str] = []
+    current_sentences: List[str] = []
     current_tokens = 0
 
     for sentence in sentences:
         sentence_tokens = _estimate_tokens(sentence)
 
-        # Si une seule phrase dépasse le max, on la garde quand même
-        if sentence_tokens > max_tokens and not current_chunk:
-            chunks.append(ChunkInfo(
-                text=sentence,
-                source_file=source_file,
-                chunk_index=len(chunks),
-                total_chunks=0,  # sera mis à jour après
-            ))
+        # Si une seule phrase dépasse le max, on la force seule
+        if sentence_tokens > max_tokens and not current_sentences:
+            chunks_text.append(sentence)
             continue
 
-        if current_tokens + sentence_tokens > max_tokens and current_chunk:
-            chunks.append(ChunkInfo(
-                text=" ".join(current_chunk),
-                source_file=source_file,
-                chunk_index=len(chunks),
-                total_chunks=0,
-            ))
-            current_chunk = []
-            current_tokens = 0
+        if current_tokens + sentence_tokens > max_tokens and current_sentences:
+            chunks_text.append(" ".join(current_sentences))
 
-        current_chunk.append(sentence)
+            # Overlap : conserver les dernières phrases couvrant ~15% du chunk
+            overlap_target = int(current_tokens * _OVERLAP_RATIO)
+            overlap_sentences: List[str] = []
+            overlap_tokens = 0
+            for s in reversed(current_sentences):
+                s_tok = _estimate_tokens(s)
+                if overlap_tokens + s_tok > overlap_target and overlap_sentences:
+                    break
+                overlap_sentences.insert(0, s)
+                overlap_tokens += s_tok
+
+            current_sentences = overlap_sentences
+            current_tokens = overlap_tokens
+
+        current_sentences.append(sentence)
         current_tokens += sentence_tokens
 
-    if current_chunk:
-        chunks.append(ChunkInfo(
-            text=" ".join(current_chunk),
-            source_file=source_file,
-            chunk_index=len(chunks),
-            total_chunks=0,
-        ))
+    if current_sentences:
+        chunks_text.append(" ".join(current_sentences))
 
-    # Mise à jour du total
-    for c in chunks:
-        c.total_chunks = len(chunks)
-
-    return chunks
+    # Construire les ChunkInfo avec total correct
+    total = len(chunks_text)
+    return [
+        ChunkInfo(text=t, source_file=source_file, chunk_index=i, total_chunks=total)
+        for i, t in enumerate(chunks_text)
+    ]
 
 
 # ─── Scan du dossier ─────────────────────────────────────────────────────────
@@ -385,6 +386,7 @@ async def analyze_dossier(
     folder_path: str,
     instruction: str = "Analyse juridique complète du dossier",
     verbose: bool = False,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
 ) -> DossierReport:
     """
     Analyse un dossier complet de documents juridiques.
@@ -460,6 +462,12 @@ async def analyze_dossier(
                 f"(chunk {chunk.chunk_index + 1}/{chunk.total_chunks})…",
                 flush=True,
             )
+
+        if progress_callback is not None:
+            try:
+                progress_callback(i + 1, len(all_chunks))
+            except Exception:
+                pass
 
         # Extraction des points juridiques
         chunk_result = await _analyze_chunk(chunk, verbose)

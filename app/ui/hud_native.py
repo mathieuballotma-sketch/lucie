@@ -133,6 +133,61 @@ class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
         self.layer().setBackgroundColor_(ns_white(1.0, 0.15).CGColor())
 
 
+# ─── DropContentView ─────────────────────────────────────────────────────────
+class DropContentView(AppKit.NSView):  # type: ignore[misc]
+    """Content view with file/folder drag-and-drop support.
+
+    Registered as drag destination for the whole HUD surface.
+    Interactive subviews (input, buttons) are on top in z-order so they receive
+    mouse events normally; file drops that miss registered subviews bubble up to
+    this view via the standard AppKit drag-destination traversal.
+    """
+
+    def initWithFrame_(self, frame: Any) -> Any:
+        self = objc.super(DropContentView, self).initWithFrame_(frame)
+        if self is not None:
+            self._hud_ref: Optional[Any] = None
+            self.registerForDraggedTypes_([AppKit.NSPasteboardTypeFileURL])
+        return self
+
+    def draggingEntered_(self, sender: Any) -> int:
+        return AppKit.NSDragOperationCopy
+
+    def draggingUpdated_(self, sender: Any) -> int:
+        return AppKit.NSDragOperationCopy
+
+    def prepareForDragOperation_(self, sender: Any) -> bool:
+        return True
+
+    def performDragOperation_(self, sender: Any) -> bool:
+        pb = sender.draggingPasteboard()
+        path: Optional[str] = None
+
+        # Modern: NSPasteboardTypeFileURL
+        try:
+            urls = pb.readObjectsForClasses_options_([AppKit.NSURL], {})
+            for url in (urls or []):
+                if hasattr(url, "isFileURL") and url.isFileURL():
+                    path = str(url.path())
+                    break
+        except Exception:
+            pass
+
+        # Fallback: legacy NSFilenamesPboardType
+        if not path:
+            try:
+                filenames = pb.propertyListForType_("NSFilenamesPboardType")
+                if filenames:
+                    path = str(filenames[0])
+            except Exception:
+                pass
+
+        if path and self._hud_ref is not None:
+            AppHelper.callAfter(self._hud_ref.handle_dropped_path, path)
+            return True
+        return False
+
+
 # ─── HUDWindow ───────────────────────────────────────────────────────────────
 class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
@@ -180,6 +235,15 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._streaming_sender: str = ""
         self._streaming_full_text: str = ""
         self._streaming_range: Optional[Tuple[int, int]] = None
+
+        # Drop state — file or folder attached to next query
+        self._current_document: Optional[str] = None
+        self._current_dossier_path: Optional[str] = None
+
+        # Replace default content view with drop-aware version
+        _drop = DropContentView.alloc().initWithFrame_(self.contentView().frame())
+        _drop._hud_ref = self
+        self.setContentView_(_drop)
 
         self._setup_ui()
         self._setup_space_observer()
@@ -588,15 +652,113 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 )
         threading.Thread(target=_launch, daemon=True).start()
 
+    # ── Drop handling ─────────────────────────────────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def handle_dropped_path(self, path: str) -> None:
+        """Called (on main thread) when a file or folder is dropped onto the HUD."""
+        import os
+        name = os.path.basename(path.rstrip("/"))
+        if os.path.isdir(path):
+            self._current_dossier_path = path
+            self._current_document = None
+            self.append_message_safe(
+                "Lucie",
+                f"📁 Dossier **{name}** prêt — posez votre question pour lancer l'analyse.",
+                False,
+            )
+            self._input.setPlaceholderString_(f"Question sur le dossier {name}…")
+        else:
+            text = self._read_file_text(path)
+            if text:
+                self._current_document = text
+                self._current_dossier_path = None
+                self.append_message_safe(
+                    "Lucie",
+                    f"📄 **{name}** attaché ({len(text)} car.) — posez votre question.",
+                    False,
+                )
+                self._input.setPlaceholderString_(f"Question sur {name}…")
+            else:
+                self.append_message_safe(
+                    "Lucie",
+                    f"⚠️ Impossible de lire **{name}**. Formats supportés : PDF, DOCX, TXT, MD.",
+                    False,
+                )
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _read_file_text(self, path: str) -> Optional[str]:
+        """Extract text from a supported file using the standalone pipeline's extractor."""
+        try:
+            from lucie_v1_standalone.dossier_analyzer import extract_text
+            from pathlib import Path as _Path
+            return extract_text(_Path(path))
+        except Exception as e:
+            logger.error(f"_read_file_text({path}): {e}")
+            return None
+
     # ── Query processing ──────────────────────────────────────────────────────
 
     def _process_query(self, query: str) -> None:
+        import asyncio as _asyncio
         try:
-            assert self.engine is not None
-            response, latency = self.engine.process(query, use_rag=True)
+            # Snapshot and clear drop state
+            document = self._current_document
+            dossier_path = self._current_dossier_path
+            self._current_document = None
+            self._current_dossier_path = None
+
+            # ── 3-level routing ───────────────────────────────────────────────
+            from lucie_v1_standalone.router import route as lv1_route
+            routing = lv1_route(query, document_text=document)
+            level = routing["level"]
+
+            if dossier_path:
+                # ── Dossier mode: batch analysis with progress ─────────────
+                from lucie_v1_standalone import dossier_analyzer as _da
+
+                def _progress(current: int, total: int) -> None:
+                    AppHelper.callAfter(
+                        self._thinking_label.setStringValue_,
+                        f"Dossier {current}/{total}…",
+                    )
+
+                report = _asyncio.run(
+                    _da.analyze_dossier(
+                        folder_path=dossier_path,
+                        instruction=query or "Analyse juridique complète du dossier",
+                        verbose=False,
+                        progress_callback=_progress,
+                    )
+                )
+                response = _da.format_report(report)
+
+            elif level == "direct":
+                # ── Fast path: existing engine (greetings, simple questions) ─
+                assert self.engine is not None
+                response, _ = self.engine.process(query, use_rag=True)
+
+            else:
+                # ── Legal pipeline: search (juridique) or document (avec texte)
+                from lucie_v1_standalone import pipeline as _lv1
+                response = _asyncio.run(
+                    _lv1.run(
+                        query,
+                        document_text=document,
+                        force=False,
+                        verbose=False,
+                    )
+                )
+
             if not response or not str(response).strip():
                 response = "(Aucune réponse générée)"
+
+            # Reset placeholder after successful response
+            AppHelper.callAfter(
+                self._input.setPlaceholderString_, "Commande ou question…"
+            )
             AppHelper.callAfter(self._start_streaming, "Lucie", str(response), False)
+
         except Exception as e:
             logger.error(f"Erreur _process_query: {e}", exc_info=True)
             AppHelper.callAfter(self._on_response_error, f"Erreur : {e}")

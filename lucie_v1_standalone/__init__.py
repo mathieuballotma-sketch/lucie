@@ -11,6 +11,6 @@ Usage :
 
 from .dossier_analyzer import analyze_dossier
 from .pipeline import run
-from .router import SCOPE_KEYWORDS, validate as router_validate
+from .router import route as router_route, validate as router_validate
 
-__all__ = ["run", "analyze_dossier", "router_validate", "SCOPE_KEYWORDS"]
+__all__ = ["run", "analyze_dossier", "router_route", "router_validate"]
