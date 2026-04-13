@@ -1,0 +1,429 @@
+================================================================================
+
+SAS TECHNOVA INDUSTRIES
+SIRET : 428 937 156 00042
+
+PROCÈS-VERBAL DE SÉANCE EXTRAORDINAIRE
+COMITÉ SOCIAL ET ÉCONOMIQUE (CSE)
+
+Réunion extraordinaire pour consultation sur plan de restructuration
+
+================================================================================
+
+DATE : 10 décembre 2025
+HEURE DE DÉBUT : 14h00
+HEURE DE FIN : 17h45
+LIEU : Salle de réunion A, Bâtiment principal, 12 avenue de la République,
+        69100 VILLEURBANNE
+
+CARACTÈRE DE LA RÉUNION : Extraordinaire - Urgence constatée
+
+================================================================================
+
+COMPOSITION ET PRÉSENCES
+
+DIRECTION
+
+Président : Jean-Pierre LEFEBVRE, PDG
+Participants :
+- Claire BERNARD, Directrice des Ressources Humaines
+- Michel DURAND, Directeur Financier
+- Laurent ROUSSEAU, Directeur Commercial
+- Observateur : Maître Stéphane LECLERC, Conseil juridique externe
+
+REPRÉSENTANTS DU PERSONNEL (CSE)
+
+Membres présents : 6 membres sur 11
+
+1. Nathalie FONTAINE (Présidente du CSE) - Secteur IT - Présente
+2. Philippe GÉRARD (Vice-Président) - Secteur Support - Présent
+3. Marie-Louise PICARD (Représentante) - Secteur Administratif - Présente
+4. Christophe MOREAU (Représentant) - Secteur Technique - Présent
+5. Anne LACROIX (Représentante) - Secteur Administratif - Absente
+6. Denis VALENTIN (Représentant) - Secteur IT - Présent
+7. Stéphane COUTAZ (Représentant) - Secteur Support - Absente
+8. Sarah NICOLAS (Représentante) - Secteur Commercial - Présente
+9. Olivier BEAUMONT (Représentant) - Secteur Technique - Absent
+10. Pauline ARNOULD (Représentante) - Secteur Support - Absente
+11. Grégory TEMPLE (Représentant) - Secteur Commercial - Absent
+
+Secrétaire de séance : Denis VALENTIN
+
+CONVOCATION
+
+La convocation à cette séance extraordinaire a été adressée par mail et courrier
+le 6 décembre 2025, 4 jours avant la réunion, conformément aux dispositions légales.
+
+Motif de l'urgence : Restructuration économique de l'entreprise nécessitant
+une consultation urgente du CSE préalablement à la mise en œuvre de mesures
+de réduction d'effectifs.
+
+================================================================================
+
+ORDRE DU JOUR
+
+1. Présentation de la situation économique et financière de l'Entreprise
+2. Présentation du plan de restructuration envisagé
+3. Présentation du Plan de Sauvegarde de l'Emploi (PSE) [le cas échéant]
+4. Droit de retrait et observations du CSE
+5. Demande d'avis du CSE sur la restructuration et le plan d'action
+6. Questions diverses
+
+================================================================================
+
+DÉROULEMENT DE LA SÉANCE
+
+POINT 1 - SITUATION ÉCONOMIQUE ET FINANCIÈRE
+
+Intervenant : Michel DURAND, Directeur Financier
+
+Présentation des chiffres clés :
+
+"Mesdames, Messieurs,
+
+Nous vous remercions de votre présence en cette séance extraordinaire appelée
+d'urgence par les circonstances.
+
+Je dois vous faire part d'une situation économique et financière dégradée qui
+nécessite une action rapide et décisive.
+
+CHIFFRES CLÉS 2025 :
+
+Chiffre d'affaires 2024 : 24.500.000 € (pour référence)
+Chiffre d'affaires 2025 (prévisions fin d'année) : 19.090.000 €
+
+Écart : -5.410.000 € soit une baisse de 22,08 %
+
+Cette baisse affecte principalement :
+- Secteur conseil digital : -28%
+- Secteur transformation IT : -19%
+- Secteur support et services : -15%
+- Seul le secteur IT/Development a une croissance modeste de +3%
+
+RÉSULTAT EXPLOITATION :
+
+2024 : Bénéfice de + 1.200.000 €
+2025 : Prévision de perte de - 1.800.000 €
+
+Écart négatif : 3.000.000 € en un an
+
+TRÉSORERIE :
+
+Réserves disponibles : 2.100.000 € (critique, insuffisant pour absorber)
+Lignes de crédit utilisées : 85% du total disponible
+Capacité à emprunter : très limitée
+Prévisions fin 2026 sans restructuration : trésorerie négative (-500.000 €)
+
+CHARGES DE STRUCTURE :
+
+Masse salariale brute : 8.200.000 € (38% du CA)
+Frais généraux : 2.800.000 € (13% du CA)
+Frais de locaux : 450.000 € (2,1% du CA)
+
+CONTEXTE SECTEUR :
+
+Le marché du conseil et de la transformation digitale connaît une contraction
+depuis mi-2024 :
+- Réduction des budgets IT chez les clients
+- Ralentissement économique général
+- Forte concurrence tarifaire
+- Clients reportent les projets de transformation
+
+Nos analyses indiquent une reprise possible en fin 2026, mais sans certitude.
+
+PERSPECTIVES 2026 :
+
+Prévisions optimistes : CA 21.000.000 € (nécessiterait une reprise de marché)
+Prévisions réalistes : CA 19.500.000 € (stagnation)
+Scénario pessimiste : CA 17.500.000 € (risque de faillite)
+
+CONCLUSION :
+
+L'Entreprise ne peut pas maintenir actuellement son modèle de coûts. Une action
+doit être entreprise dans les deux prochains mois pour éviter l'aggravation."
+
+Questions du CSE :
+
+Q (Nathalie FONTAINE) : "Quelle est l'ampleur de la réduction d'effectifs envisagée ?"
+
+R (Michel DURAND) : "Cela sera présenté détaillé dans le point suivant, mais nous
+parlons d'une adaptation d'environ 40 à 50 personnes."
+
+Q (Denis VALENTIN) : "Avez-vous exploré d'autres solutions que les licenciements ?"
+
+R (Claire BERNARD) : "Oui, nous avons mis en place plusieurs mesures : gel des embauches
+depuis juillet, réduction des heures sup, réorganisation des services, télétravail.
+Malheureusement, cela n'a pas suffi. La baisse d'activité continue."
+
+
+POINT 2 - PRÉSENTATION DU PLAN DE RESTRUCTURATION
+
+Intervenant : Laurent ROUSSEAU, Directeur Commercial et Claire BERNARD, DRH
+
+Organigramme proposé et suppressions :
+
+"Le plan de restructuration s'articule autour de trois axes :
+
+AXE 1 - RÉDUCTION DES STRUCTURES ADMINISTRATIVES
+- Suppression de 2 postes en gestion administrative
+- Fusion de deux services de support
+- Suppression d'une assistant RH (poste partagé sur plusieurs secteurs)
+Total secteur administratif : 3 suppressions
+
+AXE 2 - RESTRUCTURATION PÔLE MARKETING ET COMMUNICATION
+- Suppression du service de Marketing Digital (4 personnes dont 1 responsable)
+- Suppression du service de Communication (2 personnes)
+- Regroupement des missions auprès du Directeur Commercial
+- Suppression directe : 6 postes
+  * 1 Responsable Marketing Digital - Sophie MARTIN
+  * 1 Chargé de marketing - Olivier DESCHAMPS
+  * 1 Community Manager - Lisa FONTANA
+  * 1 Chef de projet digital - Marc BONNET
+  * 2 Chargés de communication - Jean-Claude LECONTE et Claudine REMONT
+
+AXE 3 - OPTIMISATION STRUCTURE IT
+- Suppression de 3 postes de support technique
+- Fermeture du centre de help-desk régional
+- Externalisation partielle vers prestataire externe (Sopra Steria)
+- Suppression directe : 5 postes
+  (noms des salariés à communiquer ultérieurement)
+
+TOTAL SUPPRESSIONS DE POSTES : 14 postes
+
+Répartition :
+- Cadres : 3 (dont Responsable Marketing Digital)
+- Agents de maîtrise : 4
+- Employés : 7
+
+Effectif de l'Entreprise :
+- Actuel : 280 salariés
+- Après restructuration : 266 salariés
+- Réduction : 5%
+
+CALENDRIER ENVISAGÉ :
+
+Approbation CSE : 10 décembre 2025
+Entretiens préalables : 18 décembre 2025 - 31 janvier 2026
+Notifications : 15 janvier - 28 février 2026
+Effective des cessations : 15 avril - 31 mai 2026
+
+Mesures d'accompagnement :
+- CSP (Contrats de Sécurisation Professionnelle) offerts aux personnes supprimées
+- Aide au reclassement interne pour les non-supprimés
+- Ouverture de négociations auprès de partenaires pour reclassement externe"
+
+Question du CSE :
+
+Q (Nathalie FONTAINE, Présidente) : "Constatant que vous proposez la suppression
+de 14 postes dans une entreprise de 280 salariés, où est le Plan de Sauvegarde
+de l'Emploi (PSE) ? La loi l'exige à partir de 10 suppressions dans les entreprises
+de 50 salariés ou plus."
+
+R (Claire BERNARD) : "Euh... oui, bien sûr. Les mesures d'accompagnement que nous
+proposons - CSP, aide à la recherche d'emploi - constituent une forme de sauvegarde."
+
+Objection (Nathalie FONTAINE) : "Non, madame, avec respect. Le CSP n'est pas un PSE.
+Le PSE doit inclure : mesures alternatives, critères d'ordre des licenciements,
+modalités de reclassement, duée du préavis, mesures sociales d'accompagnement...
+C'est imposé par l'article L.1233-61 du Code du Travail."
+
+Réponse (Conseil juridique, Maître Leclerc) : "Le CSE a raison sur le cadre légal.
+Cependant, l'Entreprise considère que les mesures individuelles suffisent dans ce
+contexte. Nous sommes en réflexion sur l'opportunité d'un PSE formel."
+
+Q (Philippe GÉRARD, VP) : "C'est inacceptable. Un PSE est une obligation légale, pas
+une option. La Cour de Cassation le confirme régulièrement. Vous risquez une annulation
+de tous les licenciements si vous contournez cette obligation."
+
+Réponse (Claire BERNARD) : "Le Conseil Général de l'Économie et les représentants de
+l'État seront informés, et nous nous conformerons si une obligation est établie. Pour
+l'instant, nous considérons que le contexte nous permet de procéder par mesures
+individuelles."
+
+Remarque (Sarah NICOLAS) : "Mais vous annoncez 14 suppressions ! C'est clairement
+du domaine du PSE. Et je note qu'on n'a aucun détail sur les critères d'ordre des
+licenciements. Comment avez-vous choisi ces 14 personnes ? Par quels critères ?"
+
+Réponse (Laurent ROUSSEAU) : "Les critères sont l'imbrication des postes, la charge
+de travail restante, les compétences nécessaires pour les projets en cours. Les RH
+verfieront que toutes les obligations légales sont respectées en terme de notification
+préalable."
+
+
+POINT 3 - AVIS DU CSE SUR LE PLAN
+
+Vote sur la question : "Donnez-vous un avis favorable ou défavorable sur le plan
+de restructuration proposé ?"
+
+Résultat du vote :
+- Votes favorables : 0
+- Votes défavorables : 6
+- Abstentions : 0
+
+AVIS DU CSE : AVIS DÉFAVORABLE À L'UNANIMITÉ DES PRÉSENTS
+
+Motifs de l'avis défavorable :
+
+1. ABSENCE DE PSE FORMEL
+   "Le CSE considère que l'absence d'un vrai Plan de Sauvegarde de l'Emploi pour
+   14 suppressions de postes dans une entreprise de 280 salariés constitue une
+   violation de l'article L.1233-61 du Code du Travail. Cela met en péril la
+   légalité des licenciements."
+
+2. MANQUE DE CLARITY SUR LES CRITÈRES D'ORDRE
+   "Les critères ayant présidé au choix des personnes licenciées ne sont pas
+   clairement énoncés. On ne sait pas s'il y a des critères d'ancienneté, de
+   performance, de qualifications utiles pour les restructuration, etc."
+
+3. RECLASSEMENT INTERNE INEXISTANT
+   "L'Entreprise annonce que les mesures individuelles suffisent, mais ne propose
+   concrètement aucun poste de reclassement. Or l'article L.1233-4 impose une
+   obligation réelle de reclassement avant la suppression de poste."
+
+4. INSUFFISANCE DES MESURES D'ACCOMPAGNEMENT
+   "Le CSP n'est pas un vrai accompagnement. C'est un contrat de chômage déguisé.
+   Il faut des vraies mesures : congé de reclassement avec salaire maintenu,
+   formations financées à 100%, aide à la création d'activité, etc."
+
+5. RISQUE POUR VIABILITÉ DE L'ENTREPRISE
+   "Réduire les effectifs de 14 personnes (-5%) ne règle pas la baisse de CA de 22%.
+   Cela montre que le plan n'a pas d'ambition suffisante ET crée un risque social."
+
+6. TRANSPARENCE INSUFFISANTE
+   "Cette réunion de 10 décembre nous donne à peine 1 mois avant les premiers
+   licenciements. Les délais sont trop courts. Le CSE ne peut pas jouer son rôle
+   correctement."
+
+Demandes du CSE :
+
+1. Élaboration immédiate d'un vrai PSE conforme à la loi
+2. Communication claire des critères d'ordre des licenciements
+3. Effort de reclassement interne concret
+4. Renforcement de l'accompagnement (congé de reclassement, formations)
+5. Rallongement des délais de notification (minimum 45 jours)
+
+
+POINT 4 - QUESTIONS DIVERSES ET REMARQUES FINALES
+
+Nathalie FONTAINE : "Qu'advient-il si l'Entreprise ne met pas en place de PSE ?
+Nous connaissons tous les risques."
+
+Maître Leclerc : "Sur le plan légal, l'absence de PSE pourrait rendre les licenciements
+nuls. Mais ce sont les juges prud'homaux qui statueront en cas de contentieux. L'Entreprise
+accepte ce risque."
+
+Claire BERNARD : "L'Entreprise doit avancer rapidement. Les délais que nous avons
+annoncés correspondent à une urgence financière réelle. Nous espérons que le CSE
+comprendra."
+
+Denis VALENTIN : "Nous comprenons les difficultés, mais la loi doit être respectée.
+Vous ne pouvez pas ignorer l'article L.1233-61. C'est trop risqué."
+
+================================================================================
+
+RÉSOLUTIONS ADOPTÉES
+
+RÉSOLUTION 1 - AVIS SUR LE PLAN DE RESTRUCTURATION
+
+Le CSE donne un AVIS DÉFAVORABLE sur le plan de restructuration proposé pour les
+raisons énumérées ci-dessus. Cet avis est contraignant selon l'article L.2312-11
+du Code du Travail et doit être pris en compte par la Direction.
+
+Vote : 6 défavorable, 0 favorable, 0 abstention
+Caractère : Obligatoire pour la Direction, la lie dans ses justifications.
+
+RÉSOLUTION 2 - DEMANDE DE MISE EN CONFORMITÉ
+
+Le CSE demande à la Direction de :
+1. Mettre en place un vrai PSE conforme à la loi dans les 15 jours
+2. Communiquer les critères d'ordre légaux dans les 7 jours
+3. Proposer un congé de reclassement en complément du CSP
+4. Rallonger les délais de notification à minimum 45 jours
+
+La Direction s'engage à répondre par écrit à chacune de ces demandes.
+
+Vote : Adopté à l'unanimité (6/6)
+
+================================================================================
+
+DÉCISIONS DE LA DIRECTION
+
+Après délibération du CSE, la Direction déclare ce qui suit :
+
+"Le Comité Social et Économique a fourni un avis défavorable que nous prenons
+en compte. La Direction entend :
+
+1. Poursuivre avec le plan de restructuration tel qu'annoncé
+2. Étudier la faisabilité d'un PSE formel dans les délais impartis
+3. Respecter les critères d'ordre légaux (ancienneté, compétences, situation familiale)
+4. Proposer effectivement le CSP en addition et non en alternative aux droits légaux
+5. Communiquer écrit détaillé sur les critères d'ordre dans les 5 jours
+
+La Direction note que le CSE a formulé un avis défavorable circonstancié et justifié.
+Cet avis justifiera ses actes ultérieures en cas de litige."
+
+================================================================================
+
+VÉRIFICATION DU QUORUM ET RÉGULARITÉ
+
+Signature du CSE :
+
+Nathalie FONTAINE, Présidente CSE - Signature
+Philippe GÉRARD, Vice-Président - Signature
+Marie-Louise PICARD, Représentante - Signature
+Christophe MOREAU, Représentant - Signature
+Denis VALENTIN, Représentant - Signature
+Sarah NICOLAS, Représentante - Signature
+
+Signature de la Direction :
+
+Jean-Pierre LEFEBVRE, PDG
+Claire BERNARD, DRH
+Laurent ROUSSEAU, Directeur Commercial
+Maître Stéphane LECLERC, Conseil (observateur, non signataire)
+
+================================================================================
+
+DOCUMENTS ANNEXÉS
+
+- Annexe 1 : Détail de la baisse d'activité par secteur (2024-2025)
+- Annexe 2 : Projection financière scénario 2026 (confidentiel)
+- Annexe 3 : Organigramme avant et après restructuration
+- Annexe 4 : Liste nominative des 14 postes supprimés
+- Annexe 5 : Projet de CSP (versions préalables)
+- Annexe 6 : Critères d'ordre des licenciements (à compléter)
+
+================================================================================
+
+OBSERVATIONS FINALES
+
+Cette séance extraordinaire du 10 décembre 2025 aura confirmé les obligations légales
+relatives au licenciement économique et mis en relief un point critique : l'absence
+de PSE. Cette absence constitue un risque juridique majeur pour l'Entreprise en cas
+de contestation par les salariés licenciés.
+
+Le CSE a clairement énoncé son désaccord et les raisons légales qui le fondent.
+La Direction a indiqué qu'elle poursuivrait néanmoins le plan, malgré cet avis
+défavorable, ce qui est légalement possible mais augmente les risques contentieux.
+
+Les délais très resserrés (à peine 30 jours entre cette réunion et les entretiens
+préalables) ne permettent pas une préparation optimale du PSE si la Direction
+décide de le mettre en place.
+
+================================================================================
+
+PROCÈS-VERBAL APPROUVÉ
+
+Date de signature : 10 décembre 2025
+
+Le présent procès-verbal a été approuvé lors de la séance du 10 décembre 2025.
+Un exemplaire sera adressé à chaque membre du CSE, à la Direcction, et conservé
+aux archives légales de l'Entreprise.
+
+Fait à Villeurbanne,
+Le 10 décembre 2025
+
+Nathalie FONTAINE
+Présidente du CSE - Signature et cachet
+
+================================================================================
