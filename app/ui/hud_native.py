@@ -8,7 +8,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import AppKit
 import Foundation
@@ -107,30 +107,42 @@ class DraggableView(AppKit.NSView):  # type: ignore[misc]
 
 # ─── ThinkingIndicatorView ───────────────────────────────────────────────────
 class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
-    """Pulsing dot indicator shown during LLM processing."""
+    """3 pulsing dots shown during LLM processing (staggered pulse animation)."""
+    _DOT_SIZE: float = 6.0
+    _DOT_GAP: float = 4.0
 
     def initWithFrame_(self, frame: Any) -> Any:
         self = objc.super(ThinkingIndicatorView, self).initWithFrame_(frame)
         if self is not None:
             self.setWantsLayer_(True)
-            self.layer().setBackgroundColor_(ns_white(1.0, 0.0).CGColor())
-            self.layer().setCornerRadius_(frame.size.width / 2)
-            self.layer().setMasksToBounds_(True)
+            self._dots: List[Any] = []
+            for i in range(3):
+                dot = Quartz.CALayer.layer()
+                x = i * (self._DOT_SIZE + self._DOT_GAP)
+                dot.setFrame_(Quartz.CGRectMake(x, 0.0, self._DOT_SIZE, self._DOT_SIZE))
+                dot.setCornerRadius_(self._DOT_SIZE / 2)
+                dot.setBackgroundColor_(ns_white(1.0, 0.15).CGColor())
+                self.layer().addSublayer_(dot)
+                self._dots.append(dot)
         return self
 
     def startAnimating(self) -> None:
-        self.layer().setBackgroundColor_(_accent().CGColor())
-        anim = Quartz.CABasicAnimation.animationWithKeyPath_("transform.scale")
-        anim.setFromValue_(1.0)
-        anim.setToValue_(1.5)
-        anim.setDuration_(0.7)
-        anim.setAutoreverses_(True)
-        anim.setRepeatCount_(float("inf"))
-        self.layer().addAnimation_forKey_(anim, "pulse")
+        now = Quartz.CACurrentMediaTime()
+        for i, dot in enumerate(self._dots):
+            dot.setBackgroundColor_(_accent().CGColor())
+            anim = Quartz.CABasicAnimation.animationWithKeyPath_("transform.scale")
+            anim.setFromValue_(0.5)
+            anim.setToValue_(1.0)
+            anim.setDuration_(0.5)
+            anim.setBeginTime_(now + i * 0.15)
+            anim.setAutoreverses_(True)
+            anim.setRepeatCount_(float("inf"))
+            dot.addAnimation_forKey_(anim, "pulse")
 
     def stopAnimating(self) -> None:
-        self.layer().removeAllAnimations()
-        self.layer().setBackgroundColor_(ns_white(1.0, 0.15).CGColor())
+        for dot in self._dots:
+            dot.removeAllAnimations()
+            dot.setBackgroundColor_(ns_white(1.0, 0.15).CGColor())
 
 
 # ─── DropContentView ─────────────────────────────────────────────────────────
@@ -151,15 +163,23 @@ class DropContentView(AppKit.NSView):  # type: ignore[misc]
         return self
 
     def draggingEntered_(self, sender: Any) -> int:
+        if self._hud_ref is not None:
+            self._hud_ref._show_drop_highlight(True)
         return AppKit.NSDragOperationCopy
 
     def draggingUpdated_(self, sender: Any) -> int:
         return AppKit.NSDragOperationCopy
 
+    def draggingExited_(self, sender: Any) -> None:
+        if self._hud_ref is not None:
+            self._hud_ref._show_drop_highlight(False)
+
     def prepareForDragOperation_(self, sender: Any) -> bool:
         return True
 
     def performDragOperation_(self, sender: Any) -> bool:
+        if self._hud_ref is not None:
+            self._hud_ref._show_drop_highlight(False)
         pb = sender.draggingPasteboard()
         path: Optional[str] = None
 
@@ -317,12 +337,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         title_lbl.setTextColor_(ns_white(0.95, 0.9))
         content.addSubview_(title_lbl)
 
-        # Thinking indicator (pulsing dot)
-        ind_size = 10
+        # Thinking indicator (3 pulsing dots)
+        ind_w, ind_h = 26, 6
         ind_x = PADDING + 32 + 80 + 10
-        ind_y = header_center_y + (22 - ind_size) / 2
+        ind_y = header_center_y + (22 - ind_h) / 2
         self._thinking_indicator = ThinkingIndicatorView.alloc().initWithFrame_(
-            make_rect(ind_x, ind_y, ind_size, ind_size)
+            make_rect(ind_x, ind_y, ind_w, ind_h)
         )
         content.addSubview_(self._thinking_indicator)
 
@@ -535,6 +555,22 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._energy_timer = Foundation.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             15.0, self, "updateEnergyIndicator:", None, True
         )
+
+        # Drop highlight overlay (shown during folder/file drag-over)
+        self._drop_highlight = AppKit.NSView.alloc().initWithFrame_(
+            make_rect(2, 2, WINDOW_W - 4, WINDOW_H - 4)
+        )
+        self._drop_highlight.setWantsLayer_(True)
+        self._drop_highlight.layer().setCornerRadius_(CORNER_R - 1)
+        self._drop_highlight.layer().setBorderWidth_(2.0)
+        self._drop_highlight.layer().setBorderColor_(
+            ns_color(0.27, 0.52, 0.97, 0.9).CGColor()
+        )
+        self._drop_highlight.layer().setBackgroundColor_(
+            ns_color(0.27, 0.52, 0.97, 0.05).CGColor()
+        )
+        self._drop_highlight.setAlphaValue_(0.0)
+        content.addSubview_(self._drop_highlight)
 
         # Predictor monitor — reschedules itself in typingTimerFired_
         self._last_text: str = ""
@@ -799,6 +835,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._set_status("●", _green(), "Prêt")
             self._send_btn.setEnabled_(True)
             self._is_dragging = False
+            # Success sound + notification
+            try:
+                AppKit.NSSound.soundNamed_("Hero").play()
+            except Exception:
+                pass
+            self._send_notification("Lucie", f"Réponse prête en {latency:.1f}s")
             # Onboarding: schedule next step
             next_step = getattr(self, "_onboard_next_step", None)
             if next_step is not None:
@@ -863,6 +905,10 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._send_btn.setEnabled_(True)
         self._is_processing = False
         self._is_dragging = False
+        try:
+            AppKit.NSSound.soundNamed_("Basso").play()
+        except Exception:
+            pass
 
     # ── Message display ───────────────────────────────────────────────────────
 
@@ -1073,6 +1119,46 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._onboard_next_step_fn = None
             fn()
 
+    # ── Window appearance animation ───────────────────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def animateIn(self) -> None:
+        """Spring entrance: scale 0.95→1.0 + fade-in."""
+        self.setAlphaValue_(0.0)
+        content = self.contentView()
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.25)
+        self.animator().setAlphaValue_(ALPHA)
+        AppKit.NSAnimationContext.endGrouping()
+        layer = content.layer()
+        anim = Quartz.CABasicAnimation.animationWithKeyPath_("transform.scale")
+        anim.setFromValue_(0.95)
+        anim.setToValue_(1.0)
+        anim.setDuration_(0.3)
+        anim.setTimingFunction_(
+            Quartz.CAMediaTimingFunction.functionWithName_(
+                Quartz.kCAMediaTimingFunctionEaseOut
+            )
+        )
+        layer.addAnimation_forKey_(anim, "springIn")
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _show_drop_highlight(self, visible: bool) -> None:
+        """Show/hide blue drop-target border."""
+        self._drop_highlight.setAlphaValue_(1.0 if visible else 0.0)
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _send_notification(self, title: str, body: str) -> None:
+        """Send a macOS user notification."""
+        try:
+            note = AppKit.NSUserNotification.alloc().init()
+            note.setTitle_(title)
+            note.setInformativeText_(body)
+            centre = AppKit.NSUserNotificationCenter.defaultUserNotificationCenter()
+            centre.deliverNotification_(note)
+        except Exception as e:
+            logger.debug(f"Notification error: {e}")
+
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     def close(self) -> None:
@@ -1101,6 +1187,7 @@ class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
             self.window.makeKeyAndOrderFront_(None)
             self.window.orderFrontRegardless()
             self.window.display()
+            self.window.animateIn()
 
             if hasattr(self.window, "_input"):
                 self.window.makeFirstResponder_(self.window._input)
