@@ -8,6 +8,7 @@ Usage :
 Exemples :
     python -m lucie_v1_standalone "Mon employeur veut faire un licenciement économique"
     python -m lucie_v1_standalone "PSE en cours" --document "$(cat lettre.txt)"
+    python -m lucie_v1_standalone "Analyse du dossier" --dossier ./mon_dossier/ --force
     python -m lucie_v1_standalone "Licenciement éco" --force --quiet
 """
 
@@ -30,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Exemples :\n"
             '  python -m lucie_v1_standalone "Mon employeur veut faire un licenciement économique"\n'
             '  python -m lucie_v1_standalone "PSE en cours" --document "$(cat lettre.txt)"\n'
+            '  python -m lucie_v1_standalone "Analyse complète" --dossier ./mon_dossier/ --force\n'
             '  python -m lucie_v1_standalone "Licenciement éco" --force\n'
         ),
     )
@@ -44,6 +46,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="TEXTE",
         help="Texte du document à analyser (lettre de licenciement, convocation, etc.).",
+    )
+    parser.add_argument(
+        "--dossier",
+        default=None,
+        metavar="CHEMIN",
+        help="Chemin vers un dossier complet à analyser (jusqu'à 50 fichiers : PDF, Word, TXT, MD).",
     )
     parser.add_argument(
         "--force", "-f",
@@ -79,6 +87,7 @@ async def main() -> None:
     result = await run(
         query=args.query,
         document_text=args.document,
+        dossier_path=args.dossier,
         force=args.force,
         verbose=not args.quiet,
     )

@@ -8,6 +8,7 @@ Aucune dépendance au reste du repo.
 
 import json
 from collections import Counter
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # ─── Mots-clés définissant le scope V1 ───────────────────────────────────────
@@ -94,3 +95,10 @@ def validate(
             "document": None,
             "refusal_reason": REFUSAL_MESSAGE,
         }
+
+
+def is_dossier(path: Optional[str]) -> bool:
+    """Vérifie si le chemin pointe vers un dossier (vs un fichier unique)."""
+    if not path:
+        return False
+    return Path(path).is_dir()

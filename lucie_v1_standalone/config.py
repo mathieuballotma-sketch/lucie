@@ -63,3 +63,25 @@ VERIFICATEUR_PARAMS = {
     "num_predict": 512,   # Réduit (2048 → 512) : réponse courte suffisante
     **_BASE_GPU_OPTIONS,
 }
+
+# ─── Analyse de dossiers complets ────────────────────────────────────────────
+DOSSIER_LECTEUR_PARAMS = {
+    "model": SPEED_MODEL,
+    "temperature": 0.1,   # Très bas pour l'extraction factuelle
+    "top_p": 1,
+    "num_predict": 1024,
+    **_BASE_GPU_OPTIONS,
+}
+
+DOSSIER_SYNTHESE_PARAMS = {
+    "model": SPEED_MODEL,
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "repeat_penalty": 1.1,
+    "num_predict": 4096,
+    **_BASE_GPU_OPTIONS,
+}
+
+MAX_CHUNK_TOKENS = 2000       # Tokens max par chunk (laisse ~2000 pour le prompt)
+MAX_FILES_PER_DOSSIER = 50    # Limite de fichiers par dossier
+DOSSIER_TIMEOUT = 600.0       # 10 min — dossiers volumineux

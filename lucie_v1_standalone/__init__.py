@@ -9,7 +9,8 @@ Usage :
     python -m lucie_v1_standalone --help
 """
 
+from .dossier_analyzer import analyze_dossier
 from .pipeline import run
 from .router import SCOPE_KEYWORDS, validate as router_validate
 
-__all__ = ["run", "router_validate", "SCOPE_KEYWORDS"]
+__all__ = ["run", "analyze_dossier", "router_validate", "SCOPE_KEYWORDS"]
