@@ -135,6 +135,7 @@ class VerificateurAgent(TerrainMixin, BaseAgent):
                 temperature=0,
                 top_p=1,
                 max_tokens=2048,
+                top_p=1.0,
             )
             llm_parsed = self.extract_json_from_response(response)
             if llm_parsed and "note_corrigee" in llm_parsed:

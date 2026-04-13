@@ -127,6 +127,8 @@ class ProviderManager:
             max_tokens: Nombre maximum de tokens à générer.
             timeout: Timeout spécifique pour cette requête (en secondes).
             images: Liste de chaînes base64 (images) pour les requêtes multimodales.
+            top_p: Nucleus sampling — 1.0 = désactivé.
+            repeat_penalty: Pénalité de répétition — 1.0 = désactivé.
         """
         start_time = time.time()
         routed = False

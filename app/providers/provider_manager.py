@@ -140,6 +140,8 @@ class HybridProviderManager:
             temperature: Température de génération.
             max_tokens: Tokens maximum à générer.
             timeout: Timeout en secondes (optionnel).
+            top_p: Nucleus sampling — 1.0 = désactivé.
+            repeat_penalty: Pénalité de répétition — 1.0 = désactivé.
 
         Returns:
             Texte généré.
@@ -190,6 +192,8 @@ class HybridProviderManager:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     timeout=timeout,
+                    top_p=top_p,
+                    repeat_penalty=repeat_penalty,
                 )
 
             def _ollama_fallback() -> str:
