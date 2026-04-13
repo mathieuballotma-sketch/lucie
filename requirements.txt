@@ -310,3 +310,4 @@ json5>=0.9.14
 openwakeword
 yara-python
 beautifulsoup4
+pdfplumber

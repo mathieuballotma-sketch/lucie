@@ -11,6 +11,7 @@ Aucune dépendance au reste du repo.
 """
 
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # ─── Patterns de salutation / interaction simple ──────────────────────────────
@@ -177,3 +178,10 @@ def validate(
         "refusal_reason": None,
         "_level": r["level"],  # champ interne pour le pipeline
     }
+
+
+def is_dossier(path: Optional[str]) -> bool:
+    """Vérifie si le chemin pointe vers un dossier (vs un fichier unique)."""
+    if not path:
+        return False
+    return Path(path).is_dir()

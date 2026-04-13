@@ -15,9 +15,9 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from . import lecteur, ollama_client, redacteur, retriever, verificateur
-from .config import DIRECT_PARAMS, PIPELINE_TIMEOUT
-from .router import route as router_route
+from . import dossier_analyzer, lecteur, ollama_client, redacteur, retriever, verificateur
+from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
+from .router import is_dossier, route as router_route, validate as router_validate
 
 _DIRECT_SYSTEM_PATH = Path(__file__).parent / "prompts" / "direct_system.txt"
 
@@ -25,6 +25,7 @@ _DIRECT_SYSTEM_PATH = Path(__file__).parent / "prompts" / "direct_system.txt"
 async def run(
     query: str,
     document_text: Optional[str] = None,
+    dossier_path: Optional[str] = None,
     force: bool = False,
     verbose: bool = False,
 ) -> str:
@@ -34,12 +35,17 @@ async def run(
     Args:
         query: Requête de l'utilisateur.
         document_text: Texte du document à analyser (optionnel).
+        dossier_path: Chemin vers un dossier complet (optionnel).
         force: Force le mode search sans routing (pour les démos).
         verbose: Affiche les étapes dans le terminal.
 
     Returns:
         Réponse en Markdown, ou message d'erreur.
     """
+    # Mode dossier : pipeline dédié avec timeout étendu
+    if dossier_path and is_dossier(dossier_path):
+        return await _run_dossier(query, dossier_path, force, verbose)
+
     start = time.time()
     if verbose:
         print(f"⚖️  Pipeline démarré — {query[:80]}…", flush=True)
@@ -61,6 +67,47 @@ async def run(
         )
     except Exception as exc:
         return f"**Erreur pipeline** : {exc}"
+
+
+async def _run_dossier(
+    query: str,
+    dossier_path: str,
+    force: bool,
+    verbose: bool,
+) -> str:
+    """Exécute l'analyse de dossier complet."""
+    start = time.time()
+    if verbose:
+        print(f"📁 Pipeline DOSSIER démarré — {query[:80]}…", flush=True)
+
+    # Router (scope check) — on utilise force pour les dossiers si demandé
+    if not force:
+        routing = router_validate(query, force=False)
+        if not routing["valid"]:
+            return str(routing["refusal_reason"])
+
+    try:
+        report = await asyncio.wait_for(
+            dossier_analyzer.analyze_dossier(
+                folder_path=dossier_path,
+                instruction=query,
+                verbose=verbose,
+            ),
+            timeout=DOSSIER_TIMEOUT,
+        )
+        elapsed = time.time() - start
+        if verbose:
+            print(f"📁 Pipeline DOSSIER terminé en {elapsed:.1f}s", flush=True)
+        return dossier_analyzer.format_report(report)
+    except asyncio.TimeoutError:
+        elapsed = time.time() - start
+        return (
+            f"**Erreur** : l'analyse du dossier a dépassé le timeout de "
+            f"{DOSSIER_TIMEOUT:.0f}s après {elapsed:.1f}s. "
+            "Réduisez le nombre de fichiers ou la taille du dossier."
+        )
+    except Exception as exc:
+        return f"**Erreur analyse dossier** : {exc}"
 
 
 async def _run_pipeline(
