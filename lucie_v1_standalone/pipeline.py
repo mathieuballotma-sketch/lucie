@@ -1,7 +1,10 @@
 """
-LegalPipeline — orchestrateur linéaire du pipeline V1 droit social.
+LegalPipeline — orchestrateur intelligent à 3 niveaux.
 
-Flux : Router → Lecteur → Retriever → Rédacteur → Vérificateur
+Niveaux de traitement :
+  1. direct   → 1 appel LLM avec prompt minimaliste (2-3s)
+  2. search   → Retriever → Rédacteur → Vérificateur, sans Lecteur (15-20s)
+  3. document → Pipeline complet : Lecteur → Retriever → Rédacteur → Vérificateur (30-45s)
 
 Aucune dépendance au reste du repo.
 """
@@ -9,11 +12,14 @@ Aucune dépendance au reste du repo.
 import asyncio
 import json
 import time
+from pathlib import Path
 from typing import Optional
 
-from . import lecteur, redacteur, retriever, verificateur
-from .config import PIPELINE_TIMEOUT
-from .router import validate as router_validate
+from . import lecteur, ollama_client, redacteur, retriever, verificateur
+from .config import DIRECT_PARAMS, PIPELINE_TIMEOUT
+from .router import route as router_route
+
+_DIRECT_SYSTEM_PATH = Path(__file__).parent / "prompts" / "direct_system.txt"
 
 
 async def run(
@@ -23,16 +29,16 @@ async def run(
     verbose: bool = False,
 ) -> str:
     """
-    Exécute le pipeline complet avec timeout global.
+    Exécute le pipeline au niveau approprié avec timeout global.
 
     Args:
-        query: Requête de l'avocat.
+        query: Requête de l'utilisateur.
         document_text: Texte du document à analyser (optionnel).
-        force: Bypass le filtrage du Router (pour les démos).
+        force: Force le mode search sans routing (pour les démos).
         verbose: Affiche les étapes dans le terminal.
 
     Returns:
-        Note finale validée en Markdown, ou message de refus/erreur.
+        Réponse en Markdown, ou message d'erreur.
     """
     start = time.time()
     if verbose:
@@ -64,53 +70,116 @@ async def _run_pipeline(
     verbose: bool,
 ) -> str:
 
-    # ── Étape 1 : Router (< 10ms) ─────────────────────────────────────────────
-    routing = router_validate(query, document_text, force=force)
-    if not routing["valid"]:
-        if verbose:
-            print(f"❌ Router : refus — {routing['refusal_reason'][:60]}…", flush=True)
-        return str(routing["refusal_reason"])
+    # ── Routage (< 1ms) ───────────────────────────────────────────────────────
+    routing = router_route(query, document_text, force=force)
+    level = routing["level"]
 
-    doc = routing.get("document") or document_text
     if verbose:
-        print("✅ Router : scope validé", flush=True)
+        print(f"🔀 Router → niveau {level} ({routing['intent']})", flush=True)
 
-    # ── Étape 2 : Lecteur (~3-5s) — uniquement si un document est fourni ──────
-    if doc:
-        if verbose:
-            print("📄 Lecteur : extraction des faits…", flush=True)
-        faits_json = await lecteur.handle(doc)
+    # ── Niveau 1 : Réponse directe ────────────────────────────────────────────
+    if level == "direct":
+        return await _direct_response(query, verbose)
 
-        try:
-            faits_data = json.loads(faits_json)
-            if "erreur" in faits_data:
-                return (
-                    f"**Erreur Lecteur** : {faits_data['erreur']}\n\n"
-                    "Le document fourni ne semble pas être une lettre "
-                    "de licenciement économique."
-                )
-        except json.JSONDecodeError:
-            pass  # JSON mal formé mais on continue
+    # ── Niveau 2 : Recherche juridique (sans document) ────────────────────────
+    if level == "search":
+        faits_json = json.dumps(
+            {"type_document": "requete", "query": query},
+            ensure_ascii=False,
+        )
+        return await _search_and_write(query, faits_json, verbose)
 
-        if verbose:
-            print("✅ Lecteur : faits extraits", flush=True)
-    else:
-        # Mode question pure — pas de document à analyser
-        faits_json = json.dumps({"type_document": "requete", "query": query}, ensure_ascii=False)
-        if verbose:
-            print("ℹ️  Lecteur : mode requête (sans document)", flush=True)
+    # ── Niveau 3 : Pipeline complet (avec document) ───────────────────────────
+    # level == "document"
+    doc = routing.get("document") or document_text
+    return await _full_pipeline(query, doc, verbose)
 
-    # ── Étape 3 : Retriever (~2-4s) ───────────────────────────────────────────
+
+# ─── Niveau 1 ─────────────────────────────────────────────────────────────────
+
+async def _direct_response(query: str, verbose: bool) -> str:
+    """Réponse directe sans pipeline — prompt minimaliste, ~2-3s."""
+    if verbose:
+        print("💬 Réponse directe…", flush=True)
+
+    system = _DIRECT_SYSTEM_PATH.read_text(encoding="utf-8")
+    options = {k: v for k, v in DIRECT_PARAMS.items() if k != "model"}
+
+    return await ollama_client.generate(
+        model=DIRECT_PARAMS["model"],
+        prompt=query,
+        system=system,
+        options=options,
+    )
+
+
+# ─── Niveau 2 ─────────────────────────────────────────────────────────────────
+
+async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
+    """Recherche dans la base + rédaction, sans Lecteur — ~15-20s."""
+
+    # Retriever
     if verbose:
         print("🔍 Retriever : recherche dans la base curatée…", flush=True)
     sources_json = await retriever.handle(faits_json)
     if verbose:
         print("✅ Retriever : sources récupérées", flush=True)
 
-    # ── Étape 4 : Rédacteur (~8-15s) ──────────────────────────────────────────
+    # Rédacteur (mode search : prompt dédié)
+    if verbose:
+        print("✍️  Rédacteur : rédaction de la réponse…", flush=True)
+    note_markdown = await redacteur.handle(faits_json, sources_json, mode="search")
+
+    if note_markdown.startswith("**RÉDACTION IMPOSSIBLE**"):
+        # Pas de sources → réponse directe de secours
+        return await _direct_response(query, verbose)
+
+    if verbose:
+        print("✅ Rédacteur : réponse rédigée", flush=True)
+
+    # Vérificateur
+    if verbose:
+        print("🔎 Vérificateur : contrôle des citations…", flush=True)
+    verification_json = await verificateur.handle(note_markdown, sources_json)
+
+    return _format_final(note_markdown, verification_json, verbose)
+
+
+# ─── Niveau 3 ─────────────────────────────────────────────────────────────────
+
+async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
+    """Pipeline complet avec Lecteur — ~30-45s."""
+
+    # Lecteur
+    if verbose:
+        print("📄 Lecteur : extraction des faits…", flush=True)
+    faits_json = await lecteur.handle(doc)
+
+    try:
+        faits_data = json.loads(faits_json)
+        if "erreur" in faits_data:
+            return (
+                f"**Erreur Lecteur** : {faits_data['erreur']}\n\n"
+                "Le document fourni ne semble pas être une lettre "
+                "de licenciement économique."
+            )
+    except json.JSONDecodeError:
+        pass
+
+    if verbose:
+        print("✅ Lecteur : faits extraits", flush=True)
+
+    # Retriever
+    if verbose:
+        print("🔍 Retriever : recherche dans la base curatée…", flush=True)
+    sources_json = await retriever.handle(faits_json)
+    if verbose:
+        print("✅ Retriever : sources récupérées", flush=True)
+
+    # Rédacteur (mode document : prompt formel complet)
     if verbose:
         print("✍️  Rédacteur : rédaction de la note…", flush=True)
-    note_markdown = await redacteur.handle(faits_json, sources_json)
+    note_markdown = await redacteur.handle(faits_json, sources_json, mode="document")
 
     if note_markdown.startswith("**RÉDACTION IMPOSSIBLE**"):
         return (
@@ -126,11 +195,18 @@ async def _run_pipeline(
     if verbose:
         print("✅ Rédacteur : note rédigée", flush=True)
 
-    # ── Étape 5 : Vérificateur (~2-3s) ────────────────────────────────────────
+    # Vérificateur
     if verbose:
         print("🔎 Vérificateur : contrôle des citations…", flush=True)
     verification_json = await verificateur.handle(note_markdown, sources_json)
 
+    return _format_final(note_markdown, verification_json, verbose)
+
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _format_final(note_markdown: str, verification_json: str, verbose: bool) -> str:
+    """Applique le résultat du vérificateur et ajoute le disclaimer."""
     try:
         verification = json.loads(verification_json)
         note_finale = verification.get("note_corrigee", note_markdown)
@@ -144,7 +220,6 @@ async def _run_pipeline(
     if verbose:
         print(f"✅ Vérificateur : {verdict} (score={score:.2f})", flush=True)
 
-    # ── Réponse finale ────────────────────────────────────────────────────────
     disclaimer = (
         "\n\n---\n"
         f"_Note générée par Lucie V1 — "

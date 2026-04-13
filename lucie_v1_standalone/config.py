@@ -63,3 +63,15 @@ VERIFICATEUR_PARAMS = {
     "num_predict": 512,   # Réduit (2048 → 512) : réponse courte suffisante
     **_BASE_GPU_OPTIONS,
 }
+
+# ─── Niveau 1 — Réponse directe (chat simple, définitions, salutations) ───────
+# Contexte minimal + num_predict court = 2-3s au lieu de 15-30s
+DIRECT_PARAMS = {
+    "model": SPEED_MODEL,
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "num_predict": 512,   # Court — réponse directe, pas de note longue
+    "num_ctx": 2048,      # Fenêtre réduite (vs 4096) : prompt simple, moins de mémoire GPU
+    "num_batch": 512,
+    "num_gpu": 99,
+}

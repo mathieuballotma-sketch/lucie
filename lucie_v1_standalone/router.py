@@ -1,96 +1,179 @@
 """
-LegalRouter — Router déterministe, 0 appel LLM.
-Valide que la requête porte sur le licenciement économique (scope V1).
-Refuse immédiatement toute requête hors scope avec un message explicite.
+LegalRouter — Router déterministe 3 niveaux, 0 appel LLM.
 
+Catégorise chaque requête en :
+  - direct   : réponse immédiate sans pipeline (salutations, définitions, questions générales)
+  - search   : recherche dans la base + rédaction (questions juridiques précises)
+  - document : pipeline complet avec Lecteur (document fourni)
+
+Temps de routage : < 1ms (pur string matching).
 Aucune dépendance au reste du repo.
 """
 
-import json
-from collections import Counter
+import re
 from typing import Any, Dict, List, Optional
 
-# ─── Mots-clés définissant le scope V1 ───────────────────────────────────────
-SCOPE_KEYWORDS: List[str] = [
+# ─── Patterns de salutation / interaction simple ──────────────────────────────
+# Matche en début ou en totalité de la requête
+_GREETING_RE = re.compile(
+    r'^(bonjour|bonsoir|salut|hello|hi|hey|coucou'
+    r'|bonne journée|bonne soirée|bonne nuit'
+    r'|merci|thanks|thank you|au revoir|bye|à bientôt|à plus'
+    r'|ok|okay|d\'accord|parfait|super|très bien|nickel'
+    r'|oui|non|peut-être|peut etre'
+    r'|aide|help)[\s!.,?;:]*$',
+    re.IGNORECASE | re.UNICODE,
+)
+
+# ─── Mots-clés déclenchant le mode SEARCH ────────────────────────────────────
+# Ces termes indiquent une question juridique précise nécessitant la base curatée.
+_SEARCH_TRIGGERS: List[str] = [
+    # Procédure / actes
     "licenciement économique",
     "licenciement éco",
     "licenciement eco",
     "motif économique",
     "plan social",
-    "PSE",
     "rupture conventionnelle collective",
-    "RCC",
     "lettre de licenciement",
     "procédure de licenciement",
-    "L1233",
-    "L1237",
-    "Code du travail",
-    "indemnités",
-    "préavis",
-    "reclassement",
-    "droit social",
-    "droit du travail",
-    "licencié",
-    "licenciée",
+    "entretien préalable",
+    "notification de licenciement",
+    "plan de reclassement",
+    "congé de reclassement",
+    "contrat de sécurisation professionnelle",
+    # Textes de loi
+    "l1233",
+    "l.1233",
+    "l1237",
+    "l.1237",
+    "article l.",
+    "article l ",
+    "code du travail",
+    # Thèmes précis nécessitant des sources
+    "indemnité de licenciement",
+    "indemnités de licenciement",
+    "préavis de licenciement",
+    "délai de préavis",
+    "reclassement obligatoire",
+    "salarié protégé",
+    "représentant du personnel",
+    "délégué syndical",
+    "comité social et économique",
+    "faute grave",
+    "faute lourde",
+    "prud'hommes",
+    "prudhommes",
+    "conseil de prud",
     "suppression de poste",
     "difficultés économiques",
     "sauvegarde de la compétitivité",
     "mutations technologiques",
-    "réorganisation",
+    "réorganisation de l'entreprise",
+    "cessation d'activité",
+    "licencier",
+    "licencié économiquement",
+    "licenciée économiquement",
+    "délai pour contester",
+    "délai de recours",
+    "délai de prescription",
+    "pse obligatoire",
+    " pse ",
+    " rcc ",
 ]
 
-REFUSAL_MESSAGE = (
-    "Cette requête sort du périmètre de la démo V1 (licenciement économique). "
-    "Je ne peux traiter que les questions relatives au droit social du travail "
-    "sur ce thème précis. Merci de reformuler ou de contacter un agent général."
-)
 
-GENERATIVE_THRESHOLD = 50  # 50 refus hors scope avant proposition d'extension
+def _is_greeting(text: str) -> bool:
+    """Retourne True si la requête est une salutation ou interaction triviale."""
+    return bool(_GREETING_RE.match(text.strip()))
 
 
+def _needs_search(text: str) -> bool:
+    """Retourne True si la requête contient des mots-clés nécessitant la base curatée."""
+    lower = text.lower()
+    return any(trigger in lower for trigger in _SEARCH_TRIGGERS)
+
+
+def route(
+    query: str,
+    document_text: Optional[str] = None,
+    force: bool = False,
+) -> Dict[str, Any]:
+    """
+    Catégorise la requête en 3 niveaux de traitement.
+
+    Args:
+        query: Texte de la requête utilisateur.
+        document_text: Texte du document joint (optionnel).
+        force: Si True, force le mode search (bypass routing, pour les démos).
+
+    Returns:
+        {
+            "level": "direct" | "search" | "document",
+            "intent": str,
+            "document": str | None,
+        }
+    """
+    # Niveau 3 : document fourni → pipeline complet
+    if document_text:
+        return {
+            "level": "document",
+            "intent": "analyse_document",
+            "document": document_text,
+        }
+
+    # force sans document → search direct (pour les démos)
+    if force:
+        return {
+            "level": "search",
+            "intent": "recherche_forcee",
+            "document": None,
+        }
+
+    combined = query.strip()
+
+    # Niveau 1 : salutation / interaction triviale
+    if _is_greeting(combined):
+        return {
+            "level": "direct",
+            "intent": "salutation",
+            "document": None,
+        }
+
+    # Niveau 2 : question juridique précise nécessitant la base
+    if _needs_search(combined):
+        return {
+            "level": "search",
+            "intent": "recherche_juridique",
+            "document": None,
+        }
+
+    # Niveau 1 par défaut : question générale, définition, hors-scope
+    return {
+        "level": "direct",
+        "intent": "question_generale",
+        "document": None,
+    }
+
+
+# ─── Rétrocompatibilité : validate() redirige vers route() ───────────────────
 def validate(
     query: str,
     document_text: Optional[str] = None,
     force: bool = False,
 ) -> Dict[str, Any]:
     """
-    Valide une requête contre le scope V1.
+    Compatibilité ascendante — préférer route() pour le nouveau code.
 
-    Args:
-        query: Texte de la requête utilisateur.
-        document_text: Texte du document joint (optionnel).
-        force: Si True, bypass le filtrage (utile pour les démos).
-
-    Returns:
-        {
-            "valid": bool,
-            "intent": str,
-            "document": str | None,
-            "refusal_reason": str | None,
-        }
+    Retourne le format historique {valid, intent, document, refusal_reason}
+    en mappant les niveaux 2 et 3 sur valid=True, le niveau 1 sur valid=True
+    (les questions simples sont désormais traitées en mode direct, pas refusées).
     """
-    if force:
-        return {
-            "valid": True,
-            "intent": "analyse_licenciement",
-            "document": document_text,
-            "refusal_reason": None,
-        }
-
-    combined = (query + " " + (document_text or "")).lower()
-    hit = any(kw.lower() in combined for kw in SCOPE_KEYWORDS)
-
-    if hit:
-        return {
-            "valid": True,
-            "intent": "analyse_licenciement",
-            "document": document_text,
-            "refusal_reason": None,
-        }
-    else:
-        return {
-            "valid": False,
-            "intent": "hors_scope",
-            "document": None,
-            "refusal_reason": REFUSAL_MESSAGE,
-        }
+    r = route(query, document_text, force)
+    return {
+        "valid": True,  # plus de refus : tout est traité (direct, search ou document)
+        "intent": r["intent"],
+        "document": r.get("document"),
+        "refusal_reason": None,
+        "_level": r["level"],  # champ interne pour le pipeline
+    }
