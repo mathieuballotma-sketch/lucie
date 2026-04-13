@@ -38,6 +38,7 @@ async def generate(
         "model": model,
         "prompt": prompt,
         "stream": False,
+        "keep_alive": "10m",  # Garde le modèle en mémoire entre les appels
     }
     if system:
         payload["system"] = system

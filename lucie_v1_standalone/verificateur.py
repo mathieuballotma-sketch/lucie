@@ -22,8 +22,9 @@ _SYSTEM_PROMPT_PATH = Path(__file__).parent / "prompts" / "verificateur_system.t
 
 
 def _extract_citations(note: str) -> List[str]:
-    """Extrait toutes les références [XXX] présentes dans la note."""
-    return re.findall(r'\[([A-Za-z0-9_\-\.]+)\]', note)
+    """Extrait toutes les références [REF: xxx] et [xxx] présentes dans la note."""
+    matches = re.findall(r'\[REF:\s*([^\]]+)\]|\[([A-Za-z0-9_\-\.]+)\]', note)
+    return [m[0].strip() or m[1] for m in matches if m[0] or m[1]]
 
 
 def _build_source_ids(sources_json: str) -> Dict[str, str]:
