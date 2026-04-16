@@ -86,7 +86,7 @@ class TestLegalRouter:
         router.JOURNAL_DIR = tmp_path / "journals"
         result = router.validate("recette de gâteau au chocolat")
         assert result["valid"] is False
-        assert result["intent"] == "hors_scope"
+        assert result["intent"] == "out_of_scope"
         assert result["refusal_reason"] == REFUSAL_MESSAGE
         assert result["document"] is None
 
