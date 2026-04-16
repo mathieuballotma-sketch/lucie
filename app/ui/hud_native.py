@@ -100,6 +100,76 @@ def _red(a: float = 0.9) -> Any:
     return ns_color(1.0, 0.25, 0.20, a)
 
 
+# ─── ProgressLineView ────────────────────────────────────────────────────────
+class ProgressLineView(AppKit.NSView):  # type: ignore[misc]
+    """Ligne lumineuse fine (3px) en haut du HUD, pulse doucement pendant le traitement.
+
+    Utilise un CAGradientLayer qui change de couleur selon l'état :
+    thinking=orange, searching=bleu, writing=violet, done/error=fade out.
+    """
+    _LINE_H: float = 3.0
+
+    def initWithFrame_(self, frame: Any) -> Any:
+        self = objc.super(ProgressLineView, self).initWithFrame_(frame)
+        if self is not None:
+            self.setWantsLayer_(True)
+            # Track de fond très subtil
+            track = Quartz.CALayer.layer()
+            track.setFrame_(Quartz.CGRectMake(0, 0, WINDOW_W, self._LINE_H))
+            track.setBackgroundColor_(ns_white(1.0, 0.06).CGColor())
+            self.layer().addSublayer_(track)
+            # Gradient lumineux (scan horizontal)
+            self._glow = Quartz.CAGradientLayer.layer()
+            self._glow.setFrame_(Quartz.CGRectMake(0, 0, WINDOW_W, self._LINE_H))
+            self._glow.setStartPoint_(Quartz.CGPointMake(0.0, 0.5))
+            self._glow.setEndPoint_(Quartz.CGPointMake(1.0, 0.5))
+            self._set_glow_color((0.27, 0.52, 0.97, 0.9))
+            self.layer().addSublayer_(self._glow)
+            self.setAlphaValue_(0.0)
+        return self
+
+    def _set_glow_color(self, rgba: Tuple[float, ...]) -> None:
+        r, g, b, _ = rgba
+        c0 = ns_color(r, g, b, 0.0).CGColor()
+        c1 = ns_color(r, g, b, 0.9).CGColor()
+        c2 = ns_color(r, g, b, 0.0).CGColor()
+        self._glow.setColors_([c0, c1, c2])
+
+    def start_pulsing(self, rgba: Tuple[float, ...]) -> None:
+        """Affiche et pulse la ligne avec la couleur de l'état actif."""
+        self._set_glow_color(rgba)
+        self._glow.removeAllAnimations()
+        # Pulse opacité
+        pulse = Quartz.CABasicAnimation.animationWithKeyPath_("opacity")
+        pulse.setFromValue_(0.25)
+        pulse.setToValue_(1.0)
+        pulse.setDuration_(0.9)
+        pulse.setAutoreverses_(True)
+        pulse.setRepeatCount_(float("inf"))
+        pulse.setTimingFunction_(
+            Quartz.CAMediaTimingFunction.functionWithName_(
+                Quartz.kCAMediaTimingFunctionEaseInEaseOut
+            )
+        )
+        self._glow.addAnimation_forKey_(pulse, "pulse")
+        # Fade in view
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.2)
+        self.animator().setAlphaValue_(1.0)
+        AppKit.NSAnimationContext.endGrouping()
+
+    def stop_pulsing(self) -> None:
+        """Arrête la pulse et fait disparaître la ligne."""
+        self._glow.removeAllAnimations()
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.4)
+        self.animator().setAlphaValue_(0.0)
+        AppKit.NSAnimationContext.endGrouping()
+
+    def isOpaque(self) -> bool:
+        return False
+
+
 # ─── DraggableView ───────────────────────────────────────────────────────────
 class DraggableView(AppKit.NSView):  # type: ignore[misc]
     def initWithFrame_(self, frame: Any) -> Any:
@@ -595,6 +665,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         )
         self._drop_highlight.setAlphaValue_(0.0)
         content.addSubview_(self._drop_highlight)
+
+        # ══ PROGRESS LINE (top edge du HUD) ══════════════════════════════════
+        self._progress_line = ProgressLineView.alloc().initWithFrame_(
+            make_rect(0, WINDOW_H - ProgressLineView._LINE_H, WINDOW_W, ProgressLineView._LINE_H)
+        )
+        content.addSubview_(self._progress_line)
 
         # Predictor monitor — reschedules itself in typingTimerFired_
         self._last_text: str = ""
