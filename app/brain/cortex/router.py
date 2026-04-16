@@ -19,16 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class RoutePath(Enum):
-    """10 chemins de routage possibles."""
+    """3 chemins de routage actifs."""
     FAST_PATH        = "fast_path"        # sans LLM
     VISUAL_RESEARCH  = "visual_research"  # Safari recherche visible
-    COMPUTER         = "computer_control"
-    CREATOR          = "creator"
-    FILE             = "file_agent"
-    REMINDER         = "reminder"
-    WORKSPACE        = "workspace_agent"
-    KNOWLEDGE        = "knowledge_agent"
-    PLANNER          = "planner"
     FALLBACK         = "fallback"
 
 
