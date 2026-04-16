@@ -10,8 +10,10 @@ Appelé via LucidEngine.process_legal_query() (à ajouter dans engine.py).
 import asyncio
 import json
 import time
+from pathlib import Path
 from typing import Any, Optional
 
+from ...services.audit_trail import AuditTrail
 from ...utils.logger import logger
 from .lecteur import LecteurAgent
 from .redacteur import RedacteurAgent
@@ -47,6 +49,10 @@ class LegalPipeline:
         self.verificateur = VerificateurAgent(
             llm_service=manager, bus=bus, event_bus=event_bus
         )
+        audit_dir = Path("./data/audit")
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        self.audit_trail = AuditTrail(db_path=audit_dir / "legal_pipeline.db")
+        self._audit_started = False
         logger.info("⚖️  LegalPipeline V1 initialisé")
 
     def set_token(self, token: str) -> None:
@@ -103,9 +109,21 @@ class LegalPipeline:
         document_text: Optional[str],
         force: bool,
     ) -> str:
+        if not self._audit_started:
+            await self.audit_trail.start()
+            self._audit_started = True
+
+        await self.audit_trail.record(
+            "pipeline.start", user="system",
+            data={"query": query[:200], "has_document": document_text is not None},
+        )
 
         # ── Étape 1 : Router (< 10ms) ─────────────────────────────────────────
         routing = self.router.validate(query, document_text, force=force)
+        await self.audit_trail.record(
+            "pipeline.routing", user="system",
+            data={"valid": routing["valid"], "reason": routing.get("refusal_reason", "")[:200]},
+        )
         if not routing["valid"]:
             logger.info(f"Router : refus — {routing['refusal_reason'][:60]}…")
             return str(routing["refusal_reason"])
@@ -129,11 +147,13 @@ class LegalPipeline:
             pass  # JSON mal formé mais on continue
 
         logger.info("✅ Lecteur : faits extraits")
+        await self.audit_trail.record("pipeline.lecteur", user="system", data={"ok": True})
 
         # ── Étape 3 : Retriever (~2-4s) ───────────────────────────────────────
         logger.info("🔍 Retriever : recherche dans la base curatée…")
         sources_json = await self.retriever.handle(faits_json)
         logger.info("✅ Retriever : sources récupérées")
+        await self.audit_trail.record("pipeline.retriever", user="system", data={"ok": True})
 
         # ── Étape 4 : Rédacteur (~8-15s) ──────────────────────────────────────
         logger.info("✍️  Rédacteur : rédaction de la note…")
@@ -152,6 +172,7 @@ class LegalPipeline:
             )
 
         logger.info("✅ Rédacteur : note rédigée")
+        await self.audit_trail.record("pipeline.redacteur", user="system", data={"ok": True})
 
         # ── Étape 5 : Vérificateur (~2-3s) ────────────────────────────────────
         logger.info("🔎 Vérificateur : contrôle des citations…")
@@ -168,6 +189,10 @@ class LegalPipeline:
             verdict = "ERREUR VÉRIFICATION"
 
         logger.info(f"✅ Vérificateur : {verdict} (score={score:.2f})")
+        await self.audit_trail.record(
+            "pipeline.verificateur", user="system",
+            data={"verdict": verdict, "score": score},
+        )
 
         # ── Réponse finale ────────────────────────────────────────────────────
         disclaimer = (

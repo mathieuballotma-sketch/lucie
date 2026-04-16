@@ -224,6 +224,13 @@ class AuditTrail:
     ) -> None:
         self._db_path = Path(db_path)
         env_secret = os.environ.get(_AUDIT_SECRET_ENV, "")
+        if not env_secret and secret is None:
+            logger.warning(
+                "AUDIT_HMAC_SECRET non configuré — secret aléatoire utilisé "
+                "(les HMAC ne seront pas reproductibles d'une session à l'autre). "
+                "Définissez la variable d'environnement AUDIT_HMAC_SECRET pour "
+                "une chaîne d'audit stable et vérifiable."
+            )
         self._secret: bytes = secret or (
             env_secret.encode("utf-8") if env_secret else secrets.token_bytes(32)
         )
