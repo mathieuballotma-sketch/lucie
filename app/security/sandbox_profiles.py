@@ -165,11 +165,12 @@ def generate_sandbox_profile(
 
     # Permissions spécifiques par tier
     if tier == SandboxTier.FILE_ACCESS:
+        project_dir = "/Users/mathieu/Desktop/mon-agence-ia"
         profile += f"""
-;; ── FILE_ACCESS : accès fichiers étendu ──────────
-;; Lecture dans les dossiers utilisateur courants
+;; ── FILE_ACCESS : accès fichiers restreint au projet ─────
+;; Lecture limitée au répertoire du projet (pas de ~/.ssh, ~/Library, etc.)
 (allow file-read*
-    (subpath "/Users")
+    (subpath "{project_dir}")
 )
 ;; Écriture uniquement dans le répertoire de travail
 ;; (déjà autorisé ci-dessus via work_dir)
@@ -178,26 +179,17 @@ def generate_sandbox_profile(
             profile += f'(allow file-read* (subpath "{path}"))\n'
 
     elif tier == SandboxTier.NETWORK_ACCESS:
+        project_dir = "/Users/mathieu/Desktop/mon-agence-ia"
         profile += f"""
-;; ── NETWORK_ACCESS : réseau limité ───────────────
-;; Autoriser les connexions sortantes TCP (HTTP/HTTPS)
+;; ── NETWORK_ACCESS : accès réseau restreint à Ollama local ──
+;; Uniquement localhost:11434 (Ollama) — pas d'accès internet
 (allow network-outbound
-    (remote tcp "*:80")
-    (remote tcp "*:443")
+    (remote tcp "localhost:11434")
 )
 
-;; Autoriser la résolution DNS
-(allow network-outbound
-    (remote udp "*:53")
-)
+;; Lecture fichiers restreinte au répertoire projet
 (allow file-read*
-    (literal "/etc/resolv.conf")
-    (literal "/etc/hosts")
-)
-
-;; Lecture fichiers pour le contexte
-(allow file-read*
-    (subpath "/Users")
+    (subpath "{project_dir}")
 )
 """
 

@@ -84,7 +84,7 @@ class AgentCodeValidator:
 
     FORBIDDEN_IMPORTS: Set[str] = {
         "os", "subprocess", "socket", "requests", "urllib",
-        "shutil", "tempfile", "ctypes", "importlib",
+        "shutil", "tempfile", "ctypes", "importlib", "sys",
     }
 
     FORBIDDEN_BUILTINS: Set[str] = {

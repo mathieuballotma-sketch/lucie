@@ -56,14 +56,19 @@ async def handle(note_markdown: str, sources_json: str) -> str:
     citations = _extract_citations(note_markdown)
 
     # ── Cas : aucune citation dans la note ────────────────────────────────────
+    # Une note sans aucune référence [REF] n'est pas vérifiable.
+    # Score 0.0 et verdict NON VÉRIFIABLE — pas de faux positif "VALIDÉ".
     if not citations:
         result: Dict[str, Any] = {
             "citations_verifiees": [],
             "citations_invalides": [],
             "note_corrigee": note_markdown,
-            "score_fiabilite": 1.0,
-            "verdict": "VALIDÉ",
-            "avertissement": "Aucune citation [REF] détectée dans la note.",
+            "score_fiabilite": 0.0,
+            "verdict": "NON VÉRIFIABLE",
+            "avertissement": (
+                "Aucune citation [REF] détectée dans la note. "
+                "La note ne peut pas être vérifiée sans référence aux sources."
+            ),
         }
         return json.dumps(result, ensure_ascii=False, indent=2)
 
