@@ -348,7 +348,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         # Thinking status label
         self._thinking_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(ind_x + ind_size + 6, header_center_y, 120, 20)
+            make_rect(ind_x + ind_w + 6, header_center_y, 120, 20)
         )
         self._thinking_label.setStringValue_("")
         self._thinking_label.setEditable_(False)
