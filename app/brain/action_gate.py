@@ -2,10 +2,10 @@
 ActionGate — Contrôleur de risque pour les actions des agents.
 
 Classifie chaque action par niveau de risque (1–4) et décide de l'approuver
-ou de la bloquer.  Par défaut le seuil d'auto-approbation est CRITICAL (tout
-passe et ActionGate se contente de journaliser), ce qui assure la compatibilité
-ascendante.  Abaisser ``auto_approve_threshold`` pour activer le blocage des
-actions à risque élevé et exiger une validation utilisateur.
+ou de la bloquer.  Par défaut le seuil d'auto-approbation est HIGH : LOW/MODERATE/HIGH passent
+automatiquement, CRITICAL (irréversible / impact externe) est bloqué et exige
+une validation utilisateur.  Abaisser ``auto_approve_threshold`` à MODERATE
+pour un contrôle encore plus strict.
 
 Niveaux de risque :
     1 — LOW      : lecture seule, aucun effet de bord
@@ -60,15 +60,15 @@ class ActionGate:
     """
     Évalue le risque d'une action agent et décide de l'approuver ou de la bloquer.
 
-    Par défaut, toutes les actions sont auto-approuvées (seuil = CRITICAL) et
-    ActionGate se contente de journaliser les actions à risque élevé.
-    Abaisser ``auto_approve_threshold`` pour activer le blocage.
+    Par défaut le seuil est HIGH : les actions LOW/MODERATE/HIGH sont auto-approuvées,
+    les actions CRITICAL (mail_compose, execute_command) exigent une confirmation.
+    Abaisser ``auto_approve_threshold`` à MODERATE pour un contrôle plus strict.
     """
 
     def __init__(
         self,
         risk_registry: Optional[Dict[str, int]] = None,
-        auto_approve_threshold: int = RiskLevel.CRITICAL,
+        auto_approve_threshold: int = RiskLevel.HIGH,
     ) -> None:
         self.risk_registry: Dict[str, int] = (
             risk_registry if risk_registry is not None else dict(DEFAULT_RISK_REGISTRY)
