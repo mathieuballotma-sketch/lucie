@@ -1,5 +1,5 @@
 # app/ui/hud_native.py
-# HUD v2 — Bloc 6 BMAD — Design modernisé
+# HUD v3 — Design Apple-quality, machine à états, spring animations
 
 from __future__ import annotations
 
@@ -44,6 +44,30 @@ _TEXT_W = WINDOW_W - PADDING * 2                    # 492
 # Streaming parameters — word-chunk feel
 _STREAM_CHUNK = 4        # chars advanced per timer tick
 _STREAM_INTERVAL = 0.04  # seconds between ticks (~100 chars/s)
+
+
+# ─── State machine ───────────────────────────────────────────────────────────
+
+class LucieState:
+    IDLE      = "idle"
+    THINKING  = "thinking"
+    SEARCHING = "searching"
+    WRITING   = "writing"
+    EXECUTING = "executing"
+    DONE      = "done"
+    ERROR     = "error"
+
+
+# (dot_rgba, status_text, sound_name_or_None)
+_STATE_CONFIG: Dict[str, Tuple[Tuple[float, ...], str, Optional[str]]] = {
+    LucieState.IDLE:      ((0.20, 0.85, 0.40, 0.9), "Prête",                   None),
+    LucieState.THINKING:  ((1.00, 0.60, 0.00, 0.9), "Lucie réfléchit…",       None),
+    LucieState.SEARCHING: ((0.27, 0.52, 0.97, 0.9), "Recherche en cours…",    None),
+    LucieState.WRITING:   ((0.70, 0.40, 1.00, 0.9), "Rédaction en cours…",    None),
+    LucieState.EXECUTING: ((1.00, 0.60, 0.00, 0.9), "Exécution…",             None),
+    LucieState.DONE:      ((0.20, 0.85, 0.40, 0.9), "Terminé",                "Hero"),
+    LucieState.ERROR:     ((1.00, 0.25, 0.20, 0.9), "Erreur",                 "Basso"),
+}
 
 
 # ─── Color helpers ───────────────────────────────────────────────────────────
@@ -647,11 +671,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._processing_start_time = float(time.time())
         self.append_message_safe("Toi", query, user=True)
 
-        self._set_status("●", _orange(), "Traitement…")
         self._send_btn.setEnabled_(False)
-        self._thinking_indicator.startAnimating()
-        self._thinking_label.setStringValue_("En cours…")
-        self._thinking_label.setAlphaValue_(1.0)
+        self.set_state(LucieState.THINKING)
 
         threading.Thread(target=self._process_query, args=(query,), daemon=True).start()
 
@@ -802,6 +823,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     # ── Streaming (word-chunk mode) ───────────────────────────────────────────
 
     def _start_streaming(self, sender: str, full_text: Any, user: bool = False) -> None:
+        self.set_state(LucieState.WRITING)
         if self._streaming_timer is not None:
             self._streaming_timer.invalidate()
             self._streaming_timer = None
@@ -829,17 +851,10 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._streaming_timer = None
             self._is_processing = False
             latency = time.time() - self._processing_start_time
-            self._thinking_indicator.stopAnimating()
-            self._thinking_label.setAlphaValue_(0.0)
             self._latency_label.setStringValue_(f"{latency:.2f}s")
-            self._set_status("●", _green(), "Prêt")
             self._send_btn.setEnabled_(True)
             self._is_dragging = False
-            # Success sound + notification
-            try:
-                AppKit.NSSound.soundNamed_("Hero").play()
-            except Exception:
-                pass
+            self.set_state(LucieState.DONE)  # Hero sound + green + "Terminé"
             self._send_notification("Lucie", f"Réponse prête en {latency:.1f}s")
             # Onboarding: schedule next step
             next_step = getattr(self, "_onboard_next_step", None)
@@ -899,16 +914,10 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     def _on_response_error(self, error_text: str) -> None:
         self.append_message_safe("Lucie", error_text, False)
-        self._thinking_indicator.stopAnimating()
-        self._thinking_label.setAlphaValue_(0.0)
-        self._set_status("●", _red(), "Erreur")
         self._send_btn.setEnabled_(True)
         self._is_processing = False
         self._is_dragging = False
-        try:
-            AppKit.NSSound.soundNamed_("Basso").play()
-        except Exception:
-            pass
+        self.set_state(LucieState.ERROR)  # Basso sound + red + "Erreur"
 
     # ── Message display ───────────────────────────────────────────────────────
 
@@ -1048,6 +1057,67 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         except Exception as e:
             logger.debug(f"Link click: {e}")
         return False
+
+    # ── State machine ─────────────────────────────────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def set_state(self, state: str) -> None:
+        """Transition vers un nouvel état — met à jour couleur, texte, sons, indicateur."""
+        if not hasattr(self, "_lucie_state"):
+            self._lucie_state = LucieState.IDLE
+        if self._lucie_state == state:
+            return
+        self._lucie_state = state
+
+        cfg = _STATE_CONFIG.get(state, _STATE_CONFIG[LucieState.IDLE])
+        rgba, status_text, sound = cfg
+        color = ns_color(*rgba)
+
+        # Dot + status text
+        self._status.setTextColor_(color)
+        self._status_text.setStringValue_(status_text)
+
+        # Thinking label + indicator
+        active_states = {LucieState.THINKING, LucieState.SEARCHING,
+                         LucieState.WRITING, LucieState.EXECUTING}
+        if state in active_states:
+            self._thinking_indicator.startAnimating()
+            # Cross-fade label text
+            AppKit.NSAnimationContext.beginGrouping()
+            AppKit.NSAnimationContext.currentContext().setDuration_(0.12)
+            self._thinking_label.animator().setAlphaValue_(0.0)
+            AppKit.NSAnimationContext.endGrouping()
+            self._thinking_label.setStringValue_(status_text)
+            AppKit.NSAnimationContext.beginGrouping()
+            AppKit.NSAnimationContext.currentContext().setDuration_(0.18)
+            self._thinking_label.animator().setAlphaValue_(1.0)
+            AppKit.NSAnimationContext.endGrouping()
+        else:
+            self._thinking_indicator.stopAnimating()
+            AppKit.NSAnimationContext.beginGrouping()
+            AppKit.NSAnimationContext.currentContext().setDuration_(0.25)
+            self._thinking_label.animator().setAlphaValue_(0.0)
+            AppKit.NSAnimationContext.endGrouping()
+
+        # Progress line
+        if hasattr(self, "_progress_line"):
+            if state in active_states:
+                self._progress_line.start_pulsing(rgba)
+            else:
+                self._progress_line.stop_pulsing()
+
+        # Sound feedback
+        if sound:
+            self._play_sound(sound)
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _play_sound(self, name: str) -> None:
+        try:
+            snd = AppKit.NSSound.soundNamed_(name)
+            if snd:
+                snd.play()
+        except Exception:
+            pass
 
     # ── Status helpers ────────────────────────────────────────────────────────
 
