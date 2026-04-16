@@ -29,7 +29,7 @@ HEADER_H = 56
 INPUT_H = 40
 STATUS_H = 20
 AGENT_BAR_H = 22
-ALPHA = 0.78
+ALPHA = 0.82  # légèrement plus opaque pour meilleur contraste en light mode
 
 # Pre-computed Y positions (0 = bottom of window in AppKit coords)
 _STATUS_Y = 6                                        # bottom status bar
@@ -77,6 +77,21 @@ def ns_color(r: float, g: float, b: float, a: float = 1.0) -> Any:
 
 def ns_white(w: float, a: float = 1.0) -> Any:
     return AppKit.NSColor.colorWithCalibratedWhite_alpha_(w, a)
+
+
+def _adaptive_text() -> Any:
+    """Couleur du texte principal — noir en light, blanc en dark."""
+    return AppKit.NSColor.labelColor()
+
+
+def _adaptive_secondary() -> Any:
+    """Couleur texte secondaire — adapte automatiquement au mode."""
+    return AppKit.NSColor.secondaryLabelColor()
+
+
+def _adaptive_tertiary() -> Any:
+    """Couleur texte tertiaire (hints, timestamps)."""
+    return AppKit.NSColor.tertiaryLabelColor()
 
 
 def make_rect(x: float, y: float, w: float, h: float) -> Any:
@@ -386,8 +401,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         vfx = AppKit.NSVisualEffectView.alloc().initWithFrame_(
             make_rect(0, 0, WINDOW_W, WINDOW_H)
         )
-        # NSVisualEffectMaterialSidebar (7) — modern, adapts to light/dark mode
-        vfx.setMaterial_(7)
+        # NSVisualEffectMaterialHUDWindow (22) — adapts to light/dark, rendu HUD
+        # Fallback sur Sidebar (7) si matériau HUD non disponible
+        try:
+            vfx.setMaterial_(22)  # NSVisualEffectMaterialHUDWindow
+        except Exception:
+            vfx.setMaterial_(7)   # NSVisualEffectMaterialSidebar
         vfx.setBlendingMode_(AppKit.NSVisualEffectBlendingModeBehindWindow)
         vfx.setState_(AppKit.NSVisualEffectStateActive)
         vfx.setWantsLayer_(True)
@@ -465,7 +484,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._latency_label.setFont_(
             AppKit.NSFont.monospacedDigitSystemFontOfSize_weight_(9, AppKit.NSFontWeightLight)
         )
-        self._latency_label.setTextColor_(ns_white(0.45, 0.7))
+        self._latency_label.setTextColor_(_adaptive_tertiary())
         content.addSubview_(self._latency_label)
 
         # Separator: header / agent bar
@@ -529,7 +548,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._text_view.setEditable_(False)
         self._text_view.setSelectable_(True)
         self._text_view.setBackgroundColor_(AppKit.NSColor.clearColor())
-        self._text_view.setTextColor_(ns_white(0.92, 0.9))
+        self._text_view.setTextColor_(_adaptive_text())  # adapte light/dark
         self._text_view.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
         self._text_view.textContainer().setLineFragmentPadding_(6)
         self._text_view.setTextContainerInset_(AppKit.NSMakeSize(4, 8))
@@ -630,7 +649,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._status_text.setBezeled_(False)
         self._status_text.setDrawsBackground_(False)
         self._status_text.setFont_(AppKit.NSFont.systemFontOfSize_(9))
-        self._status_text.setTextColor_(ns_white(0.65, 0.8))
+        self._status_text.setTextColor_(_adaptive_secondary())
         content.addSubview_(self._status_text)
 
         self._energy_label = AppKit.NSTextField.alloc().initWithFrame_(
@@ -966,7 +985,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         }
         msg_attrs = {
             AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12.5),
-            AppKit.NSForegroundColorAttributeName: ns_white(0.92, 0.9),
+            AppKit.NSForegroundColorAttributeName: _adaptive_text(),
         }
         new_attributed = AppKit.NSMutableAttributedString.alloc().init()
         new_attributed.appendAttributedString_(
@@ -1024,7 +1043,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         }
         msg_attrs = {
             AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12.5),
-            AppKit.NSForegroundColorAttributeName: ns_white(0.92, 0.9),
+            AppKit.NSForegroundColorAttributeName: _adaptive_text(),
         }
         full = AppKit.NSMutableAttributedString.alloc().init()
         full.appendAttributedString_(
