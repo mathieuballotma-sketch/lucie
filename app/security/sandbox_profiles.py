@@ -165,11 +165,12 @@ def generate_sandbox_profile(
 
     # Permissions spécifiques par tier
     if tier == SandboxTier.FILE_ACCESS:
+        project_dir = "/Users/mathieu/Desktop/mon-agence-ia"
         profile += f"""
-;; ── FILE_ACCESS : accès fichiers étendu ──────────
-;; Lecture dans les dossiers utilisateur courants
+;; ── FILE_ACCESS : accès fichiers restreint au projet ─────
+;; Lecture limitée au répertoire du projet (pas de ~/.ssh, ~/Library, etc.)
 (allow file-read*
-    (subpath "/Users")
+    (subpath "{project_dir}")
 )
 ;; Écriture uniquement dans le répertoire de travail
 ;; (déjà autorisé ci-dessus via work_dir)
