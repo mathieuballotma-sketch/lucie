@@ -772,7 +772,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             elif level == "direct":
                 # ── Fast path: existing engine (greetings, simple questions) ─
                 assert self.engine is not None
-                response, _ = self.engine.process(query, use_rag=True)
+                response, _ = self.engine.process(query)
 
             else:
                 # ── Legal pipeline: search (juridique) or document (avec texte)

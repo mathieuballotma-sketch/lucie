@@ -4,8 +4,6 @@ API REST pour envoyer des commandes à Agent Lucide.
 """
 
 import threading
-from typing import Optional
-
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel  # FastAPI requiert pydantic natif (pas pydantic.v1)
@@ -15,7 +13,6 @@ from ..core.engine import LucidEngine
 
 class CommandRequest(BaseModel):
     query: str
-    use_rag: Optional[bool] = True
 
 
 class CommandResponse(BaseModel):
@@ -42,9 +39,7 @@ class CommandAPI:
             Reçoit une commande textuelle, la traite et retourne la réponse.
             """
             try:
-                response, latency = await self.engine.process_async(
-                    request.query, use_rag=request.use_rag or True
-                )
+                response, latency = await self.engine.process_async(request.query)
                 return CommandResponse(response=response, latency=latency)
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))

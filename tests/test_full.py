@@ -285,7 +285,7 @@ class TestSuite:
 
         try:
             start = time.time()
-            response, latency = self.engine.process("Quelle est la capitale de la France ?", use_rag=False)
+            response, latency = self.engine.process("Quelle est la capitale de la France ?")
             duration = time.time() - start
             assert isinstance(response, str)
             assert len(response) > 0
@@ -301,7 +301,7 @@ class TestSuite:
 
         try:
             start = time.time()
-            response, latency = self.engine.process("Crée un document Word sur l'IA", use_rag=False)
+            response, latency = self.engine.process("Crée un document Word sur l'IA")
             duration = time.time() - start
             assert isinstance(response, str)
             assert len(response) > 0

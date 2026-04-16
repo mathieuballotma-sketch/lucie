@@ -60,7 +60,7 @@ def test_simple_query(engine):
     """Teste une requête simple."""
     query = "Quelle est la capitale de la France ?"
     try:
-        response, latency = engine.process(query, use_rag=False)
+        response, latency = engine.process(query)
         assert response is not None
         logger.info(f"✅ Réponse reçue en {latency:.2f}s")
     except Exception as e:
