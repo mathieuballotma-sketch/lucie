@@ -133,7 +133,6 @@ class VerificateurAgent(TerrainMixin, BaseAgent):
                 system_prompt=self._system_prompt,
                 model=_MODEL,
                 temperature=0,
-                top_p=1,
                 max_tokens=2048,
                 top_p=1.0,
             )
