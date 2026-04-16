@@ -605,9 +605,6 @@ class LucidEngine:
 
         logger.debug("Boucle asyncio définie")
 
-    async def start_async(self) -> None:
-        pass
-
     async def stop_async(self) -> None:
         if self._stopping:
             return
@@ -756,7 +753,6 @@ class LucidEngine:
         self,
         query: str,
         system_prompt: Optional[str] = None,
-        use_rag: bool = True,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
         start = time.time()
@@ -825,7 +821,6 @@ class LucidEngine:
         self,
         query: str,
         system_prompt: Optional[str] = None,
-        use_rag: bool = True,
         allow_web_search: bool = True,
     ) -> Tuple[str, float]:
         start = time.time()
@@ -1003,7 +998,7 @@ class LucidEngine:
     async def _execute_scheduled_query(self, query: str) -> None:
         logger.info(f"⏰ Exécution programmée : {query}")
         try:
-            response, latency = await self.process_async(query, use_rag=False)
+            response, latency = await self.process_async(query)
             logger.info(f"✅ {response[:100]}… ({latency:.2f}s)")
         except Exception as e:
             logger.error(f"❌ Programmée échouée : {e}")

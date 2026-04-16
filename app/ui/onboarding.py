@@ -469,7 +469,7 @@ class OnboardingFlow:
 
         def _run() -> None:
             try:
-                response, latency = self.engine.process(query, use_rag=True)
+                response, latency = self.engine.process(query)
                 if not response or not str(response).strip():
                     response = "(Pas de réponse)"
                 AppHelper.callAfter(self._show_demo_response, response, on_done)
