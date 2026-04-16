@@ -1193,24 +1193,73 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def animateIn(self) -> None:
-        """Spring entrance: scale 0.95→1.0 + fade-in."""
+        """Spring entrance Spotlight-quality: scale 0.93→1.0 + fade, CASpringAnimation."""
         self.setAlphaValue_(0.0)
         content = self.contentView()
+        # Fade in
         AppKit.NSAnimationContext.beginGrouping()
-        AppKit.NSAnimationContext.currentContext().setDuration_(0.25)
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.28)
         self.animator().setAlphaValue_(ALPHA)
+        AppKit.NSAnimationContext.endGrouping()
+        # Spring scale — try CASpringAnimation (macOS 10.11+), fallback to EaseOut
+        layer = content.layer()
+        try:
+            spring = Quartz.CASpringAnimation.animationWithKeyPath_("transform.scale")
+            spring.setMass_(1.0)
+            spring.setStiffness_(300.0)
+            spring.setDamping_(25.0)
+            spring.setInitialVelocity_(2.0)
+            spring.setFromValue_(0.93)
+            spring.setToValue_(1.0)
+            spring.setDuration_(max(0.4, spring.settlingDuration()))
+            layer.addAnimation_forKey_(spring, "springIn")
+        except AttributeError:
+            anim = Quartz.CABasicAnimation.animationWithKeyPath_("transform.scale")
+            anim.setFromValue_(0.95)
+            anim.setToValue_(1.0)
+            anim.setDuration_(0.3)
+            anim.setTimingFunction_(
+                Quartz.CAMediaTimingFunction.functionWithName_(
+                    Quartz.kCAMediaTimingFunctionEaseOut
+                )
+            )
+            layer.addAnimation_forKey_(anim, "springIn")
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def animateOut(self) -> None:
+        """Spring exit: scale 1.0→0.95 + fade-out, puis orderOut."""
+        content = self.contentView()
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.18)
+        self.animator().setAlphaValue_(0.0)
         AppKit.NSAnimationContext.endGrouping()
         layer = content.layer()
         anim = Quartz.CABasicAnimation.animationWithKeyPath_("transform.scale")
-        anim.setFromValue_(0.95)
-        anim.setToValue_(1.0)
-        anim.setDuration_(0.3)
+        anim.setFromValue_(1.0)
+        anim.setToValue_(0.95)
+        anim.setDuration_(0.16)
         anim.setTimingFunction_(
             Quartz.CAMediaTimingFunction.functionWithName_(
-                Quartz.kCAMediaTimingFunctionEaseOut
+                Quartz.kCAMediaTimingFunctionEaseIn
             )
         )
-        layer.addAnimation_forKey_(anim, "springIn")
+        anim.setFillMode_(Quartz.kCAFillModeForwards)
+        anim.setRemovedOnCompletion_(False)
+        layer.addAnimation_forKey_(anim, "springOut")
+        # OrderOut après la durée de l'animation
+        AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            0.20, self, "orderOutAfterAnimation:", None, False
+        )
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def orderOutAfterAnimation_(self, timer: Any) -> None:
+        """Retire la fenêtre après animateOut."""
+        self.orderOut_(None)
+        # Réinitialiser la scale pour la prochaine apparition
+        try:
+            self.contentView().layer().removeAnimationForKey_("springOut")
+        except Exception:
+            pass
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def _show_drop_highlight(self, visible: bool) -> None:
