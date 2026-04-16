@@ -153,8 +153,11 @@ class SandboxManager:
         if not agent_module:
             agent_module = f"app.agents.{self._agent_name_to_module(agent_name)}"
 
-        env = {
-            **os.environ,
+        # Whitelist explicite — ne pas transmettre os.environ en entier
+        # (évite de leaker AWS_SECRET_ACCESS_KEY, ANTHROPIC_API_KEY, etc.)
+        _ENV_WHITELIST = {"PATH", "HOME", "TMPDIR", "LUCIE_SANDBOX", "OLLAMA_HOST"}
+        env = {k: os.environ[k] for k in _ENV_WHITELIST if k in os.environ}
+        env.update({
             "LUCIE_SANDBOX": "1",
             "LUCIE_AGENT_NAME": agent_name,
             "LUCIE_SESSION_ID": session_id,
@@ -162,7 +165,7 @@ class SandboxManager:
             "LUCIE_SOCKET_PATH": socket_path,
             "LUCIE_WORK_DIR": work_dir,
             **(extra_env or {}),
-        }
+        })
 
         cmd = [
             "sandbox-exec",
