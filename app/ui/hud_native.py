@@ -16,8 +16,6 @@ import objc
 import Quartz
 from PyObjCTools import AppHelper
 
-from ..core.config import Config
-from ..core.engine import LucidEngine
 from ..utils.logger import logger
 
 # ─── Layout constants ────────────────────────────────────────────────────────
@@ -887,9 +885,19 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 response = _da.format_report(report)
 
             elif level == "direct":
-                # ── Fast path: existing engine (greetings, simple questions) ─
-                assert self.engine is not None
-                response, _ = self.engine.process(query)
+                # ── Fast path: greeting or out-of-scope — no engine needed ──
+                intent = routing.get("intent", "")
+                if intent == "salutation":
+                    response = (
+                        "Bonjour\u00a0! Je suis Lucie, sp\u00e9cialis\u00e9e en droit du licenciement \u00e9conomique. "
+                        "Posez-moi votre question ou d\u00e9posez un document juridique."
+                    )
+                else:
+                    response = (
+                        "Cette requ\u00eate sort du p\u00e9rim\u00e8tre de Lucie V1 (licenciement \u00e9conomique). "
+                        "Je ne traite que les questions relatives au droit social du travail sur ce th\u00e8me pr\u00e9cis. "
+                        "Merci de reformuler ou de poser une question sur le licenciement \u00e9conomique."
+                    )
 
             else:
                 # ── Legal pipeline: search (juridique) or document (avec texte)
@@ -1431,20 +1439,13 @@ class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
     def applicationWillTerminate_(self, notification: Any) -> None:
         if hasattr(self, "_hotkey"):
             self._hotkey.stop()
-        if hasattr(self, "engine"):
-            self.engine.stop()
 
 
 # ─── Entry point ─────────────────────────────────────────────────────────────
 def run_hud(engine: Optional[Any] = None) -> None:
     app = AppKit.NSApplication.sharedApplication()
     app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
-
-    if engine is None:
-        config = Config()
-        engine = LucidEngine(config)
-
-    delegate = AppDelegate.alloc().initWithEngine_(engine)
+    delegate = AppDelegate.alloc().initWithEngine_(None)
     app.setDelegate_(delegate)
     AppHelper.runEventLoop()
 
