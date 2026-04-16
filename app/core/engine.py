@@ -55,6 +55,7 @@ from ..agents.planner_agent import PlannerAgent
 from ..core.config import Config
 from ..core.elasticity import ElasticityEngine
 from ..memory import ConsolidationEngine, ContextualMemory, EpisodicMemory, MemoryService, WorkingMemory
+from ..memory.context_graph import ContextGraph
 from ..memory.memory_manager import MemoryManager
 from ..providers.manager import ProviderManager
 
@@ -345,6 +346,7 @@ class LucidEngine:
         working = WorkingMemory(capacity=self.config.memory.working_capacity)
         self.memory = MemoryService(episodic, working)
         self.memory_manager = MemoryManager(self.memory, asdict(self.config))
+        self.context_graph = ContextGraph(str(data_dir / "context_graph.db"))
         self.consolidation = ConsolidationEngine(
             episodic, interval=self.config.memory.consolidation_interval
         )
@@ -595,6 +597,7 @@ class LucidEngine:
                 time_tracker=self.time_tracker,
             )
             await self.proactive_engine.start()
+            await self.context_graph.initialize(self.event_bus)
             # Demarrer le moteur de recherche et le file watcher
             if self.file_watcher and self.search_engine:
                 for watched_dir in self.config.search.watched_dirs:
@@ -631,6 +634,7 @@ class LucidEngine:
         self.executor.shutdown()
         if hasattr(self.memory, 'close'):
             await self.memory.close()
+        await self.context_graph.close()
 
         logger.info("Moteur arrêté")
 
@@ -662,6 +666,15 @@ class LucidEngine:
             "Sois concise et utile."
         )
         enriched_system = system_prompt if system_prompt else _DEFAULT_SYSTEM
+
+        # ContextGraph : consulter le profil avant le routing
+        try:
+            ctx_graph = await self.context_graph.get_context_for(query, top_k=3)
+            if ctx_graph:
+                enriched_system = f"Contexte personnel mémorisé :\n{ctx_graph}\n\n{enriched_system}"
+        except Exception as e:
+            logger.debug(f"ContextGraph query échouée: {e}")
+
         try:
             user_ctx = await self.contextual_memory.get_context_for_query(query)
             if user_ctx:
@@ -718,6 +731,13 @@ class LucidEngine:
         # Indexer la conversation dans le RAG pour les futures recherches
         if self.rag.active and response and not response.startswith("Erreur"):
             self.rag.index_conversation(query, response, time.time())
+
+        # ContextGraph : mémoriser le pattern après une réponse réussie
+        if response and not response.startswith("Erreur"):
+            try:
+                await self.context_graph.learn(query, "pattern", source="engine")
+            except Exception as e:
+                logger.debug(f"ContextGraph learn échouée: {e}")
 
         return response, latency
 
