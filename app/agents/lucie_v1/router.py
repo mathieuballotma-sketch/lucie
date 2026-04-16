@@ -103,7 +103,7 @@ class LegalRouter(TerrainMixin):
         else:
             result = {
                 "valid": False,
-                "intent": "hors_scope",
+                "intent": "out_of_scope",
                 "document": None,
                 "refusal_reason": REFUSAL_MESSAGE,
             }
