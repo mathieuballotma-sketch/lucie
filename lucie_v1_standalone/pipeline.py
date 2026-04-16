@@ -117,6 +117,12 @@ async def _run_pipeline(
     verbose: bool,
 ) -> str:
 
+    # ── Vérification du scope (< 1ms) ─────────────────────────────────────────
+    if not force:
+        scope = router_validate(query, document_text)
+        if not scope["valid"]:
+            return str(scope["refusal_reason"])
+
     # ── Routage (< 1ms) ───────────────────────────────────────────────────────
     routing = router_route(query, document_text, force=force)
     level = routing["level"]

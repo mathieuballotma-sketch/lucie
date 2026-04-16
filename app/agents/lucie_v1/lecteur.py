@@ -83,7 +83,6 @@ class LecteurAgent(TerrainMixin, BaseAgent):
                 system_prompt=self._system_prompt,
                 model=_MODEL,
                 temperature=0,
-                top_p=1,
                 max_tokens=1024,
                 top_p=1.0,
             )
