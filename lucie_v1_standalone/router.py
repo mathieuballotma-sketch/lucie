@@ -2,9 +2,12 @@
 LegalRouter — Router déterministe 3 niveaux, 0 appel LLM.
 
 Catégorise chaque requête en :
-  - direct   : réponse immédiate sans pipeline (salutations, définitions, questions générales)
+  - direct   : réponse immédiate sans pipeline (salutations uniquement)
   - search   : recherche dans la base + rédaction (questions juridiques précises)
   - document : pipeline complet avec Lecteur (document fourni)
+
+Les requêtes hors-scope (ni salutation, ni mots-clés juridiques, ni document)
+sont refusées explicitement via validate() et _run_pipeline().
 
 Temps de routage : < 1ms (pur string matching).
 Aucune dépendance au reste du repo.
@@ -13,6 +16,12 @@ Aucune dépendance au reste du repo.
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+_REFUSAL_MESSAGE = (
+    "Cette requête sort du périmètre de Lucie V1 (licenciement économique). "
+    "Je ne traite que les questions relatives au droit social du travail sur ce thème précis. "
+    "Merci de reformuler ou de poser une question sur le licenciement économique."
+)
 
 # ─── Patterns de salutation / interaction simple ──────────────────────────────
 # Matche en début ou en totalité de la requête
@@ -164,19 +173,25 @@ def validate(
     force: bool = False,
 ) -> Dict[str, Any]:
     """
-    Compatibilité ascendante — préférer route() pour le nouveau code.
+    Retourne le format historique {valid, intent, document, refusal_reason}.
 
-    Retourne le format historique {valid, intent, document, refusal_reason}
-    en mappant les niveaux 2 et 3 sur valid=True, le niveau 1 sur valid=True
-    (les questions simples sont désormais traitées en mode direct, pas refusées).
+    - salutation, recherche_juridique, analyse_document, recherche_forcee → valid=True
+    - question_generale (hors-scope) → valid=False, intent="out_of_scope"
     """
     r = route(query, document_text, force)
+    if r["intent"] == "question_generale":
+        return {
+            "valid": False,
+            "intent": "out_of_scope",
+            "document": None,
+            "refusal_reason": _REFUSAL_MESSAGE,
+        }
     return {
-        "valid": True,  # plus de refus : tout est traité (direct, search ou document)
+        "valid": True,
         "intent": r["intent"],
         "document": r.get("document"),
         "refusal_reason": None,
-        "_level": r["level"],  # champ interne pour le pipeline
+        "_level": r["level"],
     }
 
 
