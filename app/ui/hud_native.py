@@ -1390,7 +1390,12 @@ class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
 
             centre = AppKit.NSUserNotificationCenter.defaultUserNotificationCenter()
             centre.setDelegate_(self)
-            logger.info("HUD prêt")
+
+            # Raccourci global Cmd+Shift+L — doit rester en vie tant que l'app tourne
+            from .hotkey_manager import HotkeyManager
+            self._hotkey = HotkeyManager(self.window)
+
+            logger.info("HUD prêt (Cmd+Shift+L pour toggle)")
         except Exception as e:
             logger.error(f"Erreur initialisation : {e}", exc_info=True)
             sys.exit(1)
@@ -1405,6 +1410,8 @@ class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
                 subprocess.run(["open", filepath])
 
     def applicationWillTerminate_(self, notification: Any) -> None:
+        if hasattr(self, "_hotkey"):
+            self._hotkey.stop()
         if hasattr(self, "engine"):
             self.engine.stop()
 
