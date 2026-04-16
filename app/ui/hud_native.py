@@ -64,7 +64,7 @@ _STATE_CONFIG: Dict[str, Tuple[Tuple[float, ...], str, Optional[str]]] = {
     LucieState.THINKING:  ((1.00, 0.60, 0.00, 0.9), "Lucie réfléchit…",       None),
     LucieState.SEARCHING: ((0.27, 0.52, 0.97, 0.9), "Recherche en cours…",    None),
     LucieState.WRITING:   ((0.70, 0.40, 1.00, 0.9), "Rédaction en cours…",    None),
-    LucieState.EXECUTING: ((1.00, 0.60, 0.00, 0.9), "Exécution…",             None),
+    LucieState.EXECUTING: ((1.00, 0.60, 0.00, 0.9), "Exécution…",             "Funk"),
     LucieState.DONE:      ((0.20, 0.85, 0.40, 0.9), "Terminé",                "Hero"),
     LucieState.ERROR:     ((1.00, 0.25, 0.20, 0.9), "Erreur",                 "Basso"),
 }
@@ -791,6 +791,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     def handle_dropped_path(self, path: str) -> None:
         """Called (on main thread) when a file or folder is dropped onto the HUD."""
         import os
+        self._play_sound("Pop")  # Feedback immédiat au drop
         name = os.path.basename(path.rstrip("/"))
         if os.path.isdir(path):
             self._current_dossier_path = path
