@@ -315,6 +315,94 @@ class DropContentView(AppKit.NSView):  # type: ignore[misc]
         return False
 
 
+# ─── DraggableFileCard ────────────────────────────────────────────────────────
+class DraggableFileCard(AppKit.NSView):  # type: ignore[misc]
+    """Floating card showing a Lucie output file ready to be dragged out.
+
+    Implements NSDraggingSource so the user can drag the card directly to
+    Finder, Mail, Slack, or any drop-accepting app. Appears with a fade-in
+    after streaming completes; hidden by default.
+    """
+
+    _CARD_W: int = 224
+    _CARD_H: int = 34
+
+    def initWithFrame_(self, frame: Any) -> Any:
+        self = objc.super(DraggableFileCard, self).initWithFrame_(frame)
+        if self is not None:
+            self._path: Optional[str] = None
+            self._mouse_down_loc: Optional[Any] = None
+            self.setWantsLayer_(True)
+            self.layer().setCornerRadius_(8.0)
+            self.layer().setBackgroundColor_(
+                ns_color(0.27, 0.52, 0.97, 0.13).CGColor()
+            )
+            self.layer().setBorderWidth_(0.5)
+            self.layer().setBorderColor_(
+                ns_color(0.27, 0.52, 0.97, 0.45).CGColor()
+            )
+
+            self._label = AppKit.NSTextField.alloc().initWithFrame_(
+                make_rect(10, 0, self._CARD_W - 52, self._CARD_H)
+            )
+            self._label.setStringValue_("—")
+            self._label.setEditable_(False)
+            self._label.setBezeled_(False)
+            self._label.setDrawsBackground_(False)
+            self._label.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+            self._label.setTextColor_(ns_white(0.92, 0.88))
+            self._label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingMiddle)
+            self.addSubview_(self._label)
+
+            hint = AppKit.NSTextField.alloc().initWithFrame_(
+                make_rect(self._CARD_W - 44, 0, 38, self._CARD_H)
+            )
+            hint.setStringValue_("drag →")
+            hint.setEditable_(False)
+            hint.setBezeled_(False)
+            hint.setDrawsBackground_(False)
+            hint.setFont_(AppKit.NSFont.systemFontOfSize_(8.5))
+            hint.setTextColor_(ns_white(0.45, 0.55))
+            hint.setAlignment_(AppKit.NSTextAlignmentRight)
+            self.addSubview_(hint)
+        return self
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def set_filepath(self, path: str) -> None:
+        """Update the card to display the given file path."""
+        self._path = path
+        name = os.path.basename(path)
+        ext = os.path.splitext(name)[1].lower()
+        icon = {".pdf": "📄", ".docx": "📝", ".txt": "📋", ".md": "📖"}.get(ext, "📄")
+        self._label.setStringValue_(f"{icon}  {name}")
+
+    def mouseDown_(self, event: Any) -> None:
+        self._mouse_down_loc = event.locationInWindow()
+
+    def mouseDragged_(self, event: Any) -> None:
+        if self._path is None or self._mouse_down_loc is None:
+            return
+        pb_item = AppKit.NSPasteboardItem.alloc().init()
+        url = AppKit.NSURL.fileURLWithPath_(self._path)
+        pb_item.setString_forType_(url.absoluteString(), AppKit.NSPasteboardTypeFileURL)
+        drag_item = AppKit.NSDraggingItem.alloc().initWithPasteboardWriter_(pb_item)
+        icon = AppKit.NSWorkspace.sharedWorkspace().iconForFile_(self._path)
+        frame_in_win = self.convertRect_toView_(self.bounds(), None)
+        drag_item.setDraggingFrame_contents_(frame_in_win, icon)
+        self.beginDraggingSessionWithItems_event_source_([drag_item], event, self)
+
+    def mouseUp_(self, event: Any) -> None:
+        self._mouse_down_loc = None
+
+    def draggingSession_sourceOperationMaskForDraggingContext_(
+        self, session: Any, context: int
+    ) -> int:
+        return AppKit.NSDragOperationCopy
+
+    def isOpaque(self) -> bool:
+        return False
+
+
 # ─── HUDWindow ───────────────────────────────────────────────────────────────
 class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
@@ -683,6 +771,19 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._drop_highlight.setAlphaValue_(0.0)
         content.addSubview_(self._drop_highlight)
 
+        # ══ OUTPUT DRAG CARD (visible quand Lucie a produit un résultat) ═════
+        self._output_card = DraggableFileCard.alloc().initWithFrame_(
+            make_rect(
+                PADDING,
+                _INPUT_TOP + 4,
+                DraggableFileCard._CARD_W,
+                DraggableFileCard._CARD_H,
+            )
+        )
+        self._output_card.setHidden_(True)
+        self._output_card.setAlphaValue_(0.0)
+        content.addSubview_(self._output_card)
+
         # ══ PROGRESS LINE (top edge du HUD) ══════════════════════════════════
         self._progress_line = ProgressLineView.alloc().initWithFrame_(
             make_rect(0, WINDOW_H - ProgressLineView._LINE_H, WINDOW_W, ProgressLineView._LINE_H)
@@ -765,6 +866,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self.append_message_safe("Toi", query, user=True)
 
         self._send_btn.setEnabled_(False)
+        self._hide_output_card()
         self.set_state(LucieState.THINKING)
 
         threading.Thread(target=self._process_query, args=(query,), daemon=True).start()
@@ -807,8 +909,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     @objc.python_method  # type: ignore[untyped-decorator]
     def handle_dropped_path(self, path: str) -> None:
         """Called (on main thread) when a file or folder is dropped onto the HUD."""
-        import os
-        self._play_sound("Pop")  # Feedback immédiat au drop
+        self._play_sound("Pop")
         name = os.path.basename(path.rstrip("/"))
         if os.path.isdir(path):
             self._current_dossier_path = path
@@ -820,22 +921,39 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             )
             self._input.setPlaceholderString_(f"Question sur le dossier {name}…")
         else:
-            text = self._read_file_text(path)
-            if text:
-                self._current_document = text
-                self._current_dossier_path = None
-                self.append_message_safe(
-                    "Lucie",
-                    f"📄 **{name}** attaché ({len(text)} car.) — posez votre question.",
-                    False,
-                )
-                self._input.setPlaceholderString_(f"Question sur {name}…")
-            else:
-                self.append_message_safe(
-                    "Lucie",
-                    f"⚠️ Impossible de lire **{name}**. Formats supportés : PDF, DOCX, TXT, MD.",
-                    False,
-                )
+            # Immediate feedback — extraction runs in background to avoid UI freeze
+            self.append_message_safe(
+                "Lucie",
+                f"📄 Lecture de **{name}**…",
+                False,
+            )
+
+            def _extract() -> None:
+                text = self._read_file_text(path)
+                if text:
+                    self._current_document = text
+                    self._current_dossier_path = None
+                    size_kb = os.path.getsize(path) // 1024
+                    size_str = f"{size_kb} Ko" if size_kb < 1024 else f"{size_kb // 1024} Mo"
+                    AppHelper.callAfter(
+                        self.append_message_safe,
+                        "Lucie",
+                        f"✅ **{name}** prêt ({size_str}, {len(text)} car.) — posez votre question.",
+                        False,
+                    )
+                    AppHelper.callAfter(
+                        self._input.setPlaceholderString_,
+                        f"Question sur {name}…",
+                    )
+                else:
+                    AppHelper.callAfter(
+                        self.append_message_safe,
+                        "Lucie",
+                        f"⚠️ Impossible de lire **{name}**. Formats supportés : PDF, DOCX, TXT, MD.",
+                        False,
+                    )
+
+            threading.Thread(target=_extract, daemon=True).start()
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def _read_file_text(self, path: str) -> Optional[str]:
@@ -959,6 +1077,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._send_btn.setEnabled_(True)
             self._is_dragging = False
             self.set_state(LucieState.DONE)  # Hero sound + green + "Terminé"
+            self._save_output_for_drag()     # Propose le résultat en drag-out
             self._send_notification("Lucie", f"Réponse prête en {latency:.1f}s")
             # Onboarding: schedule next step
             next_step = getattr(self, "_onboard_next_step", None)
@@ -1214,6 +1333,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         if sound:
             self._play_sound(sound)
 
+        # Propagate state to menubar icon
+        delegate = AppKit.NSApp.delegate()
+        menubar = getattr(delegate, "_menubar", None)
+        if menubar is not None:
+            menubar.set_state(state)
+
     @objc.python_method  # type: ignore[untyped-decorator]
     def _play_sound(self, name: str) -> None:
         try:
@@ -1222,6 +1347,63 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 snd.play()
         except Exception:
             pass
+
+    # ── Output drag card ──────────────────────────────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _save_output_for_drag(self) -> None:
+        """Write streaming response to a temp file and surface it as a drag card.
+
+        Called on the main thread after streaming completes, only when the
+        response is substantial (> 200 chars). Cleans up previous temp file.
+        """
+        import uuid
+        text = self._streaming_full_text
+        if len(text) <= 200:
+            return
+        temp_dir = str(Foundation.NSTemporaryDirectory())
+        fname = f"lucie_{uuid.uuid4().hex[:8]}.md"
+        path = os.path.join(temp_dir, fname)
+        try:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            old = getattr(self, "_last_output_path", None)
+            if old and os.path.exists(old):
+                try:
+                    os.unlink(old)
+                except Exception:
+                    pass
+            self._last_output_path = path
+            self._show_output_card(path)
+        except Exception as exc:
+            logger.debug(f"_save_output_for_drag: {exc}")
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _show_output_card(self, path: str) -> None:
+        """Fade in the draggable output card for the given temp file."""
+        self._output_card.set_filepath(path)
+        self._output_card.setHidden_(False)
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.25)
+        self._output_card.animator().setAlphaValue_(1.0)
+        AppKit.NSAnimationContext.endGrouping()
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _hide_output_card(self) -> None:
+        """Fade out and hide the drag card (called when a new query starts)."""
+        if self._output_card.isHidden():
+            return
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.15)
+        self._output_card.animator().setAlphaValue_(0.0)
+        AppKit.NSAnimationContext.endGrouping()
+        AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            0.2, self, "_hideOutputCardTimer:", None, False
+        )
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def _hideOutputCardTimer_(self, timer: Any) -> None:
+        self._output_card.setHidden_(True)
 
     # ── Status helpers ────────────────────────────────────────────────────────
 
@@ -1422,7 +1604,11 @@ class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
             from .hotkey_manager import HotkeyManager
             self._hotkey = HotkeyManager(self.window)
 
-            logger.info("HUD prêt (Cmd+Shift+L pour toggle)")
+            # Icône menubar persistante — accessible même quand le HUD est caché
+            from .menubar_controller import MenuBarController
+            self._menubar = MenuBarController.alloc().initWithHUD_(self.window)
+
+            logger.info("HUD prêt (Cmd+Shift+L pour toggle, icône menubar active)")
         except Exception as e:
             logger.error(f"Erreur initialisation : {e}", exc_info=True)
             sys.exit(1)
@@ -1439,6 +1625,16 @@ class AppDelegate(AppKit.NSObject):  # type: ignore[misc]
     def applicationWillTerminate_(self, notification: Any) -> None:
         if hasattr(self, "_hotkey"):
             self._hotkey.stop()
+        if hasattr(self, "_menubar"):
+            self._menubar.remove()
+        # Nettoyer le fichier temp de drag-out si présent
+        if hasattr(self, "window"):
+            path = getattr(self.window, "_last_output_path", None)
+            if path and os.path.exists(path):
+                try:
+                    os.unlink(path)
+                except Exception:
+                    pass
 
 
 # ─── Entry point ─────────────────────────────────────────────────────────────
