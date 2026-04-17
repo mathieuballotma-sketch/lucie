@@ -260,38 +260,19 @@ async def test_pipeline_smoke(tmp_path):
     Smoke test bout-en-bout : lettre de licenciement → note Markdown avec disclaimer.
     Requiert Ollama avec un modèle disponible (ex: gemma2:2b ou gemma4:e4b).
     """
-    from app.core.config import Config
-    from app.core.engine import LucidEngine
+    import asyncio
+    from lucie_v1_standalone.pipeline import run
 
-    try:
-        config = Config.load("config.yaml")
-        engine = LucidEngine(config)
-    except Exception as e:
-        pytest.skip(f"Engine non initialisable : {e}")
+    note = await run(
+        query="Analyser cette lettre de licenciement",
+        document_text=SAMPLE_LETTRE,
+    )
 
-    try:
-        from app.agents.lucie_v1 import LegalPipeline
-
-        pipeline = LegalPipeline(
-            manager=engine.provider_manager,
-            bus=engine.bus,
-        )
-        note = await pipeline.run(
-            query="Analyser cette lettre de licenciement",
-            document_text=SAMPLE_LETTRE,
-        )
-
-        assert isinstance(note, str), "La note doit être une chaîne"
-        assert len(note) > 50, "La note semble trop courte"
-        # Le disclaimer de fiabilité doit toujours être présent
-        assert "Lucie V1" in note or "licenciement" in note.lower(), (
-            "La note ne semble pas traiter du licenciement économique"
-        )
-        assert "À vérifier" in note or "avocat" in note.lower(), (
-            "Le disclaimer de vérification est absent"
-        )
-    finally:
-        try:
-            engine.stop()
-        except Exception:
-            pass
+    assert isinstance(note, str), "La note doit être une chaîne"
+    assert len(note) > 50, "La note semble trop courte"
+    assert "licenciement" in note.lower(), (
+        "La note ne semble pas traiter du licenciement économique"
+    )
+    assert "À vérifier" in note or "avocat" in note.lower(), (
+        "Le disclaimer de vérification est absent"
+    )
