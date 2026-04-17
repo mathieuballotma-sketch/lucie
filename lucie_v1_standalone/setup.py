@@ -61,7 +61,7 @@ async def _pull_model(model_name: str) -> bool:
     Retourne True si le téléchargement s'est terminé avec succès.
     """
     print(
-        f"\nTéléchargement du modèle en cours... (≈10 Go, première fois uniquement)",
+        "\nTéléchargement du modèle en cours... (≈10 Go, première fois uniquement)",
         flush=True,
     )
     print("Cela peut prendre plusieurs minutes selon votre connexion.\n", flush=True)

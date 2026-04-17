@@ -10,7 +10,7 @@ Aucune dépendance au reste du repo.
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from . import ollama_client
 from .config import LECTEUR_PARAMS

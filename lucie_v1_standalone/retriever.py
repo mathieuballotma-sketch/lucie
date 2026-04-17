@@ -14,7 +14,6 @@ import json
 import math
 import re
 from collections import Counter
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from .config import BM25_B, BM25_K1, KNOWLEDGE_BASE_PATH, MAX_SOURCES
@@ -62,7 +61,6 @@ def invalidate_index() -> None:
 def _bm25_score(
     query_tokens: List[str],
     doc_tokens: List[str],
-    doc_tokens_set: Set[str],
     avg_dl: float,
     N: int,
     index: List[Dict[str, Any]],
@@ -176,7 +174,7 @@ async def handle(faits_json: str) -> str:
             if doc["id"] in already_ids:
                 continue
             score = _bm25_score(
-                query_tokens, doc["tokens"], doc["tokens_set"], avg_dl, N, index
+                query_tokens, doc["tokens"], avg_dl, N, index
             )
             if score > 0:
                 scored.append((score, doc))

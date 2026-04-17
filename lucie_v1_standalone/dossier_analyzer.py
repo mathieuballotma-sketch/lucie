@@ -26,7 +26,6 @@ from .config import (
     DOSSIER_TIMEOUT,
     MAX_CHUNK_TOKENS,
     MAX_FILES_PER_DOSSIER,
-    VERIFICATEUR_PARAMS,
 )
 
 _LECTEUR_PROMPT_PATH = Path(__file__).parent / "prompts" / "dossier_lecteur_system.txt"
