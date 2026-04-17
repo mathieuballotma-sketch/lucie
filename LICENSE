@@ -3,12 +3,25 @@ Business Source License 1.1
 Parameters
 
 Licensor:             Mathieu Bellot
-Licensed Work:        Agent-Lucie
-                      The Licensed Work is (c) 2025 Mathieu Bellot
-Additional Use Grant: Personal use and research are permitted without
-                      restriction.
-Change Date:          2030-03-30
+Licensed Work:        Lucie
+                      The Licensed Work is (c) 2025-2026 Mathieu Bellot.
+                      Lucie is a local-first AI assistant project including,
+                      but not limited to, its source code, models,
+                      configurations, documentation, and associated assets.
+Additional Use Grant: You may make non-production, internal use of the
+                      Licensed Work solely within your own organization, for
+                      evaluation, research, and development purposes. Any
+                      production use, any commercial distribution, any
+                      offering of the Licensed Work (or a derivative work) as
+                      a hosted or managed service to third parties, and any
+                      use by or on behalf of third parties outside your own
+                      organization, requires a separate commercial license
+                      from the Licensor.
+Change Date:          2030-04-17
 Change License:       Apache License, Version 2.0
+
+For information about alternative licensing arrangements for the Licensed
+Work, please contact: mathieu.ballotma@gmail.com
 
 Notice
 
