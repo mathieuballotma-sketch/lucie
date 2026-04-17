@@ -34,6 +34,13 @@ env/
 *.sqlite
 *.sqlite3
 memory/
+# Exceptions : modules source nommés memory/ (code, pas données runtime)
+!lucie_v1_standalone/memory/
+!lucie_v1_standalone/memory/**
+!tests/memory/
+!tests/memory/**
+__pycache__/
+*.pyc
 *.faiss
 *.index
 data/
