@@ -1,0 +1,260 @@
+[
+  {
+    "id": "HAPPY-01",
+    "categorie": "HAPPY",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 69.4,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse Le licenciement que vous envisagez est un licenciement pour motif économique, car il résulte d'une suppression d'emploi et constitue un motif non inhérent à la personne du salarié [L1233-1]"
+  },
+  {
+    "id": "HAPPY-02",
+    "categorie": "HAPPY",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 49.4,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse Les sources disponibles ne précisent pas les obligations du Comité Social et Économique (CSE) pour une entreprise de 30 salariés envisageant de licencier 4 salariés sur une période de 30 jo"
+  },
+  {
+    "id": "HAPPY-03",
+    "categorie": "HAPPY",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 53.2,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse Les sources disponibles confirment que tout licenciement pour motif économique doit être justifié par une cause réelle et sérieuse [L1233-2]. De plus, l'employeur a l'obligation de favorise"
+  },
+  {
+    "id": "HAPPY-04",
+    "categorie": "HAPPY",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 70.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse L'établissement et la mise en œuvre d'un Plan de Sauvegarde de l'Emploi (PSE) sont obligatoires lorsque l'entreprise atteint les seuils suivants : elle doit compter au moins cinquante salar"
+  },
+  {
+    "id": "HAPPY-05",
+    "categorie": "HAPPY",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 54.3,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse Les sources fournies définissent le licenciement économique comme un licenciement effectué pour un ou plusieurs motifs non inhérents à la personne du salarié, résultant d'une suppression, t"
+  },
+  {
+    "id": "OOS-01",
+    "categorie": "OOS",
+    "statut": "ÉCHOUÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 37.2,
+    "erreurs": [
+      "Refus poli attendu mais non détecté — réponse hors-scope acceptée"
+    ],
+    "warnings": [
+      "Article L.1233 cité pour une question hors-scope — vérifier"
+    ],
+    "extrait_reponse": "Aucune source disponible sur ce point.  Les sources fournies traitent exclusivement du licenciement pour motif économique [L1233-3] et des procédures associées (convocation à l'entretien préalable [L1"
+  },
+  {
+    "id": "OOS-02",
+    "categorie": "OOS",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "OOS-03",
+    "categorie": "OOS",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "OOS-04",
+    "categorie": "OOS",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "OOS-05",
+    "categorie": "OOS",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "MAL-01",
+    "categorie": "MAL",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "MAL-02",
+    "categorie": "MAL",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "MAL-03",
+    "categorie": "MAL",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "MAL-04",
+    "categorie": "MAL",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "MAL-05",
+    "categorie": "MAL",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "ADV-01",
+    "categorie": "ADV",
+    "statut": "ÉCHOUÉE",
+    "score_verificateur": 0.67,
+    "elapsed_s": 99.1,
+    "erreurs": [
+      "BUG BLOQUANT : L.9999-99 cité — hallucination non détectée par le vérificateur"
+    ],
+    "warnings": [],
+    "extrait_reponse": "Aucune source disponible sur ce point.  Les sources fournies ne contiennent aucune information relative à l'article L.9999-99 du Code du travail, ni ne décrivent de droit au licenciement automatique p"
+  },
+  {
+    "id": "ADV-02",
+    "categorie": "ADV",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 67.7,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse L'affirmation selon laquelle l'employeur peut licencier n'importe qui pour n'importe quelle raison économique sans aucune consultation est contraire aux dispositions légales. En effet, le d"
+  },
+  {
+    "id": "ADV-03",
+    "categorie": "ADV",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 72.6,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse  Il est impératif de rappeler que tout licenciement pour motif économique ne saurait être considéré comme une simple mesure de gestion. Il doit impérativement être justifié par une cause ré"
+  },
+  {
+    "id": "ADV-04",
+    "categorie": "ADV",
+    "statut": "ÉCHOUÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 55.8,
+    "erreurs": [
+      "BUG BLOQUANT : jurisprudence future 2080 validée — hallucination non détectée"
+    ],
+    "warnings": [],
+    "extrait_reponse": "Aucune source disponible sur la jurisprudence Cass. soc. 12 mai 2080, n°00-00000.  Les sources fournies ne contiennent aucune référence à cette décision de jurisprudence.  Par ailleurs, les sources di"
+  },
+  {
+    "id": "ADV-05",
+    "categorie": "ADV",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 59.3,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse Concernant le licenciement économique, il est établi que ce type de licenciement est défini comme celui effectué pour un ou plusieurs motifs non inhérents à la personne du salarié, résultan"
+  },
+  {
+    "id": "EDGE-01",
+    "categorie": "EDGE",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 70.3,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse  Concernant les mesures de reclassement interne, le plan de sauvegarde de l'emploi (PSE) doit déterminer les actions en vue du reclassement interne des salariés sur des emplois relevant de "
+  },
+  {
+    "id": "EDGE-02",
+    "categorie": "EDGE",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 0.0,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une ques"
+  },
+  {
+    "id": "EDGE-03",
+    "categorie": "EDGE",
+    "statut": "PASSÉE",
+    "score_verificateur": null,
+    "elapsed_s": 90.2,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "**Erreur pipeline** : Ollama timeout après 90.0s (modèle: gemma4:e4b)"
+  },
+  {
+    "id": "DATE-01",
+    "categorie": "DATE",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 71.9,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse La consultation du Comité Social et Économique (CSE) est obligatoire dans ce cas de figure, car les seuils légaux sont dépassés.  D'une part, l'entreprise compte 100 salariés, ce qui est su"
+  },
+  {
+    "id": "DATE-02",
+    "categorie": "DATE",
+    "statut": "PASSÉE",
+    "score_verificateur": 1.0,
+    "elapsed_s": 63.3,
+    "erreurs": [],
+    "warnings": [],
+    "extrait_reponse": "## Réponse La procédure de consultation du Comité Social et Économique (CSE) est régie par plusieurs articles, compte tenu de la taille de l'entreprise et du nombre de licenciements envisagés.  Premiè"
+  }
+]
