@@ -575,9 +575,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         content.addSubview_(sep3)
 
         # ══ INPUT ROW ════════════════════════════════════════════════════════
-        btn_w = 36
-        wf_btn_w = 36
-        input_w = WINDOW_W - PADDING * 2 - btn_w - wf_btn_w - 12  # 12 = gaps
+        folder_btn_w = 32
+        input_w = WINDOW_W - PADDING * 2 - folder_btn_w - 6  # 6 = gap
 
         self._input = AppKit.NSTextField.alloc().initWithFrame_(
             make_rect(PADDING, _INPUT_Y, input_w, INPUT_H)
@@ -594,38 +593,23 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._input.setAction_("sendQuery:")
         content.addSubview_(self._input)
 
-        btn_x = PADDING + input_w + 6
-        self._send_btn = AppKit.NSButton.alloc().initWithFrame_(
-            make_rect(btn_x, _INPUT_Y, btn_w, INPUT_H)
+        folder_x = PADDING + input_w + 6
+        self._folder_btn = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(folder_x, _INPUT_Y, folder_btn_w, INPUT_H)
         )
-        self._send_btn.setBezelStyle_(AppKit.NSRoundedBezelStyle)
-        self._send_btn.setTitle_("↗")
-        self._send_btn.setFont_(
-            AppKit.NSFont.systemFontOfSize_weight_(15, AppKit.NSFontWeightLight)
-        )
-        self._send_btn.setTarget_(self)
-        self._send_btn.setAction_("sendQuery:")
-        self._send_btn.setAttributedTitle_(
-            AppKit.NSAttributedString.alloc().initWithString_attributes_(
-                "↗", {AppKit.NSForegroundColorAttributeName: ns_white(0.8, 0.7)}
+        try:
+            folder_img = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "folder", "Ouvrir un document"
             )
-        )
-        content.addSubview_(self._send_btn)
-
-        wf_x = btn_x + btn_w + 4
-        self._workflow_btn = AppKit.NSButton.alloc().initWithFrame_(
-            make_rect(wf_x, _INPUT_Y, wf_btn_w, INPUT_H)
-        )
-        self._workflow_btn.setBezelStyle_(AppKit.NSRoundedBezelStyle)
-        self._workflow_btn.setToolTip_("Ouvrir l'éditeur de workflows")
-        self._workflow_btn.setTarget_(self)
-        self._workflow_btn.setAction_("openWorkflowEditor:")
-        self._workflow_btn.setAttributedTitle_(
-            AppKit.NSAttributedString.alloc().initWithString_attributes_(
-                "⚡", {AppKit.NSForegroundColorAttributeName: ns_color(1.0, 0.85, 0.2, 0.85)}
-            )
-        )
-        content.addSubview_(self._workflow_btn)
+            self._folder_btn.setImage_(folder_img)
+            self._folder_btn.setImageScaling_(AppKit.NSImageScaleProportionallyDown)
+        except Exception:
+            self._folder_btn.setTitle_("📁")
+        self._folder_btn.setBordered_(False)
+        self._folder_btn.setToolTip_("Déposer ou choisir un document")
+        self._folder_btn.setTarget_(self)
+        self._folder_btn.setAction_("openFilePicker:")
+        content.addSubview_(self._folder_btn)
 
         # ══ BOTTOM STATUS BAR ════════════════════════════════════════════════
         self._status = AppKit.NSTextField.alloc().initWithFrame_(
@@ -764,43 +748,26 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._processing_start_time = float(time.time())
         self.append_message_safe("Toi", query, user=True)
 
-        self._send_btn.setEnabled_(False)
         self.set_state(LucieState.THINKING)
 
         threading.Thread(target=self._process_query, args=(query,), daemon=True).start()
 
     @objc.IBAction  # type: ignore[untyped-decorator]
-    def openWorkflowEditor_(self, sender: Any) -> None:
-        def _launch() -> None:
-            import importlib.util
-            spec = importlib.util.find_spec("webview")
-            if spec is None:
-                AppHelper.callAfter(
-                    self.append_message_safe,
-                    "Lucie",
-                    "⚡ L'éditeur de workflows nécessite pywebview.\nInstallez-le avec : pip install pywebview",
-                    False,
-                )
-                return
-            try:
-                project_root = os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-                env = os.environ.copy()
-                env.setdefault("PYTHONPATH", project_root)
-                subprocess.Popen(
-                    [sys.executable, "-c",
-                     "from app.workflows.bridge import launch_editor; launch_editor()"],
-                    cwd=project_root, env=env,
-                )
-                logger.info("Éditeur de workflows lancé")
-            except Exception as e:
-                logger.error(f"Erreur lancement éditeur workflows : {e}")
-                AppHelper.callAfter(
-                    self.append_message_safe, "Lucie",
-                    f"⚡ Erreur lors de l'ouverture de l'éditeur : {e}", False,
-                )
-        threading.Thread(target=_launch, daemon=True).start()
+    def openFilePicker_(self, sender: Any) -> None:
+        panel = AppKit.NSOpenPanel.openPanel()
+        panel.setCanChooseFiles_(True)
+        panel.setCanChooseDirectories_(True)
+        panel.setAllowsMultipleSelection_(False)
+        panel.setPrompt_("Ouvrir")
+        panel.setMessage_("Choisissez un document ou un dossier à analyser")
+        try:
+            panel.setAllowedFileTypes_(["pdf", "docx", "txt", "md"])
+        except Exception:
+            pass
+        if panel.runModal() == AppKit.NSModalResponseOK:
+            url = panel.URL()
+            if url and url.isFileURL():
+                self.handle_dropped_path(str(url.path()))
 
     # ── Drop handling ─────────────────────────────────────────────────────────
 
@@ -956,7 +923,6 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._is_processing = False
             latency = time.time() - self._processing_start_time
             self._latency_label.setStringValue_(f"{latency:.2f}s")
-            self._send_btn.setEnabled_(True)
             self._is_dragging = False
             self.set_state(LucieState.DONE)  # Hero sound + green + "Terminé"
             self._send_notification("Lucie", f"Réponse prête en {latency:.1f}s")
@@ -1018,7 +984,6 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     def _on_response_error(self, error_text: str) -> None:
         self.append_message_safe("Lucie", error_text, False)
-        self._send_btn.setEnabled_(True)
         self._is_processing = False
         self._is_dragging = False
         self.set_state(LucieState.ERROR)  # Basso sound + red + "Erreur"
