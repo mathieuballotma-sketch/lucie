@@ -826,7 +826,6 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._processing_start_time = float(time.time())
         self.append_message_safe("Toi", query, user=True)
 
-        self._send_btn.setEnabled_(False)
         self._hide_output_card()
         self.set_state(LucieState.THINKING)
 
