@@ -183,35 +183,6 @@ class ProgressLineView(AppKit.NSView):  # type: ignore[misc]
         return False
 
 
-# ─── DraggableView ───────────────────────────────────────────────────────────
-class DraggableView(AppKit.NSView):  # type: ignore[misc]
-    def initWithFrame_(self, frame: Any) -> Any:
-        self = objc.super(DraggableView, self).initWithFrame_(frame)
-        if self is not None:
-            self._drag_start: Any = None
-        return self
-
-    def mouseDown_(self, event: Any) -> None:
-        self._drag_start = event.locationInWindow()
-
-    def mouseDragged_(self, event: Any) -> None:
-        if self._drag_start is None:
-            return
-        loc = event.locationInWindow()
-        dx = loc.x - self._drag_start.x
-        dy = loc.y - self._drag_start.y
-        win = self.window()
-        if win:
-            f = win.frame()
-            win.setFrameOrigin_((f.origin.x + dx, f.origin.y + dy))
-
-    def mouseUp_(self, event: Any) -> None:
-        self._drag_start = None
-
-    def isOpaque(self) -> bool:
-        return False
-
-
 # ─── ThinkingIndicatorView ───────────────────────────────────────────────────
 class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
     """3 pulsing dots shown during LLM processing (staggered pulse animation)."""
@@ -268,6 +239,14 @@ class DropContentView(AppKit.NSView):  # type: ignore[misc]
             self._hud_ref: Optional[Any] = None
             self.registerForDraggedTypes_([AppKit.NSPasteboardTypeFileURL])
         return self
+
+    def mouseDownCanMoveWindow(self) -> bool:
+        # Non-opaque view — must return True so setMovableByWindowBackground_ works
+        return True
+
+    def mouseDown_(self, event: Any) -> None:
+        # Clicks reaching the content view (empty background) become window drags
+        self.window().performWindowDragWithEvent_(event)
 
     def draggingEntered_(self, sender: Any) -> int:
         if self._hud_ref is not None:
@@ -349,6 +328,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self.setBackgroundColor_(AppKit.NSColor.clearColor())
         self.setAlphaValue_(ALPHA)
         self.setHasShadow_(True)
+        # Allow dragging from any non-control background area
+        self.setMovableByWindowBackground_(True)
 
         self._is_dragging: bool = False
         self._is_processing: bool = False
@@ -412,12 +393,6 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         vfx.layer().setBorderWidth_(0.5)
         vfx.layer().setBorderColor_(ns_white(1.0, 0.08).CGColor())
         content.addSubview_(vfx)
-
-        # Drag overlay (full window, transparent)
-        drag_view = DraggableView.alloc().initWithFrame_(
-            make_rect(0, 0, WINDOW_W, WINDOW_H)
-        )
-        content.addSubview_(drag_view)
 
         # ══ HEADER ═══════════════════════════════════════════════════════════
         header_center_y = _HEADER_Y + (HEADER_H - 22) / 2  # vertically center 22px text
@@ -665,6 +640,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             ns_color(0.27, 0.52, 0.97, 0.05).CGColor()
         )
         self._drop_highlight.setAlphaValue_(0.0)
+        # setHidden_ excludes from hitTest — setAlphaValue_(0) alone does not
+        self._drop_highlight.setHidden_(True)
         content.addSubview_(self._drop_highlight)
 
         # ══ PROGRESS LINE (top edge du HUD) ══════════════════════════════════
@@ -1333,6 +1310,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     @objc.python_method  # type: ignore[untyped-decorator]
     def _show_drop_highlight(self, visible: bool) -> None:
         """Show/hide blue drop-target border."""
+        self._drop_highlight.setHidden_(not visible)
         self._drop_highlight.setAlphaValue_(1.0 if visible else 0.0)
 
     @objc.python_method  # type: ignore[untyped-decorator]
