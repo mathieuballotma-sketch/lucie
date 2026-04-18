@@ -7,17 +7,25 @@ Niveaux de traitement :
   3. document → Pipeline complet : Lecteur → Retriever → Rédacteur → Vérificateur (30-45s)
 
 Aucune dépendance au reste du repo.
+
+Hooks mémoire (Bloc 1) :
+  - run() accepte un MemoryStore optionnel (injection de dépendance)
+  - observe() est appelé après chaque traitement réussi
+  - recall() est disponible pour enrichissement futur (ProactiveEngine — Bloc 2)
 """
 
 import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from . import dossier_analyzer, lecteur, ollama_client, redacteur, retriever, verificateur
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
 from .router import is_dossier, route as router_route, validate as router_validate
+
+if TYPE_CHECKING:
+    from .memory.store import MemoryStore
 
 _DIRECT_SYSTEM_PATH = Path(__file__).parent / "prompts" / "direct_system.txt"
 
@@ -28,6 +36,7 @@ async def run(
     dossier_path: Optional[str] = None,
     force: bool = False,
     verbose: bool = False,
+    memory: "Optional[MemoryStore]" = None,
 ) -> str:
     """
     Exécute le pipeline au niveau approprié avec timeout global.
@@ -38,6 +47,8 @@ async def run(
         dossier_path: Chemin vers un dossier complet (optionnel).
         force: Force le mode search sans routing (pour les démos).
         verbose: Affiche les étapes dans le terminal.
+        memory: MemoryStore optionnel (injection de dépendance). Si fourni,
+                chaque traitement enregistre une observation silencieuse.
 
     Returns:
         Réponse en Markdown, ou message d'erreur.
@@ -51,7 +62,7 @@ async def run(
         print(f"⚖️  Pipeline démarré — {query[:80]}…", flush=True)
     try:
         result = await asyncio.wait_for(
-            _run_pipeline(query, document_text, force, verbose),
+            _run_pipeline(query, document_text, force, verbose, memory),
             timeout=PIPELINE_TIMEOUT,
         )
         elapsed = time.time() - start
@@ -115,6 +126,7 @@ async def _run_pipeline(
     document_text: Optional[str],
     force: bool,
     verbose: bool,
+    memory: "Optional[MemoryStore]" = None,
 ) -> str:
 
     # ── Vérification du scope (< 1ms) ─────────────────────────────────────────
@@ -132,7 +144,10 @@ async def _run_pipeline(
 
     # ── Niveau 1 : Réponse directe ────────────────────────────────────────────
     if level == "direct":
-        return await _direct_response(query, verbose)
+        result = await _direct_response(query, verbose)
+        if memory is not None:
+            await _memory_observe(memory, query, "direct", routing["intent"])
+        return result
 
     # ── Niveau 2 : Recherche juridique (sans document) ────────────────────────
     if level == "search":
@@ -140,12 +155,18 @@ async def _run_pipeline(
             {"type_document": "requete", "query": query},
             ensure_ascii=False,
         )
-        return await _search_and_write(query, faits_json, verbose)
+        result = await _search_and_write(query, faits_json, verbose)
+        if memory is not None:
+            await _memory_observe(memory, query, "search", routing["intent"])
+        return result
 
     # ── Niveau 3 : Pipeline complet (avec document) ───────────────────────────
     # level == "document"
     doc = routing.get("document") or document_text
-    return await _full_pipeline(query, doc, verbose)
+    result = await _full_pipeline(query, doc, verbose)
+    if memory is not None:
+        await _memory_observe(memory, query, "document", routing["intent"])
+    return result
 
 
 # ─── Niveau 1 ─────────────────────────────────────────────────────────────────
@@ -254,6 +275,26 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     verification_json = await verificateur.handle(note_markdown, sources_json)
 
     return _format_final(note_markdown, verification_json, verbose)
+
+
+# ─── Helpers mémoire ─────────────────────────────────────────────────────────
+
+async def _memory_observe(
+    memory: "MemoryStore",
+    query: str,
+    level: str,
+    intent: str,
+) -> None:
+    """Enregistre silencieusement une observation dans MemoryStore."""
+    try:
+        await memory.observe({
+            "query": query,
+            "source": f"pipeline/{level}",
+            "node_type": "pattern",
+            "intent": intent,
+        })
+    except Exception:
+        pass  # La mémoire est silencieuse — un échec ne bloque jamais le pipeline
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
