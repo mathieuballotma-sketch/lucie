@@ -1,0 +1,63 @@
+# Schéma d'informations requises pour répondre à une question de licenciement économique.
+# Utilisé par DialogueManager.needs_clarification() pour identifier ce qui manque.
+
+domain: licenciement_economique
+description: >
+  Informations minimales nécessaires pour une réponse juridique précise
+  sur le licenciement économique.
+
+required_params:
+  - id: type_licenciement
+    label: Type de licenciement
+    question: "S'agit-il d'un licenciement individuel ou collectif ?"
+    values: [individuel, collectif]
+    example: "collectif (PSE > 10 salariés)"
+
+  - id: effectif
+    label: Effectif de l'entreprise
+    question: "Quel est l'effectif de l'entreprise (nombre de salariés) ?"
+    type: integer
+    example: "250 salariés"
+
+  - id: anciennete
+    label: Ancienneté du salarié
+    question: "Quelle est votre ancienneté dans l'entreprise (en années / mois) ?"
+    type: duration
+    example: "3 ans et 4 mois"
+
+  - id: motif
+    label: Motif économique invoqué
+    question: "Quel motif économique est invoqué par l'employeur ?"
+    values:
+      - difficultés économiques
+      - mutations technologiques
+      - sauvegarde de la compétitivité
+      - cessation d'activité
+      - réorganisation de l'entreprise
+    example: "difficultés économiques"
+
+  - id: convention_collective
+    label: Convention collective applicable
+    question: "Quelle convention collective s'applique à votre contrat ?"
+    type: string
+    optional: true
+    example: "Métallurgie (IDCC 54)"
+
+optional_params:
+  - id: date_notification
+    label: Date de notification du licenciement
+    question: "Quelle est la date de notification du licenciement ?"
+    type: date
+    example: "15/03/2026"
+
+  - id: salaire_reference
+    label: Salaire de référence brut
+    question: "Quel est votre salaire brut de référence ?"
+    type: float
+    example: "3 200 € brut / mois"
+
+  - id: reclassement_propose
+    label: Reclassement proposé
+    question: "L'employeur a-t-il proposé des postes de reclassement ?"
+    values: [oui, non, en cours]
+    example: "non"
