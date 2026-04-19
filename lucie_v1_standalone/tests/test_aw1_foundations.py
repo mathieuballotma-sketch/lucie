@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import pytest
 

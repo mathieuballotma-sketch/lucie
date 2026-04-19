@@ -4,7 +4,6 @@ Tests — SmallTalkHandler (30 tests, 1 par pattern).
 
 from __future__ import annotations
 
-import pytest
 
 from lucie_v1_standalone.dialogue.small_talk_handler import handle, handle_or_default
 

@@ -4,7 +4,7 @@ Tests — DialogueManager skeleton (3 tests de structure).
 
 from __future__ import annotations
 
-from lucie_v1_standalone.dialogue.dialogue_manager import DialogueManager, DialogueState
+from lucie_v1_standalone.dialogue.dialogue_manager import DialogueManager
 
 
 def test_initial_state() -> None:

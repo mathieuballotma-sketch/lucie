@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import List
 
 
 class Intent(str, Enum):
