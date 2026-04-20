@@ -113,6 +113,22 @@ def _red(a: float = 0.9) -> Any:
     return ns_color(1.0, 0.25, 0.20, a)
 
 
+def ns_color_hex(hex_str: str, a: float = 1.0) -> Any:
+    """`#rrggbb` → NSColor sRGB. Alpha optionnel (multiplicateur)."""
+    s = hex_str.lstrip("#")
+    r = int(s[0:2], 16) / 255.0
+    g = int(s[2:4], 16) / 255.0
+    b = int(s[4:6], 16) / 255.0
+    return ns_color(r, g, b, a)
+
+
+# Palette carte document pro + ProposalCard
+CARD_BG_LIGHT = ns_color_hex("#fafaf8")
+CARD_BORDER_SUBTLE = ns_color_hex("#000000", 0.08)
+ACCENT_NAVY = ns_color_hex("#1a2847")
+ACCENT_NAVY_HOVER = ns_color_hex("#24345c")
+
+
 # ─── ProgressLineView ────────────────────────────────────────────────────────
 class ProgressLineView(AppKit.NSView):  # type: ignore[misc]
     """Ligne lumineuse fine (3px) en haut du HUD, pulse doucement pendant le traitement.
@@ -296,55 +312,152 @@ class DropContentView(AppKit.NSView):  # type: ignore[misc]
 
 # ─── DraggableFileCard ────────────────────────────────────────────────────────
 class DraggableFileCard(AppKit.NSView):  # type: ignore[misc]
-    """Floating card showing a Lucie output file ready to be dragged out.
+    """Carte document premium — drag-to-Finder + double-clic pour NSSavePanel.
 
-    Implements NSDraggingSource so the user can drag the card directly to
-    Finder, Mail, Slack, or any drop-accepting app. Appears with a fade-in
-    after streaming completes; hidden by default.
+    - Rendu premium : fond clair, ombre douce, icône du type de fichier, nom +
+      métadonnées (kind · taille · date).
+    - Simple clic/drag → commence une session de drag vers Finder/Mail/Slack.
+    - Double-clic → ouvre NSSavePanel pour ranger le fichier où l'avocat veut.
+    - Clic droit → menu contextuel (Ouvrir / Enregistrer sous / Copier chemin).
     """
 
-    _CARD_W: int = 224
-    _CARD_H: int = 34
+    _CARD_W: int = 380
+    _CARD_H: int = 72
+    # Seuil minimal de déplacement avant de déclencher un drag (évite drag parasite).
+    _DRAG_THRESHOLD: float = 4.0
 
     def initWithFrame_(self, frame: Any) -> Any:
         self = objc.super(DraggableFileCard, self).initWithFrame_(frame)
         if self is not None:
             self._path: Optional[str] = None
             self._mouse_down_loc: Optional[Any] = None
+            self._hud_ref: Optional[Any] = None  # set by HUDWindow.handle_dropped_path
+            self._hovered: bool = False
             self.setWantsLayer_(True)
-            self.layer().setCornerRadius_(8.0)
-            self.layer().setBackgroundColor_(
-                ns_color(0.27, 0.52, 0.97, 0.13).CGColor()
-            )
-            self.layer().setBorderWidth_(0.5)
-            self.layer().setBorderColor_(
-                ns_color(0.27, 0.52, 0.97, 0.45).CGColor()
-            )
+            layer = self.layer()
+            layer.setCornerRadius_(10.0)
+            layer.setBackgroundColor_(CARD_BG_LIGHT.CGColor())
+            layer.setBorderWidth_(1.0)
+            layer.setBorderColor_(CARD_BORDER_SUBTLE.CGColor())
 
+            # Ombre douce : offset (0, -2 en coords AppKit = vers le bas visuellement),
+            # blur 24, alpha 0.08. NSShadow est attaché via setShadow_.
+            shadow = AppKit.NSShadow.alloc().init()
+            shadow.setShadowOffset_(AppKit.NSMakeSize(0, -2))
+            shadow.setShadowBlurRadius_(24.0)
+            shadow.setShadowColor_(
+                AppKit.NSColor.colorWithWhite_alpha_(0.0, 0.08)
+            )
+            self.setShadow_(shadow)
+
+            # Icône du type de fichier (24×24).
+            icon_size = 24
+            icon_x = 14
+            icon_y = (self._CARD_H - icon_size) / 2
+            self._icon_view = AppKit.NSImageView.alloc().initWithFrame_(
+                make_rect(icon_x, icon_y, icon_size, icon_size)
+            )
+            self._icon_view.setImageScaling_(AppKit.NSImageScaleProportionallyDown)
+            self.addSubview_(self._icon_view)
+
+            # Nom du fichier (titre, 14pt semibold).
+            text_x = icon_x + icon_size + 12
+            text_w = self._CARD_W - text_x - 48  # 48 = espace à droite pour "drag →"
             self._label = AppKit.NSTextField.alloc().initWithFrame_(
-                make_rect(10, 0, self._CARD_W - 52, self._CARD_H)
+                make_rect(text_x, self._CARD_H - 34, text_w, 20)
             )
             self._label.setStringValue_("—")
             self._label.setEditable_(False)
             self._label.setBezeled_(False)
             self._label.setDrawsBackground_(False)
-            self._label.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
-            self._label.setTextColor_(ns_white(0.92, 0.88))
+            self._label.setFont_(
+                AppKit.NSFont.systemFontOfSize_weight_(14, AppKit.NSFontWeightSemibold)
+            )
+            self._label.setTextColor_(AppKit.NSColor.labelColor())
             self._label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingMiddle)
             self.addSubview_(self._label)
 
+            # Métadonnées (12pt regular, gris).
+            self._meta = AppKit.NSTextField.alloc().initWithFrame_(
+                make_rect(text_x, 12, text_w, 18)
+            )
+            self._meta.setStringValue_("")
+            self._meta.setEditable_(False)
+            self._meta.setBezeled_(False)
+            self._meta.setDrawsBackground_(False)
+            self._meta.setFont_(AppKit.NSFont.systemFontOfSize_(12))
+            self._meta.setTextColor_(AppKit.NSColor.secondaryLabelColor())
+            self._meta.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+            self.addSubview_(self._meta)
+
+            # Hint "drag →" discret à droite.
             hint = AppKit.NSTextField.alloc().initWithFrame_(
-                make_rect(self._CARD_W - 44, 0, 38, self._CARD_H)
+                make_rect(self._CARD_W - 44, (self._CARD_H - 14) / 2, 36, 14)
             )
             hint.setStringValue_("drag →")
             hint.setEditable_(False)
             hint.setBezeled_(False)
             hint.setDrawsBackground_(False)
-            hint.setFont_(AppKit.NSFont.systemFontOfSize_(8.5))
-            hint.setTextColor_(ns_white(0.45, 0.55))
+            hint.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+            hint.setTextColor_(AppKit.NSColor.tertiaryLabelColor())
             hint.setAlignment_(AppKit.NSTextAlignmentRight)
             self.addSubview_(hint)
+
+            # Tracking area pour le hover.
+            self._update_tracking_area()
         return self
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _update_tracking_area(self) -> None:
+        # Nettoyage + ré-installation (à appeler sur resize)
+        for area in list(self.trackingAreas() or []):
+            self.removeTrackingArea_(area)
+        area = AppKit.NSTrackingArea.alloc().initWithRect_options_owner_userInfo_(
+            self.bounds(),
+            (
+                AppKit.NSTrackingMouseEnteredAndExited
+                | AppKit.NSTrackingActiveInKeyWindow
+                | AppKit.NSTrackingInVisibleRect
+            ),
+            self,
+            None,
+        )
+        self.addTrackingArea_(area)
+
+    def updateTrackingAreas(self) -> None:
+        objc.super(DraggableFileCard, self).updateTrackingAreas()
+        self._update_tracking_area()
+
+    def mouseEntered_(self, event: Any) -> None:
+        if self._hovered:
+            return
+        self._hovered = True
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.18)
+        # Ombre plus marquée
+        shadow = AppKit.NSShadow.alloc().init()
+        shadow.setShadowOffset_(AppKit.NSMakeSize(0, -3))
+        shadow.setShadowBlurRadius_(30.0)
+        shadow.setShadowColor_(
+            AppKit.NSColor.colorWithWhite_alpha_(0.0, 0.14)
+        )
+        self.animator().setShadow_(shadow)
+        AppKit.NSAnimationContext.endGrouping()
+
+    def mouseExited_(self, event: Any) -> None:
+        if not self._hovered:
+            return
+        self._hovered = False
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.18)
+        shadow = AppKit.NSShadow.alloc().init()
+        shadow.setShadowOffset_(AppKit.NSMakeSize(0, -2))
+        shadow.setShadowBlurRadius_(24.0)
+        shadow.setShadowColor_(
+            AppKit.NSColor.colorWithWhite_alpha_(0.0, 0.08)
+        )
+        self.animator().setShadow_(shadow)
+        AppKit.NSAnimationContext.endGrouping()
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def set_filepath(self, path: str) -> None:
@@ -352,14 +465,60 @@ class DraggableFileCard(AppKit.NSView):  # type: ignore[misc]
         self._path = path
         name = os.path.basename(path)
         ext = os.path.splitext(name)[1].lower()
-        icon = {".pdf": "📄", ".docx": "📝", ".txt": "📋", ".md": "📖"}.get(ext, "📄")
-        self._label.setStringValue_(f"{icon}  {name}")
+        self._label.setStringValue_(name)
+
+        # Icône système du type de fichier (fallback emoji si indispo).
+        try:
+            workspace = AppKit.NSWorkspace.sharedWorkspace()
+            icon = workspace.iconForFile_(path) if os.path.exists(path) else None
+            if icon is None:
+                icon = workspace.iconForFileType_(ext.lstrip(".") or "public.data")
+            self._icon_view.setImage_(icon)
+        except Exception:
+            pass
+
+        # Métadonnées : {type} · {taille} · {date}
+        kind_labels = {
+            ".docx": "Document Word", ".pdf": "PDF", ".md": "Markdown",
+            ".txt": "Texte", ".rtf": "RTF",
+        }
+        kind_label = kind_labels.get(ext, ext.lstrip(".").upper() or "Fichier")
+        try:
+            size = os.path.getsize(path)
+            if size < 1024:
+                size_str = f"{size} o"
+            elif size < 1024 * 1024:
+                size_str = f"{size // 1024} Ko"
+            else:
+                size_str = f"{size / (1024 * 1024):.1f} Mo"
+        except OSError:
+            size_str = "—"
+        from datetime import datetime as _dt
+        try:
+            mtime = _dt.fromtimestamp(os.path.getmtime(path))
+            date_str = mtime.strftime("%d %b %Y").lower()
+        except OSError:
+            date_str = ""
+        parts = [kind_label, size_str]
+        if date_str:
+            parts.append(date_str)
+        self._meta.setStringValue_(" · ".join(parts))
 
     def mouseDown_(self, event: Any) -> None:
+        # Double-clic → ouvrir NSSavePanel (enregistrer sous).
+        if event.clickCount() == 2:
+            self._open_save_panel()
+            return
         self._mouse_down_loc = event.locationInWindow()
 
     def mouseDragged_(self, event: Any) -> None:
         if self._path is None or self._mouse_down_loc is None:
+            return
+        # Seuil minimal pour éviter de déclencher un drag sur un clic maintenu
+        loc = event.locationInWindow()
+        dx = loc.x - self._mouse_down_loc.x
+        dy = loc.y - self._mouse_down_loc.y
+        if (dx * dx + dy * dy) < (self._DRAG_THRESHOLD * self._DRAG_THRESHOLD):
             return
         pb_item = AppKit.NSPasteboardItem.alloc().init()
         url = AppKit.NSURL.fileURLWithPath_(self._path)
@@ -373,10 +532,273 @@ class DraggableFileCard(AppKit.NSView):  # type: ignore[misc]
     def mouseUp_(self, event: Any) -> None:
         self._mouse_down_loc = None
 
+    def rightMouseDown_(self, event: Any) -> None:
+        """Menu contextuel : Ouvrir / Enregistrer sous / Copier chemin / Supprimer."""
+        if self._path is None:
+            return
+        menu = AppKit.NSMenu.alloc().initWithTitle_("")
+
+        def _add(title: str, selector: str) -> None:
+            item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                title, selector, ""
+            )
+            item.setTarget_(self)
+            menu.addItem_(item)
+
+        _add("Ouvrir", "contextOpen:")
+        _add("Enregistrer sous…", "contextSaveAs:")
+        _add("Copier le chemin", "contextCopyPath:")
+        menu.addItem_(AppKit.NSMenuItem.separatorItem())
+        _add("Supprimer", "contextDelete:")
+
+        AppKit.NSMenu.popUpContextMenu_withEvent_forView_(menu, event, self)
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def contextOpen_(self, sender: Any) -> None:
+        if self._path and os.path.exists(self._path):
+            AppKit.NSWorkspace.sharedWorkspace().openFile_(self._path)
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def contextSaveAs_(self, sender: Any) -> None:
+        self._open_save_panel()
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def contextCopyPath_(self, sender: Any) -> None:
+        if not self._path:
+            return
+        pb = AppKit.NSPasteboard.generalPasteboard()
+        pb.clearContents()
+        pb.setString_forType_(self._path, AppKit.NSPasteboardTypeString)
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def contextDelete_(self, sender: Any) -> None:
+        if self._path and os.path.exists(self._path):
+            try:
+                os.unlink(self._path)
+            except OSError:
+                pass
+        self._path = None
+        if self._hud_ref is not None and hasattr(self._hud_ref, "_hide_output_card"):
+            self._hud_ref._hide_output_card()
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _open_save_panel(self) -> None:
+        """Ouvre NSSavePanel et copie le fichier au chemin choisi par l'utilisateur."""
+        if not self._path or not os.path.exists(self._path):
+            return
+        panel = AppKit.NSSavePanel.savePanel()
+        panel.setNameFieldStringValue_(os.path.basename(self._path))
+        ext = os.path.splitext(self._path)[1].lstrip(".")
+        if ext:
+            try:
+                panel.setAllowedFileTypes_([ext])
+            except Exception:
+                pass
+        try:
+            home = os.path.expanduser("~/Documents")
+            panel.setDirectoryURL_(AppKit.NSURL.fileURLWithPath_(home))
+        except Exception:
+            pass
+        panel.setMessage_("Enregistrer le document dans Finder")
+        panel.setPrompt_("Enregistrer")
+
+        if panel.runModal() != AppKit.NSModalResponseOK:
+            return
+        dest_url = panel.URL()
+        if dest_url is None or not dest_url.isFileURL():
+            return
+        dest = str(dest_url.path())
+        try:
+            import shutil
+            shutil.copy(self._path, dest)
+        except Exception as exc:
+            logger.error(f"NSSavePanel copy failed: {exc}")
+            return
+        if self._hud_ref is not None and hasattr(self._hud_ref, "append_message_safe"):
+            self._hud_ref.append_message_safe(
+                "Lucie", f"✅ Enregistré dans {dest}", False
+            )
+
     def draggingSession_sourceOperationMaskForDraggingContext_(
         self, session: Any, context: int
     ) -> int:
         return AppKit.NSDragOperationCopy
+
+    def isOpaque(self) -> bool:
+        return False
+
+
+# ─── Button styles (helpers) ─────────────────────────────────────────────────
+
+def _make_primary_button(frame: Any, title: str, target: Any, action: str) -> Any:
+    """Bouton « accent navy » (fond bleu-nuit, texte blanc)."""
+    btn = AppKit.NSButton.alloc().initWithFrame_(frame)
+    btn.setBordered_(False)
+    btn.setWantsLayer_(True)
+    btn.layer().setCornerRadius_(6.0)
+    btn.layer().setBackgroundColor_(ACCENT_NAVY.CGColor())
+    btn.setTitle_(title)
+    btn.setFont_(
+        AppKit.NSFont.systemFontOfSize_weight_(12, AppKit.NSFontWeightMedium)
+    )
+    attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(
+        title,
+        {
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
+                12, AppKit.NSFontWeightMedium
+            ),
+            AppKit.NSForegroundColorAttributeName: AppKit.NSColor.whiteColor(),
+        },
+    )
+    btn.setAttributedTitle_(attr_title)
+    btn.setTarget_(target)
+    btn.setAction_(action)
+    return btn
+
+
+def _make_secondary_button(frame: Any, title: str, target: Any, action: str) -> Any:
+    """Bouton outline discret (fond transparent, bord, texte label)."""
+    btn = AppKit.NSButton.alloc().initWithFrame_(frame)
+    btn.setBordered_(False)
+    btn.setWantsLayer_(True)
+    btn.layer().setCornerRadius_(6.0)
+    btn.layer().setBorderWidth_(1.0)
+    btn.layer().setBorderColor_(
+        AppKit.NSColor.colorWithWhite_alpha_(0.0, 0.15).CGColor()
+    )
+    btn.layer().setBackgroundColor_(
+        AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.0).CGColor()
+    )
+    attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(
+        title,
+        {
+            AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
+                12, AppKit.NSFontWeightRegular
+            ),
+            AppKit.NSForegroundColorAttributeName: AppKit.NSColor.labelColor(),
+        },
+    )
+    btn.setAttributedTitle_(attr_title)
+    btn.setTarget_(target)
+    btn.setAction_(action)
+    return btn
+
+
+# ─── ProposalCardView ────────────────────────────────────────────────────────
+class ProposalCardView(AppKit.NSView):  # type: ignore[misc]
+    """Carte de proposition — texte + 2 boutons (Oui produire / Non).
+
+    Utilisée quand le pipeline détecte une demande de production (rédige,
+    projet de…) pour demander confirmation avant de dépenser les cycles LLM.
+
+    Les callbacks (`_yes_block`, `_no_block`) sont des callables Python sans
+    argument. Assignés via `configure(question, yes_cb, no_cb)`.
+    """
+
+    _CARD_W: int = 492  # WINDOW_W - PADDING * 2
+    _CARD_H: int = 104  # 2 lignes de texte + gap + row de boutons
+
+    def initWithFrame_(self, frame: Any) -> Any:
+        self = objc.super(ProposalCardView, self).initWithFrame_(frame)
+        if self is not None:
+            self._yes_block: Optional[Any] = None
+            self._no_block: Optional[Any] = None
+            self.setWantsLayer_(True)
+            layer = self.layer()
+            layer.setCornerRadius_(10.0)
+            layer.setBackgroundColor_(CARD_BG_LIGHT.CGColor())
+            layer.setBorderWidth_(1.0)
+            layer.setBorderColor_(CARD_BORDER_SUBTLE.CGColor())
+
+            shadow = AppKit.NSShadow.alloc().init()
+            shadow.setShadowOffset_(AppKit.NSMakeSize(0, -2))
+            shadow.setShadowBlurRadius_(24.0)
+            shadow.setShadowColor_(
+                AppKit.NSColor.colorWithWhite_alpha_(0.0, 0.08)
+            )
+            self.setShadow_(shadow)
+
+            # Texte de la question (2 lignes max, wrapping).
+            text_h = 44
+            self._text_label = AppKit.NSTextField.alloc().initWithFrame_(
+                make_rect(14, self._CARD_H - text_h - 10, self._CARD_W - 28, text_h)
+            )
+            self._text_label.setStringValue_("")
+            self._text_label.setEditable_(False)
+            self._text_label.setBezeled_(False)
+            self._text_label.setDrawsBackground_(False)
+            self._text_label.setFont_(AppKit.NSFont.systemFontOfSize_(13))
+            self._text_label.setTextColor_(AppKit.NSColor.labelColor())
+            self._text_label.cell().setWraps_(True)
+            self._text_label.cell().setLineBreakMode_(AppKit.NSLineBreakByWordWrapping)
+            self.addSubview_(self._text_label)
+
+            # Row de boutons en bas.
+            btn_h = 32
+            btn_y = 12
+            yes_w = 130
+            no_w = 210
+            gap = 8
+            total_w = yes_w + gap + no_w
+            start_x = (self._CARD_W - total_w) / 2
+
+            self._yes_btn = _make_primary_button(
+                make_rect(start_x, btn_y, yes_w, btn_h),
+                "Oui, produire",
+                self,
+                "yesClicked:",
+            )
+            self.addSubview_(self._yes_btn)
+
+            self._no_btn = _make_secondary_button(
+                make_rect(start_x + yes_w + gap, btn_y, no_w, btn_h),
+                "Non, répondre directement",
+                self,
+                "noClicked:",
+            )
+            self.addSubview_(self._no_btn)
+        return self
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def configure(self, question: str, yes_cb: Any, no_cb: Any,
+                  yes_label: str = "Oui, produire",
+                  no_label: str = "Non, répondre directement") -> None:
+        """Met à jour le texte, les labels et les callbacks."""
+        self._text_label.setStringValue_(question)
+        self._yes_block = yes_cb
+        self._no_block = no_cb
+        # Re-styler les labels des boutons (peuvent changer entre proposition et
+        # suggested_replies génériques).
+        for btn, label, color in (
+            (self._yes_btn, yes_label, AppKit.NSColor.whiteColor()),
+            (self._no_btn, no_label, AppKit.NSColor.labelColor()),
+        ):
+            attr = AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                label,
+                {
+                    AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
+                        12, AppKit.NSFontWeightMedium
+                    ),
+                    AppKit.NSForegroundColorAttributeName: color,
+                },
+            )
+            btn.setAttributedTitle_(attr)
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def yesClicked_(self, sender: Any) -> None:
+        cb = self._yes_block
+        self._yes_block = None
+        self._no_block = None
+        if cb is not None:
+            cb()
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def noClicked_(self, sender: Any) -> None:
+        cb = self._no_block
+        self._yes_block = None
+        self._no_block = None
+        if cb is not None:
+            cb()
 
     def isOpaque(self) -> bool:
         return False
@@ -435,6 +857,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         # Drop state — file or folder attached to next query
         self._current_document: Optional[str] = None
         self._current_dossier_path: Optional[str] = None
+
+        # Méta de la dernière PipelineResponse (produces_document, document_path,
+        # suggested_replies, document_kind). Peuplé par _process_query avant le
+        # streaming, consulté par _on_streaming_complete pour décider quoi afficher.
+        self._last_response_meta: Optional[Dict[str, Any]] = None
+        self._last_query: str = ""
 
         # Replace default content view with drop-aware version
         _drop = DropContentView.alloc().initWithFrame_(self.contentView().frame())
@@ -733,17 +1161,34 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         content.addSubview_(self._drop_highlight)
 
         # ══ OUTPUT DRAG CARD (visible quand Lucie a produit un résultat) ═════
+        # Nouvelles dimensions : 380×72, placée en overlay au-dessus de l'input.
+        card_x = (WINDOW_W - DraggableFileCard._CARD_W) / 2
         self._output_card = DraggableFileCard.alloc().initWithFrame_(
             make_rect(
-                PADDING,
-                _INPUT_TOP + 4,
+                card_x,
+                _INPUT_TOP + 6,
                 DraggableFileCard._CARD_W,
                 DraggableFileCard._CARD_H,
             )
         )
+        self._output_card._hud_ref = self  # pour notifications & NSSavePanel callback
         self._output_card.setHidden_(True)
         self._output_card.setAlphaValue_(0.0)
         content.addSubview_(self._output_card)
+
+        # ══ PROPOSAL CARD (visible quand Lucie propose une production) ═══════
+        proposal_x = PADDING
+        self._proposal_card = ProposalCardView.alloc().initWithFrame_(
+            make_rect(
+                proposal_x,
+                _INPUT_TOP + 6,
+                ProposalCardView._CARD_W,
+                ProposalCardView._CARD_H,
+            )
+        )
+        self._proposal_card.setHidden_(True)
+        self._proposal_card.setAlphaValue_(0.0)
+        content.addSubview_(self._proposal_card)
 
         # ══ PROGRESS LINE (top edge du HUD) ══════════════════════════════════
         self._progress_line = ProgressLineView.alloc().initWithFrame_(
@@ -822,14 +1267,52 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             onboarding.handle_input(query)
             return
 
+        self._submit_query(query, display_query=query)
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _submit_query(self, query: str, display_query: Optional[str] = None) -> None:
+        """Envoie une query au pipeline (thread worker).
+
+        `query` peut contenir un marqueur de décision interne (`__decision__:…`)
+        transmis au pipeline sans être affiché. `display_query` est la version
+        visible par l'utilisateur (par défaut identique).
+        """
+        from lucie_v1_standalone.pipeline import _DECISION_MARKER  # lazy import
         self._is_processing = True
         self._processing_start_time = float(time.time())
-        self.append_message_safe("Toi", query, user=True)
+        self._last_query = (
+            query.split("|original=", 1)[1]
+            if query.startswith(_DECISION_MARKER) and "|original=" in query
+            else query
+        )
+        if display_query:
+            self.append_message_safe("Toi", display_query, user=True)
 
         self._hide_output_card()
+        self._hide_proposal_card()
         self.set_state(LucieState.THINKING)
 
         threading.Thread(target=self._process_query, args=(query,), daemon=True).start()
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _send_decision_to_pipeline(self, value: str, original_query: str) -> None:
+        """Relance le pipeline avec une décision utilisateur (bouton Oui/Non cliqué).
+
+        Affiche un message utilisateur court (« Oui » / « Non ») pour garder
+        une trace conversationnelle lisible, puis transmet `__decision__:<value>|
+        original=<query>` au pipeline.
+        """
+        if self._is_processing:
+            return
+        from lucie_v1_standalone.pipeline import _DECISION_MARKER  # lazy import
+        user_echo = {
+            "yes": "Oui",
+            "yes_produce": "Oui, produire",
+            "no": "Non",
+            "no_text": "Non, répondre directement",
+        }.get(value, value)
+        internal_query = f"{_DECISION_MARKER}{value}|original={original_query}"
+        self._submit_query(internal_query, display_query=user_echo)
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def openFilePicker_(self, sender: Any) -> None:
@@ -921,13 +1404,11 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._current_document = None
             self._current_dossier_path = None
 
-            # ── 3-level routing ───────────────────────────────────────────────
-            from lucie_v1_standalone.router import route as lv1_route
-            routing = lv1_route(query, document_text=document)
-            level = routing["level"]
+            # Meta accumulées pour _on_streaming_complete (visibilité carte / boutons).
+            meta: Dict[str, Any] = {}
 
+            # ── Mode dossier : court-circuit du pipeline standard ────────────
             if dossier_path:
-                # ── Dossier mode: batch analysis with progress ─────────────
                 from lucie_v1_standalone import dossier_analyzer as _da
 
                 def _progress(current: int, total: int) -> None:
@@ -944,25 +1425,13 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                         progress_callback=_progress,
                     )
                 )
-                response = _da.format_report(report)
-
-            elif level == "direct":
-                # ── Fast path: greeting or out-of-scope — no engine needed ──
-                intent = routing.get("intent", "")
-                if intent == "salutation":
-                    response = (
-                        "Bonjour\u00a0! Je suis Lucie, sp\u00e9cialis\u00e9e en droit du licenciement \u00e9conomique. "
-                        "Posez-moi votre question ou d\u00e9posez un document juridique."
-                    )
-                else:
-                    response = (
-                        "Cette requ\u00eate sort du p\u00e9rim\u00e8tre de Lucie V1 (licenciement \u00e9conomique). "
-                        "Je ne traite que les questions relatives au droit social du travail sur ce th\u00e8me pr\u00e9cis. "
-                        "Merci de reformuler ou de poser une question sur le licenciement \u00e9conomique."
-                    )
+                response_text = _da.format_report(report)
 
             else:
-                # ── Legal pipeline: search (juridique) or document (avec texte)
+                # ── Pipeline standard : on récupère l'objet PipelineResponse
+                # complet pour accéder aux meta (produces_document, document_path,
+                # suggested_replies, document_kind). str(response) reste le
+                # markdown à streamer.
                 from lucie_v1_standalone import pipeline as _lv1
                 response = _asyncio.run(
                     _lv1.run(
@@ -972,15 +1441,25 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                         verbose=False,
                     )
                 )
+                response_text = str(response) if response else ""
+                meta = {
+                    "produces_document": getattr(response, "produces_document", False),
+                    "document_kind": getattr(response, "document_kind", None),
+                    "document_path": getattr(response, "document_path", None),
+                    "suggested_replies": getattr(response, "suggested_replies", []) or [],
+                }
 
-            if not response or not str(response).strip():
-                response = "(Aucune réponse générée)"
+            if not response_text or not response_text.strip():
+                response_text = "(Aucune réponse générée)"
 
             # Reset placeholder after successful response
             AppHelper.callAfter(
                 self._input.setPlaceholderString_, "Commande ou question…"
             )
-            AppHelper.callAfter(self._start_streaming, "Lucie", str(response), False)
+            # Stocker les meta AVANT de démarrer le streaming : _on_streaming_complete
+            # les consultera à la fin.
+            self._last_response_meta = meta
+            AppHelper.callAfter(self._start_streaming, "Lucie", response_text, False)
 
         except Exception as e:
             logger.error(f"Erreur _process_query: {e}", exc_info=True)
@@ -1020,7 +1499,9 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._latency_label.setStringValue_(f"{latency:.2f}s")
             self._is_dragging = False
             self.set_state(LucieState.DONE)  # Hero sound + green + "Terminé"
-            self._save_output_for_drag()     # Propose le résultat en drag-out
+            # Décision d'affichage post-streaming : ProposalCard / DraggableFileCard
+            # / boutons Oui-Non / rien, selon les meta du PipelineResponse.
+            self._on_streaming_complete()
             self._send_notification("Lucie", f"Réponse prête en {latency:.1f}s")
             # Onboarding: schedule next step
             next_step = getattr(self, "_onboard_next_step", None)
@@ -1346,6 +1827,80 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     @objc.IBAction  # type: ignore[untyped-decorator]
     def _hideOutputCardTimer_(self, timer: Any) -> None:
         self._output_card.setHidden_(True)
+
+    # ── Decision flow (ProposalCard + suggested_replies) ──────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _on_streaming_complete(self) -> None:
+        """Décide de l'affichage post-streaming selon les meta PipelineResponse.
+
+        Ordre de priorité :
+          1. `document_path` présent → carte document pro (après "yes_produce")
+          2. `produces_document` True → ProposalCard avec 2 boutons
+          3. `suggested_replies` non vides → ProposalCard générique
+          4. Sinon → rien (réponse factuelle — plus de .md temporaire auto)
+        """
+        meta = self._last_response_meta or {}
+        original_query = self._last_query
+
+        document_path = meta.get("document_path")
+        if document_path and os.path.exists(document_path):
+            self._show_output_card(document_path)
+            return
+
+        if meta.get("produces_document"):
+            question = self._streaming_full_text.strip() or (
+                "Voulez-vous que je produise ce document ?"
+            )
+            self._show_proposal_card(
+                question=question,
+                yes_cb=lambda: self._send_decision_to_pipeline("yes_produce", original_query),
+                no_cb=lambda: self._send_decision_to_pipeline("no_text", original_query),
+                yes_label="Oui, produire",
+                no_label="Non, répondre directement",
+            )
+            return
+
+        replies = meta.get("suggested_replies") or []
+        if replies and len(replies) >= 2:
+            yes, no = replies[0], replies[1]
+            question = self._streaming_full_text.strip() or "Voulez-vous ?"
+            self._show_proposal_card(
+                question=question,
+                yes_cb=lambda: self._send_decision_to_pipeline(yes.get("value", "yes"), original_query),
+                no_cb=lambda: self._send_decision_to_pipeline(no.get("value", "no"), original_query),
+                yes_label=yes.get("label", "Oui"),
+                no_label=no.get("label", "Non"),
+            )
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _show_proposal_card(self, question: str, yes_cb: Any, no_cb: Any,
+                            yes_label: str = "Oui, produire",
+                            no_label: str = "Non, répondre directement") -> None:
+        """Affiche la ProposalCard avec fade-in."""
+        self._proposal_card.configure(question, yes_cb, no_cb, yes_label, no_label)
+        self._proposal_card.setHidden_(False)
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.22)
+        self._proposal_card.animator().setAlphaValue_(1.0)
+        AppKit.NSAnimationContext.endGrouping()
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _hide_proposal_card(self) -> None:
+        """Fade-out et masque la ProposalCard (nouveau tour utilisateur)."""
+        if self._proposal_card.isHidden():
+            return
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.15)
+        self._proposal_card.animator().setAlphaValue_(0.0)
+        AppKit.NSAnimationContext.endGrouping()
+        AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            0.2, self, "_hideProposalCardTimer:", None, False
+        )
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def _hideProposalCardTimer_(self, timer: Any) -> None:
+        self._proposal_card.setHidden_(True)
 
     # ── Status helpers ────────────────────────────────────────────────────────
 

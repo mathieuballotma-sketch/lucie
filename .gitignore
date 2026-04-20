@@ -60,6 +60,7 @@ data_dev/
 chroma_data/
 rag_data/
 short_term_memory.json
+Lucid_Docs/
 *.save
 PROMPT_*.md
 lucie-project.skill
