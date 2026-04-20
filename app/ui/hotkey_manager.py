@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 import AppKit
+from ApplicationServices import AXIsProcessTrusted
 
 from ..utils.logger import logger
 
@@ -31,7 +32,7 @@ class HotkeyManager:
 
     def _setup(self) -> None:
         """Enregistre le monitor global pour Cmd+Shift+L."""
-        if not AppKit.AXIsProcessTrusted():
+        if not AXIsProcessTrusted():
             logger.warning(
                 "⌨️ Accessibilité non autorisée → Cmd+Shift+L désactivé. "
                 "Autoriser Lucie dans Réglages → Confidentialité → Accessibilité"
