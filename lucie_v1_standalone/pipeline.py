@@ -17,17 +17,32 @@ Hooks mémoire (Bloc 1) :
 import asyncio
 import json
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from . import dossier_analyzer, lecteur, ollama_client, redacteur, retriever, verificateur
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
+from .dialogue.intent_classifier import Intent, classify as classify_intent
+from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
 from .router import is_dossier, route as router_route, validate as router_validate
 
 if TYPE_CHECKING:
     from .memory.store import MemoryStore
 
 _DIRECT_SYSTEM_PATH = Path(__file__).parent / "prompts" / "direct_system.txt"
+
+
+@dataclass
+class PipelineResponse:
+    answer: str
+    citations: List[str] = field(default_factory=list)
+    verifier_score: float = 0.0
+    disclaimer: Optional[str] = None
+    mode: Optional[str] = None
+
+    def __str__(self) -> str:
+        return self.answer
 
 
 async def run(
@@ -37,7 +52,7 @@ async def run(
     force: bool = False,
     verbose: bool = False,
     memory: "Optional[MemoryStore]" = None,
-) -> str:
+) -> PipelineResponse:
     """
     Exécute le pipeline au niveau approprié avec timeout global.
 
@@ -51,12 +66,34 @@ async def run(
                 chaque traitement enregistre une observation silencieuse.
 
     Returns:
-        Réponse en Markdown, ou message d'erreur.
+        PipelineResponse avec answer, citations, verifier_score, disclaimer, mode.
     """
-    # Mode dossier : pipeline dédié avec timeout étendu
-    if dossier_path and is_dossier(dossier_path):
-        return await _run_dossier(query, dossier_path, force, verbose)
+    # ── Intent routing (< 1ms, 0 LLM) — bypass dossier mode ─────────────────
+    if not dossier_path:
+        intent = classify_intent(query)
 
+        if intent == Intent.SMALL_TALK:
+            return PipelineResponse(
+                answer=small_talk_reply(query),
+                citations=[],
+                verifier_score=1.0,
+                disclaimer=None,
+            )
+
+        if intent == Intent.IMPRECISE_LEGAL:
+            # TODO: DialogueManager wiring v1.1 — pour l'instant fallthrough
+            print("TODO: DialogueManager wiring v1.1", flush=True)
+
+        mode = "action" if intent == Intent.EXPLICIT_ORDER else "analysis"
+    else:
+        mode = "analysis"
+
+    # ── Mode dossier : pipeline dédié avec timeout étendu ────────────────────
+    if dossier_path and is_dossier(dossier_path):
+        result = await _run_dossier(query, dossier_path, force, verbose)
+        return PipelineResponse(answer=result, mode=mode)
+
+    # ── Pipeline standard avec timeout global ─────────────────────────────────
     start = time.time()
     if verbose:
         print(f"⚖️  Pipeline démarré — {query[:80]}…", flush=True)
@@ -68,16 +105,19 @@ async def run(
         elapsed = time.time() - start
         if verbose:
             print(f"⚖️  Pipeline terminé en {elapsed:.1f}s", flush=True)
-        return result
+        return PipelineResponse(answer=result, mode=mode)
     except asyncio.TimeoutError:
         elapsed = time.time() - start
-        return (
-            f"**Erreur** : le pipeline a dépassé le timeout de "
-            f"{PIPELINE_TIMEOUT:.0f}s après {elapsed:.1f}s. "
-            "Réessayez ou réduisez la taille du document."
+        return PipelineResponse(
+            answer=(
+                f"**Erreur** : le pipeline a dépassé le timeout de "
+                f"{PIPELINE_TIMEOUT:.0f}s après {elapsed:.1f}s. "
+                "Réessayez ou réduisez la taille du document."
+            ),
+            mode=mode,
         )
     except Exception as exc:
-        return f"**Erreur pipeline** : {exc}"
+        return PipelineResponse(answer=f"**Erreur pipeline** : {exc}", mode=mode)
 
 
 async def _run_dossier(
