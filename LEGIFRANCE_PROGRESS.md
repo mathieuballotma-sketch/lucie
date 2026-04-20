@@ -3,9 +3,9 @@
 > Source de vérité pour reprendre la tâche si crash/interruption/relais. Mis à jour **avant** chaque transition d'étape. Commité au fil de l'eau sur `feat/legifrance-integration`.
 
 ## État global
-- Dernière MAJ : `2026-04-20T00:00:00+02:00`
-- Étape en cours : **3/6 — Implémentation**
-- Statut global : `en cours`
+- Dernière MAJ : `2026-04-20T18:00:00+02:00` (post-rebase sur main, tests verts)
+- Étape en cours : **5/6 — Merge sur main**
+- Statut global : `prêt à merger`
 - Worktree : `/Users/mathieu/Desktop/mon-agence-ia/.claude/worktrees/kind-mcclintock-8d2353`
 - Branche feat : `feat/legifrance-integration` (ex `claude/kind-mcclintock-8d2353`)
 - Branche cible merge : **`main`** (changement 2026-04-20 : deux autres agents HUD UX + Reset Lucie mergent sur `main` avant nous → rebase requis avant merge)
@@ -69,9 +69,9 @@
   12. [x] Modifier `lucie_v1_standalone/config.py` : `LEGIFRANCE_ENABLED` (env LUCIE_LEGIFRANCE, off par défaut), `get_legifrance_db_path()`, `LEGIFRANCE_SYNC_INTERVAL_HOURS=48`.
   13. [x] Modifier `lucie_v1_standalone/retriever.py` — `_try_legifrance()` + fallback transparent sur la base curatée. Contrat JSON preservé.
   14. [x] Modifier `lucie_v1_standalone/dialogue/intent_classifier.py` — `detect_themes(query)` lazy-loadé, lru_cache, normalisation NFD. 185/185 tests preservés.
-  15. [ ] Étendre `.gitignore`.
-  16. [ ] `requirements.txt` — ajouter libarchive-c, lxml, PyYAML.
-  17. [ ] Mettre à jour `README.md` — section Base juridique Légifrance.
+  15. [x] Étendre `.gitignore` (section Légifrance : knowledge/legifrance/data/, tarballs/, last_sync.json, .audit_salt).
+  16. [x] `requirements.txt` — aucune nouvelle dép : PyYAML déjà présent, parser custom stdlib (pas besoin de libarchive-c ni lxml).
+  17. [x] Mettre à jour `README.md` — section "📚 Base juridique Légifrance" (éditions, commandes, launchd, audit, coût, rollback).
   18. [x] Créer fixture `tests/test_legifrance/conftest.py` — construit le tarball en session-fixture in-memory, 6 articles canoniques (un par thème) + 4 codes, ≤10 KB. Évite de committer un binaire dans l'arbre Git.
   19. [x] Écrire les 7 tests : `test_downloader` (9), `test_parser` (7), `test_indexer_themes` (3), `test_retriever_contract` (12 incl. 6 questions canoniques non-hallucination), `test_sync_incremental` (6), `test_audit_entry` (1), `test_cli_smoke` (3). **47 nouveaux tests verts**, total suite : **228/228 verts** (185 baseline + 43 + 4 audit/CLI).
 - **Pour reprendre** : ouvrir `lucie_v1_standalone/knowledge_legifrance/vendor/legi/LEGI_PY_VERSION` pour voir l'étape atteinte du vendoring. Continuer avec le point coché suivant dans la liste ci-dessus. Toujours vérifier `git status` et `pytest` verts avant de poursuivre.
@@ -79,13 +79,15 @@
   - Le téléchargement du dump DILA complet (1.1 GB) est lourd : en dev, limiter aux fixtures ; en recette, le lancer manuellement via `--first-run`.
   - Le helper `legifrance_freshness()` et son câblage HUD sont un bonus — non bloquant pour le merge.
 
-### ⏳ Phase 4 — Tests (à venir)
-- Pré-requis : Phase 3 terminée, tous les modules implémentés.
-- Critère vert strict : **185/185 existants + nouveaux tests verts**.
-- Commande : `pytest lucie_v1_standalone/tests/ tests/ -v`.
-- **Pour reprendre** : lancer `pytest -x` et traiter les rouges un à un.
+### ✅ Phase 4 — Tests (terminée)
+- Terminée le : `2026-04-20`
+- Résultats :
+  - Avant rebase : **228/228 verts** (185 baseline + 47 nouveaux Légifrance).
+  - Après rebase sur `main` (picks up HUD UX + Reset Lucie) : **261/261 verts** (228 + 33 nouveaux côté HUD UX). Zéro régression.
+  - Fix associé pendant le dev : `_search_by_ref()` ne matchait pas le format canonique `L1234-1` stocké en DB (construisait `1234-1` → corrigé).
+- Commande : `python3 -m pytest lucie_v1_standalone/tests/ tests/ -q` (125 s sur Apple Silicon).
 
-### ⏳ Phase 5 — Merge sur `main` (à venir)
+### 🔄 Phase 5 — Merge sur `main` (en cours)
 - Pré-requis : Phase 4 verte + pré-conditions du plan (README, rollback exécutable, pas de secret, hooks verts).
 - **Changement 2026-04-20** : l'agent HUD UX + l'agent Reset Lucie mergent sur `main` avant nous → on rebase d'abord, puis merge sur `main` (pas `integration/v1-consolidated-2026-04-17`).
 - Procédure :
@@ -103,9 +105,11 @@
     -m "feat(knowledge): intégration Légifrance live avec sync auto 48h"
   git tag -a v0.3.0-legifrance-live -m "Base juridique Légifrance vivante, sync auto 48h"
   ```
-- **Hash à enregistrer pour le rapport** :
-  - Pré-merge (main avant rebase)  : à capturer au moment de `git fetch`
-  - Post-merge (main après merge) : à capturer après le `git merge`
+- **Hash enregistrés** :
+  - Pré-merge (main avant notre merge, post HUD UX + Reset Lucie) : `3c849ed5ce10260a8f1f823e58388f8052402590`
+  - Pré-rebase (HEAD feat/legifrance-integration) : `95a7be72ceb90dba1ef7a078a62953dee01a631d`
+  - Post-rebase (HEAD feat/legifrance-integration) : `a65da80` (8 commits replayés proprement)
+  - Post-merge (main après notre merge) : _à capturer après `git merge`_
 - **Pour reprendre** : si rebase échoue (conflit), analyser sans force-reset. Si tests rouges après rebase, fixer avant merge. Si remote absent, commit local + noter dans le rapport final.
 
 ### ⏳ Phase 6 — Rapport final (à venir)
