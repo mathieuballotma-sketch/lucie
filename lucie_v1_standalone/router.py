@@ -3,11 +3,12 @@ LegalRouter — Router déterministe 3 niveaux, 0 appel LLM.
 
 Catégorise chaque requête en :
   - direct   : réponse immédiate sans pipeline (salutations uniquement)
-  - search   : recherche dans la base + rédaction (questions juridiques précises)
+  - search   : recherche dans la base + rédaction (questions juridiques précises ou ambiguës)
   - document : pipeline complet avec Lecteur (document fourni)
 
-Les requêtes hors-scope (ni salutation, ni mots-clés juridiques, ni document)
-sont refusées explicitement via validate() et _run_pipeline().
+Les requêtes hors-scope strict (médical, pénal, fiscal, etc.) sont refusées.
+Les requêtes ambiguës (terme juridique général sans contexte précis) passent au
+Retriever — il jugera si la base curatée permet une réponse (KI-001 fix).
 
 Temps de routage : < 1ms (pur string matching).
 Aucune dépendance au reste du repo.
@@ -35,8 +36,8 @@ _GREETING_RE = re.compile(
     re.IGNORECASE | re.UNICODE,
 )
 
-# ─── Mots-clés déclenchant le mode SEARCH ────────────────────────────────────
-# Ces termes indiquent une question juridique précise nécessitant la base curatée.
+# ─── Mots-clés précis déclenchant le mode SEARCH ─────────────────────────────
+# KI-001 : whitelist élargie — termes métier CSE, PSE, préavis, articles R./L.
 _SEARCH_TRIGGERS: List[str] = [
     # Procédure / actes
     "licenciement économique",
@@ -52,24 +53,41 @@ _SEARCH_TRIGGERS: List[str] = [
     "plan de reclassement",
     "congé de reclassement",
     "contrat de sécurisation professionnelle",
-    # Textes de loi
-    "l1233",
-    "l.1233",
-    "l1237",
-    "l.1237",
+    # Textes de loi — articles L. et R.
+    "l1233", "l.1233",
+    "l1234", "l.1234",
+    "l1235", "l.1235",
+    "l1237", "l.1237",
+    "r1234", "r.1234",
+    "r1235", "r.1235",
+    "l.1237-11", "l.1237-12", "l.1237-13", "l.1237-14", "l.1237-15", "l.1237-16",
     "article l.",
     "article l ",
+    "article r.",
     "code du travail",
+    "cass. soc.",
+    "cass.soc.",
+    "chambre sociale",
+    "conseil d'état",
+    # Institutions et acteurs
+    "cse",
+    "comité social et économique",
+    "représentant du personnel",
+    "délégué syndical",
+    "salarié protégé",
+    "inspection du travail",
+    "direccte",
+    "dreets",
     # Thèmes précis nécessitant des sources
     "indemnité de licenciement",
     "indemnités de licenciement",
+    "indemnité légale",
+    "indemnité conventionnelle",
     "préavis de licenciement",
     "délai de préavis",
+    "préavis",
     "reclassement obligatoire",
-    "salarié protégé",
-    "représentant du personnel",
-    "délégué syndical",
-    "comité social et économique",
+    "reclassement interne",
     "faute grave",
     "faute lourde",
     "prud'hommes",
@@ -87,9 +105,47 @@ _SEARCH_TRIGGERS: List[str] = [
     "délai pour contester",
     "délai de recours",
     "délai de prescription",
+    "consultation du cse",
+    "consultation obligatoire",
+    "ordre des licenciements",
+    "critères d'ordre",
+    "critères de licenciement",
+    "plan de sauvegarde de l'emploi",
     "pse obligatoire",
     " pse ",
+    "pse ",
     " rcc ",
+    "rcc ",
+    "convention collective",
+    "ancienneté",
+    "ancienneté du salarié",
+    "charges familiales",
+    "priorité de réembauche",
+]
+
+# ─── Termes ambigus — passthrough au Retriever (KI-001 fix) ──────────────────
+# Termes juridiques généraux sans contexte précis : mieux vaut tenter le
+# Retriever que refuser a priori (principe : refus propre > refus préventif).
+_AMBIGUOUS_TRIGGERS: List[str] = [
+    "licenciement",
+    "licencié",
+    "licenciée",
+    "rupture",
+    "contrat de travail",
+    "employeur",
+    "salaire",
+    "indemnité",
+    "préavis",
+    "droits",
+    "droit du travail",
+    "emploi",
+    "chômage",
+    "pôle emploi",
+    "réorganisation",
+    "restructuration",
+    "suppression",
+    "plan social",
+    "poste supprimé",
 ]
 
 
@@ -99,9 +155,20 @@ def _is_greeting(text: str) -> bool:
 
 
 def _needs_search(text: str) -> bool:
-    """Retourne True si la requête contient des mots-clés nécessitant la base curatée."""
+    """Retourne True si la requête contient des mots-clés précis nécessitant la base curatée."""
     lower = text.lower()
     return any(trigger in lower for trigger in _SEARCH_TRIGGERS)
+
+
+def _is_ambiguous(text: str) -> bool:
+    """
+    Retourne True si la requête contient un terme juridique général sans contexte précis.
+
+    KI-001 fix : ces requêtes passent au Retriever plutôt qu'être refusées a priori.
+    Le Retriever jugera si la base curatée permet une réponse satisfaisante.
+    """
+    lower = text.lower()
+    return any(trigger in lower for trigger in _AMBIGUOUS_TRIGGERS)
 
 
 def route(
@@ -150,7 +217,7 @@ def route(
             "document": None,
         }
 
-    # Niveau 2 : question juridique précise nécessitant la base
+    # Niveau 2a : question juridique précise nécessitant la base
     if _needs_search(combined):
         return {
             "level": "search",
@@ -158,7 +225,15 @@ def route(
             "document": None,
         }
 
-    # Niveau 1 par défaut : question générale, définition, hors-scope
+    # Niveau 2b : terme juridique ambigu → passthrough Retriever (KI-001 fix)
+    if _is_ambiguous(combined):
+        return {
+            "level": "search",
+            "intent": "recherche_ambiguë",
+            "document": None,
+        }
+
+    # Hors-scope strict : pas de terme juridique reconnu
     return {
         "level": "direct",
         "intent": "question_generale",
@@ -193,6 +268,14 @@ def validate(
         "refusal_reason": None,
         "_level": r["level"],
     }
+
+
+# ─── Helpers publics ──────────────────────────────────────────────────────────
+
+def is_ambiguous_passthrough(query: str) -> bool:
+    """Retourne True si la requête est dans le mode passthrough ambigu (KI-001)."""
+    r = route(query)
+    return r["intent"] == "recherche_ambiguë"
 
 
 def is_dossier(path: Optional[str]) -> bool:
