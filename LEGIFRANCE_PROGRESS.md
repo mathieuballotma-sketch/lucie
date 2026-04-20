@@ -66,9 +66,9 @@
   9. [x] `scripts/legifrance_sync.py` — CLI argparse (--first-run / --incremental / --status / --sample / --dry-run / --force / --data-dir / --no-audit).
   10. [x] `scripts/install_launchd.sh` + `scripts/uninstall_launchd.sh` (plist 172800s, RunAtLoad=false, logs ~/Library/Logs/Lucie/).
   11. [x] `scripts/legifrance_rollback.sh` avec `--dry-run` et `--yes` (interactif par défaut, scripts chmod+x, testé dry-run vert).
-  12. [ ] Modifier `lucie_v1_standalone/config.py` : `LEGIFRANCE_ENABLED`, `get_legifrance_db_path()`, `LEGIFRANCE_SYNC_INTERVAL_HOURS`.
-  13. [ ] Modifier `lucie_v1_standalone/retriever.py` — gated Légifrance lookup avec fallback.
-  14. [ ] Modifier `lucie_v1_standalone/dialogue/intent_classifier.py` — ajouter `detect_themes(query)`.
+  12. [x] Modifier `lucie_v1_standalone/config.py` : `LEGIFRANCE_ENABLED` (env LUCIE_LEGIFRANCE, off par défaut), `get_legifrance_db_path()`, `LEGIFRANCE_SYNC_INTERVAL_HOURS=48`.
+  13. [x] Modifier `lucie_v1_standalone/retriever.py` — `_try_legifrance()` + fallback transparent sur la base curatée. Contrat JSON preservé.
+  14. [x] Modifier `lucie_v1_standalone/dialogue/intent_classifier.py` — `detect_themes(query)` lazy-loadé, lru_cache, normalisation NFD. 185/185 tests preservés.
   15. [ ] Étendre `.gitignore`.
   16. [ ] `requirements.txt` — ajouter libarchive-c, lxml, PyYAML.
   17. [ ] Mettre à jour `README.md` — section Base juridique Légifrance.

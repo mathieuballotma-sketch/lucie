@@ -10,8 +10,15 @@ Quatre modes :
 
 from __future__ import annotations
 
+import logging
 import re
+import unicodedata
 from enum import Enum
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class Intent(str, Enum):
@@ -135,3 +142,86 @@ def classify(query: str) -> Intent:
 
     # 4. Par défaut : hors-scope, traité comme small talk (ni juridique ni ordre)
     return Intent.SMALL_TALK
+
+
+# ── Détection de thème pour le Légifrance Retriever ──────────────────────────
+#
+# Fonction pure : lit `knowledge_legifrance/theme_mapping.yaml` en lazy,
+# normalise la query (lowercase + retire les accents), matche les mots-clés
+# déclarés par chaque thème. Non utilisée par `classify()` — c'est un
+# helper indépendant appelé par le Retriever dans le pipeline aval.
+
+_THEME_MAPPING_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "knowledge_legifrance"
+    / "theme_mapping.yaml"
+)
+
+
+def _normalize_text(text: str) -> str:
+    """Lowercase + strip des diacritiques (NFD)."""
+    nfd = unicodedata.normalize("NFD", text.lower())
+    return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+
+
+@lru_cache(maxsize=1)
+def _load_theme_keywords() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """
+    Charge `theme_mapping.yaml` → ((theme_id, (keyword_normalized, ...)), ...).
+
+    Tuples pour immutabilité + compat `lru_cache`. Silencieusement vide
+    si le fichier est absent (Légifrance pas installé), pour ne pas casser
+    le classifier.
+    """
+    try:
+        from lucie_v1_standalone.knowledge_legifrance.indexer import (
+            load_theme_mapping,
+        )
+    except ImportError:
+        logger.debug("knowledge_legifrance indisponible — themes désactivés")
+        return ()
+    if not _THEME_MAPPING_PATH.exists():
+        return ()
+    try:
+        mapping = load_theme_mapping(_THEME_MAPPING_PATH)
+    except (OSError, ValueError) as exc:
+        logger.warning("theme_mapping.yaml illisible (%s)", exc)
+        return ()
+
+    themes_tuple: list[tuple[str, tuple[str, ...]]] = []
+    for theme_id, theme_def in mapping.get("themes", {}).items():
+        raw_keywords = theme_def.get("mots_cles") or []
+        normalized = tuple(
+            _normalize_text(str(kw)) for kw in raw_keywords if kw
+        )
+        if normalized:
+            themes_tuple.append((theme_id, normalized))
+    return tuple(themes_tuple)
+
+
+def detect_themes(query: str, max_themes: int = 3) -> list[str]:
+    """
+    Détecte les thèmes Légifrance pertinents pour `query`.
+
+    - Matching par substring sur la forme normalisée (lowercase, sans accent)
+      pour tolérer les fautes de frappe mineures (« salarié » / « salarie »).
+    - Retourne au plus `max_themes` identifiants triés par score
+      (nombre de mots-clés matchés, décroissant).
+    - Liste vide si Légifrance n'est pas installé (le retriever fera un
+      fallback sur la base curatée).
+    """
+    if not query or not query.strip():
+        return []
+    normalized = _normalize_text(query)
+    scores: list[tuple[str, int]] = []
+    for theme_id, keywords in _load_theme_keywords():
+        hits = sum(1 for kw in keywords if kw and kw in normalized)
+        if hits > 0:
+            scores.append((theme_id, hits))
+    scores.sort(key=lambda t: (-t[1], t[0]))
+    return [theme_id for theme_id, _ in scores[:max_themes]]
+
+
+def clear_theme_cache() -> None:
+    """Invalide le cache (utile dans les tests qui modifient le YAML)."""
+    _load_theme_keywords.cache_clear()
