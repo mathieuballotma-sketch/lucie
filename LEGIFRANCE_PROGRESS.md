@@ -62,9 +62,10 @@
   6. [x] `indexer.py` — matérialise `articles_by_theme` depuis `theme_mapping.yaml` (avec fallback YAML minimal si PyYAML absent).
   7. [x] `retriever.py` — `LegifranceRetriever.search()` + `.handle()` compatible contrat pipeline + FTS5 ou fallback LIKE.
   8. [x] `diff.py` — SyncDiff (added/updated/abrogated/deleted) + summary_lines(≤50) pour audit.
-  9. [ ] `scripts/legifrance_sync.py` — CLI entrée manuelle (argparse).
-  10. [ ] `scripts/install_launchd.sh` + `scripts/uninstall_launchd.sh`.
-  11. [ ] `scripts/legifrance_rollback.sh` avec `--dry-run`.
+  8b. [x] `sync.py` — orchestrateur download → parse → index → diff → audit + `legifrance_freshness()`.
+  9. [x] `scripts/legifrance_sync.py` — CLI argparse (--first-run / --incremental / --status / --sample / --dry-run / --force / --data-dir / --no-audit).
+  10. [x] `scripts/install_launchd.sh` + `scripts/uninstall_launchd.sh` (plist 172800s, RunAtLoad=false, logs ~/Library/Logs/Lucie/).
+  11. [x] `scripts/legifrance_rollback.sh` avec `--dry-run` et `--yes` (interactif par défaut, scripts chmod+x, testé dry-run vert).
   12. [ ] Modifier `lucie_v1_standalone/config.py` : `LEGIFRANCE_ENABLED`, `get_legifrance_db_path()`, `LEGIFRANCE_SYNC_INTERVAL_HOURS`.
   13. [ ] Modifier `lucie_v1_standalone/retriever.py` — gated Légifrance lookup avec fallback.
   14. [ ] Modifier `lucie_v1_standalone/dialogue/intent_classifier.py` — ajouter `detect_themes(query)`.
