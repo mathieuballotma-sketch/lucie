@@ -16,12 +16,13 @@ Hooks mémoire (Bloc 1) :
 
 import asyncio
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from . import dossier_analyzer, lecteur, ollama_client, redacteur, retriever, verificateur
+from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacteur, retriever, verificateur
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
 from .dialogue.intent_classifier import Intent, classify as classify_intent
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
@@ -32,6 +33,55 @@ if TYPE_CHECKING:
 
 _DIRECT_SYSTEM_PATH = Path(__file__).parent / "prompts" / "direct_system.txt"
 
+# Marqueur interne utilisé par le HUD pour transmettre la décision d'une proposition
+# (bouton Oui/Non) sans perdre la query originale.
+# Format : __decision__:<value>|original=<texte>
+_DECISION_MARKER = "__decision__:"
+
+# Verbes/locutions qui déclenchent une proposition de production avant exécution.
+_PRODUCTION_VERBS = (
+    "rédige", "redige", "rédiger", "rediger",
+    "écris", "ecris", "écrire", "ecrire",
+    "prépare", "prepare", "préparer", "preparer",
+    "produis", "produire",
+    "projet de",
+    "génère", "genere", "générer", "generer",
+    "fais-moi", "fais moi",
+)
+
+# Détection heuristique du "kind" (affiché à l'utilisateur + utilisé pour nom de fichier).
+_KIND_KEYWORDS: Tuple[Tuple[str, str], ...] = (
+    ("mise en demeure", "courrier"),
+    ("courrier", "courrier"),
+    ("lettre", "courrier"),
+    ("email", "courrier"),
+    ("assignation", "acte"),
+    ("conclusions", "acte"),
+    ("acte", "acte"),
+    ("synthèse", "synthese"),
+    ("synthese", "synthese"),
+    ("résumé", "synthese"),
+    ("resume", "synthese"),
+    ("note", "note"),
+    ("analyse", "note"),
+    ("consultation", "note"),
+)
+
+# Labels humains pour le kind (affichage proposition).
+_KIND_LABELS: Dict[str, str] = {
+    "courrier": "projet de courrier",
+    "acte": "projet d'acte",
+    "synthese": "synthèse",
+    "note": "note d'analyse",
+    "document": "document",
+}
+
+# Regex question fermée générique (pour peupler suggested_replies Oui/Non).
+_CLOSED_QUESTION_RE = re.compile(
+    r"(Voulez-vous|Souhaitez-vous|Dois-je|Confirmez-vous|Puis-je|Faut-il)[^.?!]*\?",
+    re.IGNORECASE,
+)
+
 
 @dataclass
 class PipelineResponse:
@@ -40,9 +90,79 @@ class PipelineResponse:
     verifier_score: float = 0.0
     disclaimer: Optional[str] = None
     mode: Optional[str] = None
+    # Indique au HUD qu'un document peut être produit : afficher ProposalCard au lieu
+    # de créer automatiquement le fichier. Peuplé par le pipeline quand la requête
+    # ressemble à une demande de production (EXPLICIT_ORDER + verbe de production).
+    produces_document: bool = False
+    document_kind: Optional[str] = None  # "courrier", "acte", "synthese", "note"
+    # Boutons à afficher sous la réponse ({"label": ..., "value": ...}).
+    suggested_replies: List[Dict[str, str]] = field(default_factory=list)
+    # Chemin du DOCX produit (populé uniquement après confirmation utilisateur).
+    document_path: Optional[str] = None
 
     def __str__(self) -> str:
         return self.answer
+
+
+# ─── Helpers proposition / décision ──────────────────────────────────────────
+
+def _extract_decision(query: str) -> Tuple[Optional[str], str]:
+    """Si la query commence par un marqueur de décision, renvoie (value, original).
+    Sinon (None, query inchangée)."""
+    if not query.startswith(_DECISION_MARKER):
+        return None, query
+    payload = query[len(_DECISION_MARKER):]
+    if "|original=" in payload:
+        value, original = payload.split("|original=", 1)
+        return value.strip(), original.strip()
+    return payload.strip(), ""
+
+
+def _detect_production_request(query: str) -> Optional[str]:
+    """Si la requête ressemble à une demande de production, renvoie le kind détecté.
+    Sinon None. Appelée uniquement pour Intent.EXPLICIT_ORDER."""
+    q = query.lower()
+    if not any(verb in q for verb in _PRODUCTION_VERBS):
+        return None
+    for keyword, kind in _KIND_KEYWORDS:
+        if keyword in q:
+            return kind
+    return "document"
+
+
+def _build_proposition(query: str, kind: str) -> PipelineResponse:
+    """Construit une PipelineResponse de type proposition (sans exécuter le pipeline)."""
+    kind_label = _KIND_LABELS.get(kind, "document")
+    article = "ce" if kind_label.startswith(("projet", "document")) else "cette"
+    answer = (
+        f"Je peux vous préparer {article} {kind_label}. "
+        "Voulez-vous que je le produise ?"
+    )
+    return PipelineResponse(
+        answer=answer,
+        citations=[],
+        verifier_score=1.0,
+        disclaimer=None,
+        mode="proposition",
+        produces_document=True,
+        document_kind=kind,
+        suggested_replies=[
+            {"label": "Oui, produire", "value": "yes_produce"},
+            {"label": "Non, répondre directement", "value": "no_text"},
+        ],
+    )
+
+
+def _attach_suggested_replies(response: PipelineResponse) -> PipelineResponse:
+    """Détecte une question fermée dans l'answer et ajoute des boutons Oui/Non génériques."""
+    if response.suggested_replies:
+        return response  # déjà peuplé (proposition)
+    if _CLOSED_QUESTION_RE.search(response.answer or ""):
+        response.suggested_replies = [
+            {"label": "Oui", "value": "yes"},
+            {"label": "Non", "value": "no"},
+        ]
+    return response
 
 
 async def run(
@@ -68,6 +188,25 @@ async def run(
     Returns:
         PipelineResponse avec answer, citations, verifier_score, disclaimer, mode.
     """
+    # ── Marqueur de décision utilisateur (boutons Oui/Non du HUD) ───────────
+    # Le HUD préfixe la query avec __decision__:<value>|original=<query>
+    # quand l'utilisateur a cliqué sur un bouton suggéré.
+    decision, original_query = _extract_decision(query)
+    if decision is not None:
+        # Si la décision est un "non" explicite, on répond en texte court
+        # sans relancer le pipeline complet.
+        if decision in ("no", "no_text"):
+            return PipelineResponse(
+                answer=(
+                    "Entendu — je reste à votre disposition. "
+                    "N'hésitez pas à reformuler ou à préciser votre demande."
+                ),
+                mode="action" if decision == "no_text" else "analysis",
+            )
+        # Décision "yes" / "yes_produce" : on reprend la query originale
+        # et on court-circuite la détection de proposition (sinon boucle infinie).
+        query = original_query or query
+
     # ── Intent routing (< 1ms, 0 LLM) — bypass dossier mode ─────────────────
     if not dossier_path:
         intent = classify_intent(query)
@@ -84,6 +223,14 @@ async def run(
             # TODO: DialogueManager wiring v1.1 — pour l'instant fallthrough
             print("TODO: DialogueManager wiring v1.1", flush=True)
 
+        # ── Proposition avant production ────────────────────────────────────
+        # Si l'utilisateur demande une production (rédige, projet de…) ET qu'il
+        # n'a pas déjà dit "oui" via le bouton, on propose au lieu d'exécuter.
+        if intent == Intent.EXPLICIT_ORDER and decision is None:
+            kind = _detect_production_request(query)
+            if kind is not None:
+                return _build_proposition(query, kind)
+
         mode = "action" if intent == Intent.EXPLICIT_ORDER else "analysis"
     else:
         mode = "analysis"
@@ -91,7 +238,7 @@ async def run(
     # ── Mode dossier : pipeline dédié avec timeout étendu ────────────────────
     if dossier_path and is_dossier(dossier_path):
         result = await _run_dossier(query, dossier_path, force, verbose)
-        return PipelineResponse(answer=result, mode=mode)
+        return _attach_suggested_replies(PipelineResponse(answer=result, mode=mode))
 
     # ── Pipeline standard avec timeout global ─────────────────────────────────
     start = time.time()
@@ -105,7 +252,22 @@ async def run(
         elapsed = time.time() - start
         if verbose:
             print(f"⚖️  Pipeline terminé en {elapsed:.1f}s", flush=True)
-        return PipelineResponse(answer=result, mode=mode)
+
+        response = PipelineResponse(answer=result, mode=mode)
+
+        # Si l'utilisateur a confirmé "yes_produce", on écrit un DOCX et on
+        # expose le chemin au HUD (qui l'affichera dans une DraggableFileCard).
+        if decision == "yes_produce":
+            try:
+                kind = _detect_production_request(original_query or query) or "document"
+                docx_path = document_writer.write_docx(result, kind)
+                response.document_path = str(docx_path)
+                response.document_kind = kind
+            except Exception as exc:
+                if verbose:
+                    print(f"⚠️  DOCX non produit : {exc}", flush=True)
+
+        return _attach_suggested_replies(response)
     except asyncio.TimeoutError:
         elapsed = time.time() - start
         return PipelineResponse(

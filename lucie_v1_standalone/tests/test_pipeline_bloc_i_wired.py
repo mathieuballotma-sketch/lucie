@@ -94,11 +94,33 @@ async def test_precise_legal_pipeline_called_once(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_explicit_order_triggers_action_mode(monkeypatch):
-    mock_answer = "# Mise en demeure\n\nRédaction complète ici."
-    monkeypatch.setattr(pipeline, "_run_pipeline", AsyncMock(return_value=mock_answer))
+async def test_explicit_order_production_request_proposes_before_producing(monkeypatch):
+    """Comportement v0.2.1 : EXPLICIT_ORDER + verbe de production (« Rédige ») →
+    le pipeline propose d'abord et N'APPELLE PAS _run_pipeline. L'utilisateur
+    doit cliquer sur « Oui, produire » (décision) pour déclencher la vraie
+    rédaction."""
+    mock_fn = AsyncMock(return_value="# Mise en demeure\n\nRédaction complète ici.")
+    monkeypatch.setattr(pipeline, "_run_pipeline", mock_fn)
     response = await pipeline.run("Rédige une mise en demeure pour non-paiement")
+    assert response.mode == "proposition"
+    assert response.produces_document is True
+    assert response.document_kind == "courrier"
+    assert len(response.suggested_replies) == 2
+    mock_fn.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_explicit_order_after_yes_decision_triggers_action_mode(monkeypatch):
+    """Après clic « Oui, produire », le HUD renvoie la query préfixée par le
+    marqueur de décision ; le pipeline doit alors exécuter la vraie rédaction
+    en mode action."""
+    mock_fn = AsyncMock(return_value="# Mise en demeure\n\nRédaction complète ici.")
+    monkeypatch.setattr(pipeline, "_run_pipeline", mock_fn)
+    response = await pipeline.run(
+        "__decision__:yes_produce|original=Rédige une mise en demeure pour non-paiement"
+    )
     assert response.mode == "action"
+    mock_fn.assert_called_once()
 
 
 @pytest.mark.asyncio
