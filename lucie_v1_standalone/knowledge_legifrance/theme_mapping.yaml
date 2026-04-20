@@ -1,0 +1,155 @@
+# Mapping thème → codes juridiques / plages d'articles
+#
+# Versionné : change la version mineure si tu modifies un thème existant,
+# la version majeure si tu casses la compatibilité avec l'indexer.
+#
+# Consommé par :
+#   - lucie_v1_standalone/dialogue/intent_classifier.py::detect_themes()
+#   - lucie_v1_standalone/knowledge_legifrance/indexer.py
+#   - lucie_v1_standalone/knowledge_legifrance/retriever.py
+
+version: "1.0"
+
+themes:
+  droit_social:
+    libelle: "Droit Social"
+    codes:
+      - id: LEGITEXT000006072050  # Code du travail
+        filtres_articles:
+          - prefix: "L"
+            range: [1000, 1999]
+          - prefix: "R"
+            range: [1000, 1999]
+          - prefix: "L"
+            range: [2000, 2499]  # CSE, IRP
+    mots_cles:
+      - licenciement
+      - salarié
+      - salarie
+      - employeur
+      - cse
+      - comité social
+      - prud'hommes
+      - prudhommes
+      - congés
+      - conges
+      - préavis
+      - preavis
+      - démission
+      - demission
+      - rupture conventionnelle
+      - contrat de travail
+      - cdi
+      - cdd
+      - convention collective
+      - licenciement économique
+      - pse
+      - plan de sauvegarde
+
+  baux_commerciaux:
+    libelle: "Baux Commerciaux"
+    codes:
+      - id: LEGITEXT000005634379  # Code de commerce
+        filtres_articles:
+          - prefix: "L"
+            range: [145, 145]
+          - prefix: "R"
+            range: [145, 145]
+    mots_cles:
+      - bail commercial
+      - baux commerciaux
+      - renouvellement bail
+      - éviction
+      - eviction
+      - pas-de-porte
+      - pas de porte
+      - fonds de commerce
+      - loyer commercial
+      - indemnité d'éviction
+
+  divorce_famille:
+    libelle: "Divorce & Famille"
+    codes:
+      - id: LEGITEXT000006070721  # Code civil
+        filtres_articles:
+          - prefix: ""
+            range: [212, 515]  # Art. 212 à 515-7
+    mots_cles:
+      - divorce
+      - garde enfants
+      - garde alternée
+      - pension alimentaire
+      - filiation
+      - pacs
+      - autorité parentale
+      - prestation compensatoire
+      - consentement mutuel
+
+  societes:
+    libelle: "Sociétés"
+    codes:
+      - id: LEGITEXT000005634379  # Code de commerce
+        filtres_articles:
+          - prefix: "L"
+            range: [210, 260]
+          - prefix: "R"
+            range: [210, 260]
+    mots_cles:
+      - sas
+      - sarl
+      - sa
+      - société anonyme
+      - conseil administration
+      - cession parts
+      - cession actions
+      - assemblée générale
+      - statuts
+      - gérant
+      - président sas
+      - capital social
+
+  prudhommes:
+    libelle: "Prud'hommes"
+    codes:
+      - id: LEGITEXT000006072050  # Code du travail
+        filtres_articles:
+          - prefix: "R"
+            range: [1411, 1499]
+          - prefix: "L"
+            range: [1411, 1499]
+      - id: LEGITEXT000006070716  # CPC (Code de procédure civile)
+        filtres_articles:
+          - prefix: ""
+            range: [484, 492]  # référé
+    mots_cles:
+      - saisine cph
+      - conseil prud'hommes
+      - bureau conciliation
+      - formation départage
+      - référé prud'homal
+      - départiteur
+      - mise en état
+
+  fiscal_comptable:
+    libelle: "Expert-Comptable"
+    codes:
+      - id: LEGITEXT000006069577  # Code général des impôts (CGI)
+        filtres_articles:
+          - prefix: ""
+            range: [1, 99999]  # large, filtre par mots-clés
+    mots_cles:
+      - tva
+      - impôt sociétés
+      - impot societes
+      - is
+      - ir
+      - liasse fiscale
+      - bénéfice
+      - benefice
+      - amortissement
+      - provision
+      - crédit d'impôt
+      - credit impot
+    note_externe: >
+      BOFiP et PCG sont hors LEGI — couverture partielle. Ajouter une source
+      externe en v1.1.

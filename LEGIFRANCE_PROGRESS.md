@@ -48,10 +48,14 @@
   - Baseline tests : 185/185 verts confirmé.
   - Hash pré-merge enregistré : `d904a94`.
   - Carnet de reprise créé (ce fichier).
+  - Vendoring `legi.py@64c2c49` commité (CC0, NOTICE.md explicite, pas de patch in-place).
+  - Package `knowledge_legifrance/__init__.py` créé (exporte `LegifranceRetriever`, `LegalArticle`).
+  - `theme_mapping.yaml` v1.0 créé (6 thèmes × CID/filtres/mots-clés).
+  - `schema.sql` créé (tables articles, codes, articles_by_theme, sync_history + FTS5 + triggers).
 - Ce qui reste à faire (ordre d'exécution) :
-  1. [ ] Vendor `legi.py` dans `lucie_v1_standalone/knowledge_legifrance/vendor/legi/` + patcher pour Python 3.13 (collections.abc.Mapping, imp→importlib).
-  2. [ ] Créer `lucie_v1_standalone/knowledge_legifrance/__init__.py`.
-  3. [ ] `theme_mapping.yaml` versionné (schéma dans le plan).
+  1. [x] Vendor `legi.py` dans `lucie_v1_standalone/knowledge_legifrance/vendor/legi/` + NOTICE.md (pas de patch in-place — wrapper contourne hunspell).
+  2. [x] Créer `lucie_v1_standalone/knowledge_legifrance/__init__.py`.
+  3. [x] `theme_mapping.yaml` versionné (schéma dans le plan).
   4. [ ] `downloader.py` — parse HTML index DILA + download tarballs + checksum SHA256.
   5. [ ] `parser.py` — wrapper autour de `vendor/legi/tar2sqlite.py`.
   6. [ ] `indexer.py` — matérialise `articles_by_theme` depuis `theme_mapping.yaml`.
