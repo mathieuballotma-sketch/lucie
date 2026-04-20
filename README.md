@@ -151,8 +151,87 @@ PYTHONPATH=. python3 main_hud.py
 | **CircuitBreaker** | ✅ | Résilience automatique avec fallback gracieux |
 | **Contrôle macOS natif** | ✅ | Clic, frappe, lecture d'UI via Accessibility APIs |
 | **Export FacturX** | 🚧 | Factures électroniques au format FacturX |
-| **LegalResearchAgent** | 🚧 | Recherche Légifrance |
+| **LegalResearchAgent** | ✅ | Base juridique Légifrance live, sync auto 48h ([détails](#-base-juridique-légifrance)) |
 | **Installeur .dmg** | 🚧 | Distribution native macOS |
+
+---
+
+## 📚 Base juridique Légifrance
+
+Lucie embarque une **base Légifrance locale** alimentée par le dump officiel DILA (`echanges.dila.gouv.fr/OPENDATA/LEGI/`, Licence Ouverte Etalab). Zéro API externe, zéro clé, 100% local — cohérent avec la promesse du projet : **sources vérifiables, jamais d'hallucination.**
+
+### Ce que ça couvre
+
+6 éditions juridiques mappées dans `lucie_v1_standalone/knowledge_legifrance/theme_mapping.yaml` :
+
+| Édition | Code(s) source | Filtres |
+|---------|---------------|---------|
+| Droit Social | Code du travail | L1000–L1999, R1000–R1999 |
+| Baux Commerciaux | Code de commerce | L145-*, R145-* |
+| Divorce & Famille | Code civil | 212-515-7 |
+| Sociétés | Code de commerce | L210-*, L225-*, L227-* |
+| Prud'hommes | Code du travail + CPC | R/L 1411-*, + référé |
+| Expert-Comptable | CGI | * |
+
+Ajouter une édition = éditer le YAML, relancer `legifrance_sync.py --force`. Pas de re-sync complet.
+
+### Installation (première fois, full dump ≈ 1,1 Go)
+
+```bash
+# Activer la base Légifrance (off par défaut)
+export LUCIE_LEGIFRANCE=1
+
+# Optionnel : override du répertoire (défaut : ~/Library/Application Support/Lucie/legifrance/)
+export LUCIE_LEGIFRANCE_DIR=/chemin/custom
+
+# Premier sync (full + incrémentaux depuis la publication initiale, 20-40 min)
+python scripts/legifrance_sync.py --first-run
+
+# Mode rapide dev/CI avec tarball fixture (≤10 KB, 6 articles canoniques)
+python scripts/legifrance_sync.py --first-run --sample tests/fixtures/sample.tar.gz
+
+# Status
+python scripts/legifrance_sync.py --status
+```
+
+### Sync automatique toutes les 48h (macOS)
+
+```bash
+# Installer l'agent launchd (écrit ~/Library/LaunchAgents/com.lucie.legifrance.sync.plist)
+bash scripts/install_launchd.sh
+
+# Vérifier
+launchctl list | grep com.lucie.legifrance
+
+# Désinstaller
+bash scripts/uninstall_launchd.sh
+```
+
+L'agent `launchd` réveille `legifrance_sync.py --incremental` toutes les 172 800 s (48 h). `RunAtLoad=false` pour ne jamais bloquer le démarrage. Logs : `~/Library/Logs/Lucie/legifrance-sync.log`.
+
+### Audit & traçabilité
+
+Chaque sync écrit une entrée `legifrance_sync` signée HMAC-SHA256 dans l'`AuditTrail` (`~/.lucie/audit.db`) : liste des archives appliquées, SHA256 de la DB finale, diff human-readable (articles ajoutés / modifiés / abrogés, max 50 lignes).
+
+### Coût disque
+
+| Élément | Taille typique |
+|---------|----------------|
+| DB SQLite (`legi.sqlite`) | ~3 Go (full LEGI) |
+| Tarballs (conservés 7 jours) | ~50 Mo / semaine incrémental |
+| Total steady-state | ~3,1 Go |
+
+### Rollback
+
+```bash
+# Dry-run
+bash scripts/legifrance_rollback.sh --dry-run
+
+# Exécution (retire DB, tarballs, agent launchd)
+bash scripts/legifrance_rollback.sh --yes
+```
+
+En cas de rollback, Lucie retombe automatiquement sur la base curatée `knowledge/droit_social/licenciement_economique/` (feature flag OFF). Zéro régression pipeline.
 
 ---
 
