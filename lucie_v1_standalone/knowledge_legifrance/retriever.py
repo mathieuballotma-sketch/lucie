@@ -223,8 +223,12 @@ class LegifranceRetriever:
         conditions = []
         params: list[Any] = []
         for prefix, num in refs:
+            # La DB stocke le num canonique complet (ex : "L1234-1"),
+            # num_prefix sépare le préfixe, num reste le full. On
+            # supporte les deux conventions d'écriture côté requête.
+            canonical = f"{prefix}{num}" if prefix else num
             conditions.append("(num_prefix = ? AND num = ?)")
-            params.extend([prefix, num])
+            params.extend([prefix, canonical])
         where = " OR ".join(conditions)
         sql = f"""
             SELECT a.*, c.titre AS code_titre

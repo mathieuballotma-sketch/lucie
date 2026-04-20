@@ -72,8 +72,8 @@
   15. [ ] Étendre `.gitignore`.
   16. [ ] `requirements.txt` — ajouter libarchive-c, lxml, PyYAML.
   17. [ ] Mettre à jour `README.md` — section Base juridique Légifrance.
-  18. [ ] Créer fixture `tests/test_legifrance/fixtures/LEGI_sample_20260418.tar.gz` (≤1 MB, 6 articles canoniques).
-  19. [ ] Écrire les 7 tests (`test_downloader`, `test_parser`, `test_indexer_themes`, `test_retriever_contract`, `test_sync_incremental`, `test_audit_entry`, smoke CLI).
+  18. [x] Créer fixture `tests/test_legifrance/conftest.py` — construit le tarball en session-fixture in-memory, 6 articles canoniques (un par thème) + 4 codes, ≤10 KB. Évite de committer un binaire dans l'arbre Git.
+  19. [x] Écrire les 7 tests : `test_downloader` (9), `test_parser` (7), `test_indexer_themes` (3), `test_retriever_contract` (12 incl. 6 questions canoniques non-hallucination), `test_sync_incremental` (6), `test_audit_entry` (1), `test_cli_smoke` (3). **47 nouveaux tests verts**, total suite : **228/228 verts** (185 baseline + 43 + 4 audit/CLI).
 - **Pour reprendre** : ouvrir `lucie_v1_standalone/knowledge_legifrance/vendor/legi/LEGI_PY_VERSION` pour voir l'étape atteinte du vendoring. Continuer avec le point coché suivant dans la liste ci-dessus. Toujours vérifier `git status` et `pytest` verts avant de poursuivre.
 - Questions ouvertes :
   - Le téléchargement du dump DILA complet (1.1 GB) est lourd : en dev, limiter aux fixtures ; en recette, le lancer manuellement via `--first-run`.
