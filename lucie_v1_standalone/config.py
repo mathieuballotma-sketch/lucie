@@ -3,6 +3,7 @@ Configuration centralisée pour le pipeline juridique V1 standalone.
 Aucune dépendance au reste du repo.
 """
 
+import os
 from pathlib import Path
 
 # ─── Ollama ───────────────────────────────────────────────────────────────────
@@ -14,6 +15,27 @@ QUALITY_MODEL = "gemma4:26b"  # Pour plus tard (rédaction qualité)
 
 # ─── Base de connaissances ────────────────────────────────────────────────────
 KNOWLEDGE_BASE_PATH = Path("knowledge/droit_social/licenciement_economique")
+
+# ─── Légifrance (base DILA live) ──────────────────────────────────────────────
+# Feature flag off par défaut — activer seulement après un premier sync.
+LEGIFRANCE_ENABLED: bool = os.environ.get("LUCIE_LEGIFRANCE", "0") == "1"
+LEGIFRANCE_SYNC_INTERVAL_HOURS: int = 48
+
+
+def get_legifrance_db_path() -> Path:
+    """
+    Chemin de la base SQLite Légifrance.
+
+    Override via `LUCIE_LEGIFRANCE_DIR` (utile en dev / tests pour
+    pointer vers un répertoire isolé). Par défaut :
+    `~/Library/Application Support/Lucie/legifrance/legi.sqlite`.
+    """
+    override = os.environ.get("LUCIE_LEGIFRANCE_DIR")
+    if override:
+        base = Path(override).expanduser()
+    else:
+        base = Path.home() / "Library" / "Application Support" / "Lucie" / "legifrance"
+    return base / "legi.sqlite"
 
 # ─── Timeouts ─────────────────────────────────────────────────────────────────
 PIPELINE_TIMEOUT = 120.0   # 2 minutes — suffisant avec les params optimisés

@@ -1,22 +1,34 @@
 """
-RetrieverAgent — cherche dans la base curatée locale.
-Modèle : gemma4:e4b (speed).
+RetrieverAgent — cherche dans la base curatée locale, avec fallback Légifrance.
 
 Stratégie de recherche :
-  1. Matching exact sur les références légales (L.1233-x)
+  0. (optionnel) Si `LEGIFRANCE_ENABLED` et base présente : tenter
+     `LegifranceRetriever.search()` restreint aux thèmes détectés.
+  1. Matching exact sur les références légales (L.1233-x) dans la base curatée
   2. Ranking BM25 simplifié sur le contenu des fichiers .md
   3. 5 sources max retournées au Rédacteur
 
-Aucune dépendance au reste du repo.
+Le contrat JSON de sortie est inchangé (`sources`, `jurisprudences`,
+`non_trouve`) → pas de régression du Rédacteur / Vérificateur.
 """
 
 import json
+import logging
 import math
 import re
 from collections import Counter
 from typing import Any, Dict, List, Optional, Set
 
-from .config import BM25_B, BM25_K1, KNOWLEDGE_BASE_PATH, MAX_SOURCES
+from .config import (
+    BM25_B,
+    BM25_K1,
+    KNOWLEDGE_BASE_PATH,
+    LEGIFRANCE_ENABLED,
+    MAX_SOURCES,
+    get_legifrance_db_path,
+)
+
+logger = logging.getLogger(__name__)
 
 _LEGAL_REF_RE = re.compile(r'L\.?\s*\d{4}(?:-\d+)?', re.IGNORECASE)
 
@@ -117,6 +129,39 @@ def _extract_snippet(content: str, keyword: str, max_len: int = 300) -> str:
     return snippet
 
 
+def _try_legifrance(faits_json: str, top_k: int) -> Optional[Dict[str, Any]]:
+    """
+    Tente une recherche Légifrance. Renvoie le dict JSON parsé ou None si
+    feature désactivée / base absente / erreur.
+
+    Loggue mais n'élève jamais — l'appelant fallback sur la base curatée.
+    """
+    if not LEGIFRANCE_ENABLED:
+        return None
+    try:
+        db_path = get_legifrance_db_path()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("get_legifrance_db_path a échoué : %s", exc)
+        return None
+    if not db_path.exists():
+        logger.debug("Légifrance activé mais base absente : %s", db_path)
+        return None
+    try:
+        from .knowledge_legifrance.retriever import LegifranceRetriever
+        from .dialogue.intent_classifier import detect_themes
+    except ImportError as exc:
+        logger.warning("Légifrance importable mais pas installé : %s", exc)
+        return None
+    try:
+        themes = detect_themes(faits_json) or None
+        with LegifranceRetriever(db_path) as retriever:
+            payload = retriever.handle(faits_json, themes=themes, top_k=top_k)
+        return json.loads(payload)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Légifrance retriever a échoué (%s), fallback curaté", exc)
+        return None
+
+
 async def handle(faits_json: str) -> str:
     """
     Recherche des sources pertinentes pour les faits extraits.
@@ -127,6 +172,11 @@ async def handle(faits_json: str) -> str:
     Returns:
         JSON string : {"sources": [...], "jurisprudences": [...], "non_trouve": [...]}
     """
+    # 0. Tenter Légifrance en premier si activé et base présente
+    legi_result = _try_legifrance(faits_json, top_k=MAX_SOURCES)
+    if legi_result is not None and legi_result.get("sources"):
+        return json.dumps(legi_result, ensure_ascii=False, indent=2)
+
     index = get_index()
 
     legal_refs = _extract_legal_refs(faits_json)

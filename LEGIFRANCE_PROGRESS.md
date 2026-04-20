@@ -1,0 +1,128 @@
+# Intégration Légifrance — Carnet de reprise
+
+> Source de vérité pour reprendre la tâche si crash/interruption/relais. Mis à jour **avant** chaque transition d'étape. Commité au fil de l'eau sur `feat/legifrance-integration`.
+
+## État global
+- Dernière MAJ : `2026-04-20T18:00:00+02:00` (post-rebase sur main, tests verts)
+- Étape en cours : **5/6 — Merge sur main**
+- Statut global : `prêt à merger`
+- Worktree : `/Users/mathieu/Desktop/mon-agence-ia/.claude/worktrees/kind-mcclintock-8d2353`
+- Branche feat : `feat/legifrance-integration` (ex `claude/kind-mcclintock-8d2353`)
+- Branche cible merge : **`main`** (changement 2026-04-20 : deux autres agents HUD UX + Reset Lucie mergent sur `main` avant nous → rebase requis avant merge)
+- Tests baseline : **185/185 verts** (133 lucie_v1_standalone/tests + 52 tests/)
+- Plan de référence : `/Users/mathieu/.claude/plans/ton-r-le-ing-nieur-fluttering-babbage.md`
+
+## Hash de reprise (pour rollback)
+- **Pré-merge commit de la branche cible** : `d904a94` (`docs(audit): rapport audit système complet 2026-04-20`)
+- Commande de rollback : `git checkout integration/v1-consolidated-2026-04-17 && git reset --hard d904a94`
+- Base de l'arbre feat : `d904a94` (HEAD au moment du branching)
+
+## Étapes
+
+### ✅ Phase 1 — Recherche et arbitrage (terminée)
+- Terminée le : `2026-04-20`
+- Verdict :
+  - **Source primaire** : dump officiel DILA LEGI sur `https://echanges.dila.gouv.fr/OPENDATA/LEGI/`. Archive full `Freemium_legi_global_*.tar.gz` (~1.1 GB) + incrémentaux quotidiens `LEGI_YYYYMMDD-HHMMSS.tar.gz` (300 KB–42 MB).
+  - **Parser** : `legi.py` (Legilibre, CC0, ~60★) vendoré dans `lucie_v1_standalone/knowledge_legifrance/vendor/legi/`. Inactif depuis nov 2021 (`pushed_at: 2022-04-30`), officiellement Python 3.7-3.9 → patch requis pour Python 3.13.
+  - **Exclus** : dila2sql (archivé 2020, PostgreSQL), codes-juridiques-francais (Markdown dérivé, MAJ opaque), API PISTE (authentifiée, non 100% local).
+  - **Scope** : tout LEGI importé, filtrage par thème au retrieval (base ~3 GB).
+- Fichiers produits : `/Users/mathieu/.claude/plans/ton-r-le-ing-nieur-fluttering-babbage.md`
+- **Prochaine étape** : déjà passée — Phase 2.
+
+### ✅ Phase 2 — Architecture (terminée)
+- Terminée le : `2026-04-20`
+- Décisions clés :
+  - Stockage : `~/Library/Application Support/Lucie/legifrance/legi.sqlite` (override env `LUCIE_LEGIFRANCE_DIR`).
+  - Mapping thème : YAML versionné `lucie_v1_standalone/knowledge_legifrance/theme_mapping.yaml` (6 thèmes : droit_social, baux_commerciaux, divorce_famille, societes, prudhommes, fiscal_comptable).
+  - API Retriever : `LegifranceRetriever.search(query, themes, top_k) -> list[LegalArticle]` avec sérialisation JSON identique au contrat actuel (non-régression du pipeline aval).
+  - Feature flag : `LUCIE_LEGIFRANCE=1` (env), avec fallback sur la base curatée existante si base absente ou miss.
+  - Sync auto : `launchd` plist toutes 48h, incrémentaux quotidiens appliqués.
+  - AuditTrail : entrée `legifrance_sync` signée HMAC après chaque sync.
+- Fichiers produits : aucun (conception dans le plan).
+- **Prochaine étape** : Phase 3 — implémentation.
+
+### 🔄 Phase 3 — Implémentation (en cours)
+- Commencée : `2026-04-20`
+- Ce qui est fait :
+  - Branche `feat/legifrance-integration` créée (renommée depuis `claude/kind-mcclintock-8d2353`).
+  - Baseline tests : 185/185 verts confirmé.
+  - Hash pré-merge enregistré : `d904a94`.
+  - Carnet de reprise créé (ce fichier).
+  - Vendoring `legi.py@64c2c49` commité (CC0, NOTICE.md explicite, pas de patch in-place).
+  - Package `knowledge_legifrance/__init__.py` créé (exporte `LegifranceRetriever`, `LegalArticle`).
+  - `theme_mapping.yaml` v1.0 créé (6 thèmes × CID/filtres/mots-clés).
+  - `schema.sql` créé (tables articles, codes, articles_by_theme, sync_history + FTS5 + triggers).
+  - `downloader.py` (parse HTML + SHA256 + select_sync_plan), `parser.py` (stdlib XML + tar), `indexer.py` (theme → articles), `retriever.py` (API publique + FTS5), `diff.py` (audit) — import smoke OK sur Python 3.13.12.
+- Ce qui reste à faire (ordre d'exécution) :
+  1. [x] Vendor `legi.py` dans `lucie_v1_standalone/knowledge_legifrance/vendor/legi/` + NOTICE.md (pas de patch in-place — wrapper contourne hunspell).
+  2. [x] Créer `lucie_v1_standalone/knowledge_legifrance/__init__.py`.
+  3. [x] `theme_mapping.yaml` versionné (schéma dans le plan).
+  4. [x] `downloader.py` — parse HTML index DILA (stdlib html.parser) + urllib download + SHA256 + select_sync_plan.
+  5. [x] `parser.py` — parseur minimal stdlib (tarfile + xml.etree) contournant hunspell/lxml ; extrait ARTICLE + TEXTE_VERSION NATURE=CODE + liste_suppression.
+  6. [x] `indexer.py` — matérialise `articles_by_theme` depuis `theme_mapping.yaml` (avec fallback YAML minimal si PyYAML absent).
+  7. [x] `retriever.py` — `LegifranceRetriever.search()` + `.handle()` compatible contrat pipeline + FTS5 ou fallback LIKE.
+  8. [x] `diff.py` — SyncDiff (added/updated/abrogated/deleted) + summary_lines(≤50) pour audit.
+  8b. [x] `sync.py` — orchestrateur download → parse → index → diff → audit + `legifrance_freshness()`.
+  9. [x] `scripts/legifrance_sync.py` — CLI argparse (--first-run / --incremental / --status / --sample / --dry-run / --force / --data-dir / --no-audit).
+  10. [x] `scripts/install_launchd.sh` + `scripts/uninstall_launchd.sh` (plist 172800s, RunAtLoad=false, logs ~/Library/Logs/Lucie/).
+  11. [x] `scripts/legifrance_rollback.sh` avec `--dry-run` et `--yes` (interactif par défaut, scripts chmod+x, testé dry-run vert).
+  12. [x] Modifier `lucie_v1_standalone/config.py` : `LEGIFRANCE_ENABLED` (env LUCIE_LEGIFRANCE, off par défaut), `get_legifrance_db_path()`, `LEGIFRANCE_SYNC_INTERVAL_HOURS=48`.
+  13. [x] Modifier `lucie_v1_standalone/retriever.py` — `_try_legifrance()` + fallback transparent sur la base curatée. Contrat JSON preservé.
+  14. [x] Modifier `lucie_v1_standalone/dialogue/intent_classifier.py` — `detect_themes(query)` lazy-loadé, lru_cache, normalisation NFD. 185/185 tests preservés.
+  15. [x] Étendre `.gitignore` (section Légifrance : knowledge/legifrance/data/, tarballs/, last_sync.json, .audit_salt).
+  16. [x] `requirements.txt` — aucune nouvelle dép : PyYAML déjà présent, parser custom stdlib (pas besoin de libarchive-c ni lxml).
+  17. [x] Mettre à jour `README.md` — section "📚 Base juridique Légifrance" (éditions, commandes, launchd, audit, coût, rollback).
+  18. [x] Créer fixture `tests/test_legifrance/conftest.py` — construit le tarball en session-fixture in-memory, 6 articles canoniques (un par thème) + 4 codes, ≤10 KB. Évite de committer un binaire dans l'arbre Git.
+  19. [x] Écrire les 7 tests : `test_downloader` (9), `test_parser` (7), `test_indexer_themes` (3), `test_retriever_contract` (12 incl. 6 questions canoniques non-hallucination), `test_sync_incremental` (6), `test_audit_entry` (1), `test_cli_smoke` (3). **47 nouveaux tests verts**, total suite : **228/228 verts** (185 baseline + 43 + 4 audit/CLI).
+- **Pour reprendre** : ouvrir `lucie_v1_standalone/knowledge_legifrance/vendor/legi/LEGI_PY_VERSION` pour voir l'étape atteinte du vendoring. Continuer avec le point coché suivant dans la liste ci-dessus. Toujours vérifier `git status` et `pytest` verts avant de poursuivre.
+- Questions ouvertes :
+  - Le téléchargement du dump DILA complet (1.1 GB) est lourd : en dev, limiter aux fixtures ; en recette, le lancer manuellement via `--first-run`.
+  - Le helper `legifrance_freshness()` et son câblage HUD sont un bonus — non bloquant pour le merge.
+
+### ✅ Phase 4 — Tests (terminée)
+- Terminée le : `2026-04-20`
+- Résultats :
+  - Avant rebase : **228/228 verts** (185 baseline + 47 nouveaux Légifrance).
+  - Après rebase sur `main` (picks up HUD UX + Reset Lucie) : **261/261 verts** (228 + 33 nouveaux côté HUD UX). Zéro régression.
+  - Fix associé pendant le dev : `_search_by_ref()` ne matchait pas le format canonique `L1234-1` stocké en DB (construisait `1234-1` → corrigé).
+- Commande : `python3 -m pytest lucie_v1_standalone/tests/ tests/ -q` (125 s sur Apple Silicon).
+
+### 🔄 Phase 5 — Merge sur `main` (en cours)
+- Pré-requis : Phase 4 verte + pré-conditions du plan (README, rollback exécutable, pas de secret, hooks verts).
+- **Changement 2026-04-20** : l'agent HUD UX + l'agent Reset Lucie mergent sur `main` avant nous → on rebase d'abord, puis merge sur `main` (pas `integration/v1-consolidated-2026-04-17`).
+- Procédure :
+  ```bash
+  # 1. Rebase sur main à jour (prend les commits HUD UX + Reset Lucie)
+  git fetch --all
+  git checkout feat/legifrance-integration
+  git rebase main
+  # 2. Re-run tests après rebase
+  pytest lucie_v1_standalone/tests/ tests/ -v
+  # 3. Si vert : merge
+  git checkout main
+  git pull --ff-only   # si remote configuré
+  git merge --no-ff feat/legifrance-integration \
+    -m "feat(knowledge): intégration Légifrance live avec sync auto 48h"
+  git tag -a v0.3.0-legifrance-live -m "Base juridique Légifrance vivante, sync auto 48h"
+  ```
+- **Hash enregistrés** :
+  - Pré-merge (main avant notre merge, post HUD UX + Reset Lucie) : `3c849ed5ce10260a8f1f823e58388f8052402590`
+  - Pré-rebase (HEAD feat/legifrance-integration) : `95a7be72ceb90dba1ef7a078a62953dee01a631d`
+  - Post-rebase (HEAD feat/legifrance-integration) : `a65da80` (8 commits replayés proprement)
+  - Post-merge (main après notre merge) : _à capturer après `git merge`_
+- **Pour reprendre** : si rebase échoue (conflit), analyser sans force-reset. Si tests rouges après rebase, fixer avant merge. Si remote absent, commit local + noter dans le rapport final.
+
+### ⏳ Phase 6 — Rapport final (à venir)
+- Fichier : `~/Documents/Lucie/04_Recherche/Integration_Legifrance_Rapport_2026-04-20.md`
+- Contenu : choix parser + raison, schéma, résultats tests, commandes opérateur, coût disque mesuré, temps sync mesuré, limites, hash merge + tag.
+
+## Décisions prises (append-only)
+- `2026-04-20` : parser = **legi.py vendoré** (plutôt que parser custom ou hybride). Raison : CC0, battle-tested sur cas légaux tordus, inactif mais fonctionnel — risque de dette technique accepté, mitigé par le fait qu'il est vendoré (on peut patcher).
+- `2026-04-20` : scope = **tout LEGI, filtrage au retrieval** (plutôt qu'ingestion filtrée). Raison : ajouter une édition = modifier YAML sans re-sync. Coût disque ~3 GB jugé acceptable pour un Mac avocat.
+- `2026-04-20` : base de merge = **`integration/v1-consolidated-2026-04-17`** (pas `main` littéral qui est 30+ commits en retard). Mathieu a validé : `main` sera rattrapé séparément.
+- `2026-04-20` : **REVISION** — Mathieu arbitre : base de merge finale = **`main`** après rebase. Raison : agent HUD UX + agent Reset Lucie mergent sur `main` avant nous (2 petits commits, peu de risque de conflit). Procédure : `git fetch --all && git rebase main` puis re-run tests avant merge.
+- `2026-04-20` : `LEGIFRANCE_ENABLED` feature flag **off par défaut** — on active seulement quand la base est synchronisée. Évite de casser le pipeline v1 si la base est absente.
+- `2026-04-20` : parser = **custom stdlib** (tarfile + xml.etree.ElementTree) plutôt que `vendor/legi/tar2sqlite.py` direct. Raison : `legi.py` pull hunspell (native) + libarchive-c + lxml ; le build hunspell échoue sur macOS arm64. Le vendoring reste comme filet de sécurité / référence de schéma. On extrait uniquement ARTICLE (BLOC_TEXTUEL) + TEXTE_VERSION NATURE=CODE. Versions/liens/sommaires/anomalies sont NON extraits — voir `schema.sql` pour la portée retenue.
+
+## Blocages rencontrés
+_(aucun pour l'instant)_

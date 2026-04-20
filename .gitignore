@@ -120,6 +120,13 @@ README.zh.md
 # ===== ARCHIVES & TEMP =====
 _archive/
 
+# ===== LÉGIFRANCE (base juridique locale, jamais committée) =====
+knowledge/legifrance/data/
+knowledge/legifrance/tarballs/
+tarballs/
+last_sync.json
+.audit_salt
+
 # ===== HORS-PIPELINE (retirés du repo le 12 avril 2026) =====
 Entreprise/
 demo/
