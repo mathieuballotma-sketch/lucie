@@ -8,7 +8,7 @@
 - Statut global : `en cours`
 - Worktree : `/Users/mathieu/Desktop/mon-agence-ia/.claude/worktrees/kind-mcclintock-8d2353`
 - Branche feat : `feat/legifrance-integration` (ex `claude/kind-mcclintock-8d2353`)
-- Branche cible merge : `integration/v1-consolidated-2026-04-17`
+- Branche cible merge : **`main`** (changement 2026-04-20 : deux autres agents HUD UX + Reset Lucie mergent sur `main` avant nous → rebase requis avant merge)
 - Tests baseline : **185/185 verts** (133 lucie_v1_standalone/tests + 52 tests/)
 - Plan de référence : `/Users/mathieu/.claude/plans/ton-r-le-ing-nieur-fluttering-babbage.md`
 
@@ -52,15 +52,16 @@
   - Package `knowledge_legifrance/__init__.py` créé (exporte `LegifranceRetriever`, `LegalArticle`).
   - `theme_mapping.yaml` v1.0 créé (6 thèmes × CID/filtres/mots-clés).
   - `schema.sql` créé (tables articles, codes, articles_by_theme, sync_history + FTS5 + triggers).
+  - `downloader.py` (parse HTML + SHA256 + select_sync_plan), `parser.py` (stdlib XML + tar), `indexer.py` (theme → articles), `retriever.py` (API publique + FTS5), `diff.py` (audit) — import smoke OK sur Python 3.13.12.
 - Ce qui reste à faire (ordre d'exécution) :
   1. [x] Vendor `legi.py` dans `lucie_v1_standalone/knowledge_legifrance/vendor/legi/` + NOTICE.md (pas de patch in-place — wrapper contourne hunspell).
   2. [x] Créer `lucie_v1_standalone/knowledge_legifrance/__init__.py`.
   3. [x] `theme_mapping.yaml` versionné (schéma dans le plan).
-  4. [ ] `downloader.py` — parse HTML index DILA + download tarballs + checksum SHA256.
-  5. [ ] `parser.py` — wrapper autour de `vendor/legi/tar2sqlite.py`.
-  6. [ ] `indexer.py` — matérialise `articles_by_theme` depuis `theme_mapping.yaml`.
-  7. [ ] `retriever.py` — `LegifranceRetriever.search()` avec `LegalArticle` dataclass + sérialisation JSON compatible.
-  8. [ ] `diff.py` — human-readable diff pour audit trail (limité 50 lignes).
+  4. [x] `downloader.py` — parse HTML index DILA (stdlib html.parser) + urllib download + SHA256 + select_sync_plan.
+  5. [x] `parser.py` — parseur minimal stdlib (tarfile + xml.etree) contournant hunspell/lxml ; extrait ARTICLE + TEXTE_VERSION NATURE=CODE + liste_suppression.
+  6. [x] `indexer.py` — matérialise `articles_by_theme` depuis `theme_mapping.yaml` (avec fallback YAML minimal si PyYAML absent).
+  7. [x] `retriever.py` — `LegifranceRetriever.search()` + `.handle()` compatible contrat pipeline + FTS5 ou fallback LIKE.
+  8. [x] `diff.py` — SyncDiff (added/updated/abrogated/deleted) + summary_lines(≤50) pour audit.
   9. [ ] `scripts/legifrance_sync.py` — CLI entrée manuelle (argparse).
   10. [ ] `scripts/install_launchd.sh` + `scripts/uninstall_launchd.sh`.
   11. [ ] `scripts/legifrance_rollback.sh` avec `--dry-run`.
@@ -83,17 +84,28 @@
 - Commande : `pytest lucie_v1_standalone/tests/ tests/ -v`.
 - **Pour reprendre** : lancer `pytest -x` et traiter les rouges un à un.
 
-### ⏳ Phase 5 — Merge sur `integration/v1-consolidated-2026-04-17` (à venir)
+### ⏳ Phase 5 — Merge sur `main` (à venir)
 - Pré-requis : Phase 4 verte + pré-conditions du plan (README, rollback exécutable, pas de secret, hooks verts).
+- **Changement 2026-04-20** : l'agent HUD UX + l'agent Reset Lucie mergent sur `main` avant nous → on rebase d'abord, puis merge sur `main` (pas `integration/v1-consolidated-2026-04-17`).
 - Procédure :
   ```bash
-  git checkout integration/v1-consolidated-2026-04-17
+  # 1. Rebase sur main à jour (prend les commits HUD UX + Reset Lucie)
+  git fetch --all
+  git checkout feat/legifrance-integration
+  git rebase main
+  # 2. Re-run tests après rebase
+  pytest lucie_v1_standalone/tests/ tests/ -v
+  # 3. Si vert : merge
+  git checkout main
   git pull --ff-only   # si remote configuré
   git merge --no-ff feat/legifrance-integration \
     -m "feat(knowledge): intégration Légifrance live avec sync auto 48h"
   git tag -a v0.3.0-legifrance-live -m "Base juridique Légifrance vivante, sync auto 48h"
   ```
-- **Pour reprendre** : si merge échoue (conflit), analyser sans force-reset. Si remote absent, commit local + noter dans le rapport final.
+- **Hash à enregistrer pour le rapport** :
+  - Pré-merge (main avant rebase)  : à capturer au moment de `git fetch`
+  - Post-merge (main après merge) : à capturer après le `git merge`
+- **Pour reprendre** : si rebase échoue (conflit), analyser sans force-reset. Si tests rouges après rebase, fixer avant merge. Si remote absent, commit local + noter dans le rapport final.
 
 ### ⏳ Phase 6 — Rapport final (à venir)
 - Fichier : `~/Documents/Lucie/04_Recherche/Integration_Legifrance_Rapport_2026-04-20.md`
@@ -103,7 +115,9 @@
 - `2026-04-20` : parser = **legi.py vendoré** (plutôt que parser custom ou hybride). Raison : CC0, battle-tested sur cas légaux tordus, inactif mais fonctionnel — risque de dette technique accepté, mitigé par le fait qu'il est vendoré (on peut patcher).
 - `2026-04-20` : scope = **tout LEGI, filtrage au retrieval** (plutôt qu'ingestion filtrée). Raison : ajouter une édition = modifier YAML sans re-sync. Coût disque ~3 GB jugé acceptable pour un Mac avocat.
 - `2026-04-20` : base de merge = **`integration/v1-consolidated-2026-04-17`** (pas `main` littéral qui est 30+ commits en retard). Mathieu a validé : `main` sera rattrapé séparément.
+- `2026-04-20` : **REVISION** — Mathieu arbitre : base de merge finale = **`main`** après rebase. Raison : agent HUD UX + agent Reset Lucie mergent sur `main` avant nous (2 petits commits, peu de risque de conflit). Procédure : `git fetch --all && git rebase main` puis re-run tests avant merge.
 - `2026-04-20` : `LEGIFRANCE_ENABLED` feature flag **off par défaut** — on active seulement quand la base est synchronisée. Évite de casser le pipeline v1 si la base est absente.
+- `2026-04-20` : parser = **custom stdlib** (tarfile + xml.etree.ElementTree) plutôt que `vendor/legi/tar2sqlite.py` direct. Raison : `legi.py` pull hunspell (native) + libarchive-c + lxml ; le build hunspell échoue sur macOS arm64. Le vendoring reste comme filet de sécurité / référence de schéma. On extrait uniquement ARTICLE (BLOC_TEXTUEL) + TEXTE_VERSION NATURE=CODE. Versions/liens/sommaires/anomalies sont NON extraits — voir `schema.sql` pour la portée retenue.
 
 ## Blocages rencontrés
 _(aucun pour l'instant)_
