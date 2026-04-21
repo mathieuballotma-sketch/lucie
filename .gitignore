@@ -92,6 +92,16 @@ build/
 tmp/
 temp/
 
+# ===== PACKAGING macOS (certificats, secrets, artefacts) =====
+# Jamais commiter de certificats Developer ID ni d'app-specific password.
+*.cer
+*.mobileprovision
+*.provisionprofile
+packaging/secrets/
+packaging/*.icns.bak
+.env.packaging
+Lucie.zip
+
 # ===== CACHE OUTILS =====
 .mypy_cache/
 .ruff_cache/
