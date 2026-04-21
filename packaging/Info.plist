@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.mon-agence-ia.lucie</string>
+
+    <key>CFBundleName</key>
+    <string>Lucie</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>Lucie</string>
+
+    <key>CFBundleExecutable</key>
+    <string>Lucie</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleVersion</key>
+    <string>0.2.2</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>0.2.2</string>
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleDevelopmentRegion</key>
+    <string>fr_FR</string>
+
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+
+    <key>LSUIElement</key>
+    <false/>
+
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <key>NSRequiresAquaSystemAppearance</key>
+    <false/>
+
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 mon-agence-ia. Tous droits réservés.</string>
+
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Lucie utilise AppleScript pour interagir avec Mail, Calendar et Notes (optionnel, activé uniquement si vous l'autorisez explicitement).</string>
+
+    <key>NSCalendarsUsageDescription</key>
+    <string>Lucie peut créer des rappels d'audience et d'échéance procédurale dans votre Calendrier (opt-in, sur votre demande explicite).</string>
+
+    <key>NSRemindersUsageDescription</key>
+    <string>Lucie peut créer des rappels procéduraux dans l'app Rappels (opt-in, sur votre demande explicite).</string>
+
+    <key>NSContactsUsageDescription</key>
+    <string>Lucie peut enrichir vos contacts clients avec des métadonnées d'affaires (opt-in, sur votre demande explicite).</string>
+
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Lucie peut transcrire vos dictées vocales en texte si vous activez la saisie vocale.</string>
+
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Lucie utilise la reconnaissance vocale Apple pour transcrire vos dictées en français (opt-in).</string>
+
+    <key>NSAccessibilityUsageDescription</key>
+    <string>Lucie utilise l'accessibilité pour détecter le raccourci global Cmd+Shift+L qui ouvre le HUD.</string>
+</dict>
+</plist>
