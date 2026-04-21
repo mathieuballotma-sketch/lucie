@@ -13,7 +13,7 @@
 | P1 | Streaming tokens Ollama (Python) | Absolue | ✅ Done | bcfe163 |
 | P1b | Streaming HUD (append_token main thread) | Absolue | ⏳ Pending | — |
 | P2 | `OLLAMA_KEEP_ALIVE=24h` | Critique | ✅ Done | — |
-| P3 | Bench 3 modèles (Gemma/Qwen/Llama) | Critique | ⏳ Pending | — |
+| P3 | Bench 3 modèles (Gemma/Qwen/Llama) | Critique | ✅ Done (pas de swap) | — |
 | P4 | Hybride BM25+FAISS (RRF camembert) | Haute | ⏳ Pending | — |
 | P5 | Cache LRU (TTLCache) | Haute | ✅ Done | — |
 | P6 | Fusion Lecteur+Rédacteur N1/N2 | Moyenne | ⏳ Pending | — |
@@ -63,6 +63,28 @@ Rapport brut : `reports/baseline.md`.
 - **P1 streaming** toujours critique UX (premier token perçu).
 - **P4 FAISS** : réévaluer — gain temps nul, gain qualité incertain. **Critère d'abandon si le swap modèle règle déjà tout**.
 - **P8 validation articles** : pas de cas piège dans le baseline → probablement à couper.
+
+## P3 Bench modèles — 2026-04-21
+
+Bench sur 5 requêtes N2 (`scripts/bench_models.py`). Rapport : `reports/bench_models.md`.
+
+### Résultats
+| Modèle | p50 pipeline | moy tok/s | score moy | erreurs |
+|---|---:|---:|---:|---:|
+| `gemma4:e4b` (baseline) | 43 743 ms | 17.6 | 0.40 | 0/5 |
+| `qwen2.5:3b` | 35 063 ms | 11.9 | 0.40 | 0/5 |
+| `llama3.2:3b` | **31 640 ms** | 11.9 | 0.40 | 0/5 |
+
+### Décision : **pas de swap**
+- Critère initial « ≥1.8× plus rapide + score ≥0.7 » non atteint : llama3.2:3b ne fait que 1.38× au p50.
+- Score moy 0.40 pour les 3 modèles → **biais bench** : le retriever ne trouve pas de sources sur « Délai de préavis art. L1234-1 », « Conditions licenciement économique », « Comment saisir le CPH ? ». Les 3 LLM renvoient « Aucune source disponible » → verif = 0.
+- Qualitativement équivalents quand le retriever trouve des sources (cf. N2 thématique).
+- Variance gemma4:e4b plus élevée (7.3–25.8 tok/s) vs qwen/llama stables à ~12 tok/s → à garder en tête.
+
+### Action
+- On garde `gemma4:e4b` comme `SPEED_MODEL` par défaut.
+- Re-bench à prévoir **après P4 FAISS hybride** (retriever améliorera la couverture de sources, donc la qualité devient discriminante).
+- Flag `LUCIE_SPEED_MODEL=llama3.2:3b` utilisable pour test utilisateur.
 
 ## Optims retirées (règle de vérité)
 
