@@ -150,6 +150,8 @@ async def main() -> int:
     parser.add_argument("--queries", choices=["full", "reduced"], default="full")
     parser.add_argument("--model", default=None,
                         help="Override LUCIE_SPEED_MODEL pour cette run")
+    parser.add_argument("--passes", type=int, default=1,
+                        help="Rejoue le set N fois dans le même process (mesure cache hits)")
     args = parser.parse_args()
 
     # Profilage actif par défaut dans ce harness
@@ -160,14 +162,21 @@ async def main() -> int:
     logging.basicConfig(level=logging.WARNING)
 
     queries = REDUCED_QUERIES if args.queries == "reduced" else BENCHMARK_QUERIES
-    labels = [label for label, _ in queries]
+    base_labels = [label for label, _ in queries]
+    passes = max(1, args.passes)
 
-    results = []
-    for i, (label, q) in enumerate(queries, start=1):
-        print(f"[{i}/{len(queries)}] {label}…", flush=True)
-        res = await run_one(q)
-        print(f"    → {res['elapsed_ms']:.0f} ms", flush=True)
-        results.append(res)
+    results: List[dict] = []
+    labels: List[str] = []
+    for p in range(1, passes + 1):
+        if passes > 1:
+            print(f"\n=== Pass {p}/{passes} ===", flush=True)
+        for i, (label, q) in enumerate(queries, start=1):
+            tag = f"{label} (p{p})" if passes > 1 else label
+            print(f"[{i}/{len(queries)}] {tag}…", flush=True)
+            res = await run_one(q)
+            print(f"    → {res['elapsed_ms']:.0f} ms", flush=True)
+            results.append(res)
+            labels.append(tag)
 
     report = format_report(results, labels)
 

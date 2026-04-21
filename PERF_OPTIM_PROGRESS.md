@@ -14,12 +14,12 @@
 | P1b | Streaming HUD (append_token main thread) | Absolue | ✅ Done | — |
 | P2 | `OLLAMA_KEEP_ALIVE=24h` | Critique | ✅ Done | — |
 | P3 | Bench 3 modèles (Gemma/Qwen/Llama) | Critique | ✅ Done (pas de swap) | — |
-| P4 | Hybride BM25+FAISS (RRF camembert) | Haute | ⏳ Pending | — |
+| P4 | Hybride BM25+FAISS (RRF camembert) | Haute | ⏸ Reporté Phase 1bis | — |
 | P5 | Cache LRU (TTLCache) | Haute | ✅ Done | — |
-| P6 | Fusion Lecteur+Rédacteur N1/N2 | Moyenne | ⏳ Pending | — |
-| P7 | Pré-router thèmes (filtre FAISS) | Basse | ⏳ Pending | — |
-| P8 | Early validation articles (frozenset) | Conditionnelle | ⏳ Pending | — |
-| P9 | Investigation MLX (read-only) | Optionnelle | ⏳ Pending | — |
+| P6 | Fusion Lecteur+Rédacteur N1/N2 | Moyenne | 🚫 Retiré (déjà fait par archi) | — |
+| P7 | Pré-router thèmes (filtre FAISS) | Basse | ⏸ Reporté (dépend P4) | — |
+| P8 | Early validation articles (frozenset) | Conditionnelle | 🚫 Retiré (baseline sans cas piège) | — |
+| P9 | Investigation MLX (read-only) | Optionnelle | ⏸ Reporté Phase 2 | — |
 
 ## Décisions tech
 
@@ -88,7 +88,27 @@ Bench sur 5 requêtes N2 (`scripts/bench_models.py`). Rapport : `reports/bench_m
 
 ## Optims retirées (règle de vérité)
 
-_Section mise à jour quand un optim ne gagne rien et est retiré._
+### P6 — Fusion Lecteur+Rédacteur N1/N2 (retiré)
+**Constat baseline** : N1/N2 ne font **qu'un seul appel LLM** (Rédacteur). Lecteur ne s'exécute que sur N3 (document). « Fusion » n'a aucun sens sur N1/N2 puisqu'il n'y a déjà qu'un seul LLM à lui seul. L'architecture actuelle est déjà optimale sur ce point — le plan initial reposait sur un diagnostic erroné (« 4-5 LLM séquentiels »).
+
+### P8 — Early validation articles (retiré)
+**Constat baseline** : aucune des 5 requêtes benchmark ne cite un article inexistant. Le gain attendu (<1s sur cas piège) ne se matérialise que si des utilisateurs tapent volontairement des refs invalides — comportement marginal en usage pro. À garder en backlog si le feedback utilisateur remonte ce cas.
+
+### P4 — Hybride BM25+FAISS (reporté Phase 1bis)
+**Constat baseline** : retriever = 0% du temps total (1-21 ms/call). FAISS + RRF améliorerait la *qualité* de retrieval (P3 bench a montré que le retriever renvoie 0 source sur plusieurs requêtes raisonnables), mais n'apporte **aucun gain temps** — le goulot est le LLM (99%).
+
+La qualité de retrieval mérite un chantier dédié (pas perf), avec :
+- Build index FAISS camembert-base (~2-3h one-shot)
+- Évaluation qualité avec dataset d'évaluation réel
+- Critère d'acceptation mesurable (recall@5 sur questions connues)
+
+Reporté en Phase 1bis pour ne pas mélanger perf et qualité.
+
+### P7 — Pré-router thèmes (reporté)
+Dépend de P4 (filtre post-FAISS). Reporté avec P4.
+
+### P9 — Investigation MLX (reporté Phase 2)
+Tâche d'exploration, pas de code Phase 1. À mener en mode prototype séparé avec qwen2.5:3b vs Ollama. Reporté en Phase 2 pour garder la branche perf focalisée.
 
 ## Benchmark final
 
