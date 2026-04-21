@@ -64,6 +64,7 @@ OPTIONS = {
     # embeddings sentence-transformers pas encore branchés au HUD).
     # À réintroduire si/quand la dictée ou le RAG vectoriel seront activés.
     "excludes": [
+        # --- ML lourds, dictée inactive en v1 ---
         "torch",
         "torchvision",
         "torchaudio",
@@ -74,6 +75,7 @@ OPTIONS = {
         "sklearn",
         "sentence_transformers",
         "transformers",
+        # --- Outils de dev qui traînent dans le venv ---
         "tkinter",
         "test",
         "unittest",
@@ -84,6 +86,23 @@ OPTIONS = {
         "mypy",
         "black",
         "ruff",
+        # --- Build-tools alternatifs présents dans le venv mais non utilisés ---
+        # py2app scanne PyInstaller.hooks et crash sur hook-PyQt*, hook-matplotlib, etc.
+        # parce que ces hooks réfèrent des deps non installées. Fix : exclure
+        # tout l'écosystème PyInstaller + les toolkits Qt / GUI alternatifs.
+        "PyInstaller",
+        "pyinstaller",
+        "PyQt5",
+        "PyQt6",
+        "PySide2",
+        "PySide6",
+        "shiboken2",
+        "shiboken6",
+        "matplotlib",
+        "wx",
+        "wxPython",
+        "gi",  # PyGObject
+        "tkinter.tix",
     ],
     # Strip des symboles debug pour réduire la taille.
     "strip": True,
