@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator, Dict, List, Optional, Tuple, Union
 
 from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacteur, retriever, verificateur
+from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
 from .dialogue.intent_classifier import Intent, classify as classify_intent
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
@@ -155,6 +156,56 @@ def _build_proposition(query: str, kind: str) -> PipelineResponse:
     )
 
 
+def _current_index_version() -> str:
+    """Version de la base Légifrance utilisée comme partie de la clé de cache.
+
+    On prend la mtime du fichier `legi.sqlite` — change à chaque sync. Si la
+    base est absente ou inaccessible, on retombe sur le nom du speed model
+    (évite qu'un swap modèle invalide les caches sans changer la base).
+    """
+    try:
+        from .retriever import get_legifrance_db_path
+
+        db_path = get_legifrance_db_path()
+        if db_path and Path(db_path).exists():
+            return f"{int(Path(db_path).stat().st_mtime)}"
+    except Exception:
+        pass
+    return os.environ.get("LUCIE_SPEED_MODEL", "_")
+
+
+async def _run_pipeline_cached(
+    query: str,
+    document_text: Optional[str],
+    force: bool,
+    verbose: bool,
+    memory: "Optional[MemoryStore]",
+) -> str:
+    """Wrapper cache autour de `_run_pipeline`.
+
+    Bypass cache si :
+      - flag LUCIE_CACHE=0
+      - `document_text` fourni (cache non pertinent : doc peut varier)
+      - `force=True` (mode démo — on veut le chemin complet)
+      - `memory` fourni (l'observation est cachée avec le reste sinon)
+    """
+    if not cache_enabled() or document_text is not None or force or memory is not None:
+        return await _run_pipeline(query, document_text, force, verbose, memory)
+
+    cache = get_query_cache()
+    speed_model = os.environ.get("LUCIE_SPEED_MODEL", "_")
+    key = cache.make_key(
+        query=query,
+        index_version=f"{_current_index_version()}|{speed_model}",
+    )
+    dry_run = cache_dry_run_enabled()
+
+    async def compute() -> str:
+        return await _run_pipeline(query, document_text, force, verbose, memory)
+
+    return await cache.get_or_compute(key, compute, dry_run=dry_run)
+
+
 def _attach_suggested_replies(response: PipelineResponse) -> PipelineResponse:
     """Détecte une question fermée dans l'answer et ajoute des boutons Oui/Non génériques."""
     if response.suggested_replies:
@@ -249,7 +300,7 @@ async def run(
     try:
         async with profile_bucket():
             result = await asyncio.wait_for(
-                _run_pipeline(query, document_text, force, verbose, memory),
+                _run_pipeline_cached(query, document_text, force, verbose, memory),
                 timeout=PIPELINE_TIMEOUT,
             )
         elapsed = time.time() - start

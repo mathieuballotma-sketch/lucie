@@ -15,7 +15,7 @@
 | P2 | `OLLAMA_KEEP_ALIVE=24h` | Critique | ✅ Done | — |
 | P3 | Bench 3 modèles (Gemma/Qwen/Llama) | Critique | ⏳ Pending | — |
 | P4 | Hybride BM25+FAISS (RRF camembert) | Haute | ⏳ Pending | — |
-| P5 | Cache LRU (TTLCache) | Haute | ⏳ Pending | — |
+| P5 | Cache LRU (TTLCache) | Haute | ✅ Done | — |
 | P6 | Fusion Lecteur+Rédacteur N1/N2 | Moyenne | ⏳ Pending | — |
 | P7 | Pré-router thèmes (filtre FAISS) | Basse | ⏳ Pending | — |
 | P8 | Early validation articles (frozenset) | Conditionnelle | ⏳ Pending | — |
