@@ -35,6 +35,11 @@ from lucie_v1_standalone.knowledge_legifrance.sync import (  # noqa: E402
     legifrance_freshness,
     run_sync,
 )
+from lucie_v1_standalone.knowledge_legifrance.downloader import (  # noqa: E402
+    CorruptedArchiveError,
+    DownloadError,
+)
+from lucie_v1_standalone.knowledge_legifrance.parser import ParseError  # noqa: E402
 
 
 def _get_data_dir(override: str | None) -> Path:
@@ -108,15 +113,35 @@ def main(argv: list[str] | None = None) -> int:
     sample = [Path(p).expanduser().resolve() for p in (args.sample or [])]
     audit_trail = _build_audit_trail(enable=not args.no_audit)
 
-    result = run_sync(
-        data_dir=data_dir,
-        first_run=args.first_run,
-        dry_run=args.dry_run,
-        force=args.force,
-        sample_archives=sample or None,
-        user=args.user,
-        audit_trail=audit_trail,
-    )
+    try:
+        result = run_sync(
+            data_dir=data_dir,
+            first_run=args.first_run,
+            dry_run=args.dry_run,
+            force=args.force,
+            sample_archives=sample or None,
+            user=args.user,
+            audit_trail=audit_trail,
+        )
+    except KeyboardInterrupt:
+        print("[abandon utilisateur]", file=sys.stderr)
+        return 130
+    except DownloadError as exc:
+        print(f"ERREUR réseau Légifrance : {exc}", file=sys.stderr)
+        print(
+            "Si le problème vient d'un certificat SSL : sur macOS Python.org, "
+            "lancer `/Applications/Python\\ 3.13/Install\\ Certificates.command`. "
+            "Sinon utiliser `--sample <tarball.tar.gz>` pour bypass le réseau.",
+            file=sys.stderr,
+        )
+        return 2
+    except CorruptedArchiveError as exc:
+        print(f"ERREUR archive corrompue : {exc}", file=sys.stderr)
+        print("Relancer avec --force pour re-télécharger.", file=sys.stderr)
+        return 3
+    except ParseError as exc:
+        print(f"ERREUR parsing XML Légifrance : {exc}", file=sys.stderr)
+        return 4
 
     summary = result.to_dict()
     # N'affiche pas le gros audit_summary en stdout pour garder le log lisible
