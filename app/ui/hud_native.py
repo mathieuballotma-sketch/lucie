@@ -853,6 +853,11 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._streaming_sender: str = ""
         self._streaming_full_text: str = ""
         self._streaming_range: Optional[Tuple[int, int]] = None
+        # Live streaming (Ollama tokens temps réel) : _streaming_full_text grossit
+        # dynamiquement, le timer continue de révéler même quand remaining=0 tant que
+        # _streaming_live_done est False. Le PipelineResponse final bascule le flag.
+        self._streaming_live: bool = False
+        self._streaming_live_done: bool = False
 
         # Drop state — file or folder attached to next query
         self._current_document: Optional[str] = None
@@ -1428,11 +1433,19 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 response_text = _da.format_report(report)
 
             else:
-                # ── Pipeline standard : on récupère l'objet PipelineResponse
-                # complet pour accéder aux meta (produces_document, document_path,
-                # suggested_replies, document_kind). str(response) reste le
-                # markdown à streamer.
+                # ── Pipeline standard : streaming tokens si activé ──────────
                 from lucie_v1_standalone import pipeline as _lv1
+
+                # Streaming live désactivé si document_text (N3, peu d'intérêt
+                # pour le moment) ou flag LUCIE_STREAM=0.
+                use_live_stream = (
+                    _lv1.streaming_enabled() and document is None
+                )
+
+                if use_live_stream:
+                    self._run_live_streaming_pipeline(query, _lv1)
+                    return
+
                 response = _asyncio.run(
                     _lv1.run(
                         query,
@@ -1465,6 +1478,58 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             logger.error(f"Erreur _process_query: {e}", exc_info=True)
             AppHelper.callAfter(self._on_response_error, f"Erreur : {e}")
 
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _run_live_streaming_pipeline(self, query: str, lv1: Any) -> None:
+        """Exécute pipeline.run_stream et pousse les chunks au HUD en temps réel.
+
+        Appelé depuis _process_query (thread de fond). Utilise AppHelper.callAfter
+        pour toutes les mises à jour UI (qui doivent rester sur main thread).
+        """
+        import asyncio as _asyncio
+        from lucie_v1_standalone.pipeline import PipelineResponse
+
+        meta: Dict[str, Any] = {}
+        got_chunks = False
+
+        async def _consume() -> None:
+            nonlocal meta, got_chunks
+            AppHelper.callAfter(self._begin_live_stream, "Lucie")
+
+            async for evt in lv1.run_stream(query, document_text=None, force=False):
+                if isinstance(evt, str):
+                    if evt:
+                        got_chunks = True
+                        AppHelper.callAfter(self._feed_stream_chunk, evt)
+                elif isinstance(evt, PipelineResponse):
+                    meta = {
+                        "produces_document": getattr(evt, "produces_document", False),
+                        "document_kind": getattr(evt, "document_kind", None),
+                        "document_path": getattr(evt, "document_path", None),
+                        "suggested_replies": getattr(evt, "suggested_replies", []) or [],
+                    }
+                    # Path SMALL_TALK / blocage : pas de chunks précédents,
+                    # on affiche la réponse complète en une fois.
+                    if not got_chunks:
+                        text = str(evt) if evt else ""
+                        if text:
+                            AppHelper.callAfter(self._feed_stream_chunk, text)
+
+        try:
+            _asyncio.run(_consume())
+        except Exception as e:
+            logger.error(f"Erreur streaming live : {e}", exc_info=True)
+            AppHelper.callAfter(self._on_response_error, f"Erreur : {e}")
+            return
+
+        if not got_chunks and not meta:
+            AppHelper.callAfter(self._feed_stream_chunk, "(Aucune réponse générée)")
+
+        AppHelper.callAfter(
+            self._input.setPlaceholderString_, "Commande ou question…"
+        )
+        self._last_response_meta = meta
+        AppHelper.callAfter(self._mark_stream_done)
+
     # ── Streaming (word-chunk mode) ───────────────────────────────────────────
 
     def _start_streaming(self, sender: str, full_text: Any, user: bool = False) -> None:
@@ -1477,6 +1542,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._streaming_full_text = str(full_text) if full_text else ""
         self._streaming_text = ""
         self._streaming_index = 0
+        self._streaming_live = False
+        self._streaming_live_done = False
 
         storage = self._text_view.textStorage()
         start_pos = len(storage.string())
@@ -1488,10 +1555,57 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             _STREAM_INTERVAL, self, "streamingTimerFired:", None, True
         )
 
+    # ── Live streaming (Ollama tokens temps réel) ───────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _begin_live_stream(self, sender: str) -> None:
+        """Prépare l'affichage avant l'arrivée des premiers tokens (main thread)."""
+        self.set_state(LucieState.WRITING)
+        if self._streaming_timer is not None:
+            self._streaming_timer.invalidate()
+            self._streaming_timer = None
+
+        self._streaming_sender = sender
+        self._streaming_full_text = ""
+        self._streaming_text = ""
+        self._streaming_index = 0
+        self._streaming_live = True
+        self._streaming_live_done = False
+
+        storage = self._text_view.textStorage()
+        start_pos = len(storage.string())
+        self.append_message_safe(sender, "", False)
+        end_pos = len(storage.string())
+        self._streaming_range = (start_pos, end_pos)
+
+        self._streaming_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            _STREAM_INTERVAL, self, "streamingTimerFired:", None, True
+        )
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _feed_stream_chunk(self, chunk: str) -> None:
+        """Alimente le buffer avec un nouveau chunk de tokens (main thread)."""
+        if not chunk:
+            return
+        self._streaming_full_text += chunk
+        # Le timer révèle à sa cadence depuis _streaming_full_text. Si jamais
+        # le timer a été coupé (dans de rares transitions), on le relance.
+        if self._streaming_timer is None and self._streaming_live:
+            self._streaming_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+                _STREAM_INTERVAL, self, "streamingTimerFired:", None, True
+            )
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _mark_stream_done(self) -> None:
+        """Signale la fin du flux — le timer terminera dès qu'il rattrape le buffer."""
+        self._streaming_live_done = True
+
     @objc.IBAction  # type: ignore[untyped-decorator]
     def streamingTimerFired_(self, timer: Any) -> None:
         remaining = len(self._streaming_full_text) - self._streaming_index
-        if remaining <= 0:
+        # En mode live, on attend que la source ait signalé la fin avant de terminer.
+        # Sinon la première pause (chunks pas encore arrivés) couperait l'affichage.
+        if remaining <= 0 and (not self._streaming_live or self._streaming_live_done):
             timer.invalidate()
             self._streaming_timer = None
             self._is_processing = False
