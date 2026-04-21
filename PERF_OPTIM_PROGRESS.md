@@ -9,9 +9,10 @@
 
 | # | Optim | Priorité | Statut | Commit |
 |---|---|---|---|---|
-| P0 | Profilage pipeline | Bloquant | 🟡 WIP | — |
-| P1 | Streaming tokens (Ollama + HUD) | Absolue | ⏳ Pending | — |
-| P2 | `OLLAMA_KEEP_ALIVE=24h` | Critique | ⏳ Pending | — |
+| P0 | Profilage pipeline | Bloquant | ✅ Done | 3fff5f1 |
+| P1 | Streaming tokens Ollama (Python) | Absolue | ✅ Done | bcfe163 |
+| P1b | Streaming HUD (append_token main thread) | Absolue | ⏳ Pending | — |
+| P2 | `OLLAMA_KEEP_ALIVE=24h` | Critique | ✅ Done | — |
 | P3 | Bench 3 modèles (Gemma/Qwen/Llama) | Critique | ⏳ Pending | — |
 | P4 | Hybride BM25+FAISS (RRF camembert) | Haute | ⏳ Pending | — |
 | P5 | Cache LRU (TTLCache) | Haute | ⏳ Pending | — |
