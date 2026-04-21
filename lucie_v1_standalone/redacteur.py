@@ -14,7 +14,7 @@ Aucune dépendance au reste du repo.
 
 import json
 from pathlib import Path
-from typing import Literal
+from typing import AsyncIterator, Literal, Tuple
 
 from . import ollama_client
 from .config import REDACTEUR_PARAMS
@@ -96,3 +96,76 @@ async def handle(
         system=system,
         options=options,
     )
+
+
+def _build_prompt(
+    faits_json: str,
+    sources_json: str,
+    mode: Literal["document", "search"],
+) -> Tuple[str, str, int]:
+    """Construit (system, prompt, nb_sources) — logique partagée streaming/bloquant."""
+    try:
+        sources_data = json.loads(sources_json)
+        nb_sources = (
+            len(sources_data.get("sources", []))
+            + len(sources_data.get("jurisprudences", []))
+        )
+    except (json.JSONDecodeError, AttributeError):
+        nb_sources = 0
+
+    system_path = _SYSTEM_SEARCH if mode == "search" else _SYSTEM_DOCUMENT
+    system = system_path.read_text(encoding="utf-8")
+
+    if mode == "search":
+        try:
+            faits_data = json.loads(faits_json)
+            question = faits_data.get("query", faits_json)
+        except (json.JSONDecodeError, AttributeError):
+            question = faits_json
+        prompt = (
+            f"## Question\n\n{question}\n\n"
+            "## Sources disponibles\n\n"
+            f"```json\n{sources_json}\n```\n\n"
+            "Réponds directement à la question en utilisant UNIQUEMENT les sources fournies. "
+            "Cite chaque source utilisée entre crochets [ID]."
+        )
+    else:
+        prompt = (
+            "## Faits extraits du document\n\n"
+            f"```json\n{faits_json}\n```\n\n"
+            "## Sources disponibles\n\n"
+            f"```json\n{sources_json}\n```\n\n"
+            "Rédige maintenant la note d'analyse complète selon la structure demandée. "
+            "Chaque affirmation juridique doit être suivie de sa source entre crochets [ID]."
+        )
+    return system, prompt, nb_sources
+
+
+async def handle_stream(
+    faits_json: str,
+    sources_json: str,
+    mode: Literal["document", "search"] = "search",
+) -> AsyncIterator[str]:
+    """Version streaming de `handle`. Yield chaque chunk de tokens.
+
+    Si 0 sources, yield le message de blocage complet en une fois.
+    """
+    system, prompt, nb_sources = _build_prompt(faits_json, sources_json, mode)
+    if nb_sources == 0:
+        yield (
+            "**RÉDACTION IMPOSSIBLE**\n\n"
+            "Aucune source disponible dans la base curatée pour rédiger cette réponse. "
+            "Le Rédacteur refuse de produire une analyse sans sources vérifiées.\n\n"
+            "> Enrichir la base dans "
+            "`knowledge/droit_social/licenciement_economique/` avant de relancer."
+        )
+        return
+
+    options = {k: v for k, v in REDACTEUR_PARAMS.items() if k != "model"}
+    async for chunk in ollama_client.generate_stream(
+        model=REDACTEUR_PARAMS["model"],
+        prompt=prompt,
+        system=system,
+        options=options,
+    ):
+        yield chunk
