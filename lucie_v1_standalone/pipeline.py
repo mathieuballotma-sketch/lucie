@@ -16,16 +16,19 @@ Hooks mémoire (Bloc 1) :
 
 import asyncio
 import json
+import os
 import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, AsyncIterator, Dict, List, Optional, Tuple, Union
 
 from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacteur, retriever, verificateur
+from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
 from .dialogue.intent_classifier import Intent, classify as classify_intent
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
+from .perf import profile_bucket, profile_step
 from .router import is_dossier, route as router_route, validate as router_validate
 
 if TYPE_CHECKING:
@@ -153,6 +156,56 @@ def _build_proposition(query: str, kind: str) -> PipelineResponse:
     )
 
 
+def _current_index_version() -> str:
+    """Version de la base Légifrance utilisée comme partie de la clé de cache.
+
+    On prend la mtime du fichier `legi.sqlite` — change à chaque sync. Si la
+    base est absente ou inaccessible, on retombe sur le nom du speed model
+    (évite qu'un swap modèle invalide les caches sans changer la base).
+    """
+    try:
+        from .retriever import get_legifrance_db_path
+
+        db_path = get_legifrance_db_path()
+        if db_path and Path(db_path).exists():
+            return f"{int(Path(db_path).stat().st_mtime)}"
+    except Exception:
+        pass
+    return os.environ.get("LUCIE_SPEED_MODEL", "_")
+
+
+async def _run_pipeline_cached(
+    query: str,
+    document_text: Optional[str],
+    force: bool,
+    verbose: bool,
+    memory: "Optional[MemoryStore]",
+) -> str:
+    """Wrapper cache autour de `_run_pipeline`.
+
+    Bypass cache si :
+      - flag LUCIE_CACHE=0
+      - `document_text` fourni (cache non pertinent : doc peut varier)
+      - `force=True` (mode démo — on veut le chemin complet)
+      - `memory` fourni (l'observation est cachée avec le reste sinon)
+    """
+    if not cache_enabled() or document_text is not None or force or memory is not None:
+        return await _run_pipeline(query, document_text, force, verbose, memory)
+
+    cache = get_query_cache()
+    speed_model = os.environ.get("LUCIE_SPEED_MODEL", "_")
+    key = cache.make_key(
+        query=query,
+        index_version=f"{_current_index_version()}|{speed_model}",
+    )
+    dry_run = cache_dry_run_enabled()
+
+    async def compute() -> str:
+        return await _run_pipeline(query, document_text, force, verbose, memory)
+
+    return await cache.get_or_compute(key, compute, dry_run=dry_run)
+
+
 def _attach_suggested_replies(response: PipelineResponse) -> PipelineResponse:
     """Détecte une question fermée dans l'answer et ajoute des boutons Oui/Non génériques."""
     if response.suggested_replies:
@@ -245,10 +298,11 @@ async def run(
     if verbose:
         print(f"⚖️  Pipeline démarré — {query[:80]}…", flush=True)
     try:
-        result = await asyncio.wait_for(
-            _run_pipeline(query, document_text, force, verbose, memory),
-            timeout=PIPELINE_TIMEOUT,
-        )
+        async with profile_bucket():
+            result = await asyncio.wait_for(
+                _run_pipeline_cached(query, document_text, force, verbose, memory),
+                timeout=PIPELINE_TIMEOUT,
+            )
         elapsed = time.time() - start
         if verbose:
             print(f"⚖️  Pipeline terminé en {elapsed:.1f}s", flush=True)
@@ -332,13 +386,15 @@ async def _run_pipeline(
 ) -> str:
 
     # ── Vérification du scope (< 1ms) ─────────────────────────────────────────
-    if not force:
-        scope = router_validate(query, document_text)
-        if not scope["valid"]:
-            return str(scope["refusal_reason"])
+    async with profile_step("router.validate"):
+        if not force:
+            scope = router_validate(query, document_text)
+            if not scope["valid"]:
+                return str(scope["refusal_reason"])
 
     # ── Routage (< 1ms) ───────────────────────────────────────────────────────
-    routing = router_route(query, document_text, force=force)
+    async with profile_step("router.route"):
+        routing = router_route(query, document_text, force=force)
     level = routing["level"]
 
     if verbose:
@@ -346,7 +402,8 @@ async def _run_pipeline(
 
     # ── Niveau 1 : Réponse directe ────────────────────────────────────────────
     if level == "direct":
-        result = await _direct_response(query, verbose)
+        async with profile_step("level.direct"):
+            result = await _direct_response(query, verbose)
         if memory is not None:
             await _memory_observe(memory, query, "direct", routing["intent"])
         return result
@@ -357,7 +414,8 @@ async def _run_pipeline(
             {"type_document": "requete", "query": query},
             ensure_ascii=False,
         )
-        result = await _search_and_write(query, faits_json, verbose)
+        async with profile_step("level.search"):
+            result = await _search_and_write(query, faits_json, verbose)
         if memory is not None:
             await _memory_observe(memory, query, "search", routing["intent"])
         return result
@@ -365,7 +423,8 @@ async def _run_pipeline(
     # ── Niveau 3 : Pipeline complet (avec document) ───────────────────────────
     # level == "document"
     doc = routing.get("document") or document_text
-    result = await _full_pipeline(query, doc, verbose)
+    async with profile_step("level.full"):
+        result = await _full_pipeline(query, doc, verbose)
     if memory is not None:
         await _memory_observe(memory, query, "document", routing["intent"])
     return result
@@ -381,12 +440,13 @@ async def _direct_response(query: str, verbose: bool) -> str:
     system = _DIRECT_SYSTEM_PATH.read_text(encoding="utf-8")
     options = {k: v for k, v in DIRECT_PARAMS.items() if k != "model"}
 
-    return await ollama_client.generate(
-        model=DIRECT_PARAMS["model"],
-        prompt=query,
-        system=system,
-        options=options,
-    )
+    async with profile_step("llm.direct"):
+        return await ollama_client.generate(
+            model=DIRECT_PARAMS["model"],
+            prompt=query,
+            system=system,
+            options=options,
+        )
 
 
 # ─── Niveau 2 ─────────────────────────────────────────────────────────────────
@@ -397,14 +457,16 @@ async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
     # Retriever
     if verbose:
         print("🔍 Retriever : recherche dans la base curatée…", flush=True)
-    sources_json = await retriever.handle(faits_json)
+    async with profile_step("retriever.search"):
+        sources_json = await retriever.handle(faits_json)
     if verbose:
         print("✅ Retriever : sources récupérées", flush=True)
 
     # Rédacteur (mode search : prompt dédié)
     if verbose:
         print("✍️  Rédacteur : rédaction de la réponse…", flush=True)
-    note_markdown = await redacteur.handle(faits_json, sources_json, mode="search")
+    async with profile_step("llm.redacteur.search"):
+        note_markdown = await redacteur.handle(faits_json, sources_json, mode="search")
 
     if note_markdown.startswith("**RÉDACTION IMPOSSIBLE**"):
         # Pas de sources → réponse directe de secours
@@ -416,7 +478,8 @@ async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
     # Vérificateur
     if verbose:
         print("🔎 Vérificateur : contrôle des citations…", flush=True)
-    verification_json = await verificateur.handle(note_markdown, sources_json)
+    async with profile_step("verificateur.search"):
+        verification_json = await verificateur.handle(note_markdown, sources_json)
 
     return _format_final(note_markdown, verification_json, verbose)
 
@@ -429,7 +492,8 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Lecteur
     if verbose:
         print("📄 Lecteur : extraction des faits…", flush=True)
-    faits_json = await lecteur.handle(doc)
+    async with profile_step("llm.lecteur"):
+        faits_json = await lecteur.handle(doc)
 
     try:
         faits_data = json.loads(faits_json)
@@ -448,14 +512,16 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Retriever
     if verbose:
         print("🔍 Retriever : recherche dans la base curatée…", flush=True)
-    sources_json = await retriever.handle(faits_json)
+    async with profile_step("retriever.full"):
+        sources_json = await retriever.handle(faits_json)
     if verbose:
         print("✅ Retriever : sources récupérées", flush=True)
 
     # Rédacteur (mode document : prompt formel complet)
     if verbose:
         print("✍️  Rédacteur : rédaction de la note…", flush=True)
-    note_markdown = await redacteur.handle(faits_json, sources_json, mode="document")
+    async with profile_step("llm.redacteur.full"):
+        note_markdown = await redacteur.handle(faits_json, sources_json, mode="document")
 
     if note_markdown.startswith("**RÉDACTION IMPOSSIBLE**"):
         return (
@@ -474,9 +540,149 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Vérificateur
     if verbose:
         print("🔎 Vérificateur : contrôle des citations…", flush=True)
-    verification_json = await verificateur.handle(note_markdown, sources_json)
+    async with profile_step("verificateur.full"):
+        verification_json = await verificateur.handle(note_markdown, sources_json)
 
     return _format_final(note_markdown, verification_json, verbose)
+
+
+# ─── Streaming (P1) ──────────────────────────────────────────────────────────
+
+
+def streaming_enabled() -> bool:
+    """P1 : streaming activé par défaut, désactivable via `LUCIE_STREAM=0`."""
+    return os.environ.get("LUCIE_STREAM", "1") == "1"
+
+
+async def run_stream(
+    query: str,
+    document_text: Optional[str] = None,
+    dossier_path: Optional[str] = None,
+    force: bool = False,
+    memory: "Optional[MemoryStore]" = None,
+) -> AsyncIterator[Union[str, PipelineResponse]]:
+    """Version streaming de `run` : yield des chunks de tokens au fil de l'eau,
+    puis termine par un `PipelineResponse` final (avec `answer` complet).
+
+    Pour N1 (direct) et N2 (search), le Rédacteur streame en direct. Pour N3
+    (full pipeline avec document) ou dossier, pas de streaming intermédiaire —
+    on yield la réponse complète d'un coup à la fin (compat).
+
+    Si `LUCIE_STREAM=0`, bascule automatiquement sur `run()` et yield juste
+    la réponse finale en un seul chunk.
+
+    Usage HUD :
+        buffer = []
+        async for event in run_stream(query):
+            if isinstance(event, str):
+                append_token(event)   # affichage UI
+                buffer.append(event)
+            else:  # PipelineResponse final
+                final = event
+    """
+    if not streaming_enabled():
+        resp = await run(query, document_text, dossier_path, force, False, memory)
+        yield resp
+        return
+
+    # ── Marqueur décision utilisateur ───────────────────────────────────────
+    decision, original_query = _extract_decision(query)
+    if decision is not None:
+        if decision in ("no", "no_text"):
+            yield PipelineResponse(
+                answer=(
+                    "Entendu — je reste à votre disposition. "
+                    "N'hésitez pas à reformuler ou à préciser votre demande."
+                ),
+                mode="action" if decision == "no_text" else "analysis",
+            )
+            return
+        query = original_query or query
+
+    # ── Intent routing ──────────────────────────────────────────────────────
+    if not dossier_path:
+        intent = classify_intent(query)
+        if intent == Intent.SMALL_TALK:
+            yield PipelineResponse(
+                answer=small_talk_reply(query),
+                citations=[],
+                verifier_score=1.0,
+            )
+            return
+        if intent == Intent.EXPLICIT_ORDER and decision is None:
+            kind = _detect_production_request(query)
+            if kind is not None:
+                yield _build_proposition(query, kind)
+                return
+        mode = "action" if intent == Intent.EXPLICIT_ORDER else "analysis"
+    else:
+        mode = "analysis"
+
+    # ── Mode dossier : pas de streaming natif — fallback run() ───────────────
+    if dossier_path and is_dossier(dossier_path):
+        resp = await run(query, document_text, dossier_path, force, False, memory)
+        yield resp
+        return
+
+    # ── Scope / routage (0 LLM) ─────────────────────────────────────────────
+    try:
+        async with profile_bucket():
+            if not force:
+                scope = router_validate(query, document_text)
+                if not scope["valid"]:
+                    yield PipelineResponse(answer=str(scope["refusal_reason"]), mode=mode)
+                    return
+
+            routing = router_route(query, document_text, force=force)
+            level = routing["level"]
+
+            # N3 et dossier : pas de streaming (Lecteur bloquant requis)
+            if level == "document":
+                resp = await run(query, document_text, dossier_path, force, False, memory)
+                yield resp
+                return
+
+            # ── N1 direct : stream du direct_response ───────────────────────
+            if level == "direct":
+                system = _DIRECT_SYSTEM_PATH.read_text(encoding="utf-8")
+                options = {k: v for k, v in DIRECT_PARAMS.items() if k != "model"}
+                chunks: List[str] = []
+                async for chunk in ollama_client.generate_stream(
+                    model=DIRECT_PARAMS["model"],
+                    prompt=query,
+                    system=system,
+                    options=options,
+                ):
+                    chunks.append(chunk)
+                    yield chunk
+                full = "".join(chunks)
+                response = PipelineResponse(answer=full, mode=mode)
+                yield _attach_suggested_replies(response)
+                if memory is not None:
+                    await _memory_observe(memory, query, "direct", routing["intent"])
+                return
+
+            # ── N2 search : retriever → rédacteur stream → verif programmatique ──
+            faits_json = json.dumps(
+                {"type_document": "requete", "query": query},
+                ensure_ascii=False,
+            )
+            sources_json = await retriever.handle(faits_json)
+            chunks = []
+            async for chunk in redacteur.handle_stream(faits_json, sources_json, mode="search"):
+                chunks.append(chunk)
+                yield chunk
+            note_markdown = "".join(chunks)
+
+            # Vérificateur programmatique sur le texte complet
+            verification_json = await verificateur.handle(note_markdown, sources_json)
+            final = _format_final(note_markdown, verification_json, False)
+            response = PipelineResponse(answer=final, mode=mode)
+            yield _attach_suggested_replies(response)
+            if memory is not None:
+                await _memory_observe(memory, query, "search", routing["intent"])
+    except Exception as exc:  # noqa: BLE001
+        yield PipelineResponse(answer=f"**Erreur pipeline** : {exc}", mode=mode)
 
 
 # ─── Helpers mémoire ─────────────────────────────────────────────────────────

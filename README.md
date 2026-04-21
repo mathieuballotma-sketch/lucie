@@ -135,6 +135,39 @@ PYTHONPATH=. python3 main_hud.py
 
 ---
 
+## ⚡ Performance
+
+Lucie v1 optimise la latence des réponses juridiques via plusieurs leviers activables par variables d'environnement.
+
+### Variables d'environnement
+
+| Flag | Défaut | Effet |
+|------|--------|-------|
+| `LUCIE_STREAM` | `1` | Streaming des tokens Ollama → HUD en temps réel (premier token <3s) |
+| `LUCIE_PROFILE` | `0` | Active le profilage par étape (logs `lucie.profiling`) |
+| `LUCIE_OLLAMA_KEEP_ALIVE` | `24h` | Durée avant déchargement du modèle Ollama (évite le reload ~2-3s entre calls) |
+| `LUCIE_SPEED_MODEL` | `gemma4:e4b` | Modèle « rapide » utilisé pour les niveaux 1 et 2 |
+
+### `OLLAMA_KEEP_ALIVE=24h` (défaut)
+
+Par défaut, Ollama décharge chaque modèle ~5 minutes après le dernier appel. Sur un pipeline multi-LLM comme Lucie, ce comportement provoque un reload de ~2-3s par appel (soit ~6-9s cumulés sur un niveau 3).
+
+Lucie force `keep_alive=24h` sur chaque requête `/api/generate` pour garder le modèle en RAM toute la journée.
+
+**Impact mémoire** : `gemma4:e4b` mobilise ~4-5 Go de RAM en continu. Recommandé : M-series 16 Go+. Si RAM limitée, abaisser le flag :
+
+```bash
+# Décharger le modèle après 5 minutes d'inactivité
+export LUCIE_OLLAMA_KEEP_ALIVE=5m
+
+# Décharger immédiatement après chaque call (comportement historique)
+export LUCIE_OLLAMA_KEEP_ALIVE=0s
+```
+
+Valeur passée telle quelle à Ollama — supporte tous les formats documentés (`30m`, `2h`, `-1` pour persistant illimité).
+
+---
+
 ## ✨ Fonctionnalités
 
 | Fonctionnalité | Statut | Description |
