@@ -26,6 +26,7 @@ from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacte
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
 from .dialogue.intent_classifier import Intent, classify as classify_intent
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
+from .perf import profile_bucket, profile_step
 from .router import is_dossier, route as router_route, validate as router_validate
 
 if TYPE_CHECKING:
@@ -245,10 +246,11 @@ async def run(
     if verbose:
         print(f"⚖️  Pipeline démarré — {query[:80]}…", flush=True)
     try:
-        result = await asyncio.wait_for(
-            _run_pipeline(query, document_text, force, verbose, memory),
-            timeout=PIPELINE_TIMEOUT,
-        )
+        async with profile_bucket():
+            result = await asyncio.wait_for(
+                _run_pipeline(query, document_text, force, verbose, memory),
+                timeout=PIPELINE_TIMEOUT,
+            )
         elapsed = time.time() - start
         if verbose:
             print(f"⚖️  Pipeline terminé en {elapsed:.1f}s", flush=True)
@@ -332,13 +334,15 @@ async def _run_pipeline(
 ) -> str:
 
     # ── Vérification du scope (< 1ms) ─────────────────────────────────────────
-    if not force:
-        scope = router_validate(query, document_text)
-        if not scope["valid"]:
-            return str(scope["refusal_reason"])
+    async with profile_step("router.validate"):
+        if not force:
+            scope = router_validate(query, document_text)
+            if not scope["valid"]:
+                return str(scope["refusal_reason"])
 
     # ── Routage (< 1ms) ───────────────────────────────────────────────────────
-    routing = router_route(query, document_text, force=force)
+    async with profile_step("router.route"):
+        routing = router_route(query, document_text, force=force)
     level = routing["level"]
 
     if verbose:
@@ -346,7 +350,8 @@ async def _run_pipeline(
 
     # ── Niveau 1 : Réponse directe ────────────────────────────────────────────
     if level == "direct":
-        result = await _direct_response(query, verbose)
+        async with profile_step("level.direct"):
+            result = await _direct_response(query, verbose)
         if memory is not None:
             await _memory_observe(memory, query, "direct", routing["intent"])
         return result
@@ -357,7 +362,8 @@ async def _run_pipeline(
             {"type_document": "requete", "query": query},
             ensure_ascii=False,
         )
-        result = await _search_and_write(query, faits_json, verbose)
+        async with profile_step("level.search"):
+            result = await _search_and_write(query, faits_json, verbose)
         if memory is not None:
             await _memory_observe(memory, query, "search", routing["intent"])
         return result
@@ -365,7 +371,8 @@ async def _run_pipeline(
     # ── Niveau 3 : Pipeline complet (avec document) ───────────────────────────
     # level == "document"
     doc = routing.get("document") or document_text
-    result = await _full_pipeline(query, doc, verbose)
+    async with profile_step("level.full"):
+        result = await _full_pipeline(query, doc, verbose)
     if memory is not None:
         await _memory_observe(memory, query, "document", routing["intent"])
     return result
@@ -381,12 +388,13 @@ async def _direct_response(query: str, verbose: bool) -> str:
     system = _DIRECT_SYSTEM_PATH.read_text(encoding="utf-8")
     options = {k: v for k, v in DIRECT_PARAMS.items() if k != "model"}
 
-    return await ollama_client.generate(
-        model=DIRECT_PARAMS["model"],
-        prompt=query,
-        system=system,
-        options=options,
-    )
+    async with profile_step("llm.direct"):
+        return await ollama_client.generate(
+            model=DIRECT_PARAMS["model"],
+            prompt=query,
+            system=system,
+            options=options,
+        )
 
 
 # ─── Niveau 2 ─────────────────────────────────────────────────────────────────
@@ -397,14 +405,16 @@ async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
     # Retriever
     if verbose:
         print("🔍 Retriever : recherche dans la base curatée…", flush=True)
-    sources_json = await retriever.handle(faits_json)
+    async with profile_step("retriever.search"):
+        sources_json = await retriever.handle(faits_json)
     if verbose:
         print("✅ Retriever : sources récupérées", flush=True)
 
     # Rédacteur (mode search : prompt dédié)
     if verbose:
         print("✍️  Rédacteur : rédaction de la réponse…", flush=True)
-    note_markdown = await redacteur.handle(faits_json, sources_json, mode="search")
+    async with profile_step("llm.redacteur.search"):
+        note_markdown = await redacteur.handle(faits_json, sources_json, mode="search")
 
     if note_markdown.startswith("**RÉDACTION IMPOSSIBLE**"):
         # Pas de sources → réponse directe de secours
@@ -416,7 +426,8 @@ async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
     # Vérificateur
     if verbose:
         print("🔎 Vérificateur : contrôle des citations…", flush=True)
-    verification_json = await verificateur.handle(note_markdown, sources_json)
+    async with profile_step("verificateur.search"):
+        verification_json = await verificateur.handle(note_markdown, sources_json)
 
     return _format_final(note_markdown, verification_json, verbose)
 
@@ -429,7 +440,8 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Lecteur
     if verbose:
         print("📄 Lecteur : extraction des faits…", flush=True)
-    faits_json = await lecteur.handle(doc)
+    async with profile_step("llm.lecteur"):
+        faits_json = await lecteur.handle(doc)
 
     try:
         faits_data = json.loads(faits_json)
@@ -448,14 +460,16 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Retriever
     if verbose:
         print("🔍 Retriever : recherche dans la base curatée…", flush=True)
-    sources_json = await retriever.handle(faits_json)
+    async with profile_step("retriever.full"):
+        sources_json = await retriever.handle(faits_json)
     if verbose:
         print("✅ Retriever : sources récupérées", flush=True)
 
     # Rédacteur (mode document : prompt formel complet)
     if verbose:
         print("✍️  Rédacteur : rédaction de la note…", flush=True)
-    note_markdown = await redacteur.handle(faits_json, sources_json, mode="document")
+    async with profile_step("llm.redacteur.full"):
+        note_markdown = await redacteur.handle(faits_json, sources_json, mode="document")
 
     if note_markdown.startswith("**RÉDACTION IMPOSSIBLE**"):
         return (
@@ -474,7 +488,8 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Vérificateur
     if verbose:
         print("🔎 Vérificateur : contrôle des citations…", flush=True)
-    verification_json = await verificateur.handle(note_markdown, sources_json)
+    async with profile_step("verificateur.full"):
+        verification_json = await verificateur.handle(note_markdown, sources_json)
 
     return _format_final(note_markdown, verification_json, verbose)
 

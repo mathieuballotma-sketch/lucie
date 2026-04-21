@@ -6,11 +6,40 @@ Gère le retry sur réponse vide (bug gemma4:e4b first-call).
 """
 
 import json
-from typing import Optional
+import os
+from typing import AsyncIterator, Optional
 
 import httpx
 
 from .config import OLLAMA_BASE_URL, OLLAMA_TIMEOUT
+from .perf import current_bucket
+
+
+def _keep_alive_value() -> str:
+    """Durée keep-alive Ollama. P2 : défaut 24h pour éviter reload (-2-3s/call).
+
+    Override via `LUCIE_OLLAMA_KEEP_ALIVE` (ex: "10m", "2h", "86400").
+    """
+    return os.environ.get("LUCIE_OLLAMA_KEEP_ALIVE", "24h")
+
+
+def _record_ollama_stats(model: str, data: dict) -> None:
+    """Enregistre les métriques internes Ollama (eval_duration…) dans le bucket courant."""
+    bucket = current_bucket()
+    if bucket is None:
+        return
+    # Ollama renvoie des ns — on convertit en ms.
+    prompt_eval_ms = (data.get("prompt_eval_duration") or 0) / 1e6
+    eval_ms = (data.get("eval_duration") or 0) / 1e6
+    total_ms = (data.get("total_duration") or 0) / 1e6
+    bucket.add(
+        f"ollama.{model}",
+        total_ms,
+        prompt_eval_ms=int(prompt_eval_ms),
+        eval_ms=int(eval_ms),
+        prompt_tokens=data.get("prompt_eval_count"),
+        out_tokens=data.get("eval_count"),
+    )
 
 
 async def generate(
@@ -38,7 +67,7 @@ async def generate(
         "model": model,
         "prompt": prompt,
         "stream": False,
-        "keep_alive": "10m",  # Garde le modèle en mémoire entre les appels
+        "keep_alive": _keep_alive_value(),
     }
     if system:
         payload["system"] = system
@@ -55,6 +84,62 @@ async def generate(
     return response_text
 
 
+def _streaming_enabled() -> bool:
+    """P1 : streaming activé par défaut, désactivable via `LUCIE_STREAM=0`."""
+    return os.environ.get("LUCIE_STREAM", "1") == "1"
+
+
+async def generate_stream(
+    model: str,
+    prompt: str,
+    system: str = "",
+    options: Optional[dict] = None,
+) -> AsyncIterator[str]:
+    """Version streaming de `generate` — yield chaque chunk de tokens.
+
+    Utilise `stream=True` côté Ollama. Le dernier chunk contient les stats
+    (`total_duration`, `eval_count`…) qu'on enregistre dans le bucket de profilage
+    s'il existe.
+    """
+    payload: dict = {
+        "model": model,
+        "prompt": prompt,
+        "stream": True,
+        "keep_alive": _keep_alive_value(),
+    }
+    if system:
+        payload["system"] = system
+    if options:
+        payload["options"] = options
+
+    async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+        try:
+            async with client.stream(
+                "POST", f"{OLLAMA_BASE_URL}/api/generate", json=payload
+            ) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if chunk.get("response"):
+                        yield chunk["response"]
+                    if chunk.get("done"):
+                        _record_ollama_stats(model, chunk)
+                        break
+        except httpx.TimeoutException:
+            raise RuntimeError(
+                f"Ollama timeout après {OLLAMA_TIMEOUT}s (modèle: {model})"
+            )
+        except httpx.HTTPStatusError as e:
+            raise RuntimeError(
+                f"Ollama HTTP {e.response.status_code}: {e.response.text[:200]}"
+            )
+
+
 async def _post(client: httpx.AsyncClient, payload: dict) -> str:
     """Effectue la requête POST et extrait le champ 'response'."""
     try:
@@ -64,6 +149,7 @@ async def _post(client: httpx.AsyncClient, payload: dict) -> str:
         )
         resp.raise_for_status()
         data = resp.json()
+        _record_ollama_stats(payload.get("model", "?"), data)
         return data.get("response", "")
     except httpx.TimeoutException:
         raise RuntimeError(
