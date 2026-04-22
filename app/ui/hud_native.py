@@ -1059,6 +1059,14 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._streaming_live: bool = False
         self._streaming_live_done: bool = False
 
+        # Scroll auto-follow gating — si l'utilisateur remonte dans le chat pendant
+        # un streaming, on cesse de forcer scrollRangeToVisible à chaque token. Les
+        # flags sont mis à jour par scrollBoundsDidChange_ (observer NSView bounds).
+        self._scroll_view: Optional[Any] = None
+        self._is_user_at_bottom: bool = True
+        self._unread_token_count: int = 0
+        self._scroll_to_bottom_btn: Optional[Any] = None
+
         # Drop state — file or folder attached to next query
         self._current_document: Optional[str] = None
         self._current_dossier_path: Optional[str] = None
@@ -1076,6 +1084,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         self._setup_ui()
         self._setup_space_observer()
+        self._setup_scroll_observer()
         # NOTE: watchdog intentionally removed — window level is maintained by
         # _setup_space_observer + NSWindowCollectionBehaviorCanJoinAllSpaces.
         # The old 2s orderFrontRegardless was intrusive (stole focus from other apps).
@@ -1261,6 +1270,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         scroll.setDrawsBackground_(False)
         scroll.verticalScroller().setAlphaValue_(0.15)
         content.addSubview_(scroll)
+        self._scroll_view = scroll
 
         # ══ PIPELINE STAGES ZONE (« Lucie réfléchit ») ═══════════════════════
         # Zone au-dessus du texte qui affiche les étapes en temps réel. Cachée
@@ -1445,6 +1455,60 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         """Passive: re-assert floating level on space change (no orderFrontRegardless)."""
         if self.isVisible():
             self.setLevel_(Quartz.kCGFloatingWindowLevel + 1)
+
+    # ── Scroll auto-follow gating ─────────────────────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _setup_scroll_observer(self) -> None:
+        """Observe bounds du clipView de la scrollView chat pour détecter si
+        l'utilisateur a remonté. `setPostsBoundsChangedNotifications_` doit être
+        True sinon NSNotificationCenter ne reçoit rien."""
+        if not self._scroll_view:
+            return
+        clip = self._scroll_view.contentView()
+        clip.setPostsBoundsChangedNotifications_(True)
+        nc = Foundation.NSNotificationCenter.defaultCenter()
+        nc.addObserver_selector_name_object_(
+            self,
+            "scrollBoundsDidChange:",
+            AppKit.NSViewBoundsDidChangeNotification,
+            clip,
+        )
+
+    def scrollBoundsDidChange_(self, notification: Any) -> None:
+        """Recalcule `_is_user_at_bottom` depuis documentVisibleRect.
+        Idempotent : ne distingue pas scroll programmatique vs user — si un scroll
+        programmatique nous met en bas, le flag repasse proprement à True."""
+        now_at_bottom = self._is_at_bottom_now()
+        if now_at_bottom and not self._is_user_at_bottom:
+            # Transition False → True : reset compteur + hide bouton
+            self._unread_token_count = 0
+        self._is_user_at_bottom = now_at_bottom
+        self._update_scroll_button_visibility()
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _is_at_bottom_now(self) -> bool:
+        """True si la scrollview est à moins de 50 px du bas (ou vide / non init)."""
+        sv = self._scroll_view
+        if not sv:
+            return True
+        doc = sv.documentView()
+        if not doc:
+            return True
+        rect = sv.documentVisibleRect()
+        doc_h = doc.frame().size.height
+        visible_bottom = rect.origin.y + rect.size.height
+        return (doc_h - visible_bottom) <= 50.0
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _update_scroll_button_visibility(self) -> None:
+        """Show le bouton ↓ si l'user a scrollé up ET au moins un token a été
+        ignoré depuis. No-op si le bouton n'existe pas encore (commit 1)."""
+        btn = self._scroll_to_bottom_btn
+        if btn is None:
+            return
+        should_show = (not self._is_user_at_bottom) and self._unread_token_count > 0
+        btn.setHidden_(not should_show)
 
     # ── Typing predictor monitor ──────────────────────────────────────────────
 
@@ -1912,7 +1976,11 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         self._text_view.setNeedsDisplay_(True)
         total_len = len(storage.string())
-        self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(total_len, 0))
+        if self._is_user_at_bottom:
+            self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(total_len, 0))
+        else:
+            self._unread_token_count += 1
+            self._update_scroll_button_visibility()
 
     def _on_response_error(self, error_text: str) -> None:
         self.append_message_safe("Lucie", error_text, False)
@@ -1973,7 +2041,11 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._text_view.setNeedsDisplay_(True)
         self._text_view.displayIfNeeded()
         end = storage.length()
-        self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(end, 0))
+        if self._is_user_at_bottom:
+            self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(end, 0))
+        else:
+            self._unread_token_count += 1
+            self._update_scroll_button_visibility()
         sv = self._text_view.enclosingScrollView()
         if sv:
             sv.setNeedsDisplay_(True)
@@ -2050,7 +2122,11 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             storage.appendAttributedString_(card)
             self._text_view.setNeedsDisplay_(True)
             end = storage.length()
-            self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(end, 0))
+            if self._is_user_at_bottom:
+                self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(end, 0))
+            else:
+                self._unread_token_count += 1
+                self._update_scroll_button_visibility()
         AppHelper.callAfter(_on_main)
 
     # ── NSTextView delegate — clickable file links ────────────────────────────
@@ -2542,6 +2618,9 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._typing_timer.invalidate()
         nc = AppKit.NSWorkspace.sharedWorkspace().notificationCenter()
         nc.removeObserver_(self)
+        # NSWorkspace.notificationCenter() et NSNotificationCenter.defaultCenter()
+        # sont DEUX centres distincts — notre observer bounds est sur le default.
+        Foundation.NSNotificationCenter.defaultCenter().removeObserver_(self)
         objc.super(HUDWindow, self).close()
 
 
