@@ -30,6 +30,7 @@ from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacte
 from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
 from .dialogue.intent_classifier import Intent, classify as classify_intent
+from .dialogue.out_of_scope import detect_out_of_scope
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
 from .perf import (
     bind_event_queue,
@@ -270,6 +271,26 @@ async def run(
         # Décision "yes" / "yes_produce" : on reprend la query originale
         # et on court-circuite la détection de proposition (sinon boucle infinie).
         query = original_query or query
+
+    # ── Early refus hors-scope (< 5ms, 0 LLM) ─────────────────────────────
+    # Si la query évoque un domaine hors Droit Social (fiscal, immobilier,
+    # pénal, consommation, famille) sans cocher l'override CT, on refuse
+    # poliment avec redirection. Bypass dossier mode (analyse dédiée).
+    if not dossier_path:
+        oos = detect_out_of_scope(query)
+        if oos is not None:
+            logger.info(
+                "[OutOfScope] query=%r → refus domaine=%s",
+                query[:60],
+                oos.domain,
+            )
+            return PipelineResponse(
+                answer=oos.redirection,
+                citations=[],
+                verifier_score=1.0,
+                disclaimer=None,
+                mode="analysis",
+            )
 
     # ── Intent routing (< 1ms, 0 LLM) — bypass dossier mode ─────────────────
     if not dossier_path:
