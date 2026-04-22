@@ -15,6 +15,9 @@ def setup_logger(
     """Configure et retourne un logger avec sortie console et fichier optionnel."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    # Évite le double-log maintenant que lucie_v1_standalone.logging_config
+    # installe des handlers sur le root logger.
+    logger.propagate = False
 
     if logger.handlers:
         return logger

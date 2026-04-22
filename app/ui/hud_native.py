@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+# Configurer le root logger AVANT tout autre import qui instancie des loggers
+# (pipeline, intent_classifier, retriever, …). Sans ça, les logger.info() du
+# namespace lucie_v1_standalone.* sont silencieusement jetés et Mathieu ne voit
+# rien dans son terminal malgré PYTHONUNBUFFERED=1.
+from lucie_v1_standalone.logging_config import setup_logging
+
+setup_logging()
+
 import os
 import subprocess
 import sys
