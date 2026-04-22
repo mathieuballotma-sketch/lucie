@@ -276,6 +276,15 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
     _DUR_W: float = 72.0
     _TOP_PAD: float = 6.0
     _MAX_ROWS: int = 4
+    # Sous-événements (hook_name) indentés sous l'étape parent. Constantes
+    # tirées du plan Phase 1ter — chaque sous-ligne = 14 px, indent de 16 px.
+    _SUB_ROW_H: float = 14.0
+    _SUB_ROW_GAP: float = 1.0
+    _SUB_INDENT: float = 16.0
+    _MAX_SUB_ROWS_PER_PARENT: int = 4
+    # Limite douce : si la somme (parents + enfants) dépasse ce ratio de la
+    # hauteur de la vue, on n'ajoute plus de sous-rangées visuellement.
+    _MAX_HEIGHT_RATIO: float = 0.40
 
     def initWithFrame_(self, frame: Any) -> Any:
         self = objc.super(PipelineStagesView, self).initWithFrame_(frame)
@@ -283,6 +292,14 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
             self.setWantsLayer_(True)
             self._rows: Dict[str, Dict[str, Any]] = {}
             self._order: List[str] = []
+            # Sous-events : sub_rows[parent_key] → liste de dicts
+            # { icon, label, state, hook_name, overflow (bool) }.
+            self._sub_rows: Dict[str, List[Dict[str, Any]]] = {}
+            # Overflow count par parent : incrémenté à chaque glissement.
+            self._sub_overflow: Dict[str, int] = {}
+            # Mapping parent_id (event_id du started parent) → stage_key.
+            # Peuplé par `mark_started` via une méthode dédiée.
+            self._parent_id_to_stage: Dict[str, str] = {}
         return self
 
     def isOpaque(self) -> bool:
@@ -293,19 +310,25 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         for row in self._rows.values():
             for view in (row["icon"], row["label"], row["duration"]):
                 view.removeFromSuperview()
+        for subs in self._sub_rows.values():
+            for sub in subs:
+                for view in (sub["icon"], sub["label"]):
+                    view.removeFromSuperview()
         self._rows.clear()
         self._order.clear()
+        self._sub_rows.clear()
+        self._sub_overflow.clear()
+        self._parent_id_to_stage.clear()
         self.setAlphaValue_(0.0)
         self.setHidden_(True)
 
     def _create_row(self, stage_key: str, label_text: str) -> Dict[str, Any]:
-        idx = len(self._order)
-        frame_h = float(self.frame().size.height)
-        y = frame_h - self._TOP_PAD - (idx + 1) * self._ROW_H - idx * self._ROW_GAP
+        # La position exacte sera fixée par _layout(). On crée avec y=0 pour
+        # pré-remplir ; _layout() repositionnera après chaque ajout.
         width = float(self.frame().size.width)
 
         icon = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(0.0, y, self._ICON_W, self._ROW_H)
+            make_rect(0.0, 0.0, self._ICON_W, self._ROW_H)
         )
         icon.setStringValue_("⏳")
         icon.setEditable_(False)
@@ -320,7 +343,7 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         label_x = self._ICON_W + 4.0
         label_w = width - label_x - self._DUR_W - 4.0
         label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(label_x, y, label_w, self._ROW_H)
+            make_rect(label_x, 0.0, label_w, self._ROW_H)
         )
         label.setStringValue_(label_text)
         label.setEditable_(False)
@@ -332,7 +355,7 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         self.addSubview_(label)
 
         dur = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(width - self._DUR_W, y, self._DUR_W, self._ROW_H)
+            make_rect(width - self._DUR_W, 0.0, self._DUR_W, self._ROW_H)
         )
         dur.setStringValue_("")
         dur.setEditable_(False)
@@ -351,6 +374,82 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
             "base_label": label_text,
         }
 
+    def _create_sub_row(self, label_text: str) -> Dict[str, Any]:
+        """Crée une sous-ligne indentée (puce `→` + label grisé).
+
+        La position y sera fixée par `_layout()`.
+        """
+        width = float(self.frame().size.width)
+
+        icon = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(self._SUB_INDENT, 0.0, self._ICON_W, self._SUB_ROW_H)
+        )
+        icon.setStringValue_("→")
+        icon.setEditable_(False)
+        icon.setBezeled_(False)
+        icon.setDrawsBackground_(False)
+        icon.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
+        icon.setTextColor_(_adaptive_tertiary())
+        icon.setAlignment_(AppKit.NSTextAlignmentCenter)
+        self.addSubview_(icon)
+
+        label_x = self._SUB_INDENT + self._ICON_W + 4.0
+        label_w = width - label_x - 4.0
+        label = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(label_x, 0.0, label_w, self._SUB_ROW_H)
+        )
+        label.setStringValue_(label_text)
+        label.setEditable_(False)
+        label.setBezeled_(False)
+        label.setDrawsBackground_(False)
+        label.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
+        label.setTextColor_(_adaptive_tertiary())
+        label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+        self.addSubview_(label)
+
+        return {
+            "icon": icon,
+            "label": label,
+            "state": "pending",
+            "overflow": False,
+        }
+
+    def _layout(self) -> None:
+        """Repositionne toutes les lignes (parents + sous-rangées) de haut en bas.
+
+        Appelée après chaque création/mutation. AppKit utilise un repère avec y
+        croissant vers le haut ; on calcule donc depuis frame_h - TOP_PAD.
+        """
+        frame_h = float(self.frame().size.height)
+        width = float(self.frame().size.width)
+        y = frame_h - self._TOP_PAD
+        for idx, stage_key in enumerate(self._order):
+            row = self._rows.get(stage_key)
+            if row is None:
+                continue
+            y -= self._ROW_H
+            row["icon"].setFrame_(make_rect(0.0, y, self._ICON_W, self._ROW_H))
+            label_x = self._ICON_W + 4.0
+            label_w = width - label_x - self._DUR_W - 4.0
+            row["label"].setFrame_(make_rect(label_x, y, label_w, self._ROW_H))
+            row["duration"].setFrame_(
+                make_rect(width - self._DUR_W, y, self._DUR_W, self._ROW_H)
+            )
+            if idx < len(self._order) - 1 or self._sub_rows.get(stage_key):
+                y -= self._ROW_GAP
+            subs = self._sub_rows.get(stage_key, [])
+            label_x_sub = self._SUB_INDENT + self._ICON_W + 4.0
+            label_w_sub = width - label_x_sub - 4.0
+            for sub in subs:
+                y -= self._SUB_ROW_H
+                sub["icon"].setFrame_(
+                    make_rect(self._SUB_INDENT, y, self._ICON_W, self._SUB_ROW_H)
+                )
+                sub["label"].setFrame_(
+                    make_rect(label_x_sub, y, label_w_sub, self._SUB_ROW_H)
+                )
+                y -= self._SUB_ROW_GAP
+
     def ensure_row(self, stage_key: str, label_text: str) -> None:
         """Crée la ligne pour ce stage si elle n'existe pas déjà."""
         if stage_key in self._rows:
@@ -359,6 +458,19 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
             return
         self._rows[stage_key] = self._create_row(stage_key, label_text)
         self._order.append(stage_key)
+        self._layout()
+
+    def register_parent(self, parent_id: str, stage_key: str) -> None:
+        """Mappe le `parent_id` (event_id d'un started racine) vers son stage_key.
+        Permet de router les sous-events héritant de ce parent_id vers la bonne
+        ligne parent."""
+        if parent_id:
+            self._parent_id_to_stage[parent_id] = stage_key
+
+    def resolve_parent_stage(self, parent_id: Optional[str]) -> Optional[str]:
+        if not parent_id:
+            return None
+        return self._parent_id_to_stage.get(parent_id)
 
     def mark_started(self, stage_key: str, label_text: str) -> None:
         self.ensure_row(stage_key, label_text)
@@ -401,6 +513,137 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         if duration_ms > 0:
             secs = duration_ms / 1000.0
             row["duration"].setStringValue_(f"{secs:.1f} s".replace(".", ","))
+
+    def _estimated_total_height(self) -> float:
+        """Somme des hauteurs nécessaires pour afficher tout ce qui est demandé."""
+        h = self._TOP_PAD
+        for key in self._order:
+            h += self._ROW_H + self._ROW_GAP
+            for _ in self._sub_rows.get(key, []):
+                h += self._SUB_ROW_H + self._SUB_ROW_GAP
+        return h
+
+    def _overflow_label(self, parent_key: str) -> Dict[str, Any]:
+        """Crée (ou retrouve) la sous-ligne spéciale « … et X autres »."""
+        subs = self._sub_rows.setdefault(parent_key, [])
+        for sub in subs:
+            if sub.get("overflow"):
+                return sub
+        sub = self._create_sub_row("")
+        sub["overflow"] = True
+        subs.append(sub)
+        return sub
+
+    def add_sub_event(
+        self,
+        parent_key: str,
+        hook_name: str,
+        label_text: str,
+        status: str,
+        duration_ms: float = 0.0,
+    ) -> None:
+        """Ajoute (ou met à jour) un sous-événement sous la ligne parent.
+
+        - Glissement au-delà de `_MAX_SUB_ROWS_PER_PARENT` : on retire la plus
+          ancienne sous-ligne (hors overflow) et on incrémente un compteur
+          « … et X autres » affiché en fin de liste.
+        - Dépassement soft de 40 % de la hauteur : on n'ajoute plus de nouvelles
+          sous-lignes (mais on laisse les existantes telles quelles).
+        """
+        if parent_key not in self._rows:
+            # Parent inconnu — on ignore plutôt que de créer une ligne orpheline.
+            return
+
+        subs = self._sub_rows.setdefault(parent_key, [])
+
+        # Limite douce : si on dépasse le ratio de hauteur max, refuse la
+        # création d'une nouvelle sous-ligne. Les existantes restent visibles.
+        if (
+            self._estimated_total_height() + self._SUB_ROW_H + self._SUB_ROW_GAP
+            > self._MAX_HEIGHT_RATIO * float(self.frame().size.height)
+            and len(subs) > 0
+        ):
+            return
+
+        # Séparer les sous-lignes « normales » de la sous-ligne overflow.
+        normal_subs = [s for s in subs if not s.get("overflow")]
+        overflow_sub = next((s for s in subs if s.get("overflow")), None)
+
+        # Glissement si on a déjà atteint le max.
+        if status == "started" and len(normal_subs) >= self._MAX_SUB_ROWS_PER_PARENT:
+            # Retire la plus ancienne (premier index) et incrémente overflow.
+            oldest = normal_subs.pop(0)
+            for view in (oldest["icon"], oldest["label"]):
+                view.removeFromSuperview()
+            self._sub_overflow[parent_key] = self._sub_overflow.get(parent_key, 0) + 1
+
+        if status == "started":
+            sub = self._create_sub_row(label_text)
+            sub["state"] = "started"
+            sub["hook_name"] = hook_name
+            sub["label_text"] = label_text
+            sub["icon"].setStringValue_("→")
+            sub["icon"].setTextColor_(_accent())
+            sub["label"].setTextColor_(_adaptive_secondary())
+            normal_subs.append(sub)
+        else:  # completed / error / skipped : met à jour la sous-ligne existante
+            matching = [
+                s
+                for s in normal_subs
+                if s.get("hook_name") == hook_name
+                and s.get("label_text") == label_text
+                and s.get("state") != "completed"
+            ]
+            if matching:
+                sub = matching[-1]
+                sub["state"] = status
+                if status == "completed":
+                    sub["icon"].setStringValue_("✓")
+                    sub["icon"].setTextColor_(_green())
+                elif status == "error":
+                    sub["icon"].setStringValue_("✕")
+                    sub["icon"].setTextColor_(_red())
+            else:
+                # Cas émission unique (emit one-shot completed sans started) :
+                # on crée directement une sous-ligne « ✓ … ».
+                if len(normal_subs) >= self._MAX_SUB_ROWS_PER_PARENT:
+                    oldest = normal_subs.pop(0)
+                    for view in (oldest["icon"], oldest["label"]):
+                        view.removeFromSuperview()
+                    self._sub_overflow[parent_key] = (
+                        self._sub_overflow.get(parent_key, 0) + 1
+                    )
+                sub = self._create_sub_row(label_text)
+                sub["state"] = status
+                sub["hook_name"] = hook_name
+                sub["label_text"] = label_text
+                if status == "completed":
+                    sub["icon"].setStringValue_("✓")
+                    sub["icon"].setTextColor_(_green())
+                elif status == "error":
+                    sub["icon"].setStringValue_("✕")
+                    sub["icon"].setTextColor_(_red())
+                normal_subs.append(sub)
+
+        # Recompose la liste : normals + overflow line en dernier si besoin.
+        overflow_count = self._sub_overflow.get(parent_key, 0)
+        if overflow_count > 0:
+            if overflow_sub is None:
+                overflow_sub = self._overflow_label(parent_key)
+                # _overflow_label l'a déjà ajouté à subs via setdefault.
+            overflow_sub["label"].setStringValue_(f"… et {overflow_count} autres")
+            overflow_sub["icon"].setStringValue_("⋯")
+            overflow_sub["icon"].setTextColor_(_adaptive_tertiary())
+            overflow_sub["label"].setTextColor_(_adaptive_tertiary())
+            new_subs = normal_subs + [overflow_sub]
+        else:
+            if overflow_sub is not None:
+                for view in (overflow_sub["icon"], overflow_sub["label"]):
+                    view.removeFromSuperview()
+            new_subs = list(normal_subs)
+
+        self._sub_rows[parent_key] = new_subs
+        self._layout()
 
     def mark_error(self, stage_key: str, message: str, label_text: str) -> None:
         self.ensure_row(stage_key, label_text)
@@ -2214,8 +2457,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         - Rédacteur `completed` n'est jamais émis en Level 2 ; le premier token
           reçu marque implicitement la fin de cette étape (cf.
           `_mark_redacteur_if_started`).
+        - Les events avec `parent_id` != None ET `hook_name` sont des
+          sous-événements — routés vers `add_sub_event` au lieu de
+          `mark_started`/`mark_completed` pour apparaître indentés sous
+          leur parent.
         """
-        from lucie_v1_standalone.stage_labels import user_label
+        from lucie_v1_standalone.stage_labels import sub_label, user_label
 
         if not hasattr(self, "_stages_view"):
             return
@@ -2227,6 +2474,24 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         if stage == "cache" and status == "cached":
             self._stages_view.reset()
             return
+
+        # ── Sous-événement (hook_name + parent_id) → routage sub_row ─────────
+        parent_id = getattr(evt, "parent_id", None)
+        hook_name = getattr(evt, "hook_name", None)
+        if parent_id and hook_name:
+            parent_key = self._stages_view.resolve_parent_stage(parent_id)
+            if parent_key is not None:
+                details = getattr(evt, "details", None) or {}
+                sub_text = sub_label(hook_name, details)
+                self._stages_view.add_sub_event(
+                    parent_key,
+                    hook_name,
+                    sub_text,
+                    status,
+                    float(getattr(evt, "duration_ms", 0.0) or 0.0),
+                )
+                return
+            # Parent inconnu (arrivée hors ordre) : on ignore silencieusement.
 
         # Meta contextuelles (mode, production de document) pour la variante
         # du libellé. Les flags sont seedés par _run_live_streaming_pipeline
@@ -2246,6 +2511,11 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             if self._stages_view.isHidden():
                 self._stages_view.fade_in()
             self._stages_view.mark_started(stage, label)
+            # Enregistre le mapping parent_id → stage_key pour les futurs
+            # sous-événements qui hériteront de ce parent.
+            eid = getattr(evt, "event_id", None)
+            if eid:
+                self._stages_view.register_parent(eid, stage)
         elif status == "completed":
             self._stages_view.mark_completed(stage, float(evt.duration_ms or 0.0))
         elif status == "error":
