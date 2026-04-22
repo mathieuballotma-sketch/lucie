@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacteur, retriever, verificateur
 from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
+from .dialogue.article_validator import validate_article_refs
 from .dialogue.intent_classifier import Intent, classify as classify_intent
 from .dialogue.out_of_scope import detect_out_of_scope
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
@@ -286,6 +287,21 @@ async def run(
             )
             return PipelineResponse(
                 answer=oos.redirection,
+                citations=[],
+                verifier_score=1.0,
+                disclaimer=None,
+                mode="analysis",
+            )
+
+    # ── Early refus article inexistant (< 50ms, 0 LLM) ────────────────────
+    # Si la query cite un article (L.1234-1, R.1234-2, etc.) et qu'au moins
+    # un n'existe pas dans Légifrance, on refuse immédiatement plutôt que
+    # de lancer les 3 LLM séquentiels. No-op en mode dégradé (DB absente).
+    if not dossier_path:
+        refus_article = validate_article_refs(query)
+        if refus_article is not None:
+            return PipelineResponse(
+                answer=refus_article,
                 citations=[],
                 verifier_score=1.0,
                 disclaimer=None,
