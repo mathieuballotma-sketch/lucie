@@ -141,7 +141,21 @@ def classify(query: str) -> Intent:
         return Intent.SMALL_TALK
 
     has_legal_ref = bool(_LEGAL_REF_RE.search(text))
-    has_legal_kw = bool(_LEGAL_KEYWORD_RE.search(text))
+    has_legal_kw_regex = bool(_LEGAL_KEYWORD_RE.search(text))
+    has_legal_kw_fuzzy = False
+    if not has_legal_kw_regex and not has_legal_ref:
+        # Fallback fuzzy uniquement si la regex stricte ne matche pas — évite
+        # le coût sur les queries déjà correctement classées.
+        # Import retardé pour éviter l'import circulaire avec fuzzy_legal.
+        from lucie_v1_standalone.dialogue.fuzzy_legal import fuzzy_legal_boost
+
+        has_legal_kw_fuzzy = fuzzy_legal_boost(text)
+        if has_legal_kw_fuzzy:
+            logger.info(
+                "IntentClassifier: %r → boost fuzzy (mot-clé juridique approximatif)",
+                preview,
+            )
+    has_legal_kw = has_legal_kw_regex or has_legal_kw_fuzzy
 
     if has_legal_ref or has_legal_kw:
         score = _precision_score(text)
