@@ -39,6 +39,13 @@ _AGENT_BAR_Y = _HEADER_Y - AGENT_BAR_H             # 422
 _TEXT_H = _AGENT_BAR_Y - 2 - _TEXT_Y               # 334
 _TEXT_W = WINDOW_W - PADDING * 2                    # 492
 
+# Pipeline stages zone (« Lucie réfléchit »), insérée au-dessus du texte
+# quand le pipeline travaille. Dimensions : 4 lignes * 16px + gaps + padding.
+_STAGES_H = 80                                      # hauteur de la zone
+_STAGES_Y = _AGENT_BAR_Y - 2 - _STAGES_H           # 340 (juste sous sep2)
+_TEXT_H_ACTIVE = _STAGES_Y - 4 - _TEXT_Y           # 250 (text scroll réduit)
+_RETRY_H = 22                                       # hauteur du bouton Ré-essayer
+
 # Streaming parameters — word-chunk feel
 _STREAM_CHUNK = 4        # chars advanced per timer tick
 _STREAM_INTERVAL = 0.04  # seconds between ticks (~100 chars/s)
@@ -237,6 +244,191 @@ class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
         for dot in self._dots:
             dot.removeAllAnimations()
             dot.setBackgroundColor_(ns_white(1.0, 0.15).CGColor())
+
+
+# ─── PipelineStagesView ──────────────────────────────────────────────────────
+class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
+    """Zone "Lucie réfléchit" — liste verticale d'étapes avec état visuel.
+
+    Rendu minimal, une ligne par étape : icône d'état (⏸ ⏳ ✅ ❌) à gauche,
+    libellé utilisateur (traduit depuis le nom interne via stage_labels) au
+    milieu, durée à droite (affichée après complétion).
+
+    Les noms techniques internes (lecteur, retriever, redacteur, verificateur)
+    restent à l'intérieur et ne sont JAMAIS affichés — protection IP + UX.
+    Les libellés affichés arrivent déjà traduits par l'appelant.
+
+    Les lignes sont créées dynamiquement au fur et à mesure que les events
+    arrivent. Ordre = ordre d'arrivée de started pour chaque stage.
+    """
+
+    _ROW_H: float = 16.0
+    _ROW_GAP: float = 2.0
+    _ICON_W: float = 20.0
+    _DUR_W: float = 72.0
+    _TOP_PAD: float = 6.0
+    _MAX_ROWS: int = 4
+
+    def initWithFrame_(self, frame: Any) -> Any:
+        self = objc.super(PipelineStagesView, self).initWithFrame_(frame)
+        if self is not None:
+            self.setWantsLayer_(True)
+            self._rows: Dict[str, Dict[str, Any]] = {}
+            self._order: List[str] = []
+        return self
+
+    def isOpaque(self) -> bool:
+        return False
+
+    def reset(self) -> None:
+        """Vide toutes les lignes — à appeler en début de nouvelle requête."""
+        for row in self._rows.values():
+            for view in (row["icon"], row["label"], row["duration"]):
+                view.removeFromSuperview()
+        self._rows.clear()
+        self._order.clear()
+        self.setAlphaValue_(0.0)
+        self.setHidden_(True)
+
+    def _create_row(self, stage_key: str, label_text: str) -> Dict[str, Any]:
+        idx = len(self._order)
+        frame_h = float(self.frame().size.height)
+        y = frame_h - self._TOP_PAD - (idx + 1) * self._ROW_H - idx * self._ROW_GAP
+        width = float(self.frame().size.width)
+
+        icon = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(0.0, y, self._ICON_W, self._ROW_H)
+        )
+        icon.setStringValue_("⏳")
+        icon.setEditable_(False)
+        icon.setBezeled_(False)
+        icon.setDrawsBackground_(False)
+        icon.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        icon.setTextColor_(_adaptive_tertiary())
+        icon.setAlignment_(AppKit.NSTextAlignmentCenter)
+        icon.setWantsLayer_(True)
+        self.addSubview_(icon)
+
+        label_x = self._ICON_W + 4.0
+        label_w = width - label_x - self._DUR_W - 4.0
+        label = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(label_x, y, label_w, self._ROW_H)
+        )
+        label.setStringValue_(label_text)
+        label.setEditable_(False)
+        label.setBezeled_(False)
+        label.setDrawsBackground_(False)
+        label.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+        label.setTextColor_(_adaptive_text())
+        label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+        self.addSubview_(label)
+
+        dur = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(width - self._DUR_W, y, self._DUR_W, self._ROW_H)
+        )
+        dur.setStringValue_("")
+        dur.setEditable_(False)
+        dur.setBezeled_(False)
+        dur.setDrawsBackground_(False)
+        dur.setFont_(AppKit.NSFont.systemFontOfSize_(10))
+        dur.setTextColor_(_adaptive_tertiary())
+        dur.setAlignment_(AppKit.NSTextAlignmentRight)
+        self.addSubview_(dur)
+
+        return {
+            "icon": icon,
+            "label": label,
+            "duration": dur,
+            "state": "pending",
+            "base_label": label_text,
+        }
+
+    def ensure_row(self, stage_key: str, label_text: str) -> None:
+        """Crée la ligne pour ce stage si elle n'existe pas déjà."""
+        if stage_key in self._rows:
+            return
+        if len(self._order) >= self._MAX_ROWS:
+            return
+        self._rows[stage_key] = self._create_row(stage_key, label_text)
+        self._order.append(stage_key)
+
+    def mark_started(self, stage_key: str, label_text: str) -> None:
+        self.ensure_row(stage_key, label_text)
+        row = self._rows.get(stage_key)
+        if row is None:
+            return
+        row["state"] = "started"
+        row["icon"].setStringValue_("⏳")
+        row["icon"].setTextColor_(_accent())
+        row["label"].setTextColor_(_adaptive_text())
+        row["label"].setStringValue_(label_text)
+        row["base_label"] = label_text
+        # Pulse opacity sur l'icône
+        layer = row["icon"].layer()
+        if layer is not None:
+            layer.removeAllAnimations()
+            pulse = Quartz.CABasicAnimation.animationWithKeyPath_("opacity")
+            pulse.setFromValue_(0.35)
+            pulse.setToValue_(1.0)
+            pulse.setDuration_(0.85)
+            pulse.setAutoreverses_(True)
+            pulse.setRepeatCount_(float("inf"))
+            pulse.setTimingFunction_(
+                Quartz.CAMediaTimingFunction.functionWithName_(
+                    Quartz.kCAMediaTimingFunctionEaseInEaseOut
+                )
+            )
+            layer.addAnimation_forKey_(pulse, "pulse")
+
+    def mark_completed(self, stage_key: str, duration_ms: float) -> None:
+        row = self._rows.get(stage_key)
+        if row is None:
+            return
+        row["state"] = "completed"
+        row["icon"].setStringValue_("✓")
+        row["icon"].setTextColor_(_green())
+        layer = row["icon"].layer()
+        if layer is not None:
+            layer.removeAllAnimations()
+        if duration_ms > 0:
+            secs = duration_ms / 1000.0
+            row["duration"].setStringValue_(f"{secs:.1f} s".replace(".", ","))
+
+    def mark_error(self, stage_key: str, message: str, label_text: str) -> None:
+        self.ensure_row(stage_key, label_text)
+        row = self._rows.get(stage_key)
+        if row is None:
+            return
+        row["state"] = "error"
+        row["icon"].setStringValue_("✕")
+        row["icon"].setTextColor_(_red())
+        layer = row["icon"].layer()
+        if layer is not None:
+            layer.removeAllAnimations()
+        short = message.strip()
+        if len(short) > 48:
+            short = short[:48] + "…"
+        if short:
+            row["label"].setStringValue_(f"{row['base_label']} — {short}")
+        row["label"].setTextColor_(_red())
+
+    def fade_in(self) -> None:
+        self.setHidden_(False)
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.15)
+        self.animator().setAlphaValue_(1.0)
+        AppKit.NSAnimationContext.endGrouping()
+
+    def fade_out(self, duration: float = 0.4, on_complete: Any = None) -> None:
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(duration)
+        if on_complete is not None:
+            AppKit.NSAnimationContext.currentContext().setCompletionHandler_(on_complete)
+        self.animator().setAlphaValue_(0.0)
+        AppKit.NSAnimationContext.endGrouping()
+
+    def any_error(self) -> bool:
+        return any(r.get("state") == "error" for r in self._rows.values())
 
 
 # ─── DropContentView ─────────────────────────────────────────────────────────
@@ -1053,7 +1245,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._text_view.setDelegate_(self)
 
         scroll = AppKit.NSScrollView.alloc().initWithFrame_(
-            make_rect(PADDING, _TEXT_Y, _TEXT_W, _TEXT_H)
+            make_rect(PADDING, _TEXT_Y, _TEXT_W, _TEXT_H_ACTIVE)
         )
         scroll.setDocumentView_(self._text_view)
         scroll.setHasVerticalScroller_(True)
@@ -1061,6 +1253,30 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         scroll.setDrawsBackground_(False)
         scroll.verticalScroller().setAlphaValue_(0.15)
         content.addSubview_(scroll)
+
+        # ══ PIPELINE STAGES ZONE (« Lucie réfléchit ») ═══════════════════════
+        # Zone au-dessus du texte qui affiche les étapes en temps réel. Cachée
+        # par défaut, montrée au premier event "started", fade-out à la fin.
+        self._stages_view = PipelineStagesView.alloc().initWithFrame_(
+            make_rect(PADDING, _STAGES_Y, _TEXT_W, _STAGES_H)
+        )
+        self._stages_view.setAlphaValue_(0.0)
+        self._stages_view.setHidden_(True)
+        content.addSubview_(self._stages_view)
+
+        # Bouton « Ré-essayer » affiché sous la zone d'étapes en cas d'erreur.
+        retry_w = 110.0
+        self._retry_btn = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(WINDOW_W - PADDING - retry_w, _STAGES_Y - _RETRY_H - 2,
+                      retry_w, _RETRY_H)
+        )
+        self._retry_btn.setTitle_("↻  Ré-essayer")
+        self._retry_btn.setBezelStyle_(AppKit.NSBezelStyleInline)
+        self._retry_btn.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        self._retry_btn.setTarget_(self)
+        self._retry_btn.setAction_("retryLastQuery:")
+        self._retry_btn.setHidden_(True)
+        content.addSubview_(self._retry_btn)
 
         # Separator: text area / input
         sep3 = AppKit.NSBox.alloc().initWithFrame_(
@@ -1436,14 +1652,13 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 # ── Pipeline standard : streaming tokens si activé ──────────
                 from lucie_v1_standalone import pipeline as _lv1
 
-                # Streaming live désactivé si document_text (N3, peu d'intérêt
-                # pour le moment) ou flag LUCIE_STREAM=0.
-                use_live_stream = (
-                    _lv1.streaming_enabled() and document is None
-                )
+                # Streaming live actif dès que LUCIE_STREAM=1 (défaut). En Level
+                # 3 avec document, pas de tokens intermédiaires mais la zone
+                # d'étapes affiche bien Lecteur → Retriever → Rédacteur → Vérif.
+                use_live_stream = _lv1.streaming_enabled()
 
                 if use_live_stream:
-                    self._run_live_streaming_pipeline(query, _lv1)
+                    self._run_live_streaming_pipeline(query, _lv1, document_text=document)
                     return
 
                 response = _asyncio.run(
@@ -1479,27 +1694,41 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             AppHelper.callAfter(self._on_response_error, f"Erreur : {e}")
 
     @objc.python_method  # type: ignore[untyped-decorator]
-    def _run_live_streaming_pipeline(self, query: str, lv1: Any) -> None:
+    def _run_live_streaming_pipeline(
+        self, query: str, lv1: Any, document_text: Optional[str] = None
+    ) -> None:
         """Exécute pipeline.run_stream et pousse les chunks au HUD en temps réel.
 
         Appelé depuis _process_query (thread de fond). Utilise AppHelper.callAfter
         pour toutes les mises à jour UI (qui doivent rester sur main thread).
         """
         import asyncio as _asyncio
+        from lucie_v1_standalone.perf.events import PipelineEvent
         from lucie_v1_standalone.pipeline import PipelineResponse
 
         meta: Dict[str, Any] = {}
         got_chunks = False
 
+        # Contexte pour les libellés utilisateur (IP-safe) : document chargé ?
+        # action/courrier attendu ? Le stage label est calculé à chaque event.
+        self._stream_has_document = document_text is not None
+        self._stream_produces_document = False
+        self._stream_mode = None
+
+        # Reset zone d'étapes avant le run (main thread).
+        AppHelper.callAfter(self._reset_pipeline_stages)
+
         async def _consume() -> None:
             nonlocal meta, got_chunks
             AppHelper.callAfter(self._begin_live_stream, "Lucie")
 
-            async for evt in lv1.run_stream(query, document_text=None, force=False):
+            async for evt in lv1.run_stream(query, document_text=document_text, force=False):
                 if isinstance(evt, str):
                     if evt:
                         got_chunks = True
                         AppHelper.callAfter(self._feed_stream_chunk, evt)
+                elif isinstance(evt, PipelineEvent):
+                    AppHelper.callAfter(self._on_pipeline_event, evt)
                 elif isinstance(evt, PipelineResponse):
                     meta = {
                         "produces_document": getattr(evt, "produces_document", False),
@@ -1529,6 +1758,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         )
         self._last_response_meta = meta
         AppHelper.callAfter(self._mark_stream_done)
+        AppHelper.callAfter(self._finalize_pipeline_stages)
 
     # ── Streaming (word-chunk mode) ───────────────────────────────────────────
 
@@ -1587,6 +1817,9 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         """Alimente le buffer avec un nouveau chunk de tokens (main thread)."""
         if not chunk:
             return
+        # Premier token → Rédacteur passe à ✓ (Level 2 n'émet pas completed).
+        if not self._streaming_full_text:
+            self._mark_redacteur_if_started()
         self._streaming_full_text += chunk
         # Le timer révèle à sa cadence depuis _streaming_full_text. Si jamais
         # le timer a été coupé (dans de rares transitions), on le relance.
@@ -1678,6 +1911,14 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._is_processing = False
         self._is_dragging = False
         self.set_state(LucieState.ERROR)  # Basso sound + red + "Erreur"
+        # Zone d'étapes : si une ligne est en erreur, on garde visible + bouton
+        # Ré-essayer ; sinon on fade-out proprement.
+        if hasattr(self, "_stages_view") and not self._stages_view.isHidden():
+            if self._stages_view.any_error():
+                if hasattr(self, "_retry_btn"):
+                    self._retry_btn.setHidden_(False)
+            else:
+                self._finalize_pipeline_stages()
 
     # ── Message display ───────────────────────────────────────────────────────
 
@@ -1941,6 +2182,114 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     @objc.IBAction  # type: ignore[untyped-decorator]
     def _hideOutputCardTimer_(self, timer: Any) -> None:
         self._output_card.setHidden_(True)
+
+    # ── Pipeline stages zone (« Lucie réfléchit ») ────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _reset_pipeline_stages(self) -> None:
+        """Réinitialise la zone d'étapes au début d'un nouveau run (main thread)."""
+        if not hasattr(self, "_stages_view"):
+            return
+        self._stages_view.reset()
+        if hasattr(self, "_retry_btn"):
+            self._retry_btn.setHidden_(True)
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _on_pipeline_event(self, evt: Any) -> None:
+        """Dispatch d'un PipelineEvent depuis la coro `_consume` vers la UI.
+
+        Règles :
+        - Cache hit : la zone reste cachée (réponse servie en <5 ms).
+        - `started`: montre la zone si cachée, crée la ligne avec label IP-safe.
+        - `completed`: passe la ligne à ✓ avec durée.
+        - `error`: ✕ + message, affiche le bouton « Ré-essayer ».
+        - Rédacteur `completed` n'est jamais émis en Level 2 ; le premier token
+          reçu marque implicitement la fin de cette étape (cf.
+          `_mark_redacteur_if_started`).
+        """
+        from lucie_v1_standalone.stage_labels import user_label
+
+        if not hasattr(self, "_stages_view"):
+            return
+
+        stage = evt.stage
+        status = evt.status
+
+        # Cache hit : court-circuit, on ne montre rien.
+        if stage == "cache" and status == "cached":
+            self._stages_view.reset()
+            return
+
+        # Meta contextuelles (mode, production de document) pour la variante
+        # du libellé. Les flags sont seedés par _run_live_streaming_pipeline
+        # et peuvent être mis à jour par un PipelineResponse intermédiaire.
+        has_document = bool(getattr(self, "_stream_has_document", False))
+        produces_document = bool(getattr(self, "_stream_produces_document", False))
+        mode = getattr(self, "_stream_mode", None)
+
+        label = user_label(
+            stage,
+            has_document=has_document,
+            produces_document=produces_document,
+            mode=mode,
+        )
+
+        if status == "started":
+            if self._stages_view.isHidden():
+                self._stages_view.fade_in()
+            self._stages_view.mark_started(stage, label)
+        elif status == "completed":
+            self._stages_view.mark_completed(stage, float(evt.duration_ms or 0.0))
+        elif status == "error":
+            if self._stages_view.isHidden():
+                self._stages_view.fade_in()
+            self._stages_view.mark_error(stage, str(evt.message or ""), label)
+            if hasattr(self, "_retry_btn"):
+                self._retry_btn.setHidden_(False)
+        elif status == "skipped":
+            # Ligne grisée, pas de pulse ni de check
+            self._stages_view.mark_completed(stage, 0.0)
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _mark_redacteur_if_started(self) -> None:
+        """Appelé au premier token : passe la ligne Rédacteur à ✓ sans durée.
+
+        Compense l'absence de `redacteur.completed` explicite en Level 2 : on
+        considère que l'étape est « terminée » du point de vue utilisateur dès
+        que le premier mot apparaît dans la zone texte.
+        """
+        if not hasattr(self, "_stages_view"):
+            return
+        rows = getattr(self._stages_view, "_rows", {})
+        row = rows.get("redacteur")
+        if row is not None and row.get("state") == "started":
+            self._stages_view.mark_completed("redacteur", 0.0)
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _finalize_pipeline_stages(self) -> None:
+        """Fin de run : fade-out 400 ms si succès, zone conservée si erreur."""
+        if not hasattr(self, "_stages_view"):
+            return
+        if self._stages_view.isHidden():
+            return
+        if self._stages_view.any_error():
+            return
+        self._stages_view.fade_out(
+            0.4,
+            on_complete=lambda: self._stages_view.setHidden_(True),
+        )
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def retryLastQuery_(self, sender: Any) -> None:
+        """Relance la dernière query (utilisé par le bouton « Ré-essayer »)."""
+        if self._is_processing:
+            return
+        query = getattr(self, "_last_query", "") or ""
+        if not query:
+            return
+        if hasattr(self, "_retry_btn"):
+            self._retry_btn.setHidden_(True)
+        self._submit_query(query, display_query=None)
 
     # ── Decision flow (ProposalCard + suggested_replies) ──────────────────────
 
