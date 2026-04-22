@@ -22,14 +22,18 @@ import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, AsyncIterator, Dict, List, Optional, Tuple, Union
+from typing import Any, TYPE_CHECKING, AsyncIterator, Dict, List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
 from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacteur, retriever, verificateur
 from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
-from .dialogue.article_validator import validate_article_refs
+from .dialogue.article_validator import (
+    active_resolver_names,
+    extract_article_codes,
+    validate_article_refs,
+)
 from .dialogue.intent_classifier import Intent, classify as classify_intent
 from .dialogue.out_of_scope import detect_out_of_scope
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
@@ -115,6 +119,16 @@ class PipelineResponse:
     suggested_replies: List[Dict[str, str]] = field(default_factory=list)
     # Chemin du DOCX produit (populé uniquement après confirmation utilisateur).
     document_path: Optional[str] = None
+    # ── Phase A Cerveau Oiseau — tracking early refusals ──
+    # `refused=True` signale qu'un cerveau oiseau a court-circuité le pipeline
+    # avant tout appel LLM. `early_validation_triggered` identifie la règle :
+    #   - "out_of_scope"    : domaine hors Droit Social
+    #   - "article_invalid" : article cité non reconnu par la chaîne de résolveurs
+    # `validation_details` porte les métadonnées (domain, codes, duration_ms,
+    # resolvers actifs) pour audit/rapport.
+    refused: bool = False
+    early_validation_triggered: Optional[str] = None
+    validation_details: Dict[str, Any] = field(default_factory=dict)
 
     def __str__(self) -> str:
         return self.answer
@@ -292,17 +306,26 @@ async def run(
         # et on court-circuite la détection de proposition (sinon boucle infinie).
         query = original_query or query
 
-    # ── Early refus hors-scope (< 5ms, 0 LLM) ─────────────────────────────
+    # ── Cerveau oiseau 1 : out-of-scope (< 5ms, 0 LLM) ────────────────────
     # Si la query évoque un domaine hors Droit Social (fiscal, immobilier,
     # pénal, consommation, famille) sans cocher l'override CT, on refuse
     # poliment avec redirection. Bypass dossier mode (analyse dédiée).
     if not dossier_path:
+        t0_oos = time.perf_counter()
         oos = detect_out_of_scope(query)
+        dt_oos_ms = (time.perf_counter() - t0_oos) * 1000
         if oos is not None:
+            emit(
+                "cerveau_oiseau",
+                "completed",
+                hook_name="early_out_of_scope",
+                duration_ms=dt_oos_ms,
+                domain=oos.domain,
+            )
             logger.info(
-                "[OutOfScope] query=%r → refus domaine=%s",
-                query[:60],
+                "[CerveauOiseau] OUT_OF_SCOPE détecté (domaine=%s) → refus poli (%.0fms)",
                 oos.domain,
+                dt_oos_ms,
             )
             return PipelineResponse(
                 answer=oos.redirection,
@@ -310,21 +333,57 @@ async def run(
                 verifier_score=1.0,
                 disclaimer=None,
                 mode="analysis",
+                refused=True,
+                early_validation_triggered="out_of_scope",
+                validation_details={
+                    "domain": oos.domain,
+                    "duration_ms": round(dt_oos_ms, 2),
+                },
             )
 
-    # ── Early refus article inexistant (< 50ms, 0 LLM) ────────────────────
+    # ── Cerveau oiseau 2 : article inexistant (< 50ms, 0 LLM) ─────────────
     # Si la query cite un article (L.1234-1, R.1234-2, etc.) et qu'au moins
-    # un n'existe pas dans Légifrance, on refuse immédiatement plutôt que
-    # de lancer les 3 LLM séquentiels. No-op en mode dégradé (DB absente).
+    # un n'existe dans AUCUN résolveur actif (Légifrance SQLite si dispo,
+    # puis whitelist CT en fallback), on refuse immédiatement plutôt que
+    # de lancer les 3 LLM séquentiels (~11s). La whitelist CT garantit la
+    # promesse <1s même en mode dégradé Légifrance.
     if not dossier_path:
+        t0_art = time.perf_counter()
         refus_article = validate_article_refs(query)
+        dt_art_ms = (time.perf_counter() - t0_art) * 1000
         if refus_article is not None:
+            codes = extract_article_codes(query)
+            displays = [c[2] for c in codes]
+            resolvers = active_resolver_names()
+            emit(
+                "cerveau_oiseau",
+                "completed",
+                hook_name="early_article_invalid",
+                duration_ms=dt_art_ms,
+                code=displays[0] if displays else "",
+                codes=displays,
+                resolvers=resolvers,
+            )
+            logger.info(
+                "[CerveauOiseau] Early validation: %s introuvable "
+                "(résolveurs=%s) → refus immédiat (%.0fms)",
+                displays[0] if displays else "?",
+                ",".join(resolvers),
+                dt_art_ms,
+            )
             return PipelineResponse(
                 answer=refus_article,
                 citations=[],
                 verifier_score=1.0,
                 disclaimer=None,
                 mode="analysis",
+                refused=True,
+                early_validation_triggered="article_invalid",
+                validation_details={
+                    "codes": displays,
+                    "resolvers": resolvers,
+                    "duration_ms": round(dt_art_ms, 2),
+                },
             )
 
     # ── Intent routing (< 1ms, 0 LLM) — bypass dossier mode ─────────────────
