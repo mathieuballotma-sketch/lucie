@@ -182,8 +182,8 @@ def test_perf_under_200ms(fake_legifrance_db):
 # ─── Tests mode dégradé (pas de DB) ─────────────────────────────────────────
 
 
-def test_degraded_mode_legifrance_disabled(tmp_path, monkeypatch, caplog):
-    """LUCIE_LEGIFRANCE=0 → no-op silencieux, pas d'erreur."""
+def test_degraded_mode_legifrance_disabled_whitelist_active(tmp_path, monkeypatch, caplog):
+    """LUCIE_LEGIFRANCE=0 → whitelist CT fallback active, article inexistant refusé."""
     monkeypatch.setenv("LUCIE_LEGIFRANCE", "0")
     monkeypatch.setenv("LUCIE_LEGIFRANCE_DIR", str(tmp_path))
     import importlib
@@ -195,15 +195,24 @@ def test_degraded_mode_legifrance_disabled(tmp_path, monkeypatch, caplog):
 
     importlib.reload(av)
     try:
-        result = av.validate_article_refs("L'article L.1234-999 existe-t-il ?")
-        # Mode dégradé : on laisse passer même un article qui paraît faux
-        assert result is None
+        with caplog.at_level("WARNING"):
+            result = av.validate_article_refs("L'article L.1234-999 existe-t-il ?")
+        # Whitelist CT : L.1234-999 n'est pas whitelisté → refus
+        assert result is not None
+        assert "L.1234-999" in result
+        # WARNING dégradé émis
+        assert any("dégradé" in rec.message or "indisponible" in rec.message
+                   for rec in caplog.records)
+        # Whitelisté → passthrough
+        assert av.validate_article_refs("Cite L.1233-3") is None
+        # Résolveurs actifs : whitelist seule
+        assert av.active_resolver_names() == ["whitelist-ct"]
     finally:
         av.clear_validator_cache()
 
 
-def test_degraded_mode_db_missing(tmp_path, monkeypatch, caplog):
-    """LEGIFRANCE=1 mais DB absente → warning log + None."""
+def test_degraded_mode_db_missing_whitelist_active(tmp_path, monkeypatch, caplog):
+    """LEGIFRANCE=1 mais DB absente → WARNING log + whitelist CT fallback."""
     empty_dir = tmp_path / "empty"
     empty_dir.mkdir()
     monkeypatch.setenv("LUCIE_LEGIFRANCE", "1")
@@ -219,7 +228,13 @@ def test_degraded_mode_db_missing(tmp_path, monkeypatch, caplog):
     try:
         with caplog.at_level("WARNING"):
             result = av.validate_article_refs("L.1234-999 ?")
-        assert result is None
-        assert any("introuvable" in rec.message for rec in caplog.records)
+        # L.1234-999 pas dans whitelist → refus
+        assert result is not None
+        assert "L.1234-999" in result
+        # WARNING dégradé visible
+        assert any("introuvable" in rec.message or "dégradé" in rec.message
+                   for rec in caplog.records)
+        # Résolveurs actifs : whitelist seule
+        assert av.active_resolver_names() == ["whitelist-ct"]
     finally:
         av.clear_validator_cache()
