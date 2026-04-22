@@ -44,6 +44,7 @@ Stage = Literal[
     "verificateur",
     "cache",
     "finalizing",
+    "cerveau_oiseau",
 ]
 
 Status = Literal["started", "completed", "skipped", "cached", "error"]

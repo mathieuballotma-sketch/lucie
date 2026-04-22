@@ -1,25 +1,27 @@
 """
 VerificateurAgent — vérifie que les citations de la note correspondent aux sources.
-Modèle : gemma4:e4b (speed).
 
-Pour chaque [REFERENCE] dans la note :
-  1. Vérifie qu'elle existe dans les sources fournies.
-  2. Supprime les citations invalides.
+Phase A Cerveau Oiseaux : 100 % déterministe. Pas de LLM.
+
+Pour chaque [REF: xxx] ou [xxx] dans la note :
+  1. Vérifie l'existence dans les sources fournies (matching exact sur IDs).
+  2. Supprime les citations invalides par regex (couvre les deux formats).
   3. Calcule un score de fiabilité et rend un verdict.
 
-Aucune dépendance au reste du repo.
+Le gain principal n'est pas sur le cas général (déjà ~50 ms sans appel LLM) :
+c'est sur le cas *hallucinations détectées* qui appelait auparavant gemma4:e4b
+(~10 s). Désormais, même dans ce cas, on reste local et déterministe.
 """
 
 import json
+import logging
 import re
-from pathlib import Path
+import time
 from typing import Any, Dict, List
 
-from . import ollama_client
-from .config import VERIFICATEUR_PARAMS
 from .perf.events import emit
 
-_SYSTEM_PROMPT_PATH = Path(__file__).parent / "prompts" / "verificateur_system.txt"
+logger = logging.getLogger(__name__)
 
 
 def _extract_citations(note: str) -> List[str]:
@@ -44,7 +46,7 @@ def _build_source_ids(sources_json: str) -> Dict[str, str]:
 
 async def handle(note_markdown: str, sources_json: str) -> str:
     """
-    Vérifie la note contre les sources.
+    Vérifie la note contre les sources — 100 % déterministe.
 
     Args:
         note_markdown: Note rédigée par redacteur.handle().
@@ -53,13 +55,27 @@ async def handle(note_markdown: str, sources_json: str) -> str:
     Returns:
         JSON string avec rapport de vérification + note corrigée.
     """
+    t0 = time.perf_counter()
+
     source_ids = _build_source_ids(sources_json)
     citations = _extract_citations(note_markdown)
 
     # ── Cas : aucune citation dans la note ────────────────────────────────────
-    # Une note sans aucune référence [REF] n'est pas vérifiable.
-    # Score 0.0 et verdict NON VÉRIFIABLE — pas de faux positif "VALIDÉ".
     if not citations:
+        dt_ms = (time.perf_counter() - t0) * 1000
+        emit(
+            "cerveau_oiseau",
+            "completed",
+            hook_name="verifie_citations",
+            duration_ms=dt_ms,
+            n_total=0,
+            n_ok=0,
+            n_invalid=0,
+        )
+        logger.info(
+            "[CerveauOiseau] Vérificateur: 0 citation détectée → NON VÉRIFIABLE (%.0fms)",
+            dt_ms,
+        )
         result: Dict[str, Any] = {
             "citations_verifiees": [],
             "citations_invalides": [],
@@ -104,37 +120,14 @@ async def handle(note_markdown: str, sources_json: str) -> str:
                 ok=False,
             )
 
-    # ── Si des citations sont invalides → affiner avec le LLM ─────────────────
-    if invalides:
-        system = _SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
-        prompt = (
-            "## Note à vérifier\n\n"
-            f"{note_markdown}\n\n"
-            "## Sources disponibles (IDs valides)\n\n"
-            f"```json\n{sources_json}\n```\n\n"
-            "Vérifie chaque citation [XXX] dans la note. "
-            "Pour les citations invalides, supprime-les du texte et retourne le JSON demandé "
-            "avec la note corrigée dans le champ `note_corrigee`."
-        )
-
-        options = {k: v for k, v in VERIFICATEUR_PARAMS.items() if k != "model"}
-
-        response = await ollama_client.generate(
-            model=VERIFICATEUR_PARAMS["model"],
-            prompt=prompt,
-            system=system,
-            options=options,
-        )
-        llm_parsed = ollama_client.extract_json_from_response(response)
-        if llm_parsed and "note_corrigee" in llm_parsed:
-            return json.dumps(llm_parsed, ensure_ascii=False, indent=2)
-        # Fallback si LLM ne produit pas le JSON attendu
-
-    # ── Construction locale de la note corrigée ───────────────────────────────
+    # ── Suppression déterministe des citations hallucinées ────────────────────
+    # Couvre les deux formats produits par le Rédacteur :
+    #   [REF: xxx] (prompts/redacteur_system.txt)
+    #   [xxx]     (prompts/redacteur_search_system.txt)
     note_corrigee = note_markdown
     for inv in invalides:
         ref = re.escape(inv["reference"])
-        note_corrigee = re.sub(rf'\[{ref}\]', '', note_corrigee)
+        note_corrigee = re.sub(rf'\[REF:\s*{ref}\]|\[{ref}\]', '', note_corrigee)
 
     nb_total = len(citations)
     nb_ok = len(verifiees)
@@ -144,6 +137,26 @@ async def handle(note_markdown: str, sources_json: str) -> str:
         verdict = "CORRIGÉ" if score >= 0.5 else "INSUFFISANT"
     else:
         verdict = "VALIDÉ"
+
+    dt_ms = (time.perf_counter() - t0) * 1000
+    emit(
+        "cerveau_oiseau",
+        "completed",
+        hook_name="verifie_citations",
+        duration_ms=dt_ms,
+        n_total=nb_total,
+        n_ok=nb_ok,
+        n_invalid=len(invalides),
+    )
+    logger.info(
+        "[CerveauOiseau] Vérificateur: %d citations, %d validées, "
+        "%d hallucinée(s) supprimée(s) → %s (%.0fms)",
+        nb_total,
+        nb_ok,
+        len(invalides),
+        verdict,
+        dt_ms,
+    )
 
     result = {
         "citations_verifiees": verifiees,

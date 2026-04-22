@@ -24,6 +24,7 @@ Stage = Literal[
     "verificateur",
     "cache",
     "finalizing",
+    "cerveau_oiseau",
 ]
 
 Mode = Literal["analysis", "action", "document", "search", "direct"]
@@ -37,6 +38,7 @@ _DEFAULT: dict[Stage, str] = {
     "verificateur": "Je vérifie chaque citation",
     "cache": "Je retrouve une réponse déjà étudiée",
     "finalizing": "Je finalise",
+    "cerveau_oiseau": "Je filtre rapidement",
 }
 
 
@@ -80,6 +82,19 @@ def sub_label(hook_name: str, details: Optional[dict] = None) -> str:
         return "Je structure la réponse"
     if hook_name == "redige":
         return "Je rédige"
+    # ── Phase A Cerveau Oiseau : décisions déterministes <1s ──
+    if hook_name == "early_out_of_scope":
+        domain = details.get("domain") or ""
+        return f"Hors Droit Social ({domain})" if domain else "Hors Droit Social"
+    if hook_name == "early_article_invalid":
+        code = details.get("code") or ""
+        return f"Article {code} inexistant" if code else "Article inexistant"
+    if hook_name == "verifie_citations":
+        n_ok = details.get("n_ok")
+        n_total = details.get("n_total")
+        if n_ok is not None and n_total is not None:
+            return f"{n_ok}/{n_total} citations OK"
+        return "Je vérifie les citations"
     # Hook inconnu — affichage minimal sans exposer le nom technique.
     return "Je travaille"
 

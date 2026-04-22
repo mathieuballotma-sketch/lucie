@@ -150,15 +150,9 @@ async def test_verificateur_emits_per_citation_events():
 
     async def body():
         async with event_stage("verificateur"):
-            # Patch LLM pour éviter appel Ollama (on a 1 citation invalide).
-            with patch(
-                "lucie_v1_standalone.verificateur.ollama_client.generate",
-                new=AsyncMock(return_value="{}"),
-            ), patch(
-                "lucie_v1_standalone.verificateur.ollama_client.extract_json_from_response",
-                return_value=None,
-            ):
-                await verificateur.handle(note, sources_json)
+            # Phase A : le Vérificateur est 100 % déterministe (plus d'appel
+            # Ollama à mocker). Les patches LLM ont été retirés avec le LLM.
+            await verificateur.handle(note, sources_json)
 
     evs = await _collect(body)
     started = [e for e in evs if e.status == "started" and e.hook_name is None]
