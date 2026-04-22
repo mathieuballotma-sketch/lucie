@@ -17,6 +17,7 @@ from typing import Any, Dict, List
 
 from . import ollama_client
 from .config import VERIFICATEUR_PARAMS
+from .perf.events import emit
 
 _SYSTEM_PROMPT_PATH = Path(__file__).parent / "prompts" / "verificateur_system.txt"
 
@@ -82,12 +83,26 @@ async def handle(note_markdown: str, sources_json: str) -> str:
                 "statut": "OK",
                 "correspondance": 1.0,
             })
+            emit(
+                "verificateur",
+                "completed",
+                hook_name="verifie_citation",
+                cite=cit,
+                ok=True,
+            )
         else:
             invalides.append({
                 "reference": cit,
                 "statut": "INTROUVABLE",
                 "action": "supprimé",
             })
+            emit(
+                "verificateur",
+                "completed",
+                hook_name="verifie_citation",
+                cite=cit,
+                ok=False,
+            )
 
     # ── Si des citations sont invalides → affiner avec le LLM ─────────────────
     if invalides:

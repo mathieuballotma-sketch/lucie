@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacteur, retriever, verificateur
 from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
+from .dialogue.article_validator import validate_article_refs
 from .dialogue.intent_classifier import Intent, classify as classify_intent
+from .dialogue.out_of_scope import detect_out_of_scope
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
 from .perf import (
     bind_event_queue,
@@ -229,6 +231,25 @@ def _attach_suggested_replies(response: PipelineResponse) -> PipelineResponse:
     return response
 
 
+def _format_exception_for_user(exc: BaseException) -> str:
+    """Traduit une exception pipeline en message utilisateur.
+
+    En particulier : un `RuntimeError("Ollama timeout …")` est reformulé en
+    message non-technique explicite. Évite qu'une requête longue coupée
+    par httpx donne un écran « **Erreur pipeline** : Ollama timeout après
+    300s (modèle: gemma4:e4b) » incompréhensible à un avocat.
+    """
+    msg = str(exc)
+    if "Ollama timeout" in msg:
+        return (
+            "**Lucie prend plus de temps que prévu sur cette question.**\n\n"
+            "Réessayez dans un instant. Si le problème persiste, vérifiez "
+            "qu'Ollama tourne bien (`ollama serve`) et que le modèle est "
+            "chargé.\n"
+        )
+    return f"**Erreur pipeline** : {msg}"
+
+
 async def run(
     query: str,
     document_text: Optional[str] = None,
@@ -270,6 +291,41 @@ async def run(
         # Décision "yes" / "yes_produce" : on reprend la query originale
         # et on court-circuite la détection de proposition (sinon boucle infinie).
         query = original_query or query
+
+    # ── Early refus hors-scope (< 5ms, 0 LLM) ─────────────────────────────
+    # Si la query évoque un domaine hors Droit Social (fiscal, immobilier,
+    # pénal, consommation, famille) sans cocher l'override CT, on refuse
+    # poliment avec redirection. Bypass dossier mode (analyse dédiée).
+    if not dossier_path:
+        oos = detect_out_of_scope(query)
+        if oos is not None:
+            logger.info(
+                "[OutOfScope] query=%r → refus domaine=%s",
+                query[:60],
+                oos.domain,
+            )
+            return PipelineResponse(
+                answer=oos.redirection,
+                citations=[],
+                verifier_score=1.0,
+                disclaimer=None,
+                mode="analysis",
+            )
+
+    # ── Early refus article inexistant (< 50ms, 0 LLM) ────────────────────
+    # Si la query cite un article (L.1234-1, R.1234-2, etc.) et qu'au moins
+    # un n'existe pas dans Légifrance, on refuse immédiatement plutôt que
+    # de lancer les 3 LLM séquentiels. No-op en mode dégradé (DB absente).
+    if not dossier_path:
+        refus_article = validate_article_refs(query)
+        if refus_article is not None:
+            return PipelineResponse(
+                answer=refus_article,
+                citations=[],
+                verifier_score=1.0,
+                disclaimer=None,
+                mode="analysis",
+            )
 
     # ── Intent routing (< 1ms, 0 LLM) — bypass dossier mode ─────────────────
     if not dossier_path:
@@ -350,7 +406,7 @@ async def run(
             mode=mode,
         )
     except Exception as exc:
-        return PipelineResponse(answer=f"**Erreur pipeline** : {exc}", mode=mode)
+        return PipelineResponse(answer=_format_exception_for_user(exc), mode=mode)
 
 
 async def _run_dossier(
@@ -784,7 +840,7 @@ async def run_stream(
                 if memory is not None:
                     await _memory_observe(memory, query, "search", routing["intent"])
         except Exception as exc:  # noqa: BLE001
-            yield PipelineResponse(answer=f"**Erreur pipeline** : {exc}", mode=mode)
+            yield PipelineResponse(answer=_format_exception_for_user(exc), mode=mode)
 
 
 async def _run_with_event_drain(

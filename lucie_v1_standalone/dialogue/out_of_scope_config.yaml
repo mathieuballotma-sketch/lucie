@@ -1,0 +1,108 @@
+# Out-of-scope — détection et redirection des questions hors du périmètre
+# Droit Social de Lucie. Chargé par `out_of_scope.detect_out_of_scope()`.
+#
+# Édition à chaud : modifier ce fichier puis appeler
+# `clear_out_of_scope_cache()` côté Python (ou relancer l'app).
+# L'ordre des domaines fixe la priorité : le premier domaine matché gagne.
+#
+# `priority_override.patterns` : si l'une de ces regex matche la query, on
+# désactive la détection hors-scope (la question est traitée normalement).
+# Rationnel : une query qui cite le Code du travail ou un article L./R. est
+# par nature dans le périmètre Droit Social, même si elle contient un mot
+# comme « fiscal » ou « immobilier » en contexte.
+
+domains:
+  fiscal:
+    keywords:
+      - impot
+      - impots
+      - fiscal
+      - fiscale
+      - fiscalite
+      - fiscaliste
+      - tva
+      - cgi
+      - niche fiscale
+      - credit d'impot
+      - administration fiscale
+      - imposition
+      - declaration de revenus
+    redirection: |
+      Cette question relève du droit fiscal.
+      Un expert-comptable ou un avocat fiscaliste sera plus pertinent.
+      Je reste à votre disposition pour les aspects Droit Social
+      (licenciement, contrat de travail, indemnités, prud'hommes, etc.).
+
+  immobilier:
+    keywords:
+      - bail d'habitation
+      - bail commercial
+      - copropriete
+      - syndic
+      - vente immobiliere
+      - notaire
+      - servitude
+      - usucapion
+      - lmnp
+      - loyer impaye
+    redirection: |
+      Cette question relève du droit immobilier.
+      Un avocat spécialisé en droit immobilier ou un notaire sera plus adapté.
+      Je reste à votre disposition pour toute question de Droit Social.
+
+  penal:
+    keywords:
+      - penal
+      - penale
+      - infraction penale
+      - garde a vue
+      - correctionnel
+      - comparution immediate
+      - tribunal correctionnel
+      - peine
+      - emprisonnement
+    redirection: |
+      Cette question relève du droit pénal.
+      Un avocat pénaliste sera plus pertinent.
+      Je reste à votre disposition pour toute question de Droit Social.
+
+  consommation:
+    keywords:
+      - consommation
+      - droit des consommateurs
+      - vice cache
+      - garantie legale
+      - clause abusive
+      - retractation 14 jours
+      - demarchage
+    redirection: |
+      Cette question relève du droit de la consommation.
+      Une association de consommateurs ou un avocat spécialisé sera plus adapté.
+      Je reste à votre disposition pour toute question de Droit Social.
+
+  famille:
+    keywords:
+      - divorce
+      - filiation
+      - adoption
+      - succession
+      - tutelle
+      - curatelle
+      - pension alimentaire
+      - autorite parentale
+      - pacs
+    redirection: |
+      Cette question relève du droit de la famille.
+      Un avocat de la famille sera plus pertinent.
+      Je reste à votre disposition pour toute question de Droit Social.
+
+priority_override:
+  # Si l'une de ces regex matche la query, on NE déclenche PAS le refus
+  # hors-scope, même si un domaine matche. Permet de traiter « Quel est
+  # l'impact fiscal de l'article L.1234-5 ? » comme une question Droit Social.
+  patterns:
+    - "\\b[LR]\\.?\\s?\\d{3,4}(?:-\\d+)?\\b"
+    - "\\bcode du travail\\b"
+    - "\\b(licenci|prud'?hommes|prud'?homal|cse|pse|rcc|csp)\\b"
+    - "\\bconvention collective\\b"
+    - "\\b(salari[eé]|employeur)\\b"

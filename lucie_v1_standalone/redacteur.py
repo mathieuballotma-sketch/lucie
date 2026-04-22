@@ -18,6 +18,7 @@ from typing import AsyncIterator, Literal, Tuple
 
 from . import ollama_client
 from .config import REDACTEUR_PARAMS
+from .perf.events import child_event_stage
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _SYSTEM_DOCUMENT = _PROMPTS_DIR / "redacteur_system.txt"
@@ -60,42 +61,44 @@ async def handle(
         )
 
     # ── Choix du prompt selon le mode ─────────────────────────────────────────
-    system_path = _SYSTEM_SEARCH if mode == "search" else _SYSTEM_DOCUMENT
-    system = system_path.read_text(encoding="utf-8")
+    async with child_event_stage("structure_reponse", mode=mode):
+        system_path = _SYSTEM_SEARCH if mode == "search" else _SYSTEM_DOCUMENT
+        system = system_path.read_text(encoding="utf-8")
 
-    if mode == "search":
-        # En mode search, on extrait la question originale du faits_json
-        try:
-            faits_data = json.loads(faits_json)
-            question = faits_data.get("query", faits_json)
-        except (json.JSONDecodeError, AttributeError):
-            question = faits_json
+        if mode == "search":
+            # En mode search, on extrait la question originale du faits_json
+            try:
+                faits_data = json.loads(faits_json)
+                question = faits_data.get("query", faits_json)
+            except (json.JSONDecodeError, AttributeError):
+                question = faits_json
 
-        prompt = (
-            f"## Question\n\n{question}\n\n"
-            "## Sources disponibles\n\n"
-            f"```json\n{sources_json}\n```\n\n"
-            "Réponds directement à la question en utilisant UNIQUEMENT les sources fournies. "
-            "Cite chaque source utilisée entre crochets [ID]."
-        )
-    else:
-        prompt = (
-            "## Faits extraits du document\n\n"
-            f"```json\n{faits_json}\n```\n\n"
-            "## Sources disponibles\n\n"
-            f"```json\n{sources_json}\n```\n\n"
-            "Rédige maintenant la note d'analyse complète selon la structure demandée. "
-            "Chaque affirmation juridique doit être suivie de sa source entre crochets [ID]."
-        )
+            prompt = (
+                f"## Question\n\n{question}\n\n"
+                "## Sources disponibles\n\n"
+                f"```json\n{sources_json}\n```\n\n"
+                "Réponds directement à la question en utilisant UNIQUEMENT les sources fournies. "
+                "Cite chaque source utilisée entre crochets [ID]."
+            )
+        else:
+            prompt = (
+                "## Faits extraits du document\n\n"
+                f"```json\n{faits_json}\n```\n\n"
+                "## Sources disponibles\n\n"
+                f"```json\n{sources_json}\n```\n\n"
+                "Rédige maintenant la note d'analyse complète selon la structure demandée. "
+                "Chaque affirmation juridique doit être suivie de sa source entre crochets [ID]."
+            )
 
     options = {k: v for k, v in REDACTEUR_PARAMS.items() if k != "model"}
 
-    return await ollama_client.generate(
-        model=REDACTEUR_PARAMS["model"],
-        prompt=prompt,
-        system=system,
-        options=options,
-    )
+    async with child_event_stage("redige", mode=mode):
+        return await ollama_client.generate(
+            model=REDACTEUR_PARAMS["model"],
+            prompt=prompt,
+            system=system,
+            options=options,
+        )
 
 
 def _build_prompt(
@@ -150,7 +153,8 @@ async def handle_stream(
 
     Si 0 sources, yield le message de blocage complet en une fois.
     """
-    system, prompt, nb_sources = _build_prompt(faits_json, sources_json, mode)
+    async with child_event_stage("structure_reponse", mode=mode):
+        system, prompt, nb_sources = _build_prompt(faits_json, sources_json, mode)
     if nb_sources == 0:
         yield (
             "**RÉDACTION IMPOSSIBLE**\n\n"
@@ -162,10 +166,11 @@ async def handle_stream(
         return
 
     options = {k: v for k, v in REDACTEUR_PARAMS.items() if k != "model"}
-    async for chunk in ollama_client.generate_stream(
-        model=REDACTEUR_PARAMS["model"],
-        prompt=prompt,
-        system=system,
-        options=options,
-    ):
-        yield chunk
+    async with child_event_stage("redige", mode=mode):
+        async for chunk in ollama_client.generate_stream(
+            model=REDACTEUR_PARAMS["model"],
+            prompt=prompt,
+            system=system,
+            options=options,
+        ):
+            yield chunk

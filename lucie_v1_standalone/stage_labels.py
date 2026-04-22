@@ -62,4 +62,26 @@ def user_label(
     return _DEFAULT[stage]
 
 
-__all__ = ["Stage", "Mode", "user_label"]
+def sub_label(hook_name: str, details: Optional[dict] = None) -> str:
+    """Retourne le libellé user-friendly d'un sous-événement (hook_name).
+
+    Les détails arrivent via `PipelineEvent.details` — on extrait les clés
+    attendues par chaque hook. Si la clé manque, on dégrade vers un libellé
+    générique lisible plutôt que de planter. Pas de nom technique interne.
+    """
+    details = details or {}
+    if hook_name == "lit_article":
+        ref = details.get("article") or details.get("ref") or ""
+        return f"Je lis {ref}".strip() if ref else "Je lis un article"
+    if hook_name == "verifie_citation":
+        cite = details.get("cite") or details.get("ref") or ""
+        return f"Je vérifie {cite}".strip() if cite else "Je vérifie une citation"
+    if hook_name == "structure_reponse":
+        return "Je structure la réponse"
+    if hook_name == "redige":
+        return "Je rédige"
+    # Hook inconnu — affichage minimal sans exposer le nom technique.
+    return "Je travaille"
+
+
+__all__ = ["Stage", "Mode", "user_label", "sub_label"]
