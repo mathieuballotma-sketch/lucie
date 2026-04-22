@@ -27,6 +27,7 @@ from .config import (
     MAX_SOURCES,
     get_legifrance_db_path,
 )
+from .perf.events import emit
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +212,12 @@ async def handle(faits_json: str) -> str:
                     "pertinence": 1.0,
                     "fichier_source": doc["path"],
                 })
+                emit(
+                    "retriever",
+                    "completed",
+                    hook_name="lit_article",
+                    article=ref,
+                )
                 if ref in refs_not_found:
                     refs_not_found.remove(ref)
                 break  # un seul hit par doc
@@ -239,6 +246,12 @@ async def handle(faits_json: str) -> str:
                 "pertinence": round(min(score / 10.0, 0.99), 2),
                 "fichier_source": doc["path"],
             })
+            emit(
+                "retriever",
+                "completed",
+                hook_name="lit_article",
+                article=doc["id"],
+            )
 
     # ── Séparer loi et jurisprudence ──────────────────────────────────────────
     juris_keywords = {"arret", "cass", "decision", "soc"}

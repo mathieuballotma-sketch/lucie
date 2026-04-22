@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+from lucie_v1_standalone.perf.events import emit
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_TOP_K = 5
@@ -240,7 +242,15 @@ class LegifranceRetriever:
         if theme_ids is not None:
             rows = [r for r in rows if r["id"] in theme_ids]
         first_theme = themes_arg[0] if themes_arg else None
-        return [self._row_to_article(r, 1.0, first_theme) for r in rows]
+        articles = [self._row_to_article(r, 1.0, first_theme) for r in rows]
+        for art in articles:
+            emit(
+                "retriever",
+                "completed",
+                hook_name="lit_article",
+                article=art.num,
+            )
+        return articles
 
     def _search_fulltext(
         self,
@@ -291,7 +301,14 @@ class LegifranceRetriever:
                 normalized = max(0.0, min(1.0, (abs(raw) / max_abs) * 0.95))
             else:
                 normalized = 0.5
-            results.append(self._row_to_article(row, normalized, first_theme))
+            article = self._row_to_article(row, normalized, first_theme)
+            results.append(article)
+            emit(
+                "retriever",
+                "completed",
+                hook_name="lit_article",
+                article=article.num,
+            )
             if len(results) >= top_k:
                 break
         return results
