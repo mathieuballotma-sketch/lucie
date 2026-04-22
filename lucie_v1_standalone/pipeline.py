@@ -28,7 +28,15 @@ from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
 from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
 from .dialogue.intent_classifier import Intent, classify as classify_intent
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
-from .perf import profile_bucket, profile_step
+from .perf import (
+    bind_event_queue,
+    current_queue,
+    drain_nowait,
+    emit,
+    event_stage,
+    profile_bucket,
+    profile_step,
+)
 from .router import is_dossier, route as router_route, validate as router_validate
 
 if TYPE_CHECKING:
@@ -457,7 +465,7 @@ async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
     # Retriever
     if verbose:
         print("🔍 Retriever : recherche dans la base curatée…", flush=True)
-    async with profile_step("retriever.search"):
+    async with profile_step("retriever.search"), event_stage("retriever"):
         sources_json = await retriever.handle(faits_json)
     if verbose:
         print("✅ Retriever : sources récupérées", flush=True)
@@ -465,7 +473,7 @@ async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
     # Rédacteur (mode search : prompt dédié)
     if verbose:
         print("✍️  Rédacteur : rédaction de la réponse…", flush=True)
-    async with profile_step("llm.redacteur.search"):
+    async with profile_step("llm.redacteur.search"), event_stage("redacteur"):
         note_markdown = await redacteur.handle(faits_json, sources_json, mode="search")
 
     if note_markdown.startswith("**RÉDACTION IMPOSSIBLE**"):
@@ -478,7 +486,7 @@ async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
     # Vérificateur
     if verbose:
         print("🔎 Vérificateur : contrôle des citations…", flush=True)
-    async with profile_step("verificateur.search"):
+    async with profile_step("verificateur.search"), event_stage("verificateur"):
         verification_json = await verificateur.handle(note_markdown, sources_json)
 
     return _format_final(note_markdown, verification_json, verbose)
@@ -492,7 +500,7 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Lecteur
     if verbose:
         print("📄 Lecteur : extraction des faits…", flush=True)
-    async with profile_step("llm.lecteur"):
+    async with profile_step("llm.lecteur"), event_stage("lecteur"):
         faits_json = await lecteur.handle(doc)
 
     try:
@@ -512,7 +520,7 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Retriever
     if verbose:
         print("🔍 Retriever : recherche dans la base curatée…", flush=True)
-    async with profile_step("retriever.full"):
+    async with profile_step("retriever.full"), event_stage("retriever"):
         sources_json = await retriever.handle(faits_json)
     if verbose:
         print("✅ Retriever : sources récupérées", flush=True)
@@ -520,7 +528,7 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Rédacteur (mode document : prompt formel complet)
     if verbose:
         print("✍️  Rédacteur : rédaction de la note…", flush=True)
-    async with profile_step("llm.redacteur.full"):
+    async with profile_step("llm.redacteur.full"), event_stage("redacteur"):
         note_markdown = await redacteur.handle(faits_json, sources_json, mode="document")
 
     if note_markdown.startswith("**RÉDACTION IMPOSSIBLE**"):
@@ -540,7 +548,7 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
     # Vérificateur
     if verbose:
         print("🔎 Vérificateur : contrôle des citations…", flush=True)
-    async with profile_step("verificateur.full"):
+    async with profile_step("verificateur.full"), event_stage("verificateur"):
         verification_json = await verificateur.handle(note_markdown, sources_json)
 
     return _format_final(note_markdown, verification_json, verbose)
@@ -618,71 +626,187 @@ async def run_stream(
     else:
         mode = "analysis"
 
-    # ── Mode dossier : pas de streaming natif — fallback run() ───────────────
-    if dossier_path and is_dossier(dossier_path):
-        resp = await run(query, document_text, dossier_path, force, False, memory)
-        yield resp
-        return
+    # ── Bind event queue pour toute la durée du run ─────────────────────────
+    async with bind_event_queue() as evq:
 
-    # ── Scope / routage (0 LLM) ─────────────────────────────────────────────
-    try:
-        async with profile_bucket():
-            if not force:
-                scope = router_validate(query, document_text)
-                if not scope["valid"]:
-                    yield PipelineResponse(answer=str(scope["refusal_reason"]), mode=mode)
+        # ── Mode dossier : pas de streaming natif — fallback run() ──────────
+        if dossier_path and is_dossier(dossier_path):
+            async for ev in _run_with_event_drain(
+                lambda: run(query, document_text, dossier_path, force, False, memory),
+                evq,
+            ):
+                yield ev
+            return
+
+        # ── Scope / routage (0 LLM) ─────────────────────────────────────────
+        try:
+            async with profile_bucket():
+                if not force:
+                    scope = router_validate(query, document_text)
+                    if not scope["valid"]:
+                        yield PipelineResponse(answer=str(scope["refusal_reason"]), mode=mode)
+                        return
+
+                routing = router_route(query, document_text, force=force)
+                level = routing["level"]
+
+                # N3 : pas de streaming natif — lancer run() en task, drainer events
+                if level == "document":
+                    async for ev in _run_with_event_drain(
+                        lambda: run(query, document_text, dossier_path, force, False, memory),
+                        evq,
+                    ):
+                        yield ev
                     return
 
-            routing = router_route(query, document_text, force=force)
-            level = routing["level"]
+                # ── N1 direct : stream du direct_response, pas d'events (2-3s) ──
+                if level == "direct":
+                    system = _DIRECT_SYSTEM_PATH.read_text(encoding="utf-8")
+                    options = {k: v for k, v in DIRECT_PARAMS.items() if k != "model"}
+                    chunks: List[str] = []
+                    async for chunk in ollama_client.generate_stream(
+                        model=DIRECT_PARAMS["model"],
+                        prompt=query,
+                        system=system,
+                        options=options,
+                    ):
+                        chunks.append(chunk)
+                        yield chunk
+                    full = "".join(chunks)
+                    response = PipelineResponse(answer=full, mode=mode)
+                    yield _attach_suggested_replies(response)
+                    if memory is not None:
+                        await _memory_observe(memory, query, "direct", routing["intent"])
+                    return
 
-            # N3 et dossier : pas de streaming (Lecteur bloquant requis)
-            if level == "document":
-                resp = await run(query, document_text, dossier_path, force, False, memory)
-                yield resp
-                return
+                # ── N2 search : retriever → rédacteur stream → verif ────────
+                # Emit events manuels (plutôt que event_stage context) pour
+                # garantir que "started" sort AVANT l'await — la ligne bleue
+                # pulse pendant que l'étape travaille.
+                faits_json = json.dumps(
+                    {"type_document": "requete", "query": query},
+                    ensure_ascii=False,
+                )
 
-            # ── N1 direct : stream du direct_response ───────────────────────
-            if level == "direct":
-                system = _DIRECT_SYSTEM_PATH.read_text(encoding="utf-8")
-                options = {k: v for k, v in DIRECT_PARAMS.items() if k != "model"}
-                chunks: List[str] = []
-                async for chunk in ollama_client.generate_stream(
-                    model=DIRECT_PARAMS["model"],
-                    prompt=query,
-                    system=system,
-                    options=options,
-                ):
-                    chunks.append(chunk)
-                    yield chunk
-                full = "".join(chunks)
-                response = PipelineResponse(answer=full, mode=mode)
+                # --- Retriever
+                t_r = time.perf_counter()
+                emit("retriever", "started", details={"level": "search"})
+                for ev in drain_nowait(evq):
+                    yield ev
+                try:
+                    sources_json = await retriever.handle(faits_json)
+                except Exception as exc:  # noqa: BLE001
+                    emit(
+                        "retriever",
+                        "error",
+                        str(exc) or type(exc).__name__,
+                        duration_ms=(time.perf_counter() - t_r) * 1000,
+                    )
+                    for ev in drain_nowait(evq):
+                        yield ev
+                    raise
+                emit(
+                    "retriever",
+                    "completed",
+                    duration_ms=(time.perf_counter() - t_r) * 1000,
+                )
+                for ev in drain_nowait(evq):
+                    yield ev
+
+                # --- Rédacteur (streaming)
+                t_d = time.perf_counter()
+                emit("redacteur", "started", details={"level": "search"})
+                for ev in drain_nowait(evq):
+                    yield ev
+                chunks = []
+                try:
+                    async for chunk in redacteur.handle_stream(
+                        faits_json, sources_json, mode="search"
+                    ):
+                        chunks.append(chunk)
+                        yield chunk
+                except Exception as exc:  # noqa: BLE001
+                    emit(
+                        "redacteur",
+                        "error",
+                        str(exc) or type(exc).__name__,
+                        duration_ms=(time.perf_counter() - t_d) * 1000,
+                    )
+                    for ev in drain_nowait(evq):
+                        yield ev
+                    raise
+                emit(
+                    "redacteur",
+                    "completed",
+                    duration_ms=(time.perf_counter() - t_d) * 1000,
+                )
+                for ev in drain_nowait(evq):
+                    yield ev
+                note_markdown = "".join(chunks)
+
+                # --- Vérificateur
+                t_v = time.perf_counter()
+                emit("verificateur", "started")
+                for ev in drain_nowait(evq):
+                    yield ev
+                try:
+                    verification_json = await verificateur.handle(note_markdown, sources_json)
+                except Exception as exc:  # noqa: BLE001
+                    emit(
+                        "verificateur",
+                        "error",
+                        str(exc) or type(exc).__name__,
+                        duration_ms=(time.perf_counter() - t_v) * 1000,
+                    )
+                    for ev in drain_nowait(evq):
+                        yield ev
+                    raise
+                emit(
+                    "verificateur",
+                    "completed",
+                    duration_ms=(time.perf_counter() - t_v) * 1000,
+                )
+                for ev in drain_nowait(evq):
+                    yield ev
+
+                final = _format_final(note_markdown, verification_json, False)
+                response = PipelineResponse(answer=final, mode=mode)
                 yield _attach_suggested_replies(response)
                 if memory is not None:
-                    await _memory_observe(memory, query, "direct", routing["intent"])
-                return
+                    await _memory_observe(memory, query, "search", routing["intent"])
+        except Exception as exc:  # noqa: BLE001
+            yield PipelineResponse(answer=f"**Erreur pipeline** : {exc}", mode=mode)
 
-            # ── N2 search : retriever → rédacteur stream → verif programmatique ──
-            faits_json = json.dumps(
-                {"type_document": "requete", "query": query},
-                ensure_ascii=False,
-            )
-            sources_json = await retriever.handle(faits_json)
-            chunks = []
-            async for chunk in redacteur.handle_stream(faits_json, sources_json, mode="search"):
-                chunks.append(chunk)
-                yield chunk
-            note_markdown = "".join(chunks)
 
-            # Vérificateur programmatique sur le texte complet
-            verification_json = await verificateur.handle(note_markdown, sources_json)
-            final = _format_final(note_markdown, verification_json, False)
-            response = PipelineResponse(answer=final, mode=mode)
-            yield _attach_suggested_replies(response)
-            if memory is not None:
-                await _memory_observe(memory, query, "search", routing["intent"])
-    except Exception as exc:  # noqa: BLE001
-        yield PipelineResponse(answer=f"**Erreur pipeline** : {exc}", mode=mode)
+async def _run_with_event_drain(
+    coro_factory,
+    evq,
+) -> AsyncIterator[Union[str, PipelineResponse]]:
+    """Lance `coro_factory()` comme task et yield les events poussés dans `evq`
+    au fur et à mesure qu'ils arrivent. Termine par yield de la réponse finale
+    (PipelineResponse retournée par la coro).
+
+    Pattern utilisé pour les chemins bloquants (Level 3 document, mode dossier)
+    où on n'a pas de token streaming à yield entre les events.
+    """
+    task = asyncio.create_task(coro_factory())
+    try:
+        while not task.done():
+            try:
+                ev = await asyncio.wait_for(evq.get(), timeout=0.1)
+                yield ev
+            except asyncio.TimeoutError:
+                continue
+            except asyncio.CancelledError:  # noqa: PERF203
+                raise
+        # Drain ce qui reste après la fin de la task
+        for ev in drain_nowait(evq):
+            yield ev
+        resp = await task
+        yield resp
+    finally:
+        if not task.done():
+            task.cancel()
 
 
 # ─── Helpers mémoire ─────────────────────────────────────────────────────────
