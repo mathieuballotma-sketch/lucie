@@ -1272,6 +1272,33 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         content.addSubview_(scroll)
         self._scroll_view = scroll
 
+        # Bouton flottant « ↓ Nouveau » — affiché quand l'utilisateur a remonté
+        # pendant un streaming et qu'au moins un token a été ignoré. Parent =
+        # content (pas scrollView) pour rester fixe en bas-droite.
+        _scroll_btn_size = 28.0
+        _scroll_btn_margin = 6.0
+        _scroll_btn_x = PADDING + _TEXT_W - _scroll_btn_size - _scroll_btn_margin
+        _scroll_btn_y = _TEXT_Y + _scroll_btn_margin
+        self._scroll_to_bottom_btn = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(_scroll_btn_x, _scroll_btn_y, _scroll_btn_size, _scroll_btn_size)
+        )
+        self._scroll_to_bottom_btn.setTitle_("↓")
+        self._scroll_to_bottom_btn.setFont_(
+            AppKit.NSFont.systemFontOfSize_weight_(15, AppKit.NSFontWeightSemibold)
+        )
+        self._scroll_to_bottom_btn.setBordered_(False)
+        self._scroll_to_bottom_btn.setWantsLayer_(True)
+        self._scroll_to_bottom_btn.layer().setCornerRadius_(_scroll_btn_size / 2.0)
+        self._scroll_to_bottom_btn.layer().setBackgroundColor_(
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.16, 0.16, 0.16, 0.85).CGColor()
+        )
+        self._scroll_to_bottom_btn.setContentTintColor_(AppKit.NSColor.whiteColor())
+        self._scroll_to_bottom_btn.setToolTip_("Revenir en bas")
+        self._scroll_to_bottom_btn.setTarget_(self)
+        self._scroll_to_bottom_btn.setAction_("scrollToBottomAction:")
+        self._scroll_to_bottom_btn.setHidden_(True)
+        content.addSubview_(self._scroll_to_bottom_btn)
+
         # ══ PIPELINE STAGES ZONE (« Lucie réfléchit ») ═══════════════════════
         # Zone au-dessus du texte qui affiche les étapes en temps réel. Cachée
         # par défaut, montrée au premier event "started", fade-out à la fin.
@@ -1509,6 +1536,16 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             return
         should_show = (not self._is_user_at_bottom) and self._unread_token_count > 0
         btn.setHidden_(not should_show)
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def scrollToBottomAction_(self, sender: Any) -> None:
+        """Force scroll en bas + réactive l'auto-follow. Appelé par le bouton ↓."""
+        storage = self._text_view.textStorage()
+        total_len = storage.length()
+        self._text_view.scrollRangeToVisible_(Foundation.NSMakeRange(total_len, 0))
+        self._is_user_at_bottom = True
+        self._unread_token_count = 0
+        self._update_scroll_button_visibility()
 
     # ── Typing predictor monitor ──────────────────────────────────────────────
 
