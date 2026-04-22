@@ -23,6 +23,7 @@ import pytest
 from lucie_v1_standalone.perf.events import (
     PipelineEvent,
     bind_event_queue,
+    child_event_stage,
     drain_nowait,
     emit,
     event_stage,
@@ -215,3 +216,79 @@ async def test_retriever_error_emits_error_event(monkeypatch):
         "pas d'event error pour retriever"
     )
     assert any("retriever crash" in (e.message or "") for e in error_events)
+
+
+# ─── Phase 1ter — parent_id / event_id / hook_name ──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_event_id_is_unique_across_emits():
+    """Chaque event a un event_id unique (uuid4[:12])."""
+    async def body():
+        for _ in range(5):
+            emit("retriever", "started", "stub")
+
+    evs = await _collect_events(body)
+    ids = [e.event_id for e in evs]
+    assert len(ids) == 5
+    assert len(set(ids)) == 5, f"event_ids should be unique, got {ids}"
+    for eid in ids:
+        assert isinstance(eid, str) and len(eid) == 12
+
+
+@pytest.mark.asyncio
+async def test_parent_id_propagated_via_contextvar():
+    """Les enfants émis dans un event_stage héritent de son event_id."""
+    async def body():
+        async with event_stage("retriever"):
+            async with child_event_stage("lit_article", article="L.1233-3"):
+                pass
+            async with child_event_stage("lit_article", article="L.1233-4"):
+                pass
+
+    evs = await _collect_events(body)
+    # retriever.started + 2×(child.started + child.completed) + retriever.completed = 6
+    assert len(evs) == 6
+    # L'event racine (retriever.started) n'a pas de parent
+    root_started = evs[0]
+    assert root_started.stage == "retriever"
+    assert root_started.status == "started"
+    assert root_started.parent_id is None
+    assert root_started.hook_name is None
+
+    # Les 4 events enfants (2 started + 2 completed) partagent le même parent_id
+    child_events = [e for e in evs if e.hook_name == "lit_article"]
+    assert len(child_events) == 4
+    for ev in child_events:
+        assert ev.parent_id == root_started.event_id, (
+            f"enfant {ev.hook_name}.{ev.status} devrait hériter de {root_started.event_id}, "
+            f"a {ev.parent_id}"
+        )
+        # Stage hérité du parent puisque non fourni
+        assert ev.stage == "retriever"
+
+
+@pytest.mark.asyncio
+async def test_child_event_stage_without_parent_is_not_an_error():
+    """child_event_stage hors d'un event_stage parent ne lève pas — parent_id=None."""
+    async def body():
+        async with child_event_stage("lit_article", stage="retriever", article="L.1"):
+            pass
+
+    evs = await _collect_events(body)
+    assert len(evs) == 2
+    assert all(e.parent_id is None for e in evs)
+    assert all(e.hook_name == "lit_article" for e in evs)
+    assert all(e.stage == "retriever" for e in evs)
+
+
+@pytest.mark.asyncio
+async def test_pipeline_event_backward_compat():
+    """PipelineEvent peut toujours être construit avec les champs historiques seuls."""
+    ev = PipelineEvent(stage="retriever", status="started")
+    # Les nouveaux champs ont des defaults sensés
+    assert ev.parent_id is None
+    assert ev.hook_name is None
+    assert isinstance(ev.event_id, str) and len(ev.event_id) == 12
+    assert ev.duration_ms == 0.0
+    assert ev.details == {}
