@@ -28,6 +28,8 @@ from typing import Any, Awaitable, Callable, Optional
 
 from cachetools import TTLCache
 
+from ..perf.events import emit
+
 logger = logging.getLogger("lucie.cache")
 
 
@@ -116,6 +118,9 @@ class QueryCache:
                 else:
                     self.stats.hits += 1
                     logger.debug("cache HIT key=%s", key[:12])
+                    # Signal au HUD : réponse servie en < 5 ms, skip la zone
+                    # d'étapes entière (pas de temps de réflexion à afficher).
+                    emit("cache", "cached")
                     return cached
             else:
                 self.stats.misses += 1
