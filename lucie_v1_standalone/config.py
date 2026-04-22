@@ -38,8 +38,21 @@ def get_legifrance_db_path() -> Path:
     return base / "legi.sqlite"
 
 # ─── Timeouts ─────────────────────────────────────────────────────────────────
-PIPELINE_TIMEOUT = 120.0   # 2 minutes — suffisant avec les params optimisés
-OLLAMA_TIMEOUT = 90.0      # Timeout par appel Ollama (réduit avec num_ctx=4096)
+# PIPELINE_TIMEOUT aligné sur le read-timeout Ollama : on laisse le LLM aller
+# au bout d'une génération longue avant d'abandonner côté pipeline.
+PIPELINE_TIMEOUT = 300.0   # 5 min — s'aligne sur le read-timeout Ollama ci-dessous
+
+# Timeout composite Ollama : connect court (détecte un service down vite),
+# read long (supporte les générations pesantes type Q analyse détaillée sur
+# gemma4:e4b en CPU/GPU local). Retour d'incident 2026-04-22 : ReadTimeout
+# après 90 s sur Q1 « explique-moi en détail les conditions… » faisait
+# échouer silencieusement la requête. Tous les agents (Lecteur / Rédacteur
+# / Vérificateur) passent par ici.
+OLLAMA_TIMEOUT = 300.0             # compat — utilisé ailleurs comme durée "totale"
+OLLAMA_CONNECT_TIMEOUT = 10.0      # ouverture socket Ollama (doit être court)
+OLLAMA_READ_TIMEOUT = 300.0        # attente du premier octet d'une réponse
+OLLAMA_WRITE_TIMEOUT = 10.0        # envoi du prompt (prompt texte, jamais lourd)
+OLLAMA_POOL_TIMEOUT = 10.0         # acquisition connexion dans le pool httpx
 
 # ─── BM25 ─────────────────────────────────────────────────────────────────────
 BM25_K1 = 1.5

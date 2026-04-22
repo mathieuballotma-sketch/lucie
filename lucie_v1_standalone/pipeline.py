@@ -231,6 +231,25 @@ def _attach_suggested_replies(response: PipelineResponse) -> PipelineResponse:
     return response
 
 
+def _format_exception_for_user(exc: BaseException) -> str:
+    """Traduit une exception pipeline en message utilisateur.
+
+    En particulier : un `RuntimeError("Ollama timeout …")` est reformulé en
+    message non-technique explicite. Évite qu'une requête longue coupée
+    par httpx donne un écran « **Erreur pipeline** : Ollama timeout après
+    300s (modèle: gemma4:e4b) » incompréhensible à un avocat.
+    """
+    msg = str(exc)
+    if "Ollama timeout" in msg:
+        return (
+            "**Lucie prend plus de temps que prévu sur cette question.**\n\n"
+            "Réessayez dans un instant. Si le problème persiste, vérifiez "
+            "qu'Ollama tourne bien (`ollama serve`) et que le modèle est "
+            "chargé.\n"
+        )
+    return f"**Erreur pipeline** : {msg}"
+
+
 async def run(
     query: str,
     document_text: Optional[str] = None,
@@ -387,7 +406,7 @@ async def run(
             mode=mode,
         )
     except Exception as exc:
-        return PipelineResponse(answer=f"**Erreur pipeline** : {exc}", mode=mode)
+        return PipelineResponse(answer=_format_exception_for_user(exc), mode=mode)
 
 
 async def _run_dossier(
@@ -821,7 +840,7 @@ async def run_stream(
                 if memory is not None:
                     await _memory_observe(memory, query, "search", routing["intent"])
         except Exception as exc:  # noqa: BLE001
-            yield PipelineResponse(answer=f"**Erreur pipeline** : {exc}", mode=mode)
+            yield PipelineResponse(answer=_format_exception_for_user(exc), mode=mode)
 
 
 async def _run_with_event_drain(

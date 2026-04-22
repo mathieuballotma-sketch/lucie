@@ -3,16 +3,52 @@ Client Ollama direct — aucune dépendance au reste du repo.
 POST /api/generate, retourne le texte de la réponse.
 
 Gère le retry sur réponse vide (bug gemma4:e4b first-call).
+
+Timeouts httpx composites (Phase 1ter, 2026-04-22) :
+  - connect=10 s  → détecte un service Ollama down rapidement
+  - read=300 s    → supporte une génération longue (5 min) sans couper
+  - write=10 s    → envoi du prompt, jamais lourd
+  - pool=10 s     → acquisition connexion dans le pool
+Un ReadTimeout (90 s précédemment) faisait échouer silencieusement les
+questions à réponse longue. Désormais on laisse 5 min au LLM avant
+d'abandonner, et le message d'erreur utilisateur est explicite.
 """
 
 import json
+import logging
 import os
 from typing import AsyncIterator, Optional
 
 import httpx
 
-from .config import OLLAMA_BASE_URL, OLLAMA_TIMEOUT
+from .config import (
+    OLLAMA_BASE_URL,
+    OLLAMA_CONNECT_TIMEOUT,
+    OLLAMA_POOL_TIMEOUT,
+    OLLAMA_READ_TIMEOUT,
+    OLLAMA_WRITE_TIMEOUT,
+)
 from .perf import current_bucket
+
+logger = logging.getLogger(__name__)
+
+
+def _httpx_timeout() -> httpx.Timeout:
+    """Timeout composite recommandé pour un LLM local lent mais fiable."""
+    return httpx.Timeout(
+        connect=OLLAMA_CONNECT_TIMEOUT,
+        read=OLLAMA_READ_TIMEOUT,
+        write=OLLAMA_WRITE_TIMEOUT,
+        pool=OLLAMA_POOL_TIMEOUT,
+    )
+
+
+# Message de refus utilisateur — piloté par le HUD en cas de RuntimeError
+# contenant « Ollama timeout ». Texte court, pas de jargon technique.
+OLLAMA_TIMEOUT_USER_MESSAGE = (
+    "Lucie prend plus de temps que prévu sur cette question. "
+    "Réessayez dans un instant — si le problème persiste, relancez Ollama."
+)
 
 
 def _keep_alive_value() -> str:
@@ -74,7 +110,7 @@ async def generate(
     if options:
         payload["options"] = options
 
-    async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=_httpx_timeout()) as client:
         response_text = await _post(client, payload)
 
         # Retry une fois si réponse vide (bug first-call gemma4:e4b)
@@ -112,7 +148,7 @@ async def generate_stream(
     if options:
         payload["options"] = options
 
-    async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=_httpx_timeout()) as client:
         try:
             async with client.stream(
                 "POST", f"{OLLAMA_BASE_URL}/api/generate", json=payload
@@ -131,8 +167,14 @@ async def generate_stream(
                         _record_ollama_stats(model, chunk)
                         break
         except httpx.TimeoutException:
+            logger.warning(
+                "[OllamaClient] Timeout après %.0fs (read) sur modèle %s — "
+                "requête abandonnée, veuillez réessayer",
+                OLLAMA_READ_TIMEOUT,
+                model,
+            )
             raise RuntimeError(
-                f"Ollama timeout après {OLLAMA_TIMEOUT}s (modèle: {model})"
+                f"Ollama timeout après {OLLAMA_READ_TIMEOUT}s (modèle: {model})"
             )
         except httpx.HTTPStatusError as e:
             raise RuntimeError(
@@ -152,8 +194,14 @@ async def _post(client: httpx.AsyncClient, payload: dict) -> str:
         _record_ollama_stats(payload.get("model", "?"), data)
         return data.get("response", "")
     except httpx.TimeoutException:
+        logger.warning(
+            "[OllamaClient] Timeout après %.0fs (read) sur modèle %s — "
+            "requête abandonnée, veuillez réessayer",
+            OLLAMA_READ_TIMEOUT,
+            payload.get("model"),
+        )
         raise RuntimeError(
-            f"Ollama timeout après {OLLAMA_TIMEOUT}s "
+            f"Ollama timeout après {OLLAMA_READ_TIMEOUT}s "
             f"(modèle: {payload.get('model')})"
         )
     except httpx.HTTPStatusError as e:
