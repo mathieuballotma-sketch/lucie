@@ -52,8 +52,11 @@ OPTIONS = {
     "argv_emulation": False,
     # Plist custom (metadata + usage strings TCC).
     "plist": str(REPO_ROOT / "packaging" / "Info.plist"),
-    # Icône : à fournir plus tard (placeholder acceptable pour v1).
-    # "iconfile": str(REPO_ROOT / "packaging" / "Lucie.icns"),
+    # Icône officielle Lucie (Logo A validé le 2026-04-21).
+    # Source : Proposition_A/ (wordmark EB Garamond + monogramme L).
+    # Regénérable depuis packaging/Lucie.iconset/ via :
+    #   iconutil -c icns packaging/Lucie.iconset -o packaging/Lucie.icns
+    "iconfile": str(REPO_ROOT / "packaging" / "Lucie.icns"),
     # Packages Python à embarquer entiers.
     "packages": [
         "app",
