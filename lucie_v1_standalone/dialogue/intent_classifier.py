@@ -58,6 +58,8 @@ _EXPLICIT_ORDER_RE = re.compile(
     r'|liste|lister|énumère|énumérer|identifie|identifier'
     r'|explique|expliquer|détaille|détailler'
     r'|traduis|traduire|formate|formater'
+    r'|recherche|rechercher|cherche|chercher'
+    r'|trouve|trouver|cite|citer'
     r')\b',
     re.IGNORECASE | re.UNICODE,
 )
@@ -95,8 +97,10 @@ _LEGAL_KEYWORD_RE = re.compile(
     # No trailing \b — stems like licenci→licencié/licenciement, employ→employeur,
     # salar→salarié, indemnit→indemnité, économ→économique/économiques.
     r'\b(licenci|employ|salar|contrat de travail|droit du travail|'
+    r'code du travail|'
     r'rupture|indemnit|préavis|prud|tribunal|juridique|légal|'
-    r'économ|cse|consultation|reclassement|restructur|réorganis|suppression de poste)',
+    r'économ|cse|consultation|reclassement|restructur|réorganis|suppression de poste|'
+    r'ancienneté|motif|faute (grave|lourde)|conseil de prud|délai|contester)',
     re.IGNORECASE | re.UNICODE,
 )
 
@@ -120,27 +124,37 @@ def classify(query: str) -> Intent:
     Logique de priorité :
       1. EXPLICIT_ORDER si verbe d'action détecté
       2. SMALL_TALK si correspond aux patterns de salutation/méta
-      3. PRECISE_LEGAL si ≥ 2 indicateurs de précision
-      4. IMPRECISE_LEGAL si au moins 1 mot-clé juridique
-      5. SMALL_TALK par défaut (requête non juridique sans ordre)
+      3. Référence légale explicite (L.XXXX, article L., code du travail…)
+         → PRECISE_LEGAL si score ≥ 2, sinon IMPRECISE_LEGAL
+      4. Mot-clé juridique large → PRECISE_LEGAL si score ≥ 2, sinon IMPRECISE_LEGAL
+      5. SMALL_TALK par défaut (préserve le routage hors-scope du SmallTalkHandler)
     """
     text = query.strip()
+    preview = text[:50]
 
-    # 1. Ordre explicite — priorité haute (peut se combiner avec du juridique)
     if _EXPLICIT_ORDER_RE.search(text):
+        logger.info("IntentClassifier: %r → EXPLICIT_ORDER (verbe d'action)", preview)
         return Intent.EXPLICIT_ORDER
 
-    # 2. Salutation / méta — requête courte, aucun mot-clé juridique
     if _SMALL_TALK_RE.match(text):
+        logger.info("IntentClassifier: %r → SMALL_TALK (pattern salutation)", preview)
         return Intent.SMALL_TALK
 
-    # 3. Juridique précis vs imprécis
-    if _LEGAL_KEYWORD_RE.search(text):
-        if _precision_score(text) >= 2:
+    has_legal_ref = bool(_LEGAL_REF_RE.search(text))
+    has_legal_kw = bool(_LEGAL_KEYWORD_RE.search(text))
+
+    if has_legal_ref or has_legal_kw:
+        score = _precision_score(text)
+        if score >= 2:
+            logger.info(
+                "IntentClassifier: %r → PRECISE_LEGAL (score=%d)", preview, score
+            )
             return Intent.PRECISE_LEGAL
+        motif = "ref article" if has_legal_ref else f"mot-clé juridique (score={score})"
+        logger.info("IntentClassifier: %r → IMPRECISE_LEGAL (%s)", preview, motif)
         return Intent.IMPRECISE_LEGAL
 
-    # 4. Par défaut : hors-scope, traité comme small talk (ni juridique ni ordre)
+    logger.info("IntentClassifier: %r → SMALL_TALK (défaut)", preview)
     return Intent.SMALL_TALK
 
 

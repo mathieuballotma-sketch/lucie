@@ -16,12 +16,15 @@ Hooks mémoire (Bloc 1) :
 
 import asyncio
 import json
+import logging
 import os
 import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator, Dict, List, Optional, Tuple, Union
+
+logger = logging.getLogger(__name__)
 
 from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacteur, retriever, verificateur
 from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
@@ -271,6 +274,12 @@ async def run(
     # ── Intent routing (< 1ms, 0 LLM) — bypass dossier mode ─────────────────
     if not dossier_path:
         intent = classify_intent(query)
+        logger.info(
+            "[Routage] query=%r → intent=%s → handler=%s",
+            query[:60],
+            intent.value,
+            "small_talk_handler" if intent == Intent.SMALL_TALK else "pipeline",
+        )
 
         if intent == Intent.SMALL_TALK:
             return PipelineResponse(

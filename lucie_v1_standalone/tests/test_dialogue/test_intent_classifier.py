@@ -59,3 +59,48 @@ def test_precise_legal(query: str) -> None:
 ])
 def test_explicit_order(query: str) -> None:
     assert classify(query) == Intent.EXPLICIT_ORDER, f"Attendu EXPLICIT_ORDER pour : {query!r}"
+
+
+# ── Matrice Mathieu 2026-04-22 — fix routing v0.4.2 ──────────────────────────
+# Avant fix : questions factuelles classées SMALL_TALK → réponse générique
+#            « Je me spécialise en droit du licenciement économique. »
+# Après fix : les 9 questions juridiques doivent router vers le pipeline
+#            (EXPLICIT_ORDER ou IMPRECISE_LEGAL), seul "Bonjour" → SMALL_TALK.
+
+@pytest.mark.parametrize("query,expected", [
+    ("Quelle est la durée légale du préavis ?", Intent.IMPRECISE_LEGAL),
+    ("L.1233-3 ?", Intent.IMPRECISE_LEGAL),
+    ("Peux-tu m'expliquer le licenciement économique ?", Intent.EXPLICIT_ORDER),
+    ("J'ai besoin d'une note sur le préavis", Intent.IMPRECISE_LEGAL),
+    ("Donne-moi les motifs de licenciement économique", Intent.IMPRECISE_LEGAL),
+    ("Dans combien de temps peut-on contester un licenciement ?", Intent.IMPRECISE_LEGAL),
+    ("Quelle indemnité pour 12 ans d'ancienneté ?", Intent.IMPRECISE_LEGAL),
+    ("Que dit L.1233-3 ?", Intent.IMPRECISE_LEGAL),
+    ("Recherche l'article L.1234-1", Intent.EXPLICIT_ORDER),
+    ("Bonjour", Intent.SMALL_TALK),
+])
+def test_matrice_questions_avocats(query: str, expected: Intent) -> None:
+    got = classify(query)
+    assert got == expected, f"{query!r} → {got.value} (attendu {expected.value})"
+
+
+# ── Cas limites ───────────────────────────────────────────────────────────────
+
+def test_article_seul_sans_ponctuation() -> None:
+    """Référence article nue doit déclencher le pipeline, pas un fallback small talk."""
+    assert classify("L.1233-3") == Intent.IMPRECISE_LEGAL
+
+
+def test_code_du_travail_seul() -> None:
+    """'Code du travail' est un signal juridique, même isolé."""
+    assert classify("Code du travail") == Intent.IMPRECISE_LEGAL
+
+
+def test_phrase_longue_sans_mot_juridique() -> None:
+    """Phrase longue hors-sujet doit rester SMALL_TALK pour laisser le handler répondre."""
+    assert classify("Je me demande si demain il fera beau à Paris") == Intent.SMALL_TALK
+
+
+def test_peux_tu_me_dire_bonjour_reste_small_talk() -> None:
+    """Forme polie sans mot-clé juridique → SMALL_TALK (non, on n'attrape pas peux-tu)."""
+    assert classify("Peux-tu me dire bonjour ?") == Intent.SMALL_TALK

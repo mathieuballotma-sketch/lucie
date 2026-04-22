@@ -7,8 +7,11 @@ déclinaisons (météo, blague), clôtures. 0 LLM — réponses statiques.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 # Chaque entrée : (pattern_re, réponse canonique)
@@ -126,12 +129,18 @@ def handle(query: str) -> Optional[str]:
     None indique que la requête doit être renvoyée au pipeline principal.
     """
     text = query.strip()
-    for pattern, response in _PATTERNS:
+    for idx, (pattern, response) in enumerate(_PATTERNS):
         if pattern.search(text):
+            logger.info("[SmallTalk] %r → pattern:%d", text[:60], idx)
             return response
+    logger.info("[SmallTalk] %r → no pattern (None)", text[:60])
     return None
 
 
 def handle_or_default(query: str) -> str:
     """Comme handle() mais retourne toujours une réponse (fallback par défaut)."""
-    return handle(query) or _DEFAULT_RESPONSE
+    response = handle(query)
+    if response is None:
+        logger.info("[SmallTalk] %r → _DEFAULT_RESPONSE", query.strip()[:60])
+        return _DEFAULT_RESPONSE
+    return response
