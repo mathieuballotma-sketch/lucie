@@ -103,3 +103,22 @@ Selected modules can be shared under NDA with serious reviewers.
 ## Status
 
 Tag v0.5.0-cerveau-oiseaux is the current public reference. The production site at [lucie-site.vercel.app](https://lucie-site.vercel.app) reflects the current product.
+
+---
+
+## System diagram
+
+\`\`\`mermaid
+flowchart TD
+    U[User query] --> L1{Deterministic<br/>pre-LLM layer}
+    L1 -->|Invalid / out-of-scope| R[Honest refusal <br/>< 50 ms, 0 LLM]
+    L1 -->|Valid query| L2[Parallel specialised agents<br/>Mail · Calendar · Notes · Word]
+    L2 --> L3[Composition and<br/>planning orchestrator]
+    L3 --> M[(Local adaptive memory<br/>per user, persistent)]
+    L3 --> V{Citation verification<br/>against local Légifrance index}
+    V -->|All citations valid| A[Response with<br/>full audit trail]
+    V -->|Invalid citations| R
+    style R fill:#1a1a1a,color:#fff,stroke:#ff4444
+    style A fill:#1a1a1a,color:#fff,stroke:#44ff44
+\`\`\`
+
