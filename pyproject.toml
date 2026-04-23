@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lucie"
+version = "0.5.0"
+description = "Local-first AI assistant for lawyers. 100% on-device. Truth rule absolute."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Mathieu Ballotma", email = "mathieu.ballotma@gmail.com"}]
+license = {text = "Proprietary"}
+keywords = ["ai", "local-first", "legal-tech", "macos", "truth-rule", "eu-ai-act"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Legal Industry",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Office/Business",
+    "License :: Other/Proprietary License",
+]
+
+[project.urls]
+Homepage = "https://lucie-site.vercel.app"
+Repository = "https://github.com/mathieuballotma-sketch/lucie"
+Changelog = "https://github.com/mathieuballotma-sketch/lucie/blob/main/CHANGELOG.md"

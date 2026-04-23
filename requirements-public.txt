@@ -1,0 +1,4 @@
+# Public-facing dependency list.
+# Core private implementation has additional dependencies kept private.
+httpx>=0.27
+pydantic>=2.5
