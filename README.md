@@ -1,3 +1,6 @@
+> **Languages:** [🇬🇧 English](README.md) · [🇫🇷 Français](README.fr.md)
+
+
 <div align="center">
 
 # Lucie
@@ -96,6 +99,13 @@ Lucie routes every request through three layers, invoking deeper layers only whe
                         └──────────────────────────┘A simplified, runnable demonstration of this deterministic refusal pattern lives in [`examples/truth_rule_proof.py`](examples/truth_rule_proof.py) — seven assertions pass, zero external dependencies.
 
 ---
+
+## Video demo
+
+> **Coming soon** — a short video demo of the truth rule in action will be posted here.
+
+---
+
 
 ## Lucie in action
 
