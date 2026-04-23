@@ -153,4 +153,4 @@ Selected modules can be shared under NDA with serious reviewers.
 
 ## Status
 
-Tag `v0.5.0-cerveau-oiseaux` is the current public reference. The production site at [lucie-site.vercel.app](https://lucie-site.vercel.app) reflects the current product.
+Tag `v0.5.0` is the current public reference. The production site at [lucie-site.vercel.app](https://lucie-site.vercel.app) reflects the current product.
