@@ -1466,9 +1466,9 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._llm_label.setTextColor_(ns_white(0.55, 0.8))
         content.addSubview_(self._llm_label)
 
-        # Active agents (right-aligned)
+        # Active agents (right-aligned) — width réduit pour laisser place au badge local
         self._agents_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(PADDING + 90, bar_center_y, WINDOW_W - PADDING * 2 - 90, 12)
+            make_rect(PADDING + 90, bar_center_y, WINDOW_W - PADDING * 2 - 90 - 112, 12)
         )
         self._agents_label.setStringValue_("")
         self._agents_label.setEditable_(False)
@@ -1478,6 +1478,42 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._agents_label.setTextColor_(ns_white(0.45, 0.7))
         self._agents_label.setAlignment_(AppKit.NSTextAlignmentRight)
         content.addSubview_(self._agents_label)
+
+        # ── QW1: Badge "100 % local" — SF Symbol lock + libellé statique ──────
+        _badge_x = WINDOW_W - PADDING - 86  # 406
+        try:
+            lock_img = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "lock.fill", "Données locales"
+            )
+            self._local_badge_icon = AppKit.NSImageView.alloc().initWithFrame_(
+                make_rect(_badge_x - 14, bar_center_y - 1, 10, 13)
+            )
+            self._local_badge_icon.setImage_(lock_img)
+            self._local_badge_icon.setImageScaling_(
+                AppKit.NSImageScaleProportionallyUpOrDown
+            )
+            try:
+                self._local_badge_icon.setContentTintColor_(ns_white(0.55, 0.6))
+            except Exception:
+                pass
+            content.addSubview_(self._local_badge_icon)
+        except Exception:
+            self._local_badge_icon = None
+
+        self._local_badge_label = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(_badge_x, bar_center_y, 86, 12)
+        )
+        self._local_badge_label.setStringValue_("100 % local")
+        self._local_badge_label.setEditable_(False)
+        self._local_badge_label.setBezeled_(False)
+        self._local_badge_label.setDrawsBackground_(False)
+        self._local_badge_label.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._local_badge_label.setTextColor_(ns_white(0.55, 0.6))
+        self._local_badge_label.setToolTip_(
+            "Toutes les données restent sur votre Mac.\n"
+            "Aucun envoi vers un serveur externe."
+        )
+        content.addSubview_(self._local_badge_label)
 
         # Separator: agent bar / text area
         sep2 = AppKit.NSBox.alloc().initWithFrame_(
