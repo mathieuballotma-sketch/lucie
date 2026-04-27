@@ -1,0 +1,85 @@
+{
+  "_meta": {
+    "description": "Registre des règles pass/fail pour le harness F9 (run_legal_traps.py). Chaque rule liste des assertions appliquées à PipelineResponse + champ synthétique _wall_clock_ms. Opérateurs supportés : eq, neq, lte, gte, in, is_none, min_len, superset_of, intersects, any_match.",
+    "fields_reference": {
+      "refused": "bool — True = Cerveau Oiseaux a court-circuité avant LLM",
+      "early_validation_triggered": "Optional[str] ∈ {'out_of_scope', 'article_invalid', None}",
+      "validation_details.domain": "str — domaine OOS détecté (fiscal/immobilier/penal/consommation/famille)",
+      "validation_details.codes": "list[str] — articles refusés (display form, ex 'L.1234-999')",
+      "validation_details.duration_ms": "float — latence interne mesurée par le module Cerveau Oiseaux",
+      "answer": "str — réponse texte de Lucie",
+      "citations": "list[str] — citations extraites par le pipeline",
+      "_wall_clock_ms": "float — latence wall-clock mesurée par le harness (champ synthétique)"
+    }
+  },
+  "in_scope_answers": {
+    "description": "Cas in-scope simple : réponse non-vide attendue, pas de refus précoce.",
+    "assertions": [
+      {"field": "refused", "op": "eq", "value": false},
+      {"field": "early_validation_triggered", "op": "is_none"},
+      {"field": "answer", "op": "min_len", "value_from": "answer_min_chars"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "oos_refusal": {
+    "description": "OOS configuré : refus Cerveau Oiseaux, domaine attendu, latence interne <50ms.",
+    "assertions": [
+      {"field": "refused", "op": "eq", "value": true},
+      {"field": "early_validation_triggered", "op": "eq", "value": "out_of_scope"},
+      {"field": "validation_details.domain", "op": "eq", "value_from": "expected_domain"},
+      {"field": "validation_details.duration_ms", "op": "lte", "value_from": "internal_duration_ms_max"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "oos_fallthrough_llm": {
+    "description": "OOS non configuré (DIP, brevets) : pas de refus précoce attendu, pipeline LLM observable. Voir Q-0006.",
+    "assertions": [
+      {"field": "early_validation_triggered", "op": "neq", "value": "out_of_scope"},
+      {"field": "answer", "op": "min_len", "value_from": "answer_min_chars"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "article_invalid": {
+    "description": "Article inventé : refus déterministe <50ms, codes capturés dans validation_details.",
+    "assertions": [
+      {"field": "refused", "op": "eq", "value": true},
+      {"field": "early_validation_triggered", "op": "eq", "value": "article_invalid"},
+      {"field": "validation_details.codes", "op": "superset_of", "value_from": "expected_codes_contains"},
+      {"field": "validation_details.duration_ms", "op": "lte", "value_from": "internal_duration_ms_max"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "citation_required": {
+    "description": "Réponse in-scope qui doit citer un article spécifique (au moins un parmi must_cite_article). Match insensible aux séparateurs (L1233-3 ≡ L.1233-3 ≡ L 1233-3) sur answer ou citations. Voir Q-0009.",
+    "assertions": [
+      {"field": "refused", "op": "eq", "value": false},
+      {"field": "answer_or_citations_normalized", "op": "any_match", "value_from": "must_cite_article"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "mixed_article_invalid_wins": {
+    "description": "Cas mixte : article inventé présent + scope/jargon. article_invalid prioritaire dans l'ordre Cerveau Oiseaux.",
+    "assertions": [
+      {"field": "refused", "op": "eq", "value": true},
+      {"field": "early_validation_triggered", "op": "eq", "value": "article_invalid"},
+      {"field": "validation_details.codes", "op": "intersects", "value_from": "expected_codes_contains"},
+      {"field": "validation_details.duration_ms", "op": "lte", "value_from": "internal_duration_ms_max"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "mixed_priority_override": {
+    "description": "Mot-clé OOS + article CT existant → priority_override désactive OOS, pipeline normal exécute.",
+    "assertions": [
+      {"field": "early_validation_triggered", "op": "neq", "value": "out_of_scope"},
+      {"field": "answer", "op": "min_len", "value_from": "answer_min_chars"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "ambiguous_default_pass": {
+    "description": "Query ambiguë (ex: 'quels sont mes droits ?') — défaut tolérant : PASS si réponse non-vide OU refus poli. Décision finale Q-0005.",
+    "assertions": [
+      {"field": "answer", "op": "min_len", "value": 1},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  }
+}

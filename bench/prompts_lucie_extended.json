@@ -1,0 +1,228 @@
+[
+  {
+    "id": "LEG-SCOPE-01",
+    "category": "scope_simple",
+    "prompt": "Quelle est la procédure de licenciement pour motif personnel ?",
+    "expected_behavior": "Réponse non-vide dans le scope Droit Social, sans refus précoce.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 80,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-SCOPE-02",
+    "category": "scope_simple",
+    "prompt": "Comment fonctionne une rupture conventionnelle individuelle ?",
+    "expected_behavior": "Réponse non-vide dans le scope Droit Social, sans refus précoce.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 80,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-SCOPE-03",
+    "category": "scope_simple",
+    "prompt": "Combien de semaines dure le congé maternité légal en France ?",
+    "expected_behavior": "Réponse factuelle courte, sans refus précoce.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 40,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-SCOPE-04",
+    "category": "scope_simple",
+    "prompt": "Comment saisir le conseil de prud'hommes en référé ?",
+    "expected_behavior": "Réponse procédurale dans le scope Droit Social, sans refus précoce.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 60,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-OOS-01",
+    "category": "out_of_scope_config",
+    "prompt": "Comment optimiser ma déclaration de revenus avec une niche fiscale ?",
+    "expected_behavior": "Refus déterministe Cerveau Oiseaux, domaine fiscal détecté, latence interne < 50 ms.",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "fiscal",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-OOS-02",
+    "category": "out_of_scope_config",
+    "prompt": "Que risque-t-on en garde à vue pour infraction pénale ?",
+    "expected_behavior": "Refus déterministe Cerveau Oiseaux, domaine pénal détecté, latence interne < 50 ms.",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "penal",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-OOS-03",
+    "category": "out_of_scope_fallthrough",
+    "prompt": "Quelles règles s'appliquent en droit international privé pour un contrat italo-français ?",
+    "expected_behavior": "DIP non configuré dans out_of_scope_config.yaml — pas de refus précoce attendu, pipeline LLM observable. Voir Q-0006 pour décision config.",
+    "pass_criteria": {
+      "rule": "oos_fallthrough_llm",
+      "answer_min_chars": 20,
+      "wall_clock_ms_max": 120000
+    }
+  },
+  {
+    "id": "LEG-OOS-04",
+    "category": "out_of_scope_fallthrough",
+    "prompt": "Comment déposer un brevet d'invention à l'INPI ?",
+    "expected_behavior": "Brevets non configurés dans out_of_scope_config.yaml — pas de refus précoce attendu, pipeline LLM observable. Voir Q-0006 pour décision config.",
+    "pass_criteria": {
+      "rule": "oos_fallthrough_llm",
+      "answer_min_chars": 20,
+      "wall_clock_ms_max": 120000
+    }
+  },
+  {
+    "id": "LEG-ART-01",
+    "category": "article_invalid",
+    "prompt": "Que dit l'article L.1234-999 du Code du travail sur le préavis ?",
+    "expected_behavior": "Article inexistant — refus déterministe Cerveau Oiseaux <50ms via SqliteLegifranceResolver + WhitelistCtResolver.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.1234-999"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-ART-02",
+    "category": "article_invalid",
+    "prompt": "L.9999-1 régit-il les indemnités ?",
+    "expected_behavior": "Article inexistant (numéro hors plage CT) — refus déterministe <50ms.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.9999-1"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-ART-03",
+    "category": "article_invalid",
+    "prompt": "R.0000-1 s'applique-t-il aux contrats ?",
+    "expected_behavior": "Article réglementaire inexistant (numéro 0000) — la regex \\d{3,4} accepte 0000, le résolveur doit le rejeter <50ms.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["R.0000-1"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-ART-04",
+    "category": "article_invalid",
+    "prompt": "Comment interpréter L.5555-555 ?",
+    "expected_behavior": "Article inexistant (numéro hors plage CT) — refus déterministe <50ms.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.5555-555"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-CITE-01",
+    "category": "citation_required",
+    "prompt": "Sur quel article repose la définition du licenciement économique ?",
+    "expected_behavior": "Réponse in-scope citant L.1233-3 (article canonique du licenciement éco).",
+    "pass_criteria": {
+      "rule": "citation_required",
+      "must_cite_article": ["L.1233-3"],
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-CITE-02",
+    "category": "citation_required",
+    "prompt": "Quel article fixe le préavis de licenciement ?",
+    "expected_behavior": "Réponse in-scope citant L.1234-1 (préavis légal).",
+    "pass_criteria": {
+      "rule": "citation_required",
+      "must_cite_article": ["L.1234-1"],
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-CITE-03",
+    "category": "citation_required",
+    "prompt": "Combien de temps dure le congé maternité, article applicable ?",
+    "expected_behavior": "Réponse in-scope citant L.1225-17 (durée du congé maternité).",
+    "pass_criteria": {
+      "rule": "citation_required",
+      "must_cite_article": ["L.1225-17"],
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-CITE-04",
+    "category": "citation_required",
+    "prompt": "Quelle est la procédure légale d'entretien préalable au licenciement ?",
+    "expected_behavior": "Réponse in-scope citant un article du jeu L.1232-2 (convocation), L.1232-3 (déroulement) ou L.1232-4 (assistance). Voir Q-0007 pour durcissement éventuel.",
+    "pass_criteria": {
+      "rule": "citation_required",
+      "must_cite_article": ["L.1232-2", "L.1232-3", "L.1232-4"],
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-MIX-05a",
+    "category": "mixed_trap",
+    "prompt": "Est-ce que L.1233-3 et L.9999-99 traitent tous deux du licenciement économique ?",
+    "expected_behavior": "Le pattern article matche → priority_override désactive OOS (sans effet ici, pas de mot-clé OOS) ; L.9999-99 inexistant → article_invalid kicke. early_validation_triggered=\"article_invalid\".",
+    "pass_criteria": {
+      "rule": "mixed_article_invalid_wins",
+      "expected_codes_contains": ["L.9999-99"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-MIX-05b",
+    "category": "mixed_trap",
+    "prompt": "Mon boss veut me virer du jour au lendemain, j'ai quels droits ?",
+    "expected_behavior": "Jargon FR familier (boss, virer) — doit être routé in-scope (mot-clé 'salarie/employeur' implicite via override) et obtenir réponse non-vide.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 80,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-MIX-05c",
+    "category": "mixed_trap",
+    "prompt": "Quels sont mes droits ?",
+    "expected_behavior": "Question volontairement ambiguë sans contexte. Comportement attendu non spécifié — règle tolérante : PASS si réponse non-vide OU refus poli. Voir Q-0005 pour décision finale.",
+    "pass_criteria": {
+      "rule": "ambiguous_default_pass",
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-MIX-05d",
+    "category": "mixed_trap",
+    "prompt": "Quel est l'impact fiscal de l'article L.1234-9 sur l'indemnité de licenciement ?",
+    "expected_behavior": "Mot-clé 'fiscal' présent MAIS l'article L.1234-9 (existant) déclenche priority_override → OOS désactivé → pipeline LLM normal. early_validation_triggered != \"out_of_scope\".",
+    "pass_criteria": {
+      "rule": "mixed_priority_override",
+      "answer_min_chars": 40,
+      "wall_clock_ms_max": 60000
+    }
+  }
+]
