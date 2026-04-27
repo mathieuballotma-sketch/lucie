@@ -42,5 +42,51 @@
       "answer_min_chars": 60,
       "wall_clock_ms_max": 60000
     }
+  },
+  {
+    "id": "LEG-OOS-01",
+    "category": "out_of_scope_config",
+    "prompt": "Comment optimiser ma déclaration de revenus avec une niche fiscale ?",
+    "expected_behavior": "Refus déterministe Cerveau Oiseaux, domaine fiscal détecté, latence interne < 50 ms.",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "fiscal",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-OOS-02",
+    "category": "out_of_scope_config",
+    "prompt": "Que risque-t-on en garde à vue pour infraction pénale ?",
+    "expected_behavior": "Refus déterministe Cerveau Oiseaux, domaine pénal détecté, latence interne < 50 ms.",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "penal",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-OOS-03",
+    "category": "out_of_scope_fallthrough",
+    "prompt": "Quelles règles s'appliquent en droit international privé pour un contrat italo-français ?",
+    "expected_behavior": "DIP non configuré dans out_of_scope_config.yaml — pas de refus précoce attendu, pipeline LLM observable. Voir Q-0003 (OQ-F9-02) pour décision config.",
+    "pass_criteria": {
+      "rule": "oos_fallthrough_llm",
+      "answer_min_chars": 20,
+      "wall_clock_ms_max": 120000
+    }
+  },
+  {
+    "id": "LEG-OOS-04",
+    "category": "out_of_scope_fallthrough",
+    "prompt": "Comment déposer un brevet d'invention à l'INPI ?",
+    "expected_behavior": "Brevets non configurés dans out_of_scope_config.yaml — pas de refus précoce attendu, pipeline LLM observable. Voir Q-0003 (OQ-F9-02) pour décision config.",
+    "pass_criteria": {
+      "rule": "oos_fallthrough_llm",
+      "answer_min_chars": 20,
+      "wall_clock_ms_max": 120000
+    }
   }
 ]
