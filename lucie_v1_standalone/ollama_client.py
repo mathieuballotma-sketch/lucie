@@ -17,6 +17,7 @@ d'abandonner, et le message d'erreur utilisateur est explicite.
 import json
 import logging
 import os
+from dataclasses import dataclass
 from typing import AsyncIterator, Optional
 
 import httpx
@@ -210,6 +211,91 @@ async def _post(client: httpx.AsyncClient, payload: dict) -> str:
         )
     except Exception as e:
         raise RuntimeError(f"Ollama erreur: {e}")
+
+
+@dataclass(frozen=True)
+class ChatChunk:
+    """Chunk émis par `generate_stream_chat`.
+
+    `kind` vaut "thinking" pendant la phase de raisonnement du modèle (S1bis :
+    `gemma4:e4b` avec `RENDERER gemma4` est un modèle chain-of-thought) et
+    "content" pour les tokens de la réponse finale visible à l'utilisateur.
+    Le HUD peut afficher les deux différemment (italique grisé pour thinking,
+    normal pour content) pour atteindre un TTFT perçu <2 s sans attendre la
+    fin du raisonnement (~12-17 s sur Mac M4 24 GB).
+    """
+
+    kind: str
+    text: str
+
+
+async def generate_stream_chat(
+    model: str,
+    prompt: str,
+    system: str = "",
+    options: Optional[dict] = None,
+) -> AsyncIterator[ChatChunk]:
+    """Streaming via `POST /api/chat` — sépare `thinking` et `content`.
+
+    Contrairement à `generate_stream` qui passe par `/api/generate` et n'expose
+    pas le raisonnement (le `RENDERER gemma4` l'absorbe avant de renvoyer le
+    `response`), cette variante utilise l'endpoint chat qui retourne des
+    chunks `{"message": {"thinking": "...", "content": "..."}}` permettant de
+    streamer le raisonnement en temps réel.
+
+    Référence diagnostic : rapport `S1bis_Speed-Diag_TTFT.md`.
+    """
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    payload: dict = {
+        "model": model,
+        "messages": messages,
+        "stream": True,
+        "keep_alive": _keep_alive_value(),
+    }
+    if options:
+        payload["options"] = options
+
+    async with httpx.AsyncClient(timeout=_httpx_timeout()) as client:
+        try:
+            async with client.stream(
+                "POST", f"{OLLAMA_BASE_URL}/api/chat", json=payload
+            ) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    msg = chunk.get("message") or {}
+                    thinking = msg.get("thinking") or ""
+                    content = msg.get("content") or ""
+                    if thinking:
+                        yield ChatChunk(kind="thinking", text=thinking)
+                    if content:
+                        yield ChatChunk(kind="content", text=content)
+                    if chunk.get("done"):
+                        _record_ollama_stats(model, chunk)
+                        break
+        except httpx.TimeoutException:
+            logger.warning(
+                "[OllamaClient] Timeout après %.0fs (read) sur modèle %s — "
+                "requête abandonnée, veuillez réessayer",
+                OLLAMA_READ_TIMEOUT,
+                model,
+            )
+            raise RuntimeError(
+                f"Ollama timeout après {OLLAMA_READ_TIMEOUT}s (modèle: {model})"
+            )
+        except httpx.HTTPStatusError as e:
+            raise RuntimeError(
+                f"Ollama HTTP {e.response.status_code}: {e.response.text[:200]}"
+            )
 
 
 def extract_json_from_response(text: str) -> Optional[dict]:
