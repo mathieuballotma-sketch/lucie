@@ -113,3 +113,58 @@ Tâche d'exploration, pas de code Phase 1. À mener en mode prototype séparé a
 ## Benchmark final
 
 _À remplir en fin de chantier (10 requêtes, avant/après)._
+
+---
+
+## S1 Speed-Optimizer (2026-04-27) — TTFT before/after
+
+**Branche** : `feat/speed-s1-ttft` (3 commits) · **Tests** : 388 verts (375 baseline + 13 nouveaux R1+R2+R3) · **ADR** : aucun nouveau (R1/R2/R3 dans le cadre des ADR existants).
+
+### Briques livrées
+
+| Brique | Hash | Fichiers touchés |
+|--------|------|------------------|
+| R2 — Warm-up keep_alive | `8558c67` | `main_hud.py` + `tests/test_warmup.py` |
+| R1 — Config Gemma 4 sur mesure (DIRECT) | `5e830ef` | `lucie_v1_standalone/config.py` + `lucie_v1_standalone/tests/test_direct_params.py` |
+| R3 — Streaming TTFT < 1s (instrumentation + bench) | `1068aa5` | `lucie_v1_standalone/ollama_client.py`, `lucie_v1_standalone/pipeline.py`, `scripts/bench_queries.py`, `lucie_v1_standalone/tests/test_ttft_instrumentation.py` |
+
+### Mesures bench (5 prompts `reduced`, gemma4:e4b, 2026-04-27)
+
+> Chiffres bruts mesurés via le nouveau harness instrumenté `scripts/bench_queries.py --queries reduced`. Pas de baseline avant-S1 disponible (le harness ne mesurait pas TTFT auparavant — c'est précisément l'objet de R3).
+
+**Pass 1 — `--wait-warmup` (post-cold-start)** — `reports/s1_speed_after.md`
+- Warm-up : **61.4 s** (cold-start mesuré, gemma4:e4b absent du cache GPU au démarrage)
+- TTFT pipeline médiane (n=3 prompts qui streament) : **26 926 ms**
+- TTFT pipeline min/max : 24 513 / 70 888 ms
+- TTFT ollama médiane : 26 878 ms (≈ pipeline.ttft → overhead pipeline ~50 ms, négligeable)
+
+**Pass 2 — sans warmup, KV cache chaud** — `reports/s1_speed_after_pass2.md`
+- TTFT pipeline médiane : **18 167 ms**
+- TTFT pipeline min/max : 14 293 / 22 470 ms
+- N1 SMALL_TALK (pas de LLM) : 1 ms (cible <1s ✓)
+- N2 hors-scope (refus router pré-LLM) : 0 ms (cible <1s ✓)
+
+### Verdict honnête sur la cible TTFT < 1 s
+
+**Cible NON ATTEINTE sur les chemins N1 direct + N2 search** (les vrais chemins LLM). Médiane ~18-27 s vs cible 1 s.
+
+**Cible ATTEINTE** sur les chemins sans LLM (SMALL_TALK + refus hors-scope router) : <100 ms. Mais ce n'est pas l'esprit de la cible.
+
+### Diagnostic
+
+L'instrumentation R3 a révélé deux choses non visibles auparavant :
+
+1. **Le pipeline overhead est négligeable** (50 ms entre pipeline.ttft et ollama.ttft). Le retriever BM25 + scope/router ne sont PAS le bottleneck.
+
+2. **Le bottleneck est dans Ollama**, mais NON dans `prompt_eval_ms` (mesuré 2-5 s pour ~1180 tokens prompt = 230-590 t/s, normal). La quasi-totalité du TTFT est dans `eval_ms` AVANT que le 1er chunk arrive côté Python. Hypothèse forte : **buffering interne httpx ou Ollama** qui retient les premiers tokens jusqu'à un flush par batch. À investiguer.
+
+3. **Le prompt Redacteur est gros** (~1180 tokens). Le sweep 2026-04-25 mesurait sur des prompts directs (~200-400 tokens), donc le TTFT 1478 ms du sweep n'est pas reproductible dans le pipeline complet où le Redacteur empile faits + sources + system prompt.
+
+### Pistes pour Speed-Optimizer S2/S3 (handoff)
+
+- **Investiguer le buffering streaming** httpx ↔ Ollama : ajouter un test bench raw-Ollama (sans pipeline) pour comparer TTFT raw vs TTFT pipeline. Si raw aussi ~18s → c'est Ollama. Si raw ~1s → c'est httpx. (R3 future : peut-être migrer vers Ollama Python SDK natif).
+- **R5 cache LRU** (S3) : sur intent répété, court-circuiter Ollama → TTFT 0ms.
+- **R4 routing speed/quality** (S3) : router agressif vers gemma4:e4b uniquement pour réflexes courts, garder gemma4:26b en async pour les analyses.
+- **Compression prompt Redacteur** (hors brique S1, à proposer) : passer de 1180 tokens à <400 tokens en raccourcissant le system prompt et en sérialisant les sources plus densément. Gain attendu : prompt_eval -3s + eval debut plus tôt.
+- **R7 migration llama-cpp** (S4) : peut résoudre le buffering streaming nativement.
+
