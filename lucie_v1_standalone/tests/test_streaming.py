@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import AsyncIterator, List
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from lucie_v1_standalone import pipeline, redacteur, ollama_client
+from lucie_v1_standalone.ollama_client import ChatChunk
 from lucie_v1_standalone.pipeline import PipelineResponse, run_stream, streaming_enabled
 
 
@@ -101,6 +103,93 @@ def test_run_stream_falls_back_to_run_when_disabled(monkeypatch):
         events = asyncio.run(go())
 
     assert events == [fake]
+
+
+class _FakeStreamResponse:
+    """Minimal fake d'`httpx.Response` pour mode stream — fournit `aiter_lines`
+    et `raise_for_status`, sans contact réseau."""
+
+    def __init__(self, lines: list[str]):
+        self._lines = lines
+
+    def raise_for_status(self) -> None:
+        return None
+
+    async def aiter_lines(self):
+        for line in self._lines:
+            yield line
+
+
+class _FakeStreamCtx:
+    """Context manager async retourné par `client.stream(...)`."""
+
+    def __init__(self, lines: list[str]):
+        self._lines = lines
+
+    async def __aenter__(self) -> _FakeStreamResponse:
+        return _FakeStreamResponse(self._lines)
+
+    async def __aexit__(self, *_a) -> None:
+        return None
+
+
+def test_generate_stream_chat_yields_thinking_then_content():
+    """`/api/chat` renvoie des chunks {message:{thinking,content}}.
+    `generate_stream_chat` doit les exposer taggés via `ChatChunk`."""
+    lines = [
+        json.dumps({"message": {"role": "assistant", "thinking": "Je réfléchis", "content": ""}, "done": False}),
+        json.dumps({"message": {"role": "assistant", "thinking": " encore", "content": ""}, "done": False}),
+        json.dumps({"message": {"role": "assistant", "thinking": "", "content": "La réponse"}, "done": False}),
+        json.dumps({"message": {"role": "assistant", "thinking": "", "content": " finale."}, "done": False}),
+        json.dumps({
+            "message": {"role": "assistant", "thinking": "", "content": ""},
+            "done": True,
+            "done_reason": "stop",
+            "prompt_eval_count": 10, "prompt_eval_duration": 50_000_000,
+            "eval_count": 4, "eval_duration": 200_000_000,
+            "total_duration": 250_000_000,
+        }),
+    ]
+
+    def fake_stream(method, url, **kwargs):
+        assert method == "POST"
+        assert url.endswith("/api/chat")
+        assert kwargs["json"]["stream"] is True
+        return _FakeStreamCtx(lines)
+
+    async def go():
+        chunks: list[ChatChunk] = []
+        with patch("httpx.AsyncClient.stream", side_effect=fake_stream):
+            async for c in ollama_client.generate_stream_chat(model="m", prompt="q"):
+                chunks.append(c)
+        return chunks
+
+    chunks = asyncio.run(go())
+    kinds = [c.kind for c in chunks]
+    texts = [c.text for c in chunks]
+    assert kinds == ["thinking", "thinking", "content", "content"]
+    assert texts == ["Je réfléchis", " encore", "La réponse", " finale."]
+
+
+def test_generate_stream_chat_passes_system_as_message():
+    """Le système est injecté comme message role=system, pas dans options."""
+    captured = {}
+
+    def fake_stream(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return _FakeStreamCtx([json.dumps({"message": {"content": ""}, "done": True})])
+
+    async def go():
+        with patch("httpx.AsyncClient.stream", side_effect=fake_stream):
+            async for _ in ollama_client.generate_stream_chat(
+                model="m", prompt="q", system="tu es Lucie"
+            ):
+                pass
+
+    asyncio.run(go())
+    msgs = captured["payload"]["messages"]
+    assert msgs[0] == {"role": "system", "content": "tu es Lucie"}
+    assert msgs[1] == {"role": "user", "content": "q"}
 
 
 def test_run_stream_n2_streams_chunks_then_final(monkeypatch):
