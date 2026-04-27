@@ -88,5 +88,53 @@
       "answer_min_chars": 20,
       "wall_clock_ms_max": 120000
     }
+  },
+  {
+    "id": "LEG-ART-01",
+    "category": "article_invalid",
+    "prompt": "Que dit l'article L.1234-999 du Code du travail sur le préavis ?",
+    "expected_behavior": "Article inexistant — refus déterministe Cerveau Oiseaux <50ms via SqliteLegifranceResolver + WhitelistCtResolver.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.1234-999"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-ART-02",
+    "category": "article_invalid",
+    "prompt": "L.9999-1 régit-il les indemnités ?",
+    "expected_behavior": "Article inexistant (numéro hors plage CT) — refus déterministe <50ms.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.9999-1"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-ART-03",
+    "category": "article_invalid",
+    "prompt": "R.0000-1 s'applique-t-il aux contrats ?",
+    "expected_behavior": "Article réglementaire inexistant (numéro 0000) — la regex \\d{3,4} accepte 0000, le résolveur doit le rejeter <50ms.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["R.0000-1"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
+  },
+  {
+    "id": "LEG-ART-04",
+    "category": "article_invalid",
+    "prompt": "Comment interpréter L.5555-555 ?",
+    "expected_behavior": "Article inexistant (numéro hors plage CT) — refus déterministe <50ms.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.5555-555"],
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 500
+    }
   }
 ]
