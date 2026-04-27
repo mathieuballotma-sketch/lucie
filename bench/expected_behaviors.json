@@ -32,7 +32,7 @@
     ]
   },
   "oos_fallthrough_llm": {
-    "description": "OOS non configuré (DIP, brevets) : pas de refus précoce attendu, pipeline LLM observable. Voir Q-0003/OQ-F9-02.",
+    "description": "OOS non configuré (DIP, brevets) : pas de refus précoce attendu, pipeline LLM observable. Voir Q-0006.",
     "assertions": [
       {"field": "early_validation_triggered", "op": "neq", "value": "out_of_scope"},
       {"field": "answer", "op": "min_len", "value_from": "answer_min_chars"},
@@ -50,7 +50,7 @@
     ]
   },
   "citation_required": {
-    "description": "Réponse in-scope qui doit citer un article spécifique (au moins un parmi must_cite_article). Match insensible aux séparateurs (L1233-3 ≡ L.1233-3 ≡ L 1233-3) sur answer ou citations. Voir Q-0006/OQ-F9-05.",
+    "description": "Réponse in-scope qui doit citer un article spécifique (au moins un parmi must_cite_article). Match insensible aux séparateurs (L1233-3 ≡ L.1233-3 ≡ L 1233-3) sur answer ou citations. Voir Q-0009.",
     "assertions": [
       {"field": "refused", "op": "eq", "value": false},
       {"field": "answer_or_citations_normalized", "op": "any_match", "value_from": "must_cite_article"},
@@ -76,7 +76,7 @@
     ]
   },
   "ambiguous_default_pass": {
-    "description": "Query ambiguë (ex: 'quels sont mes droits ?') — défaut tolérant : PASS si réponse non-vide OU refus poli. Décision finale Q-0002/OQ-F9-01.",
+    "description": "Query ambiguë (ex: 'quels sont mes droits ?') — défaut tolérant : PASS si réponse non-vide OU refus poli. Décision finale Q-0005.",
     "assertions": [
       {"field": "answer", "op": "min_len", "value": 1},
       {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}

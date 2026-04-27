@@ -71,7 +71,7 @@
     "id": "LEG-OOS-03",
     "category": "out_of_scope_fallthrough",
     "prompt": "Quelles règles s'appliquent en droit international privé pour un contrat italo-français ?",
-    "expected_behavior": "DIP non configuré dans out_of_scope_config.yaml — pas de refus précoce attendu, pipeline LLM observable. Voir Q-0003 (OQ-F9-02) pour décision config.",
+    "expected_behavior": "DIP non configuré dans out_of_scope_config.yaml — pas de refus précoce attendu, pipeline LLM observable. Voir Q-0006 pour décision config.",
     "pass_criteria": {
       "rule": "oos_fallthrough_llm",
       "answer_min_chars": 20,
@@ -82,7 +82,7 @@
     "id": "LEG-OOS-04",
     "category": "out_of_scope_fallthrough",
     "prompt": "Comment déposer un brevet d'invention à l'INPI ?",
-    "expected_behavior": "Brevets non configurés dans out_of_scope_config.yaml — pas de refus précoce attendu, pipeline LLM observable. Voir Q-0003 (OQ-F9-02) pour décision config.",
+    "expected_behavior": "Brevets non configurés dans out_of_scope_config.yaml — pas de refus précoce attendu, pipeline LLM observable. Voir Q-0006 pour décision config.",
     "pass_criteria": {
       "rule": "oos_fallthrough_llm",
       "answer_min_chars": 20,
@@ -174,7 +174,7 @@
     "id": "LEG-CITE-04",
     "category": "citation_required",
     "prompt": "Quelle est la procédure légale d'entretien préalable au licenciement ?",
-    "expected_behavior": "Réponse in-scope citant un article du jeu L.1232-2 (convocation), L.1232-3 (déroulement) ou L.1232-4 (assistance). Voir Q-0004 (OQ-F9-03) pour durcissement éventuel.",
+    "expected_behavior": "Réponse in-scope citant un article du jeu L.1232-2 (convocation), L.1232-3 (déroulement) ou L.1232-4 (assistance). Voir Q-0007 pour durcissement éventuel.",
     "pass_criteria": {
       "rule": "citation_required",
       "must_cite_article": ["L.1232-2", "L.1232-3", "L.1232-4"],
@@ -208,7 +208,7 @@
     "id": "LEG-MIX-05c",
     "category": "mixed_trap",
     "prompt": "Quels sont mes droits ?",
-    "expected_behavior": "Question volontairement ambiguë sans contexte. Comportement attendu non spécifié — règle tolérante : PASS si réponse non-vide OU refus poli. Voir Q-0002 (OQ-F9-01) pour décision finale.",
+    "expected_behavior": "Question volontairement ambiguë sans contexte. Comportement attendu non spécifié — règle tolérante : PASS si réponse non-vide OU refus poli. Voir Q-0005 pour décision finale.",
     "pass_criteria": {
       "rule": "ambiguous_default_pass",
       "wall_clock_ms_max": 60000
