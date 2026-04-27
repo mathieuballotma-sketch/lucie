@@ -39,6 +39,7 @@ from .dialogue.out_of_scope import detect_out_of_scope
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
 from .perf import (
     bind_event_queue,
+    current_bucket,
     current_queue,
     drain_nowait,
     emit,
@@ -717,6 +718,25 @@ async def run_stream(
         yield resp
         return
 
+    # ── R3 sprint S1 : TTFT pipeline-side ────────────────────────────────────
+    # Mesure le temps entre l'entrée dans run_stream et le 1er chunk de
+    # texte émis vers le HUD (incluant routing, scope, retriever pour N2).
+    # Borne haute du TTFT — c'est ce que perçoit l'utilisateur.
+    t_pipeline_start = time.perf_counter()
+    _ttft_recorded = False
+
+    def _mark_pipeline_ttft() -> None:
+        nonlocal _ttft_recorded
+        if _ttft_recorded:
+            return
+        _ttft_recorded = True
+        bucket = current_bucket()
+        if bucket is not None:
+            bucket.add(
+                "pipeline.ttft",
+                (time.perf_counter() - t_pipeline_start) * 1000,
+            )
+
     # ── Marqueur décision utilisateur ───────────────────────────────────────
     decision, original_query = _extract_decision(query)
     if decision is not None:
@@ -795,6 +815,7 @@ async def run_stream(
                         options=options,
                     ):
                         chunks.append(chunk)
+                        _mark_pipeline_ttft()
                         yield chunk
                     full = "".join(chunks)
                     response = PipelineResponse(answer=full, mode=mode)
@@ -848,6 +869,7 @@ async def run_stream(
                         faits_json, sources_json, mode="search"
                     ):
                         chunks.append(chunk)
+                        _mark_pipeline_ttft()
                         yield chunk
                 except Exception as exc:  # noqa: BLE001
                     emit(
