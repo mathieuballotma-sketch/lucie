@@ -100,13 +100,23 @@ VERIFICATEUR_PARAMS = {
 }
 
 # ─── Niveau 1 — Réponse directe (chat simple, définitions, salutations) ───────
-# Contexte minimal + num_predict court = 2-3s au lieu de 15-30s
+# R1 sprint S1 (2026-04-27) : calé sur la config gagnante du sweep
+# 2026-04-25 (`predict_200`, Phase 2, 18 prompts sur gemma4:e4b → TTFT
+# moyen 1478 ms, 1er au classement). Quatre ajustements :
+#   - num_predict 512 → 200 (réponses N1 courtes ; cap aligné sur sweep)
+#   - num_ctx 2048 → 4096 (parité avec sweep + marge sécurité contexte)
+#   - top_k = 20 (NEW — borne le sampling, réduit la variance latence)
+#   - repeat_penalty = 1.1 (NEW — évite les boucles N1 courtes)
+# REDACTEUR/LECTEUR/VERIFICATEUR délibérément exclus du tuning S1 (cf.
+# rapport agent S1_Speed-Optimizer_R1-R2-R3.md pour la justification).
 DIRECT_PARAMS = {
     "model": SPEED_MODEL,
     "temperature": 0.3,
     "top_p": 0.9,
-    "num_predict": 512,   # Court — réponse directe, pas de note longue
-    "num_ctx": 2048,      # Fenêtre réduite (vs 4096) : prompt simple, moins de mémoire GPU
+    "top_k": 20,
+    "repeat_penalty": 1.1,
+    "num_predict": 200,
+    "num_ctx": 4096,
     "num_batch": 512,
     "num_gpu": 99,
 }

@@ -17,6 +17,7 @@ d'abandonner, et le message d'erreur utilisateur est explicite.
 import json
 import logging
 import os
+import time
 from typing import AsyncIterator, Optional
 
 import httpx
@@ -148,6 +149,12 @@ async def generate_stream(
     if options:
         payload["options"] = options
 
+    # R3 sprint S1 : on capture le TTFT côté Ollama (depuis l'envoi de la
+    # requête jusqu'au premier chunk non vide). Borne basse de TTFT — exclut
+    # routing pipeline et BM25.
+    t_request = time.perf_counter()
+    first_yielded = False
+
     async with httpx.AsyncClient(timeout=_httpx_timeout()) as client:
         try:
             async with client.stream(
@@ -162,6 +169,14 @@ async def generate_stream(
                     except json.JSONDecodeError:
                         continue
                     if chunk.get("response"):
+                        if not first_yielded:
+                            first_yielded = True
+                            bucket = current_bucket()
+                            if bucket is not None:
+                                bucket.add(
+                                    f"ollama.{model}.ttft",
+                                    (time.perf_counter() - t_request) * 1000,
+                                )
                         yield chunk["response"]
                     if chunk.get("done"):
                         _record_ollama_stats(model, chunk)
