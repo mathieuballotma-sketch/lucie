@@ -1,0 +1,46 @@
+[
+  {
+    "id": "LEG-SCOPE-01",
+    "category": "scope_simple",
+    "prompt": "Quelle est la procédure de licenciement pour motif personnel ?",
+    "expected_behavior": "Réponse non-vide dans le scope Droit Social, sans refus précoce.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 80,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-SCOPE-02",
+    "category": "scope_simple",
+    "prompt": "Comment fonctionne une rupture conventionnelle individuelle ?",
+    "expected_behavior": "Réponse non-vide dans le scope Droit Social, sans refus précoce.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 80,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-SCOPE-03",
+    "category": "scope_simple",
+    "prompt": "Combien de semaines dure le congé maternité légal en France ?",
+    "expected_behavior": "Réponse factuelle courte, sans refus précoce.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 40,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "LEG-SCOPE-04",
+    "category": "scope_simple",
+    "prompt": "Comment saisir le conseil de prud'hommes en référé ?",
+    "expected_behavior": "Réponse procédurale dans le scope Droit Social, sans refus précoce.",
+    "pass_criteria": {
+      "rule": "in_scope_answers",
+      "answer_min_chars": 60,
+      "wall_clock_ms_max": 60000
+    }
+  }
+]
