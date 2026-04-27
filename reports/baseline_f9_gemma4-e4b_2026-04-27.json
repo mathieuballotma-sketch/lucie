@@ -1,0 +1,443 @@
+[
+  {
+    "id": "LEG-SCOPE-01",
+    "category": "scope_simple",
+    "rule": "in_scope_answers",
+    "prompt": "Quelle est la procédure de licenciement pour motif personnel ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 211642.09525000025,
+    "response": {
+      "answer": "Aucune source disponible sur la procédure de licenciement pour motif personnel.\n\nLes sources fournies traitent exclusivement de la procédure de licenciement pour motif économique. Elles indiquent que l'employeur qui envisage de licencier un salarié pour motif économique doit le convoquer, avant toute décision, à un entretien préalable [L1233-6]. Cette convocation doit être effectuée par lettre recommandée ou par lettre remise en main propre [L1233-6].\n\nDe plus, les sources mentionnent que le salarié licencié pour motif économique bénéficie d'une priorité de réembauche durant un an à compter de la date de rupture de son contrat de travail, s'il en fait la demande au cours de ce délai [L1233-10].\n\n## Points clés\n- La procédure de licenciement pour motif personnel n'est pas couverte par les sources disponibles.\n- Les sources décrivent la procédure de licenciement pour motif économique (convocation à l'entretien préalable) [L1233-6].\n- La priorité de réembauche est un droit spécifique au licenciement pour motif économique [L1233-10].\n\n---\n_Note générée par Lucie V1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 211642.09525000025
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=211642.09525000025"
+    ],
+    "error": null
+  },
+  {
+    "id": "LEG-SCOPE-02",
+    "category": "scope_simple",
+    "rule": "in_scope_answers",
+    "prompt": "Comment fonctionne une rupture conventionnelle individuelle ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 35941.63404200026,
+    "response": {
+      "answer": "Aucune source disponible sur ce point. Les sources fournies traitent uniquement des modalités de licenciement pour motif économique et ne contiennent aucune information concernant le fonctionnement d'une rupture conventionnelle individuelle.\n\n---\n_Note générée par Lucie V1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 35941.63404200026
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-SCOPE-03",
+    "category": "scope_simple",
+    "rule": "in_scope_answers",
+    "prompt": "Combien de semaines dure le congé maternité légal en France ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.616207999883045,
+    "response": {
+      "answer": "Cette requête sort du périmètre de Lucie V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une question sur le licenciement économique.",
+      "citations": [],
+      "verifier_score": 0.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.616207999883045
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-SCOPE-04",
+    "category": "scope_simple",
+    "rule": "in_scope_answers",
+    "prompt": "Comment saisir le conseil de prud'hommes en référé ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 33250.09270800001,
+    "response": {
+      "answer": "Aucune source disponible sur ce point.\n\nLes sources fournies traitent de l'homologation du Plan de Sauvegarde de l'Emploi (PSE) par la DREETS et ne contiennent aucune information relative à la procédure de saisine du Conseil de prud'hommes en référé.\n\n---\n_Note générée par Lucie V1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 33250.09270800001
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-OOS-01",
+    "category": "out_of_scope_config",
+    "rule": "oos_refusal",
+    "prompt": "Comment optimiser ma déclaration de revenus avec une niche fiscale ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.05862499983777525,
+    "response": {
+      "answer": "Cette question relève du droit fiscal.\nUn expert-comptable ou un avocat fiscaliste sera plus pertinent.\nJe reste à votre disposition pour les aspects Droit Social\n(licenciement, contrat de travail, indemnités, prud'hommes, etc.).",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": true,
+      "early_validation_triggered": "out_of_scope",
+      "validation_details": {
+        "domain": "fiscal",
+        "duration_ms": 0.05
+      },
+      "_wall_clock_ms": 0.05862499983777525
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-OOS-02",
+    "category": "out_of_scope_config",
+    "rule": "oos_refusal",
+    "prompt": "Que risque-t-on en garde à vue pour infraction pénale ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.01858300038293237,
+    "response": {
+      "answer": "Cette question relève du droit pénal.\nUn avocat pénaliste sera plus pertinent.\nJe reste à votre disposition pour toute question de Droit Social.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": true,
+      "early_validation_triggered": "out_of_scope",
+      "validation_details": {
+        "domain": "penal",
+        "duration_ms": 0.02
+      },
+      "_wall_clock_ms": 0.01858300038293237
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-OOS-03",
+    "category": "out_of_scope_fallthrough",
+    "rule": "oos_fallthrough_llm",
+    "prompt": "Quelles règles s'appliquent en droit international privé pour un contrat italo-français ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 2.5957079997169785,
+    "response": {
+      "answer": "Je me spécialise en droit du licenciement économique. Avez-vous une question sur ce sujet ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 2.5957079997169785
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-OOS-04",
+    "category": "out_of_scope_fallthrough",
+    "rule": "oos_fallthrough_llm",
+    "prompt": "Comment déposer un brevet d'invention à l'INPI ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.09041700013767695,
+    "response": {
+      "answer": "Je me spécialise en droit du licenciement économique. Avez-vous une question sur ce sujet ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.09041700013767695
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-ART-01",
+    "category": "article_invalid",
+    "rule": "article_invalid",
+    "prompt": "Que dit l'article L.1234-999 du Code du travail sur le préavis ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.11170900052093202,
+    "response": {
+      "answer": "L'article L.1234-999 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "L.1234-999"
+        ],
+        "resolvers": [
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.1
+      },
+      "_wall_clock_ms": 0.11170900052093202
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-ART-02",
+    "category": "article_invalid",
+    "rule": "article_invalid",
+    "prompt": "L.9999-1 régit-il les indemnités ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.024750000193307642,
+    "response": {
+      "answer": "L'article L.9999-1 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "L.9999-1"
+        ],
+        "resolvers": [
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.01
+      },
+      "_wall_clock_ms": 0.024750000193307642
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-ART-03",
+    "category": "article_invalid",
+    "rule": "article_invalid",
+    "prompt": "R.0000-1 s'applique-t-il aux contrats ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.011916000403289218,
+    "response": {
+      "answer": "L'article R.0000-1 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "R.0000-1"
+        ],
+        "resolvers": [
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.01
+      },
+      "_wall_clock_ms": 0.011916000403289218
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-ART-04",
+    "category": "article_invalid",
+    "rule": "article_invalid",
+    "prompt": "Comment interpréter L.5555-555 ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.010791000022436492,
+    "response": {
+      "answer": "L'article L.5555-555 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "L.5555-555"
+        ],
+        "resolvers": [
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.01
+      },
+      "_wall_clock_ms": 0.010791000022436492
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-CITE-01",
+    "category": "citation_required",
+    "rule": "citation_required",
+    "prompt": "Sur quel article repose la définition du licenciement économique ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 63858.194207999986,
+    "response": {
+      "answer": "## Réponse\nLa définition du licenciement économique est contenue dans l'article L.1233-1 du Code du travail [L1233-1].\n\nCet article définit ce motif comme étant le licenciement effectué par un employeur pour un ou plusieurs motifs qui ne sont pas liés à la personne du salarié. Ces motifs résultent spécifiquement d'une suppression ou d'une transformation d'emploi ou d'une [L1233-1].\n\n## Points clés\n- L'article L.1233-1 est l'article dédié à la définition du licenciement économique [L1233-1].\n- Le motif doit être non inhérent à la personne du salarié et provenir d'une suppression ou transformation d'emploi [L1233-1].\n\n## À retenir\nIl est important de noter que, bien que L.1233-2 traite des obligations de l'employeur, c'est L.1233-1 qui pose la définition légale du motif économique.\n\n---\n_Note générée par Lucie V1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 63858.194207999986
+    },
+    "failed_assertions": [
+      "answer_or_citations_normalized any_match ['L.1233-3'] → actual=\"##RÉPONSELADÉFINITIONDULICENCIEMENTÉCONOMIQUEESTCONTENUEDANSL'ARTICLEL12331DUCODEDUTRAVAIL[L12331]CETARTICLEDÉFINITCEMOTIFCOMMEÉTANTLELICENCIEMENTEFFECTUÉPARUNEMPLOYEURPOURUNOUPLUSIEURSMOTIFSQUINESONTPASLIÉSÀLAPERSONNEDUSALARIÉCESMOTIFSRÉSULTENTSPÉCIFIQUEMENTD'UNESUPPRESSIONOUD'UNETRANSFORMATIOND'EMPLOIOUD'UNE[L12331]##POINTSCLÉSL'ARTICLEL12331ESTL'ARTICLEDÉDIÉÀLADÉFINITIONDULICENCIEMENTÉCONOMIQUE[L12331]LEMOTIFDOITÊTRENONINHÉRENTÀLAPERSONNEDUSALARIÉETPROVENIRD'UNESUPPRESSIONOUTRANSFORMATIOND'EMPLOI[L12331]##ÀRETENIRILESTIMPORTANTDENOTERQUE,BIENQUEL12332TRAITEDESOBLIGATIONSDEL'EMPLOYEUR,C'ESTL12331QUIPOSELADÉFINITIONLÉGALEDUMOTIFÉCONOMIQUE_NOTEGÉNÉRÉEPARLUCIEV1—SCOREDEFIABILITÉ:100%—VERDICT:VALIDÉ__ÀVÉRIFIERPARUNAVOCATQUALIFIÉAVANTTOUTUSAGEPROFESSIONNEL_\"",
+      "_wall_clock_ms lte 60000 → actual=63858.194207999986"
+    ],
+    "error": null
+  },
+  {
+    "id": "LEG-CITE-02",
+    "category": "citation_required",
+    "rule": "citation_required",
+    "prompt": "Quel article fixe le préavis de licenciement ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 26393.25395800006,
+    "response": {
+      "answer": "Aucune source disponible sur ce point.\n\n---\n_Note générée par Lucie V1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 26393.25395800006
+    },
+    "failed_assertions": [
+      "answer_or_citations_normalized any_match ['L.1234-1'] → actual='AUCUNESOURCEDISPONIBLESURCEPOINT_NOTEGÉNÉRÉEPARLUCIEV1—SCOREDEFIABILITÉ:0%—VERDICT:NONVÉRIFIABLE__ÀVÉRIFIERPARUNAVOCATQUALIFIÉAVANTTOUTUSAGEPROFESSIONNEL_'"
+    ],
+    "error": null
+  },
+  {
+    "id": "LEG-CITE-03",
+    "category": "citation_required",
+    "rule": "citation_required",
+    "prompt": "Combien de temps dure le congé maternité, article applicable ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 0.7372910004050937,
+    "response": {
+      "answer": "Je me spécialise en droit du licenciement économique. Avez-vous une question sur ce sujet ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.7372910004050937
+    },
+    "failed_assertions": [
+      "answer_or_citations_normalized any_match ['L.1225-17'] → actual='JEMESPÉCIALISEENDROITDULICENCIEMENTÉCONOMIQUEAVEZVOUSUNEQUESTIONSURCESUJET?'"
+    ],
+    "error": null
+  },
+  {
+    "id": "LEG-CITE-04",
+    "category": "citation_required",
+    "rule": "citation_required",
+    "prompt": "Quelle est la procédure légale d'entretien préalable au licenciement ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 75948.3614159999,
+    "response": {
+      "answer": "## Réponse\nLa procédure légale d'entretien préalable au licenciement se déploie en plusieurs étapes, de la convocation à la notification de la décision.\n\nPremièrement, l'employeur qui envisage de licencier un salarié pour motif économique doit le convoquer à un entretien préalable avant toute décision [L1233-6]. Cette convocation doit être effectuée soit par lettre recommandée, soit par lettre remise en main propre [L1233-6].\n\nDeuxièmement, au cours de cet entretien, l'employeur a l'obligation d'indiquer les motifs de la décision envisagée et de recueillir les explications du salarié [L1233-7]. De plus, l'employeur doit informer le salarié des mesures prévues, le cas échéant [L1233-7].\n\nEnfin, la notification du licenciement doit être faite par lettre recommandée avec avis de réception [L1233-8].\n\n## Points clés\n- **Convocation obligatoire :** L'employeur doit convoquer le salarié avant toute décision de licenciement [L1233-6].\n- **Déroulement de l'entretien :** L'employeur doit exposer les motifs envisagés et recueillir les explications du salarié [L1233-7].\n- **Notification :** Le licenciement doit être notifié par lettre recommandée avec avis de réception [L1233-8].\n\n## À retenir\nLe respect de la séquence (convocation $\\rightarrow$ entretien $\\rightarrow$ notification) et des modalités de communication (lettre recommandée) est essentiel pour la validité de la procédure.\n\n---\n_Note générée par Lucie V1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 75948.3614159999
+    },
+    "failed_assertions": [
+      "answer_or_citations_normalized any_match ['L.1232-2', 'L.1232-3', 'L.1232-4'] → actual=\"##RÉPONSELAPROCÉDURELÉGALED'ENTRETIENPRÉALABLEAULICENCIEMENTSEDÉPLOIEENPLUSIEURSÉTAPES,DELACONVOCATIONÀLANOTIFICATIONDELADÉCISIONPREMIÈREMENT,L'EMPLOYEURQUIENVISAGEDELICENCIERUNSALARIÉPOURMOTIFÉCONOMIQUEDOITLECONVOQUERÀUNENTRETIENPRÉALABLEAVANTTOUTEDÉCISION[L12336]CETTECONVOCATIONDOITÊTREEFFECTUÉESOITPARLETTRERECOMMANDÉE,SOITPARLETTREREMISEENMAINPROPRE[L12336]DEUXIÈMEMENT,AUCOURSDECETENTRETIEN,L'EMPLOYEURAL'OBLIGATIOND'INDIQUERLESMOTIFSDELADÉCISIONENVISAGÉEETDERECUEILLIRLESEXPLICATIONSDUSALARIÉ[L12337]DEPLUS,L'EMPLOYEURDOITINFORMERLESALARIÉDESMESURESPRÉVUES,LECASÉCHÉANT[L12337]ENFIN,LANOTIFICATIONDULICENCIEMENTDOITÊTREFAITEPARLETTRERECOMMANDÉEAVECAVISDERÉCEPTION[L12338]##POINTSCLÉS**CONVOCATIONOBLIGATOIRE:**L'EMPLOYEURDOITCONVOQUERLESALARIÉAVANTTOUTEDÉCISIONDELICENCIEMENT[L12336]**DÉROULEMENTDEL'ENTRETIEN:**L'EMPLOYEURDOITEXPOSERLESMOTIFSENVISAGÉSETRECUEILLIRLESEXPLICATIONSDUSALARIÉ[L12337]**NOTIFICATION:**LELICENCIEMENTDOITÊTRENOTIFIÉPARLETTRERECOMMANDÉEAVECAVISDERÉCEPTION[L12338]##ÀRETENIRLERESPECTDELASÉQUENCE(CONVOCATION$\\\\RIGHTARROW$ENTRETIEN$\\\\RIGHTARROW$NOTIFICATION)ETDESMODALITÉSDECOMMUNICATION(LETTRERECOMMANDÉE)ESTESSENTIELPOURLAVALIDITÉDELAPROCÉDURE_NOTEGÉNÉRÉEPARLUCIEV1—SCOREDEFIABILITÉ:100%—VERDICT:VALIDÉ__ÀVÉRIFIERPARUNAVOCATQUALIFIÉAVANTTOUTUSAGEPROFESSIONNEL_\"",
+      "_wall_clock_ms lte 60000 → actual=75948.3614159999"
+    ],
+    "error": null
+  },
+  {
+    "id": "LEG-MIX-05a",
+    "category": "mixed_trap",
+    "rule": "mixed_article_invalid_wins",
+    "prompt": "Est-ce que L.1233-3 et L.9999-99 traitent tous deux du licenciement économique ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.17195899999933317,
+    "response": {
+      "answer": "L'article L.9999-99 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "L.1233-3",
+          "L.9999-99"
+        ],
+        "resolvers": [
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.11
+      },
+      "_wall_clock_ms": 0.17195899999933317
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-MIX-05b",
+    "category": "mixed_trap",
+    "rule": "in_scope_answers",
+    "prompt": "Mon boss veut me virer du jour au lendemain, j'ai quels droits ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.43133300005138153,
+    "response": {
+      "answer": "Je me spécialise en droit du licenciement économique. Avez-vous une question sur ce sujet ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.43133300005138153
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-MIX-05c",
+    "category": "mixed_trap",
+    "rule": "ambiguous_default_pass",
+    "prompt": "Quels sont mes droits ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.07116699998732656,
+    "response": {
+      "answer": "Je me spécialise en droit du licenciement économique. Avez-vous une question sur ce sujet ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.07116699998732656
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "LEG-MIX-05d",
+    "category": "mixed_trap",
+    "rule": "mixed_priority_override",
+    "prompt": "Quel est l'impact fiscal de l'article L.1234-9 sur l'indemnité de licenciement ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 201999.86587500008,
+    "response": {
+      "answer": "Aucune source disponible sur l'impact fiscal de l'article L.1234-9 sur l'indemnité de licenciement.\n\nLes sources fournies confirment uniquement que les dispositions relatives à l'indemnité légale de licenciement prévues aux articles L.1234-9 et R.1234-1 à R.1234-5 s'appliquent au licenciement pour motif économique [L1233-16]. Elles précisent que le montant de cette indemnité est calculé en fonction de critères spécifiques, mais ne détaillent aucun aspect de sa fiscalité.\n\n## Points clés\n- L'article L.1234-9 s'applique aux indemnités de licenciement pour motif économique [L1233-16].\n- Les sources ne contiennent aucune information relative à l'impact fiscal de cette indemnité.\n\n---\n_Note générée par Lucie V1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 201999.86587500008
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=201999.86587500008"
+    ],
+    "error": null
+  }
+]
