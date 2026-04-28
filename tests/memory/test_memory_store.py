@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from lucie_v1_standalone.memory.sanitizer import sanitize, extract_domain_signal
+from lucie_v1_standalone.memory.sanitizer import sanitize, extract_domain_signal, detect_pii
 from lucie_v1_standalone.memory.abstract import AbstractMemory, SIGNAL_ACTIVATION_THRESHOLD
 from lucie_v1_standalone.memory.personal import PersonalMemory
 from lucie_v1_standalone.memory.store import MemoryStore
@@ -84,6 +84,26 @@ def test_sanitize_preserves_legal_terms() -> None:
     result = sanitize(text)
     assert "licenciement" in result.lower()
     assert "économique" in result.lower()
+
+
+# ─── detect_pii (HUD counter API) ────────────────────────────────────────────
+
+def test_detect_pii_no_pii_returns_empty_dict() -> None:
+    assert detect_pii("texte sans aucune PII") == {}
+
+
+def test_detect_pii_emails_and_siret_returns_counts() -> None:
+    text = "contact alice@cabinet.fr ou bob@x.com ; SIRET 12345678901234"
+    counts = detect_pii(text)
+    assert counts["EMAIL"] == 2
+    assert counts["SIRET"] >= 1
+
+
+def test_detect_pii_does_not_modify_text() -> None:
+    text = "Monsieur Dupont mail john@x.fr"
+    before = text
+    _ = detect_pii(text)
+    assert text == before
 
 
 def test_extract_domain_licenciement() -> None:
