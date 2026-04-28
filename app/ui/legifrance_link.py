@@ -1,4 +1,4 @@
-"""Citations [REF:] / [L.xxx] cliquables → Légifrance (H5 Sprint S1).
+"""Citations [REF:] / [L.xxx] / [L1234-9] cliquables → Légifrance (H5 + H5b).
 
 Détecte dans un texte les références d'articles juridiques, normalise leur
 identifiant et construit l'URL Légifrance correspondante. Permet
@@ -10,33 +10,34 @@ Le style visuel (underline + couleur accent) est hérité du
 Le delegate `textView_clickedOnLink_atIndex_` ouvre l'URL dans Safari via
 `NSWorkspace.openURL_`.
 
-Patterns reconnus :
+Patterns reconnus (H5b — parser tolérant) :
 - `[REF: xxx]` → forme normée (prompt rédacteur)
-- `[L.1234-9]`, `[L.1234-9-1]` (Code du travail / civil abrégé)
-- `[R.1234-5]` (réglementaire)
-- `[D.1234-5]` (décret)
-- Tolère espaces internes : `[L. 1234 - 9]` → `L.1234-9`
+- `[L.1234-9]`, `[L.1234-9-1]` (Code du travail / civil abrégé canonique)
+- `[L1234-9]` (sans dot — émis par le redacteur via `[l1233-2]` cf.
+  `prompts/redacteur_system.txt:51`)
+- `[L 1234-9]`, `[L. 1234 - 9]` (espaces internes tolérés)
+- `[l1234-9]` (lowercase — normalisé en majuscules)
+- `[R.1234-5]` / `[R1234-5]` (réglementaire), `[D...]` (décret), `[A...]` (arrêté)
+- Toutes les variantes sont normalisées vers la forme canonique `L.1234-9`
+  (uppercase + point inséré + sans espaces).
 """
 from __future__ import annotations
 
 import re
 from typing import Any, List, Tuple
 
-from lucie_v1_standalone.knowledge_legifrance.parser import (
-    LEGIFRANCE_ARTICLE_URL,
-)
-
 
 # Pattern unifié :
 # - Forme `[REF: <id libre>]` : groupe 1 capture l'id (texte libre, on
 #   normalise ensuite ; doit ressembler à un article LRDA pour qu'on linke)
-# - Forme directe `[L.xxx]`, `[R.xxx]`, `[D.xxx]`, `[A.xxx]` : groupe 2
+# - Forme directe `[L.xxx]`/`[L xxx]`/`[Lxxx]` : groupe 2 — dot et espaces
+#   optionnels, lowercase accepté (cf. format émis par redacteur prompt)
 _CITATION_RE = re.compile(
     r"\["
     r"(?:"
     r"REF:\s*([^\]]+?)"
     r"|"
-    r"([LRDA]\.\s*\d+(?:\s*-\s*\d+){0,2})"
+    r"([LRDAlrda]\.?\s*\d+(?:\s*-\s*\d+){0,2})"
     r")"
     r"\]"
 )
@@ -44,16 +45,26 @@ _CITATION_RE = re.compile(
 # Validation post-normalisation : un identifiant cliquable doit ressembler à
 # `L.1234-9` (lettre + point + digits + tirets). Sinon on linke pas (ex. un
 # `[REF: voir aussi le doc]` ne devient pas un lien Légifrance).
+# Le point est imposé en sortie de `_normalize_id`, donc ce regex strict est OK.
 _VALID_ARTICLE_RE = re.compile(r"^[LRDA]\.\d+(?:-\d+){0,2}$")
 
 
 def _normalize_id(raw: str) -> str:
-    """Normalise un identifiant : suppression des espaces internes.
+    """Normalise un identifiant vers la forme canonique `L.NNNN-N`.
 
-    `L. 1234-9 ` → `L.1234-9`
-    `L.1234 - 9` → `L.1234-9`
+    - Suppression des espaces internes
+    - Uppercase
+    - Insertion du point manquant entre la lettre et les chiffres
+
+    Exemples :
+    - `L. 1234-9 `   → `L.1234-9`
+    - `L.1234 - 9`   → `L.1234-9`
+    - `L1234-9`      → `L.1234-9`
+    - `l1234-9`      → `L.1234-9`
+    - `L 1234-9`     → `L.1234-9`
     """
-    cleaned = re.sub(r"\s+", "", raw.strip())
+    cleaned = re.sub(r"\s+", "", raw.strip()).upper()
+    cleaned = re.sub(r"^([LRDA])(\d)", r"\1.\2", cleaned)
     return cleaned
 
 
@@ -77,12 +88,27 @@ def parse_citations(text: str) -> List[Tuple[str, int, int]]:
     return results
 
 
-def build_url(article_id: str) -> str:
-    """Construit l'URL Légifrance à partir d'un identifiant d'article normalisé.
+# H5b — l'endpoint canonique `codes/article_lc/{id}` exige un identifiant
+# LEGIARTI<14_digits>, pas un numéro d'article comme `L.1233-8`. La recherche
+# par NUM_ARTICLE est plus robuste : Légifrance résout le numéro vers la bonne
+# fiche, et en cas d'article inexistant l'utilisateur arrive sur une page
+# « 0 résultat » au lieu d'un 404 sec. Vérifié 2026-04-28 (HTTP 301 vers
+# `search?fonds=CODE&...` confirme l'endpoint).
+_LEGIFRANCE_SEARCH_URL = (
+    "https://www.legifrance.gouv.fr/search/code"
+    "?searchField=NUM_ARTICLE&query={article}&searchType=ALL"
+)
 
-    Réutilise `LEGIFRANCE_ARTICLE_URL` du parser DILA.
+
+def build_url(article_id: str) -> str:
+    """Construit l'URL Légifrance de recherche pour un identifiant d'article.
+
+    `article_id` doit être normalisé (`L.1234-9`). On strip le point pour la
+    requête (Légifrance accepte indifféremment `L1234-9` et `L.1234-9`, mais
+    la forme sans point évite les surprises d'encodage URL).
     """
-    return LEGIFRANCE_ARTICLE_URL.format(id=article_id)
+    query = article_id.replace(".", "")
+    return _LEGIFRANCE_SEARCH_URL.format(article=query)
 
 
 def apply_links(attr_string: Any) -> int:
