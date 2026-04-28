@@ -26,11 +26,14 @@ import Foundation
 
 HUD_FRAME_KEY = "lucie_hud_frame"
 
-# Min/max imposés à la fenêtre HUD redimensionnable.
+# Min/max imposés à la fenêtre HUD redimensionnable (N12 — résout Q-0012).
+# Bornes alignées sur le brief Mathieu : assez petite pour ne pas envahir
+# l'écran sur MacBook 13", assez grande pour rendre la rédaction in-window
+# confortable sur écran externe.
 HUD_MIN_W = 400.0
-HUD_MIN_H = 350.0
-HUD_MAX_W = 9999.0
-HUD_MAX_H = 9999.0
+HUD_MIN_H = 400.0
+HUD_MAX_W = 1200.0
+HUD_MAX_H = 900.0
 
 
 def _defaults() -> Any:
@@ -83,6 +86,21 @@ def clamp_to_min_size(
     return AppKit.NSMakeRect(rect.origin.x, rect.origin.y, new_w, new_h)
 
 
+def clamp_to_max_size(
+    rect: Any,
+    max_w: float = HUD_MAX_W,
+    max_h: float = HUD_MAX_H,
+) -> Any:
+    """Corrige la taille maximum d'une NSRect, préserve l'origine.
+
+    Évite qu'une frame héritée d'un écran externe (ex. 4K externe) déborde
+    sur un écran portable plus petit après reconnexion.
+    """
+    new_w = min(rect.size.width, max_w)
+    new_h = min(rect.size.height, max_h)
+    return AppKit.NSMakeRect(rect.origin.x, rect.origin.y, new_w, new_h)
+
+
 def is_frame_visible(rect: Any, min_overlap: float = 100.0) -> bool:
     """Vérifie qu'au moins `min_overlap` x `min_overlap` pixels du rect
     intersectent un écran réel.
@@ -117,6 +135,7 @@ __all__ = [
     "load_frame",
     "clear_frame",
     "clamp_to_min_size",
+    "clamp_to_max_size",
     "is_frame_visible",
 ]
 
