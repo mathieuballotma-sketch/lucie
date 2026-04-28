@@ -25,6 +25,7 @@ import Quartz
 from PyObjCTools import AppHelper
 
 from ..utils.logger import logger
+from .pii_indicator import format_badge_text, format_popover_lines
 
 # ─── Layout constants ────────────────────────────────────────────────────────
 WINDOW_W = 520
@@ -1788,6 +1789,30 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             15.0, self, "updateEnergyIndicator:", None, True
         )
 
+        # ── N9: Badge PII (compteur sanitizer) ────────────────────────────────
+        # Cliquable → popover liste les catégories sans valeurs réelles.
+        self._pii_badge = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(PADDING + 18 + 140 + 8, _STATUS_Y + 4, 150, 14)
+        )
+        self._pii_badge.setBordered_(False)
+        self._pii_badge.setTitle_(format_badge_text({}))
+        self._pii_badge.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._pii_badge.setTarget_(self)
+        self._pii_badge.setAction_("showPiiPopover:")
+        self._pii_badge.setToolTip_(
+            "Données personnelles détectées dans le dernier échange.\n"
+            "Aucune valeur n'est exportée."
+        )
+        try:
+            self._pii_badge.setContentTintColor_(ns_white(0.55, 0.6))
+        except Exception:
+            pass
+        content.addSubview_(self._pii_badge)
+
+        # State pour la popover : compteurs du dernier échange.
+        self._last_pii_counts: Dict[str, int] = {}
+        self._pii_popover = None  # lazy
+
         # Drop highlight overlay (shown during folder/file drag-over)
         self._drop_highlight = AppKit.NSView.alloc().initWithFrame_(
             make_rect(2, 2, WINDOW_W - 4, WINDOW_H - 4)
@@ -1998,6 +2023,9 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         if display_query:
             self.append_message_safe("Toi", display_query, user=True)
 
+        # N9 — actualise le badge PII sur l'input utilisateur visible.
+        self._update_pii_badge(display_query or query)
+
         self._hide_output_card()
         self._hide_proposal_card()
         self.set_state(LucieState.THINKING)
@@ -2023,6 +2051,69 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         }.get(value, value)
         internal_query = f"{_DECISION_MARKER}{value}|original={original_query}"
         self._submit_query(internal_query, display_query=user_echo)
+
+    # ── N9: Sanitizer PII feedback ──────────────────────────────────────────
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _update_pii_badge(self, text: str) -> None:
+        """Recalcule le compteur PII sur le texte fourni et met à jour le badge.
+
+        Mode passif : ne modifie ni l'input ni la réponse (pas d'appel à
+        ``sanitize()``). Sert d'observabilité pour l'utilisateur.
+        """
+        try:
+            from lucie_v1_standalone.memory.sanitizer import detect_pii  # lazy
+            counts = detect_pii(text or "")
+        except Exception:
+            counts = {}
+        self._last_pii_counts = dict(counts)
+        try:
+            self._pii_badge.setTitle_(format_badge_text(counts))
+        except Exception:
+            pass
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def showPiiPopover_(self, sender: Any) -> None:
+        """Ouvre une popover listant les catégories PII détectées (sans valeurs).
+
+        Si la popover est déjà visible : la ferme (toggle).
+        """
+        if self._pii_popover is not None and self._pii_popover.isShown():
+            self._pii_popover.performClose_(sender)
+            return
+
+        lines = format_popover_lines(self._last_pii_counts)
+        body = "\n".join(lines)
+
+        # Construit une vue simple : NSTextField multiline.
+        width = 240.0
+        height = 16.0 * max(1, len(lines)) + 24.0
+        view = AppKit.NSView.alloc().initWithFrame_(
+            Foundation.NSMakeRect(0, 0, width, height)
+        )
+        label = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(12, 12, width - 24, height - 24)
+        )
+        label.setStringValue_(body)
+        label.setEditable_(False)
+        label.setBezeled_(False)
+        label.setDrawsBackground_(False)
+        label.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        try:
+            label.setUsesSingleLineMode_(False)
+        except Exception:
+            pass
+        view.addSubview_(label)
+
+        controller = AppKit.NSViewController.alloc().init()
+        controller.setView_(view)
+
+        popover = AppKit.NSPopover.alloc().init()
+        popover.setContentViewController_(controller)
+        popover.setBehavior_(AppKit.NSPopoverBehaviorTransient)
+        popover.showRelativeToRect_ofView_preferredEdge_(
+            sender.bounds(), sender, AppKit.NSRectEdgeMaxY
+        )
+        self._pii_popover = popover
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def openFilePicker_(self, sender: Any) -> None:
