@@ -70,6 +70,33 @@ def sanitize(text: str) -> str:
     return result.strip()
 
 
+def detect_pii(text: str) -> dict[str, int]:
+    """
+    Compte les occurrences PII par catégorie sans modifier le texte.
+
+    Utilisé par le HUD pour afficher un compteur (badge 🔒 N PII masquées) et
+    une popover par catégorie. Ne renvoie que les catégories ayant au moins
+    une détection. Les valeurs PII brutes ne sont jamais retournées.
+
+    Exemple :
+        "Monsieur Dupont mail john@x.fr siret 12345678901234"
+        → {"NOM": 1, "EMAIL": 1, "SIRET": 1}
+
+    Args:
+        text: Texte brut potentiellement contenant des PII.
+
+    Returns:
+        Dict ``{categorie: nombre}`` (categorie sans crochets, ex. "EMAIL").
+    """
+    counts: dict[str, int] = {}
+    for pattern, label in _PII_PATTERNS:
+        n = len(pattern.findall(text))
+        if n:
+            category = label.strip("[]")
+            counts[category] = counts.get(category, 0) + n
+    return counts
+
+
 def extract_domain_signal(text: str) -> str:
     """
     Extrait le domaine de droit social le plus probable depuis le texte.

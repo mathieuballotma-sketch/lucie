@@ -25,6 +25,7 @@ import Quartz
 from PyObjCTools import AppHelper
 
 from ..utils.logger import logger
+from .pii_indicator import format_badge_text, format_popover_lines
 
 # ─── Layout constants ────────────────────────────────────────────────────────
 WINDOW_W = 520
@@ -1251,19 +1252,20 @@ class ProposalCardView(AppKit.NSView):  # type: ignore[misc]
 class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     def init(self) -> Any:
-        # H8 : tente de restaurer la position mémorisée si elle est encore
-        # visible sur un écran branché ; sinon fallback sur la frame initiale.
+        # H8 + N12 : restaure origin ET taille mémorisées si visibles + bornées.
         try:
             from ..services import preferences as _prefs
             persisted = _prefs.load_frame()
             if persisted is not None and _prefs.is_frame_visible(persisted):
-                # On ne mémorise que l'origine pour l'instant (size reste fixe ;
-                # le resize fluide nécessite Auto Layout — sprint ultérieur).
+                # N12 : la taille est aussi restaurée (clampée aux bornes).
+                clamped = _prefs.clamp_to_max_size(
+                    _prefs.clamp_to_min_size(persisted)
+                )
                 rect = make_rect(
-                    persisted.origin.x,
-                    persisted.origin.y,
-                    WINDOW_W,
-                    WINDOW_H,
+                    clamped.origin.x,
+                    clamped.origin.y,
+                    clamped.size.width,
+                    clamped.size.height,
                 )
             else:
                 rect = make_rect(
@@ -1279,15 +1281,27 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 WINDOW_W,
                 WINDOW_H,
             )
+        # N12 : NSWindowStyleMaskResizable active la poignée de redimensionnement.
+        # Combiné avec Borderless + NonactivatingPanel : compatible Sequoia ;
+        # fallback Q-0003 si rendu de la poignée pose problème (à monitorer).
         style = (
             AppKit.NSWindowStyleMaskBorderless
             | AppKit.NSWindowStyleMaskNonactivatingPanel
+            | AppKit.NSWindowStyleMaskResizable
         )
         self = objc.super(HUDWindow, self).initWithContentRect_styleMask_backing_defer_(
             rect, style, AppKit.NSBackingStoreBuffered, False
         )
         if self is None:
             return None
+
+        # N12 : bornes min/max appliquées par AppKit pendant le resize utilisateur.
+        try:
+            from ..services import preferences as _prefs2
+            self.setMinSize_(Foundation.NSMakeSize(_prefs2.HUD_MIN_W, _prefs2.HUD_MIN_H))
+            self.setMaxSize_(Foundation.NSMakeSize(_prefs2.HUD_MAX_W, _prefs2.HUD_MAX_H))
+        except Exception as e:
+            logger.debug(f"setMin/MaxSize: {e}")
 
         self.setFloatingPanel_(True)
         self.setBecomesKeyOnlyIfNeeded_(False)
@@ -1361,7 +1375,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         except Exception as e:
             logger.debug(f"HUDWindow setDelegate self: {e}")
 
-        logger.info("HUD v2 initialisé (520×500)")
+        logger.info("HUD v2 initialisé (resizable, %sx%s persistée)", int(rect.size.width), int(rect.size.height))
         return self
 
     # ── Persistence position (H8) ─────────────────────────────────────────────
@@ -1500,6 +1514,31 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._latency_label.setTextColor_(_adaptive_tertiary())
         content.addSubview_(self._latency_label)
 
+        # ── N10: Bouton menu (Audit PAF + futurs items) ──────────────────────
+        try:
+            menu_img = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "ellipsis.circle", "Menu HUD"
+            )
+        except Exception:
+            menu_img = None
+        self._hud_menu_button = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(WINDOW_W - 88 - 4 - 18, header_center_y + 1, 18, 18)
+        )
+        self._hud_menu_button.setBordered_(False)
+        if menu_img is not None:
+            self._hud_menu_button.setImage_(menu_img)
+            self._hud_menu_button.setTitle_("")
+        else:
+            self._hud_menu_button.setTitle_("⋯")
+        try:
+            self._hud_menu_button.setContentTintColor_(ns_white(0.55, 0.6))
+        except Exception:
+            pass
+        self._hud_menu_button.setTarget_(self)
+        self._hud_menu_button.setAction_("showHudMenu:")
+        self._hud_menu_button.setToolTip_("Plus d'actions")
+        content.addSubview_(self._hud_menu_button)
+
         # Separator: header / agent bar
         sep1 = AppKit.NSBox.alloc().initWithFrame_(
             make_rect(0, _HEADER_Y - 1, WINDOW_W, 1)
@@ -1533,9 +1572,10 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._llm_label.setTextColor_(ns_white(0.55, 0.8))
         content.addSubview_(self._llm_label)
 
-        # Active agents (right-aligned) — width réduit pour laisser place au badge local
+        # Active agents (right-aligned) — width réduit pour laisser place aux badges
+        # local + mémoire (N11). Réservé : 130 px pour le badge mémoire.
         self._agents_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(PADDING + 90, bar_center_y, WINDOW_W - PADDING * 2 - 90 - 112, 12)
+            make_rect(PADDING + 90, bar_center_y, WINDOW_W - PADDING * 2 - 90 - 112 - 130, 12)
         )
         self._agents_label.setStringValue_("")
         self._agents_label.setEditable_(False)
@@ -1545,6 +1585,34 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._agents_label.setTextColor_(ns_white(0.45, 0.7))
         self._agents_label.setAlignment_(AppKit.NSTextAlignmentRight)
         content.addSubview_(self._agents_label)
+
+        # ── N11: Badge mémoire (compteur MemoryStore) ─────────────────────────
+        # Cliquable → popover liste les types sans contenu.
+        from .memory_indicator import format_badge_text as _mem_fmt  # lazy
+        _mem_x = PADDING + 90 + (WINDOW_W - PADDING * 2 - 90 - 112 - 130) + 6
+        self._memory_badge = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(_mem_x, bar_center_y - 1, 124, 14)
+        )
+        self._memory_badge.setBordered_(False)
+        self._memory_badge.setTitle_(_mem_fmt(0))
+        self._memory_badge.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._memory_badge.setTarget_(self)
+        self._memory_badge.setAction_("showMemoryPopover:")
+        self._memory_badge.setToolTip_(
+            "Souvenirs adaptatifs (PersonalMemory).\n"
+            "Click pour le détail par type."
+        )
+        try:
+            self._memory_badge.setContentTintColor_(ns_white(0.55, 0.6))
+        except Exception:
+            pass
+        content.addSubview_(self._memory_badge)
+
+        self._last_memory_types: Dict[str, int] = {
+            "preference": 0, "skill": 0, "goal": 0, "relation": 0, "pattern": 0
+        }
+        self._memory_popover = None  # lazy
+        self._memory_store: Any = None  # lazy
 
         # ── QW1: Badge "100 % local" — SF Symbol lock + libellé statique ──────
         _badge_x = WINDOW_W - PADDING - 86  # 406
@@ -1788,6 +1856,30 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             15.0, self, "updateEnergyIndicator:", None, True
         )
 
+        # ── N9: Badge PII (compteur sanitizer) ────────────────────────────────
+        # Cliquable → popover liste les catégories sans valeurs réelles.
+        self._pii_badge = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(PADDING + 18 + 140 + 8, _STATUS_Y + 4, 150, 14)
+        )
+        self._pii_badge.setBordered_(False)
+        self._pii_badge.setTitle_(format_badge_text({}))
+        self._pii_badge.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._pii_badge.setTarget_(self)
+        self._pii_badge.setAction_("showPiiPopover:")
+        self._pii_badge.setToolTip_(
+            "Données personnelles détectées dans le dernier échange.\n"
+            "Aucune valeur n'est exportée."
+        )
+        try:
+            self._pii_badge.setContentTintColor_(ns_white(0.55, 0.6))
+        except Exception:
+            pass
+        content.addSubview_(self._pii_badge)
+
+        # State pour la popover : compteurs du dernier échange.
+        self._last_pii_counts: Dict[str, int] = {}
+        self._pii_popover = None  # lazy
+
         # Drop highlight overlay (shown during folder/file drag-over)
         self._drop_highlight = AppKit.NSView.alloc().initWithFrame_(
             make_rect(2, 2, WINDOW_W - 4, WINDOW_H - 4)
@@ -1846,6 +1938,75 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._last_text: str = ""
         self._typing_timer: Optional[Any] = None
         self._start_typing_monitor()
+
+        # N12 — autoresizing : applique les masks pour que les zones suivent
+        # le redimensionnement de la fenêtre. Cf. _apply_autoresizing_masks.
+        self._apply_autoresizing_masks()
+
+    # ── N12: autoresizing masks pour resize fluide ────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _apply_autoresizing_masks(self) -> None:
+        """Applique les masques d'autoresizing aux zones principales du HUD.
+
+        Approche pragmatique (vs refonte NSLayoutConstraint complète) : Cocoa
+        autoresizingMask est l'API historique mais suffisante pour notre cas
+        — 5 zones empilées top-to-bottom, contenu interne à coordonnées
+        absolues qui scale en width.
+
+        Coordonnées Cocoa : y=0 en bas. Les zones top sont pinnées via
+        ``NSViewMinYMargin`` (margin bas flexible = la zone reste collée au
+        haut). Les zones bottom via ``NSViewMaxYMargin``. Le scroll view
+        stretch en hauteur.
+        """
+        flex_w = AppKit.NSViewWidthSizable
+        flex_h = AppKit.NSViewHeightSizable
+        pin_top = AppKit.NSViewMinYMargin   # bottom margin grows
+        pin_bottom = AppKit.NSViewMaxYMargin  # top margin grows
+        pin_left = AppKit.NSViewMaxXMargin  # right margin grows
+        pin_right = AppKit.NSViewMinXMargin  # left margin grows
+
+        def _safe_set(view, mask):
+            if view is None:
+                return
+            try:
+                view.setAutoresizingMask_(mask)
+            except Exception:
+                pass
+
+        # Header zone (y=444, h=56) — pin top
+        _safe_set(getattr(self, "_thinking_indicator", None), pin_top | pin_left)
+        _safe_set(getattr(self, "_thinking_label", None), pin_top | pin_left)
+        _safe_set(getattr(self, "_latency_label", None), pin_top | pin_right)
+        _safe_set(getattr(self, "_hud_menu_button", None), pin_top | pin_right)
+
+        # Agent status bar (y=422, h=22) — pin top, agents_label stretches
+        _safe_set(getattr(self, "_llm_dot", None), pin_top | pin_left)
+        _safe_set(getattr(self, "_llm_label", None), pin_top | pin_left)
+        _safe_set(getattr(self, "_agents_label", None), pin_top | flex_w)
+        _safe_set(getattr(self, "_memory_badge", None), pin_top | pin_right)
+        _safe_set(getattr(self, "_local_badge_icon", None), pin_top | pin_right)
+        _safe_set(getattr(self, "_local_badge_label", None), pin_top | pin_right)
+
+        # Text scroll zone (centre) — stretch H + V
+        _safe_set(getattr(self, "_scroll_view", None), flex_w | flex_h)
+        _safe_set(getattr(self, "_scroll_to_bottom_btn", None), pin_top | pin_right)
+        _safe_set(getattr(self, "_copy_btn", None), pin_top | pin_right)
+
+        # Input row (y=32) — pin bottom, stretch width
+        _safe_set(getattr(self, "_input", None), pin_bottom | flex_w)
+
+        # Status bar (y=6, h=20) — pin bottom
+        _safe_set(getattr(self, "_status", None), pin_bottom | pin_left)
+        _safe_set(getattr(self, "_status_text", None), pin_bottom | pin_left)
+        _safe_set(getattr(self, "_pii_badge", None), pin_bottom | pin_left)
+        _safe_set(getattr(self, "_energy_label", None), pin_bottom | pin_right)
+
+        # Drop highlight overlay — couvre toute la fenêtre
+        _safe_set(getattr(self, "_drop_highlight", None), flex_w | flex_h)
+
+        # Progress line — top edge
+        _safe_set(getattr(self, "_progress_line", None), pin_top | flex_w)
 
     # ── Space observer ────────────────────────────────────────────────────────
 
@@ -1998,6 +2159,9 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         if display_query:
             self.append_message_safe("Toi", display_query, user=True)
 
+        # N9 — actualise le badge PII sur l'input utilisateur visible.
+        self._update_pii_badge(display_query or query)
+
         self._hide_output_card()
         self._hide_proposal_card()
         self.set_state(LucieState.THINKING)
@@ -2023,6 +2187,242 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         }.get(value, value)
         internal_query = f"{_DECISION_MARKER}{value}|original={original_query}"
         self._submit_query(internal_query, display_query=user_echo)
+
+    # ── N9: Sanitizer PII feedback ──────────────────────────────────────────
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _update_pii_badge(self, text: str) -> None:
+        """Recalcule le compteur PII sur le texte fourni et met à jour le badge.
+
+        Mode passif : ne modifie ni l'input ni la réponse (pas d'appel à
+        ``sanitize()``). Sert d'observabilité pour l'utilisateur.
+        """
+        try:
+            from lucie_v1_standalone.memory.sanitizer import detect_pii  # lazy
+            counts = detect_pii(text or "")
+        except Exception:
+            counts = {}
+        self._last_pii_counts = dict(counts)
+        try:
+            self._pii_badge.setTitle_(format_badge_text(counts))
+        except Exception:
+            pass
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def showPiiPopover_(self, sender: Any) -> None:
+        """Ouvre une popover listant les catégories PII détectées (sans valeurs).
+
+        Si la popover est déjà visible : la ferme (toggle).
+        """
+        if self._pii_popover is not None and self._pii_popover.isShown():
+            self._pii_popover.performClose_(sender)
+            return
+
+        lines = format_popover_lines(self._last_pii_counts)
+        body = "\n".join(lines)
+
+        # Construit une vue simple : NSTextField multiline.
+        width = 240.0
+        height = 16.0 * max(1, len(lines)) + 24.0
+        view = AppKit.NSView.alloc().initWithFrame_(
+            Foundation.NSMakeRect(0, 0, width, height)
+        )
+        label = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(12, 12, width - 24, height - 24)
+        )
+        label.setStringValue_(body)
+        label.setEditable_(False)
+        label.setBezeled_(False)
+        label.setDrawsBackground_(False)
+        label.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        try:
+            label.setUsesSingleLineMode_(False)
+        except Exception:
+            pass
+        view.addSubview_(label)
+
+        controller = AppKit.NSViewController.alloc().init()
+        controller.setView_(view)
+
+        popover = AppKit.NSPopover.alloc().init()
+        popover.setContentViewController_(controller)
+        popover.setBehavior_(AppKit.NSPopoverBehaviorTransient)
+        popover.showRelativeToRect_ofView_preferredEdge_(
+            sender.bounds(), sender, AppKit.NSRectEdgeMaxY
+        )
+        self._pii_popover = popover
+
+    # ── N10: Bouton Audit PAF ───────────────────────────────────────────────
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _get_or_create_audit_trail(self) -> Any:
+        """Instancie ``AuditTrail`` à la demande (lazy) et le mémoïse."""
+        existing = getattr(self, "_audit_trail", None)
+        if existing is not None:
+            return existing
+        from app.services.audit_trail import AuditTrail  # lazy
+        from app.ui.audit_export import default_audit_db_path  # lazy
+        db_path = default_audit_db_path()
+        try:
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        try:
+            self._audit_trail = AuditTrail(db_path=db_path)
+        except Exception as exc:
+            logger.warning(f"AuditTrail init failed: {exc}")
+            self._audit_trail = None
+        return self._audit_trail
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def showHudMenu_(self, sender: Any) -> None:
+        """Ouvre le menu d'actions HUD (item Audit PAF, items futurs)."""
+        menu = AppKit.NSMenu.alloc().initWithTitle_("HUD")
+
+        item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "Exporter l'audit PAF…", "exportPafAudit:", ""
+        )
+        try:
+            icon = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "doc.text.magnifyingglass", "Exporter l'audit"
+            )
+            if icon is not None:
+                item.setImage_(icon)
+        except Exception:
+            pass
+        item.setTarget_(self)
+        menu.addItem_(item)
+
+        # Affiche sous le bouton
+        try:
+            location = Foundation.NSMakePoint(0, sender.bounds().size.height)
+            menu.popUpMenuPositioningItem_atLocation_inView_(None, location, sender)
+        except Exception:
+            # Fallback : popup au curseur
+            event = AppKit.NSApp.currentEvent()
+            AppKit.NSMenu.popUpContextMenu_withEvent_forView_(menu, event, sender)
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def exportPafAudit_(self, sender: Any) -> None:
+        """Action du menu : ouvre NSSavePanel et exporte le CSV PAF."""
+        from app.ui.audit_export import default_export_filename, export_to_path  # lazy
+
+        trail = self._get_or_create_audit_trail()
+        if trail is None:
+            self.append_message_safe(
+                "Lucie",
+                "⚠️ Audit PAF indisponible (init DB échouée).",
+                False,
+            )
+            return
+
+        panel = AppKit.NSSavePanel.savePanel()
+        panel.setTitle_("Exporter le journal d'audit (PAF)")
+        panel.setNameFieldStringValue_(default_export_filename())
+        try:
+            panel.setAllowedFileTypes_(["csv"])
+        except Exception:
+            pass
+        panel.setMessage_(
+            "Le journal d'audit est signé HMAC-SHA256. Conservez-le 6 ans "
+            "(exigence légale française)."
+        )
+
+        if panel.runModal() != AppKit.NSModalResponseOK:
+            return  # annulation utilisateur, silence
+
+        url = panel.URL()
+        if url is None or not url.isFileURL():
+            return
+
+        target = url.path()
+        success, message = export_to_path(trail, target)
+        sender_name = "Lucie"
+        self.append_message_safe(sender_name, message, False)
+
+    # ── N11: MemoryStore badge ──────────────────────────────────────────────
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _get_or_create_memory_store(self) -> Any:
+        """Lazy-instantie ``MemoryStore`` et l'initialise une seule fois."""
+        if self._memory_store is not None:
+            return self._memory_store
+        try:
+            from lucie_v1_standalone.memory.store import MemoryStore  # lazy
+            import asyncio as _asyncio
+            store = MemoryStore(data_dir="data/memory")
+            _asyncio.run(store.initialize())
+            self._memory_store = store
+        except Exception as exc:
+            logger.warning(f"MemoryStore init failed: {exc}")
+            self._memory_store = None
+        return self._memory_store
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _update_memory_badge(self) -> None:
+        """Lit ``store.snapshot()`` et met à jour le badge mémoire.
+
+        Appelé après chaque tour pipeline (`_on_streaming_complete`). Tolère
+        l'absence de store ou l'erreur — laisse le badge à sa valeur précédente.
+        """
+        from .memory_indicator import (  # lazy
+            extract_total_and_types,
+            format_badge_text as _mem_fmt,
+        )
+        store = self._get_or_create_memory_store()
+        if store is None:
+            return
+        try:
+            import asyncio as _asyncio
+            snapshot = _asyncio.run(store.snapshot())
+        except Exception as exc:
+            logger.debug(f"MemoryStore snapshot failed: {exc}")
+            return
+        total, types = extract_total_and_types(snapshot)
+        self._last_memory_types = dict(types)
+        try:
+            self._memory_badge.setTitle_(_mem_fmt(total))
+        except Exception:
+            pass
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def showMemoryPopover_(self, sender: Any) -> None:
+        """Ouvre une popover listant les 5 types de souvenirs (sans contenu)."""
+        from .memory_indicator import format_popover_lines as _mem_pop  # lazy
+
+        if self._memory_popover is not None and self._memory_popover.isShown():
+            self._memory_popover.performClose_(sender)
+            return
+
+        lines = _mem_pop(self._last_memory_types)
+        body = "\n".join(lines)
+
+        width = 220.0
+        height = 16.0 * max(1, len(lines)) + 24.0
+        view = AppKit.NSView.alloc().initWithFrame_(
+            Foundation.NSMakeRect(0, 0, width, height)
+        )
+        label = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(12, 12, width - 24, height - 24)
+        )
+        label.setStringValue_(body)
+        label.setEditable_(False)
+        label.setBezeled_(False)
+        label.setDrawsBackground_(False)
+        label.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        try:
+            label.setUsesSingleLineMode_(False)
+        except Exception:
+            pass
+        view.addSubview_(label)
+
+        controller = AppKit.NSViewController.alloc().init()
+        controller.setView_(view)
+
+        popover = AppKit.NSPopover.alloc().init()
+        popover.setContentViewController_(controller)
+        popover.setBehavior_(AppKit.NSPopoverBehaviorTransient)
+        popover.showRelativeToRect_ofView_preferredEdge_(
+            sender.bounds(), sender, AppKit.NSRectEdgeMaxY
+        )
+        self._memory_popover = popover
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def openFilePicker_(self, sender: Any) -> None:
@@ -3017,6 +3417,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         """
         # H7 + H5 : rendu Markdown final + citations cliquables Légifrance
         self._finalize_markdown_and_citations()
+
+        # N11 — refresh du badge mémoire après chaque tour pipeline
+        try:
+            self._update_memory_badge()
+        except Exception:
+            pass
 
         # H6 : on affiche le bouton Copier dès qu'une réponse non vide est rendue.
         if (
