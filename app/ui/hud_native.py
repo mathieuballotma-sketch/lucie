@@ -1251,12 +1251,34 @@ class ProposalCardView(AppKit.NSView):  # type: ignore[misc]
 class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     def init(self) -> Any:
-        rect = make_rect(
-            100,
-            AppKit.NSScreen.mainScreen().frame().size.height - WINDOW_H - 100,
-            WINDOW_W,
-            WINDOW_H,
-        )
+        # H8 : tente de restaurer la position mémorisée si elle est encore
+        # visible sur un écran branché ; sinon fallback sur la frame initiale.
+        try:
+            from ..services import preferences as _prefs
+            persisted = _prefs.load_frame()
+            if persisted is not None and _prefs.is_frame_visible(persisted):
+                # On ne mémorise que l'origine pour l'instant (size reste fixe ;
+                # le resize fluide nécessite Auto Layout — sprint ultérieur).
+                rect = make_rect(
+                    persisted.origin.x,
+                    persisted.origin.y,
+                    WINDOW_W,
+                    WINDOW_H,
+                )
+            else:
+                rect = make_rect(
+                    100,
+                    AppKit.NSScreen.mainScreen().frame().size.height - WINDOW_H - 100,
+                    WINDOW_W,
+                    WINDOW_H,
+                )
+        except Exception:
+            rect = make_rect(
+                100,
+                AppKit.NSScreen.mainScreen().frame().size.height - WINDOW_H - 100,
+                WINDOW_W,
+                WINDOW_H,
+            )
         style = (
             AppKit.NSWindowStyleMaskBorderless
             | AppKit.NSWindowStyleMaskNonactivatingPanel
@@ -1332,8 +1354,53 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         # _setup_space_observer + NSWindowCollectionBehaviorCanJoinAllSpaces.
         # The old 2s orderFrontRegardless was intrusive (stole focus from other apps).
 
+        # H8 : delegate window pour persister position au move/close.
+        self._frame_save_timer: Optional[Any] = None
+        try:
+            self.setDelegate_(self)
+        except Exception as e:
+            logger.debug(f"HUDWindow setDelegate self: {e}")
+
         logger.info("HUD v2 initialisé (520×500)")
         return self
+
+    # ── Persistence position (H8) ─────────────────────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _schedule_frame_save(self) -> None:
+        """Debounce 0.5 s d'inactivité avant d'écrire NSUserDefaults — évite
+        une écriture par pixel de drag."""
+        if self._frame_save_timer is not None:
+            try:
+                self._frame_save_timer.invalidate()
+            except Exception:
+                pass
+        self._frame_save_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            0.5, self, "frameSaveTimerFired:", None, False
+        )
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def frameSaveTimerFired_(self, timer: Any) -> None:
+        self._frame_save_timer = None
+        try:
+            from ..services import preferences as _prefs
+            _prefs.save_frame(self.frame())
+        except Exception as e:
+            logger.debug(f"frameSaveTimerFired: {e}")
+
+    def windowDidMove_(self, notification: Any) -> None:
+        self._schedule_frame_save()
+
+    def windowDidResize_(self, notification: Any) -> None:
+        self._schedule_frame_save()
+
+    def windowWillClose_(self, notification: Any) -> None:
+        # Sauvegarde immédiate à la fermeture.
+        try:
+            from ..services import preferences as _prefs
+            _prefs.save_frame(self.frame())
+        except Exception as e:
+            logger.debug(f"windowWillClose save_frame: {e}")
 
     def canBecomeKeyWindow(self) -> bool:
         return True
@@ -1577,6 +1644,40 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._scroll_to_bottom_btn.setAction_("scrollToBottomAction:")
         self._scroll_to_bottom_btn.setHidden_(True)
         content.addSubview_(self._scroll_to_bottom_btn)
+
+        # ── Bouton Copier (H6) ──────────────────────────────────────────────
+        # Position : bas-droite du TextScrollView, sous le bouton "↓".
+        # Visible uniquement quand une réponse complète est rendue (pas pendant
+        # streaming). Copie le texte brut Markdown au NSPasteboard.
+        _copy_btn_w = 78.0
+        _copy_btn_h = 22.0
+        _copy_btn_x = PADDING + _TEXT_W - _copy_btn_w - _scroll_btn_margin
+        _copy_btn_y = _TEXT_Y + _scroll_btn_margin + _scroll_btn_size + 4
+        self._copy_btn = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(_copy_btn_x, _copy_btn_y, _copy_btn_w, _copy_btn_h)
+        )
+        self._copy_btn.setTitle_(" Copier")
+        try:
+            sf_doc = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "doc.on.doc", "Copier"
+            )
+            if sf_doc is not None:
+                self._copy_btn.setImage_(sf_doc)
+                self._copy_btn.setImagePosition_(AppKit.NSImageLeading)
+        except Exception:
+            pass
+        self._copy_btn.setBezelStyle_(AppKit.NSBezelStyleInline)
+        self._copy_btn.setFont_(
+            AppKit.NSFont.systemFontOfSize_weight_(11, AppKit.NSFontWeightMedium)
+        )
+        self._copy_btn.setContentTintColor_(_adaptive_secondary())
+        self._copy_btn.setTarget_(self)
+        self._copy_btn.setAction_("copyResponseAction:")
+        self._copy_btn.setHidden_(True)
+        self._copy_btn.setAlphaValue_(0.0)
+        self._copy_btn.setToolTip_("Copier la réponse au presse-papier")
+        content.addSubview_(self._copy_btn)
+        self._copy_btn_feedback_timer: Optional[Any] = None
 
         # ══ PIPELINE STAGES ZONE (« Lucie réfléchit ») ═══════════════════════
         # Zone au-dessus du texte qui affiche les étapes en temps réel. Cachée
@@ -2155,6 +2256,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         if self._streaming_timer is not None:
             self._streaming_timer.invalidate()
             self._streaming_timer = None
+        # H6 : on masque le bouton Copier quand un nouveau cycle commence.
+        self._hide_copy_button()
 
         self._streaming_sender = sender
         self._streaming_full_text = str(full_text) if full_text else ""
@@ -2182,6 +2285,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         if self._streaming_timer is not None:
             self._streaming_timer.invalidate()
             self._streaming_timer = None
+        # H6 : on masque le bouton Copier quand un nouveau cycle commence.
+        self._hide_copy_button()
 
         self._streaming_sender = sender
         self._streaming_full_text = ""
@@ -2445,16 +2550,25 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 self._update_scroll_button_visibility()
         AppHelper.callAfter(_on_main)
 
-    # ── NSTextView delegate — clickable file links ────────────────────────────
+    # ── NSTextView delegate — clickable file & web links ──────────────────────
 
     def textView_clickedOnLink_atIndex_(
         self, text_view: Any, link: Any, char_index: int
     ) -> bool:
-        """Open file:// links in Finder/default app when clicked in the text view."""
+        """Ouvre les liens cliquables dans le NSTextView.
+
+        - `file://` → application par défaut (DraggableFileCard, etc.)
+        - `http://`, `https://` → Safari (citations Légifrance H5, etc.)
+        """
         try:
-            if isinstance(link, AppKit.NSURL) and link.isFileURL():
-                AppKit.NSWorkspace.sharedWorkspace().openURL_(link)
-                return True
+            if isinstance(link, AppKit.NSURL):
+                if link.isFileURL():
+                    AppKit.NSWorkspace.sharedWorkspace().openURL_(link)
+                    return True
+                scheme = link.scheme()
+                if scheme in ("http", "https"):
+                    AppKit.NSWorkspace.sharedWorkspace().openURL_(link)
+                    return True
         except Exception as e:
             logger.debug(f"Link click: {e}")
         return False
@@ -2720,6 +2834,177 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     # ── Decision flow (ProposalCard + suggested_replies) ──────────────────────
 
+    # ── Copier réponse au presse-papier (H6) ──────────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _show_copy_button(self) -> None:
+        """Affiche le bouton Copier en fade-in après un streaming complet."""
+        btn = getattr(self, "_copy_btn", None)
+        if btn is None:
+            return
+        # Réinit visuel au cas où le timer feedback est encore actif
+        if self._copy_btn_feedback_timer is not None:
+            try:
+                self._copy_btn_feedback_timer.invalidate()
+            except Exception:
+                pass
+            self._copy_btn_feedback_timer = None
+        btn.setTitle_(" Copier")
+        try:
+            sf_doc = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "doc.on.doc", "Copier"
+            )
+            if sf_doc is not None:
+                btn.setImage_(sf_doc)
+        except Exception:
+            pass
+        btn.setContentTintColor_(_adaptive_secondary())
+        btn.setEnabled_(True)
+        btn.setHidden_(False)
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.2)
+        btn.animator().setAlphaValue_(0.85)
+        AppKit.NSAnimationContext.endGrouping()
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _hide_copy_button(self) -> None:
+        """Masque le bouton Copier (au démarrage d'un nouveau streaming)."""
+        btn = getattr(self, "_copy_btn", None)
+        if btn is None:
+            return
+        if self._copy_btn_feedback_timer is not None:
+            try:
+                self._copy_btn_feedback_timer.invalidate()
+            except Exception:
+                pass
+            self._copy_btn_feedback_timer = None
+        btn.setAlphaValue_(0.0)
+        btn.setHidden_(True)
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def copyResponseAction_(self, sender: Any) -> None:
+        """Copie la réponse Markdown brute au NSPasteboard, avec feedback visuel."""
+        text = self._streaming_full_text or ""
+        if not text:
+            return
+        try:
+            pb = AppKit.NSPasteboard.generalPasteboard()
+            pb.clearContents()
+            pb.setString_forType_(text, AppKit.NSPasteboardTypeString)
+        except Exception as e:
+            logger.debug(f"copyResponseAction: {e}")
+            return
+        # Feedback visuel : bouton passe à "Copié ✓" en vert, désactivé 1.5 s.
+        try:
+            self._copy_btn.setTitle_(" Copié")
+            sf_check = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "checkmark", "Copié"
+            )
+            if sf_check is not None:
+                self._copy_btn.setImage_(sf_check)
+            self._copy_btn.setContentTintColor_(_green())
+            self._copy_btn.setEnabled_(False)
+        except Exception:
+            pass
+        if self._copy_btn_feedback_timer is not None:
+            try:
+                self._copy_btn_feedback_timer.invalidate()
+            except Exception:
+                pass
+        self._copy_btn_feedback_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            1.5, self, "copyFeedbackTimerFired:", None, False
+        )
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def copyFeedbackTimerFired_(self, timer: Any) -> None:
+        """Restaure l'état visuel du bouton Copier après 1.5 s de feedback."""
+        self._copy_btn_feedback_timer = None
+        btn = getattr(self, "_copy_btn", None)
+        if btn is None:
+            return
+        try:
+            btn.setTitle_(" Copier")
+            sf_doc = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "doc.on.doc", "Copier"
+            )
+            if sf_doc is not None:
+                btn.setImage_(sf_doc)
+            btn.setContentTintColor_(_adaptive_secondary())
+            btn.setEnabled_(True)
+        except Exception:
+            pass
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _finalize_markdown_and_citations(self) -> None:
+        """Post-process la dernière plage de streaming : applique le rendu
+        Markdown structuré (H7) puis les citations cliquables (H5).
+
+        Le streaming token-by-token utilise un rendu basique (12.5 pt). À la
+        fin, on remplace la plage de texte par un NSAttributedString rendu
+        avec hiérarchie typo (titres, gras, italique, code, listes), puis on
+        ajoute des NSLinkAttribute sur les citations [REF:] / [L.xxx] / etc.
+        détectées dans le corps du message.
+        """
+        if self._streaming_range is None or not self._streaming_full_text:
+            return
+        if self._streaming_sender == "Toi":
+            return  # Pas de Markdown sur la query utilisateur
+        try:
+            from .markdown_renderer import render as md_render
+            from .legifrance_link import apply_links
+        except Exception as e:  # pragma: no cover — défense
+            logger.debug(f"_finalize_markdown_and_citations imports: {e}")
+            return
+
+        try:
+            storage = self._text_view.textStorage()
+            start, end = self._streaming_range
+            if start < 0 or end > len(storage.string()) or end <= start:
+                return
+
+            sender_attrs = {
+                AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_weight_(
+                    10, AppKit.NSFontWeightMedium
+                ),
+                AppKit.NSForegroundColorAttributeName: _accent(0.9),
+            }
+            finalized = AppKit.NSMutableAttributedString.alloc().init()
+            finalized.appendAttributedString_(
+                AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                    f"{self._streaming_sender}\n", sender_attrs
+                )
+            )
+            body = md_render(self._streaming_full_text)
+            body_offset = finalized.length()
+            finalized.appendAttributedString_(body)
+            # Ajouter le \n final pour préserver la séparation des messages.
+            finalized.appendAttributedString_(
+                AppKit.NSAttributedString.alloc().initWithString_attributes_(
+                    "\n", sender_attrs
+                )
+            )
+
+            # Citations cliquables — on ne touche que la plage du body.
+            body_only = AppKit.NSMutableAttributedString.alloc().initWithAttributedString_(
+                finalized.attributedSubstringFromRange_(
+                    Foundation.NSMakeRange(body_offset, finalized.length() - body_offset - 1)
+                )
+            )
+            apply_links(body_only)
+            finalized.replaceCharactersInRange_withAttributedString_(
+                Foundation.NSMakeRange(body_offset, finalized.length() - body_offset - 1),
+                body_only,
+            )
+
+            storage.replaceCharactersInRange_withAttributedString_(
+                Foundation.NSMakeRange(start, end - start), finalized
+            )
+            new_len = finalized.length()
+            self._streaming_range = (start, start + new_len)
+            self._text_view.setNeedsDisplay_(True)
+        except Exception as e:  # pragma: no cover — défense
+            logger.debug(f"_finalize_markdown_and_citations: {e}")
+
     @objc.python_method  # type: ignore[untyped-decorator]
     def _on_streaming_complete(self) -> None:
         """Décide de l'affichage post-streaming selon les meta PipelineResponse.
@@ -2730,6 +3015,16 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
           3. `suggested_replies` non vides → ProposalCard générique
           4. Sinon → rien (réponse factuelle — plus de .md temporaire auto)
         """
+        # H7 + H5 : rendu Markdown final + citations cliquables Légifrance
+        self._finalize_markdown_and_citations()
+
+        # H6 : on affiche le bouton Copier dès qu'une réponse non vide est rendue.
+        if (
+            self._streaming_sender != "Toi"
+            and (self._streaming_full_text or "").strip()
+        ):
+            self._show_copy_button()
+
         meta = self._last_response_meta or {}
         original_query = self._last_query
 
