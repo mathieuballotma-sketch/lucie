@@ -1501,6 +1501,31 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._latency_label.setTextColor_(_adaptive_tertiary())
         content.addSubview_(self._latency_label)
 
+        # ── N10: Bouton menu (Audit PAF + futurs items) ──────────────────────
+        try:
+            menu_img = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "ellipsis.circle", "Menu HUD"
+            )
+        except Exception:
+            menu_img = None
+        self._hud_menu_button = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(WINDOW_W - 88 - 4 - 18, header_center_y + 1, 18, 18)
+        )
+        self._hud_menu_button.setBordered_(False)
+        if menu_img is not None:
+            self._hud_menu_button.setImage_(menu_img)
+            self._hud_menu_button.setTitle_("")
+        else:
+            self._hud_menu_button.setTitle_("⋯")
+        try:
+            self._hud_menu_button.setContentTintColor_(ns_white(0.55, 0.6))
+        except Exception:
+            pass
+        self._hud_menu_button.setTarget_(self)
+        self._hud_menu_button.setAction_("showHudMenu:")
+        self._hud_menu_button.setToolTip_("Plus d'actions")
+        content.addSubview_(self._hud_menu_button)
+
         # Separator: header / agent bar
         sep1 = AppKit.NSBox.alloc().initWithFrame_(
             make_rect(0, _HEADER_Y - 1, WINDOW_W, 1)
@@ -2114,6 +2139,93 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             sender.bounds(), sender, AppKit.NSRectEdgeMaxY
         )
         self._pii_popover = popover
+
+    # ── N10: Bouton Audit PAF ───────────────────────────────────────────────
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _get_or_create_audit_trail(self) -> Any:
+        """Instancie ``AuditTrail`` à la demande (lazy) et le mémoïse."""
+        existing = getattr(self, "_audit_trail", None)
+        if existing is not None:
+            return existing
+        from app.services.audit_trail import AuditTrail  # lazy
+        from app.ui.audit_export import default_audit_db_path  # lazy
+        db_path = default_audit_db_path()
+        try:
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        try:
+            self._audit_trail = AuditTrail(db_path=db_path)
+        except Exception as exc:
+            logger.warning(f"AuditTrail init failed: {exc}")
+            self._audit_trail = None
+        return self._audit_trail
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def showHudMenu_(self, sender: Any) -> None:
+        """Ouvre le menu d'actions HUD (item Audit PAF, items futurs)."""
+        menu = AppKit.NSMenu.alloc().initWithTitle_("HUD")
+
+        item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "Exporter l'audit PAF…", "exportPafAudit:", ""
+        )
+        try:
+            icon = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                "doc.text.magnifyingglass", "Exporter l'audit"
+            )
+            if icon is not None:
+                item.setImage_(icon)
+        except Exception:
+            pass
+        item.setTarget_(self)
+        menu.addItem_(item)
+
+        # Affiche sous le bouton
+        try:
+            location = Foundation.NSMakePoint(0, sender.bounds().size.height)
+            menu.popUpMenuPositioningItem_atLocation_inView_(None, location, sender)
+        except Exception:
+            # Fallback : popup au curseur
+            event = AppKit.NSApp.currentEvent()
+            AppKit.NSMenu.popUpContextMenu_withEvent_forView_(menu, event, sender)
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def exportPafAudit_(self, sender: Any) -> None:
+        """Action du menu : ouvre NSSavePanel et exporte le CSV PAF."""
+        from app.ui.audit_export import default_export_filename, export_to_path  # lazy
+
+        trail = self._get_or_create_audit_trail()
+        if trail is None:
+            self.append_message_safe(
+                "Lucie",
+                "⚠️ Audit PAF indisponible (init DB échouée).",
+                False,
+            )
+            return
+
+        panel = AppKit.NSSavePanel.savePanel()
+        panel.setTitle_("Exporter le journal d'audit (PAF)")
+        panel.setNameFieldStringValue_(default_export_filename())
+        try:
+            panel.setAllowedFileTypes_(["csv"])
+        except Exception:
+            pass
+        panel.setMessage_(
+            "Le journal d'audit est signé HMAC-SHA256. Conservez-le 6 ans "
+            "(exigence légale française)."
+        )
+
+        if panel.runModal() != AppKit.NSModalResponseOK:
+            return  # annulation utilisateur, silence
+
+        url = panel.URL()
+        if url is None or not url.isFileURL():
+            return
+
+        target = url.path()
+        success, message = export_to_path(trail, target)
+        sender_name = "Lucie"
+        self.append_message_safe(sender_name, message, False)
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def openFilePicker_(self, sender: Any) -> None:
