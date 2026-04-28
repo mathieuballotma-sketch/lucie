@@ -1252,19 +1252,20 @@ class ProposalCardView(AppKit.NSView):  # type: ignore[misc]
 class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     def init(self) -> Any:
-        # H8 : tente de restaurer la position mémorisée si elle est encore
-        # visible sur un écran branché ; sinon fallback sur la frame initiale.
+        # H8 + N12 : restaure origin ET taille mémorisées si visibles + bornées.
         try:
             from ..services import preferences as _prefs
             persisted = _prefs.load_frame()
             if persisted is not None and _prefs.is_frame_visible(persisted):
-                # On ne mémorise que l'origine pour l'instant (size reste fixe ;
-                # le resize fluide nécessite Auto Layout — sprint ultérieur).
+                # N12 : la taille est aussi restaurée (clampée aux bornes).
+                clamped = _prefs.clamp_to_max_size(
+                    _prefs.clamp_to_min_size(persisted)
+                )
                 rect = make_rect(
-                    persisted.origin.x,
-                    persisted.origin.y,
-                    WINDOW_W,
-                    WINDOW_H,
+                    clamped.origin.x,
+                    clamped.origin.y,
+                    clamped.size.width,
+                    clamped.size.height,
                 )
             else:
                 rect = make_rect(
@@ -1280,15 +1281,27 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 WINDOW_W,
                 WINDOW_H,
             )
+        # N12 : NSWindowStyleMaskResizable active la poignée de redimensionnement.
+        # Combiné avec Borderless + NonactivatingPanel : compatible Sequoia ;
+        # fallback Q-0003 si rendu de la poignée pose problème (à monitorer).
         style = (
             AppKit.NSWindowStyleMaskBorderless
             | AppKit.NSWindowStyleMaskNonactivatingPanel
+            | AppKit.NSWindowStyleMaskResizable
         )
         self = objc.super(HUDWindow, self).initWithContentRect_styleMask_backing_defer_(
             rect, style, AppKit.NSBackingStoreBuffered, False
         )
         if self is None:
             return None
+
+        # N12 : bornes min/max appliquées par AppKit pendant le resize utilisateur.
+        try:
+            from ..services import preferences as _prefs2
+            self.setMinSize_(Foundation.NSMakeSize(_prefs2.HUD_MIN_W, _prefs2.HUD_MIN_H))
+            self.setMaxSize_(Foundation.NSMakeSize(_prefs2.HUD_MAX_W, _prefs2.HUD_MAX_H))
+        except Exception as e:
+            logger.debug(f"setMin/MaxSize: {e}")
 
         self.setFloatingPanel_(True)
         self.setBecomesKeyOnlyIfNeeded_(False)
@@ -1362,7 +1375,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         except Exception as e:
             logger.debug(f"HUDWindow setDelegate self: {e}")
 
-        logger.info("HUD v2 initialisé (520×500)")
+        logger.info("HUD v2 initialisé (resizable, %sx%s persistée)", int(rect.size.width), int(rect.size.height))
         return self
 
     # ── Persistence position (H8) ─────────────────────────────────────────────
@@ -1925,6 +1938,75 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._last_text: str = ""
         self._typing_timer: Optional[Any] = None
         self._start_typing_monitor()
+
+        # N12 — autoresizing : applique les masks pour que les zones suivent
+        # le redimensionnement de la fenêtre. Cf. _apply_autoresizing_masks.
+        self._apply_autoresizing_masks()
+
+    # ── N12: autoresizing masks pour resize fluide ────────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _apply_autoresizing_masks(self) -> None:
+        """Applique les masques d'autoresizing aux zones principales du HUD.
+
+        Approche pragmatique (vs refonte NSLayoutConstraint complète) : Cocoa
+        autoresizingMask est l'API historique mais suffisante pour notre cas
+        — 5 zones empilées top-to-bottom, contenu interne à coordonnées
+        absolues qui scale en width.
+
+        Coordonnées Cocoa : y=0 en bas. Les zones top sont pinnées via
+        ``NSViewMinYMargin`` (margin bas flexible = la zone reste collée au
+        haut). Les zones bottom via ``NSViewMaxYMargin``. Le scroll view
+        stretch en hauteur.
+        """
+        flex_w = AppKit.NSViewWidthSizable
+        flex_h = AppKit.NSViewHeightSizable
+        pin_top = AppKit.NSViewMinYMargin   # bottom margin grows
+        pin_bottom = AppKit.NSViewMaxYMargin  # top margin grows
+        pin_left = AppKit.NSViewMaxXMargin  # right margin grows
+        pin_right = AppKit.NSViewMinXMargin  # left margin grows
+
+        def _safe_set(view, mask):
+            if view is None:
+                return
+            try:
+                view.setAutoresizingMask_(mask)
+            except Exception:
+                pass
+
+        # Header zone (y=444, h=56) — pin top
+        _safe_set(getattr(self, "_thinking_indicator", None), pin_top | pin_left)
+        _safe_set(getattr(self, "_thinking_label", None), pin_top | pin_left)
+        _safe_set(getattr(self, "_latency_label", None), pin_top | pin_right)
+        _safe_set(getattr(self, "_hud_menu_button", None), pin_top | pin_right)
+
+        # Agent status bar (y=422, h=22) — pin top, agents_label stretches
+        _safe_set(getattr(self, "_llm_dot", None), pin_top | pin_left)
+        _safe_set(getattr(self, "_llm_label", None), pin_top | pin_left)
+        _safe_set(getattr(self, "_agents_label", None), pin_top | flex_w)
+        _safe_set(getattr(self, "_memory_badge", None), pin_top | pin_right)
+        _safe_set(getattr(self, "_local_badge_icon", None), pin_top | pin_right)
+        _safe_set(getattr(self, "_local_badge_label", None), pin_top | pin_right)
+
+        # Text scroll zone (centre) — stretch H + V
+        _safe_set(getattr(self, "_scroll_view", None), flex_w | flex_h)
+        _safe_set(getattr(self, "_scroll_to_bottom_btn", None), pin_top | pin_right)
+        _safe_set(getattr(self, "_copy_btn", None), pin_top | pin_right)
+
+        # Input row (y=32) — pin bottom, stretch width
+        _safe_set(getattr(self, "_input", None), pin_bottom | flex_w)
+
+        # Status bar (y=6, h=20) — pin bottom
+        _safe_set(getattr(self, "_status", None), pin_bottom | pin_left)
+        _safe_set(getattr(self, "_status_text", None), pin_bottom | pin_left)
+        _safe_set(getattr(self, "_pii_badge", None), pin_bottom | pin_left)
+        _safe_set(getattr(self, "_energy_label", None), pin_bottom | pin_right)
+
+        # Drop highlight overlay — couvre toute la fenêtre
+        _safe_set(getattr(self, "_drop_highlight", None), flex_w | flex_h)
+
+        # Progress line — top edge
+        _safe_set(getattr(self, "_progress_line", None), pin_top | flex_w)
 
     # ── Space observer ────────────────────────────────────────────────────────
 
