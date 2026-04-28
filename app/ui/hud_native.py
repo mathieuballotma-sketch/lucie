@@ -1559,9 +1559,10 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._llm_label.setTextColor_(ns_white(0.55, 0.8))
         content.addSubview_(self._llm_label)
 
-        # Active agents (right-aligned) — width réduit pour laisser place au badge local
+        # Active agents (right-aligned) — width réduit pour laisser place aux badges
+        # local + mémoire (N11). Réservé : 130 px pour le badge mémoire.
         self._agents_label = AppKit.NSTextField.alloc().initWithFrame_(
-            make_rect(PADDING + 90, bar_center_y, WINDOW_W - PADDING * 2 - 90 - 112, 12)
+            make_rect(PADDING + 90, bar_center_y, WINDOW_W - PADDING * 2 - 90 - 112 - 130, 12)
         )
         self._agents_label.setStringValue_("")
         self._agents_label.setEditable_(False)
@@ -1571,6 +1572,34 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._agents_label.setTextColor_(ns_white(0.45, 0.7))
         self._agents_label.setAlignment_(AppKit.NSTextAlignmentRight)
         content.addSubview_(self._agents_label)
+
+        # ── N11: Badge mémoire (compteur MemoryStore) ─────────────────────────
+        # Cliquable → popover liste les types sans contenu.
+        from .memory_indicator import format_badge_text as _mem_fmt  # lazy
+        _mem_x = PADDING + 90 + (WINDOW_W - PADDING * 2 - 90 - 112 - 130) + 6
+        self._memory_badge = AppKit.NSButton.alloc().initWithFrame_(
+            make_rect(_mem_x, bar_center_y - 1, 124, 14)
+        )
+        self._memory_badge.setBordered_(False)
+        self._memory_badge.setTitle_(_mem_fmt(0))
+        self._memory_badge.setFont_(AppKit.NSFont.systemFontOfSize_(9))
+        self._memory_badge.setTarget_(self)
+        self._memory_badge.setAction_("showMemoryPopover:")
+        self._memory_badge.setToolTip_(
+            "Souvenirs adaptatifs (PersonalMemory).\n"
+            "Click pour le détail par type."
+        )
+        try:
+            self._memory_badge.setContentTintColor_(ns_white(0.55, 0.6))
+        except Exception:
+            pass
+        content.addSubview_(self._memory_badge)
+
+        self._last_memory_types: Dict[str, int] = {
+            "preference": 0, "skill": 0, "goal": 0, "relation": 0, "pattern": 0
+        }
+        self._memory_popover = None  # lazy
+        self._memory_store: Any = None  # lazy
 
         # ── QW1: Badge "100 % local" — SF Symbol lock + libellé statique ──────
         _badge_x = WINDOW_W - PADDING - 86  # 406
@@ -2226,6 +2255,92 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         success, message = export_to_path(trail, target)
         sender_name = "Lucie"
         self.append_message_safe(sender_name, message, False)
+
+    # ── N11: MemoryStore badge ──────────────────────────────────────────────
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _get_or_create_memory_store(self) -> Any:
+        """Lazy-instantie ``MemoryStore`` et l'initialise une seule fois."""
+        if self._memory_store is not None:
+            return self._memory_store
+        try:
+            from lucie_v1_standalone.memory.store import MemoryStore  # lazy
+            import asyncio as _asyncio
+            store = MemoryStore(data_dir="data/memory")
+            _asyncio.run(store.initialize())
+            self._memory_store = store
+        except Exception as exc:
+            logger.warning(f"MemoryStore init failed: {exc}")
+            self._memory_store = None
+        return self._memory_store
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _update_memory_badge(self) -> None:
+        """Lit ``store.snapshot()`` et met à jour le badge mémoire.
+
+        Appelé après chaque tour pipeline (`_on_streaming_complete`). Tolère
+        l'absence de store ou l'erreur — laisse le badge à sa valeur précédente.
+        """
+        from .memory_indicator import (  # lazy
+            extract_total_and_types,
+            format_badge_text as _mem_fmt,
+        )
+        store = self._get_or_create_memory_store()
+        if store is None:
+            return
+        try:
+            import asyncio as _asyncio
+            snapshot = _asyncio.run(store.snapshot())
+        except Exception as exc:
+            logger.debug(f"MemoryStore snapshot failed: {exc}")
+            return
+        total, types = extract_total_and_types(snapshot)
+        self._last_memory_types = dict(types)
+        try:
+            self._memory_badge.setTitle_(_mem_fmt(total))
+        except Exception:
+            pass
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def showMemoryPopover_(self, sender: Any) -> None:
+        """Ouvre une popover listant les 5 types de souvenirs (sans contenu)."""
+        from .memory_indicator import format_popover_lines as _mem_pop  # lazy
+
+        if self._memory_popover is not None and self._memory_popover.isShown():
+            self._memory_popover.performClose_(sender)
+            return
+
+        lines = _mem_pop(self._last_memory_types)
+        body = "\n".join(lines)
+
+        width = 220.0
+        height = 16.0 * max(1, len(lines)) + 24.0
+        view = AppKit.NSView.alloc().initWithFrame_(
+            Foundation.NSMakeRect(0, 0, width, height)
+        )
+        label = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(12, 12, width - 24, height - 24)
+        )
+        label.setStringValue_(body)
+        label.setEditable_(False)
+        label.setBezeled_(False)
+        label.setDrawsBackground_(False)
+        label.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        try:
+            label.setUsesSingleLineMode_(False)
+        except Exception:
+            pass
+        view.addSubview_(label)
+
+        controller = AppKit.NSViewController.alloc().init()
+        controller.setView_(view)
+
+        popover = AppKit.NSPopover.alloc().init()
+        popover.setContentViewController_(controller)
+        popover.setBehavior_(AppKit.NSPopoverBehaviorTransient)
+        popover.showRelativeToRect_ofView_preferredEdge_(
+            sender.bounds(), sender, AppKit.NSRectEdgeMaxY
+        )
+        self._memory_popover = popover
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def openFilePicker_(self, sender: Any) -> None:
@@ -3220,6 +3335,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         """
         # H7 + H5 : rendu Markdown final + citations cliquables Légifrance
         self._finalize_markdown_and_citations()
+
+        # N11 — refresh du badge mémoire après chaque tour pipeline
+        try:
+            self._update_memory_badge()
+        except Exception:
+            pass
 
         # H6 : on affiche le bouton Copier dès qu'une réponse non vide est rendue.
         if (
