@@ -63,6 +63,14 @@ async def handle(note_markdown: str, sources_json: str) -> str:
     # ── Cas : aucune citation dans la note ────────────────────────────────────
     if not citations:
         dt_ms = (time.perf_counter() - t0) * 1000
+        # Discriminant : une note "0 citation" peut être un refus poli du
+        # rédacteur (sources insuffisantes — comportement attendu) ou une
+        # hallucination (texte sans la moindre référence). Le log distingue
+        # les deux pour faciliter le triage des régressions.
+        is_kb_refusal = (
+            "RÉDACTION IMPOSSIBLE" in note_markdown
+            or "Cette information n'est pas dans mes sources" in note_markdown
+        )
         emit(
             "cerveau_oiseau",
             "completed",
@@ -71,11 +79,19 @@ async def handle(note_markdown: str, sources_json: str) -> str:
             n_total=0,
             n_ok=0,
             n_invalid=0,
+            kb_refusal=is_kb_refusal,
         )
-        logger.info(
-            "[CerveauOiseau] Vérificateur: 0 citation détectée → NON VÉRIFIABLE (%.0fms)",
-            dt_ms,
-        )
+        if is_kb_refusal:
+            logger.info(
+                "[CerveauOiseau] Vérificateur: 0 citation (refus poli — "
+                "couverture KB insuffisante) (%.0fms)",
+                dt_ms,
+            )
+        else:
+            logger.info(
+                "[CerveauOiseau] Vérificateur: 0 citation détectée → NON VÉRIFIABLE (%.0fms)",
+                dt_ms,
+            )
         result: Dict[str, Any] = {
             "citations_verifiees": [],
             "citations_invalides": [],
