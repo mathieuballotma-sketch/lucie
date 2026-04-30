@@ -228,3 +228,80 @@ def test_run_stream_n2_streams_chunks_then_final(monkeypatch):
     assert chunks, "Pas de chunks yieldés"
     assert len(finals) == 1
     assert "L.1234-1" in finals[0].answer
+
+
+# ── Cerveau Oiseau short-circuit en streaming (régression v0.5.5) ───────────
+# Ces tests verrouillent la parité run() / run_stream() : un article fictif ou
+# une query hors-scope doit court-circuiter avant LLM, pas faire 26s comme
+# observé en v0.5.5 dans le HUD.
+
+def test_run_stream_article_inexistant_short_circuit():
+    """L.1234-999 (article fictif) → refus immédiat, refused=True, <500ms,
+    aucun chunk yieldé (court-circuit avant tout LLM)."""
+    import time
+
+    async def go():
+        t0 = time.perf_counter()
+        events = []
+        async for evt in run_stream("Que dit l'article L.1234-999 du code du travail ?"):
+            events.append(evt)
+        return events, (time.perf_counter() - t0) * 1000
+
+    events, dt_ms = asyncio.run(go())
+
+    # Aucun chunk de texte (pas de LLM appelé)
+    chunks = [e for e in events if isinstance(e, str)]
+    finals = [e for e in events if isinstance(e, PipelineResponse)]
+    assert not chunks, f"Aucun chunk attendu, reçu: {chunks!r}"
+    assert len(finals) == 1
+    assert finals[0].refused is True
+    assert finals[0].early_validation_triggered == "article_invalid"
+    assert dt_ms < 500, f"Trop lent: {dt_ms:.0f}ms (cible <500ms, idéal <100ms)"
+
+
+def test_run_stream_out_of_scope_short_circuit():
+    """Query hors-scope (fiscal, immobilier, etc.) → refus poli avant LLM."""
+    import time
+
+    async def go():
+        t0 = time.perf_counter()
+        events = []
+        async for evt in run_stream("Comment calculer mon impôt sur le revenu ?"):
+            events.append(evt)
+        return events, (time.perf_counter() - t0) * 1000
+
+    events, dt_ms = asyncio.run(go())
+
+    chunks = [e for e in events if isinstance(e, str)]
+    finals = [e for e in events if isinstance(e, PipelineResponse)]
+    assert not chunks, f"Aucun chunk attendu, reçu: {chunks!r}"
+    assert len(finals) == 1
+    assert finals[0].refused is True
+    assert finals[0].early_validation_triggered == "out_of_scope"
+    assert dt_ms < 500, f"Trop lent: {dt_ms:.0f}ms"
+
+
+def test_run_stream_imprecise_legal_polite_refusal():
+    """Question juridique imprécise (score=0) → refus court avec demande
+    de précision, refused=True, <500ms. Avant Phase B v0.5.6, fallthrough
+    LLM 11s qui finissait par 'Cette information n'est pas dans mes sources'."""
+    import time
+
+    async def go():
+        t0 = time.perf_counter()
+        events = []
+        async for evt in run_stream("quel est le délai de prescription pour contester ?"):
+            events.append(evt)
+        return events, (time.perf_counter() - t0) * 1000
+
+    events, dt_ms = asyncio.run(go())
+
+    chunks = [e for e in events if isinstance(e, str)]
+    finals = [e for e in events if isinstance(e, PipelineResponse)]
+    assert not chunks
+    assert len(finals) == 1
+    assert finals[0].refused is True
+    assert finals[0].early_validation_triggered == "imprecise_legal"
+    # Le message contient une demande de précision exploitable
+    assert "précis" in finals[0].answer.lower() or "contexte" in finals[0].answer.lower()
+    assert dt_ms < 500, f"Trop lent: {dt_ms:.0f}ms"

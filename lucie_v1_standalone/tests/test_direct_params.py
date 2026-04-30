@@ -51,7 +51,7 @@ def test_direct_params_passes_sweep_options_to_ollama_in_n1_path(monkeypatch):
          patch("lucie_v1_standalone.pipeline.router_route", return_value=fake_route), \
          patch("lucie_v1_standalone.pipeline.router_validate", return_value=fake_validate), \
          patch("lucie_v1_standalone.pipeline.classify_intent",
-               return_value=Intent.IMPRECISE_LEGAL):
+               return_value=Intent.PRECISE_LEGAL):
 
         async def go():
             events = []
@@ -93,7 +93,7 @@ def test_direct_params_n1_smoke_returns_full_streamed_text(monkeypatch):
          patch("lucie_v1_standalone.pipeline.router_route", return_value=fake_route), \
          patch("lucie_v1_standalone.pipeline.router_validate", return_value=fake_validate), \
          patch("lucie_v1_standalone.pipeline.classify_intent",
-               return_value=Intent.IMPRECISE_LEGAL):
+               return_value=Intent.PRECISE_LEGAL):
 
         async def go():
             events = []
