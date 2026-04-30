@@ -17,6 +17,7 @@ modules à l'état par défaut après CHAQUE test qui en a reloaded.
 from __future__ import annotations
 
 import importlib
+import urllib.request
 
 import pytest
 
@@ -37,3 +38,41 @@ def _reset_article_validator_module():
     except Exception:
         # Pas d'obstacle au reporting de test en cas de soucis de reload.
         pass
+
+
+def _is_ollama_alive() -> bool:
+    """Ping Ollama (1s timeout). Sert à skipper les tests `requires_ollama`."""
+    try:
+        with urllib.request.urlopen(
+            "http://localhost:11434/api/tags", timeout=1
+        ) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+_OLLAMA_ALIVE: bool = _is_ollama_alive()
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip auto les tests marqués `requires_ollama` quand Ollama n'est pas joignable."""
+    if _OLLAMA_ALIVE:
+        return
+    skip_marker = pytest.mark.skip(
+        reason="Ollama indisponible sur http://localhost:11434"
+    )
+    for item in items:
+        if "requires_ollama" in item.keywords:
+            item.add_marker(skip_marker)
+
+
+def pytest_configure(config):
+    """Déclare les markers custom pour éviter les warnings pytest."""
+    config.addinivalue_line(
+        "markers",
+        "requires_ollama: marque un test qui exige un serveur Ollama actif",
+    )
+    config.addinivalue_line(
+        "markers",
+        "slow: marque un test lent (perf, charge) — peut être skippé en CI rapide",
+    )
