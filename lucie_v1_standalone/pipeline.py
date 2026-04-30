@@ -265,6 +265,110 @@ def _format_exception_for_user(exc: BaseException) -> str:
     return f"**Erreur pipeline** : {msg}"
 
 
+# Message de demande de précision pour les questions IMPRECISE_LEGAL.
+# Court-circuit avant LLM (~50ms) pour éviter les 11s d'un pipeline qui
+# finirait par produire "Cette information n'est pas dans mes sources."
+_IMPRECISE_LEGAL_REFUSAL = (
+    "Pour répondre précisément, j'ai besoin de plus de contexte : "
+    "référence d'article (ex. L.1233-3), type de procédure visé, "
+    "ou éléments factuels (ancienneté, motif, effectif). "
+    "Ma base couvre principalement le licenciement économique pour le moment."
+)
+
+
+async def _run_cerveau_oiseau_gates(
+    query: str,
+    dossier_path: Optional[str],
+) -> Optional[PipelineResponse]:
+    """Exécute les 2 gates Cerveau Oiseau (out_of_scope + article_invalid)
+    avant tout appel LLM, partagé entre `run()` et `run_stream()`.
+
+    Retourne un `PipelineResponse` de refus si une règle déclenche,
+    sinon `None` (passthrough vers le pipeline standard).
+
+    Bypass complet en mode dossier (`dossier_path` non vide) : l'analyse
+    dédiée garde la main.
+
+    `validate_article_refs` est wrappé dans `asyncio.to_thread` car il
+    touche SQLite Légifrance et ne doit pas bloquer l'event loop pendant
+    le streaming. `detect_out_of_scope` reste sync (pure CPU, <5ms).
+    """
+    if dossier_path:
+        return None
+
+    # ── Gate 1 : out-of-scope (<5ms, 0 LLM, pure CPU) ────────────────────
+    t0_oos = time.perf_counter()
+    oos = detect_out_of_scope(query)
+    dt_oos_ms = (time.perf_counter() - t0_oos) * 1000
+    if oos is not None:
+        emit(
+            "cerveau_oiseau",
+            "completed",
+            hook_name="early_out_of_scope",
+            duration_ms=dt_oos_ms,
+            domain=oos.domain,
+        )
+        logger.info(
+            "[CerveauOiseau] OUT_OF_SCOPE détecté (domaine=%s) → refus poli (%.0fms)",
+            oos.domain,
+            dt_oos_ms,
+        )
+        return PipelineResponse(
+            answer=oos.redirection,
+            citations=[],
+            verifier_score=1.0,
+            disclaimer=None,
+            mode="analysis",
+            refused=True,
+            early_validation_triggered="out_of_scope",
+            validation_details={
+                "domain": oos.domain,
+                "duration_ms": round(dt_oos_ms, 2),
+            },
+        )
+
+    # ── Gate 2 : article inexistant (<50ms, 0 LLM, SQLite via to_thread) ──
+    t0_art = time.perf_counter()
+    refus_article = await asyncio.to_thread(validate_article_refs, query)
+    dt_art_ms = (time.perf_counter() - t0_art) * 1000
+    if refus_article is not None:
+        codes = extract_article_codes(query)
+        displays = [c[2] for c in codes]
+        resolvers = active_resolver_names()
+        emit(
+            "cerveau_oiseau",
+            "completed",
+            hook_name="early_article_invalid",
+            duration_ms=dt_art_ms,
+            code=displays[0] if displays else "",
+            codes=displays,
+            resolvers=resolvers,
+        )
+        logger.info(
+            "[CerveauOiseau] Early validation: %s introuvable "
+            "(résolveurs=%s) → refus immédiat (%.0fms)",
+            displays[0] if displays else "?",
+            ",".join(resolvers),
+            dt_art_ms,
+        )
+        return PipelineResponse(
+            answer=refus_article,
+            citations=[],
+            verifier_score=1.0,
+            disclaimer=None,
+            mode="analysis",
+            refused=True,
+            early_validation_triggered="article_invalid",
+            validation_details={
+                "codes": displays,
+                "resolvers": resolvers,
+                "duration_ms": round(dt_art_ms, 2),
+            },
+        )
+
+    return None
+
+
 async def run(
     query: str,
     document_text: Optional[str] = None,
@@ -307,85 +411,10 @@ async def run(
         # et on court-circuite la détection de proposition (sinon boucle infinie).
         query = original_query or query
 
-    # ── Cerveau oiseau 1 : out-of-scope (< 5ms, 0 LLM) ────────────────────
-    # Si la query évoque un domaine hors Droit Social (fiscal, immobilier,
-    # pénal, consommation, famille) sans cocher l'override CT, on refuse
-    # poliment avec redirection. Bypass dossier mode (analyse dédiée).
-    if not dossier_path:
-        t0_oos = time.perf_counter()
-        oos = detect_out_of_scope(query)
-        dt_oos_ms = (time.perf_counter() - t0_oos) * 1000
-        if oos is not None:
-            emit(
-                "cerveau_oiseau",
-                "completed",
-                hook_name="early_out_of_scope",
-                duration_ms=dt_oos_ms,
-                domain=oos.domain,
-            )
-            logger.info(
-                "[CerveauOiseau] OUT_OF_SCOPE détecté (domaine=%s) → refus poli (%.0fms)",
-                oos.domain,
-                dt_oos_ms,
-            )
-            return PipelineResponse(
-                answer=oos.redirection,
-                citations=[],
-                verifier_score=1.0,
-                disclaimer=None,
-                mode="analysis",
-                refused=True,
-                early_validation_triggered="out_of_scope",
-                validation_details={
-                    "domain": oos.domain,
-                    "duration_ms": round(dt_oos_ms, 2),
-                },
-            )
-
-    # ── Cerveau oiseau 2 : article inexistant (< 50ms, 0 LLM) ─────────────
-    # Si la query cite un article (L.1234-1, R.1234-2, etc.) et qu'au moins
-    # un n'existe dans AUCUN résolveur actif (Légifrance SQLite si dispo,
-    # puis whitelist CT en fallback), on refuse immédiatement plutôt que
-    # de lancer les 3 LLM séquentiels (~11s). La whitelist CT garantit la
-    # promesse <1s même en mode dégradé Légifrance.
-    if not dossier_path:
-        t0_art = time.perf_counter()
-        refus_article = validate_article_refs(query)
-        dt_art_ms = (time.perf_counter() - t0_art) * 1000
-        if refus_article is not None:
-            codes = extract_article_codes(query)
-            displays = [c[2] for c in codes]
-            resolvers = active_resolver_names()
-            emit(
-                "cerveau_oiseau",
-                "completed",
-                hook_name="early_article_invalid",
-                duration_ms=dt_art_ms,
-                code=displays[0] if displays else "",
-                codes=displays,
-                resolvers=resolvers,
-            )
-            logger.info(
-                "[CerveauOiseau] Early validation: %s introuvable "
-                "(résolveurs=%s) → refus immédiat (%.0fms)",
-                displays[0] if displays else "?",
-                ",".join(resolvers),
-                dt_art_ms,
-            )
-            return PipelineResponse(
-                answer=refus_article,
-                citations=[],
-                verifier_score=1.0,
-                disclaimer=None,
-                mode="analysis",
-                refused=True,
-                early_validation_triggered="article_invalid",
-                validation_details={
-                    "codes": displays,
-                    "resolvers": resolvers,
-                    "duration_ms": round(dt_art_ms, 2),
-                },
-            )
+    # ── Cerveau Oiseau : out-of-scope + article inexistant (0 LLM, <50ms) ──
+    early_refusal = await _run_cerveau_oiseau_gates(query, dossier_path)
+    if early_refusal is not None:
+        return early_refusal
 
     # ── Intent routing (< 1ms, 0 LLM) — bypass dossier mode ─────────────────
     if not dossier_path:
@@ -406,8 +435,18 @@ async def run(
             )
 
         if intent == Intent.IMPRECISE_LEGAL:
-            # TODO: DialogueManager wiring v1.1 — pour l'instant fallthrough
-            print("TODO: DialogueManager wiring v1.1", flush=True)
+            logger.info(
+                "[CerveauOiseau] IMPRECISE_LEGAL → refus poli (demande de précision)"
+            )
+            return PipelineResponse(
+                answer=_IMPRECISE_LEGAL_REFUSAL,
+                citations=[],
+                verifier_score=1.0,
+                disclaimer=None,
+                mode="analysis",
+                refused=True,
+                early_validation_triggered="imprecise_legal",
+            )
 
         # ── Proposition avant production ────────────────────────────────────
         # Si l'utilisateur demande une production (rédige, projet de…) ET qu'il
@@ -751,6 +790,15 @@ async def run_stream(
             return
         query = original_query or query
 
+    # ── Cerveau Oiseau : out-of-scope + article inexistant (0 LLM, <50ms) ──
+    # Court-circuit avant tout LLM. Sans ces gates, run_stream() laissait
+    # passer L.1234-999 jusqu'au pipeline complet (~26s observés v0.5.5).
+    early_refusal = await _run_cerveau_oiseau_gates(query, dossier_path)
+    if early_refusal is not None:
+        _mark_pipeline_ttft()
+        yield early_refusal
+        return
+
     # ── Intent routing ──────────────────────────────────────────────────────
     if not dossier_path:
         intent = classify_intent(query)
@@ -759,6 +807,21 @@ async def run_stream(
                 answer=small_talk_reply(query),
                 citations=[],
                 verifier_score=1.0,
+            )
+            return
+        if intent == Intent.IMPRECISE_LEGAL:
+            logger.info(
+                "[CerveauOiseau] IMPRECISE_LEGAL → refus poli (demande de précision)"
+            )
+            _mark_pipeline_ttft()
+            yield PipelineResponse(
+                answer=_IMPRECISE_LEGAL_REFUSAL,
+                citations=[],
+                verifier_score=1.0,
+                disclaimer=None,
+                mode="analysis",
+                refused=True,
+                early_validation_triggered="imprecise_legal",
             )
             return
         if intent == Intent.EXPLICIT_ORDER and decision is None:
