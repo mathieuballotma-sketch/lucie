@@ -5,6 +5,49 @@ Mis à jour par chaque agent lors de ses découvertes.
 
 ---
 
+## v1.0.0 — 2026-05-02
+
+### KI-V1-001 — TTFT content ~18 s sur Gemma4 chain-of-thought
+**Statut :** OUVERT (P1, accepté pour v1)
+**Priorité :** MOYENNE (post-v1)
+**Détecté par :** Sprint Speed-Diag (commit `3368682`), confirmé par audit
+archi pré-v1 du 2026-04-30.
+**Symptôme :** Le premier token *content* de réponse arrive ~18 s après la
+question (cible v1 : ≤ 5 s). Le premier token *thinking* arrive en 1,25 s.
+**Cause racine :** Buffering thinking→content **côté serveur Ollama**.
+Gemma4 absorbe la chain-of-thought en interne avant de relâcher le content,
+hors-portée d'un fix client (httpx `aiter_lines` n'est pas le coupable).
+**Mitigation v1 :** Le HUD affiche le « thinking » dès **TTFT 1,25 s** —
+l'utilisateur perçoit immédiatement que Lucie travaille (`ollama_client.
+generate_stream_chat`, commit `8d96b55`).
+**Plan post-v1 :** sprint dédié — évaluer migration `llama-cpp`, compresser
+`redacteur_system.txt` (1 180 → < 400 tokens), cache LRU intent répété.
+Cf. `PERF_OPTIM_PROGRESS.md` § R5 / R7.
+
+### KI-V1-002 — `test_pipeline_smoke` requiert Ollama actif
+**Statut :** ATTENDU (test E2E)
+**Priorité :** BASSE
+**Détecté par :** `tests/test_legal_pipeline_v1.py::test_pipeline_smoke`
+**Symptôme :** Le test timeout après 300 s avec « Lucie prend plus de
+temps que prévu » si Ollama n'est pas actif ou n'a pas le modèle chargé.
+**Note :** Comportement intentionnel. Le test fait un round-trip complet
+contre `localhost:11434`. À skipper en CI sans Ollama. Pas une régression.
+
+### KI-V1-003 — Synchro JudiLibre / Cour de cassation non câblée
+**Statut :** OUVERT (post-v1)
+**Priorité :** HAUTE (différée)
+**Détecté par :** `Rapport_Synchro_Lois_Lucie_2026-04-30.md` §1.2.
+**Symptôme :** Le retriever expose un champ `jurisprudences` cosmétique
+(filtre par pattern d'ID) mais n'a aucune source amont. Tout arrêt cité
+par le LLM serait halluciné — seuls les heuristiques anti-hallucination le
+bloquent côté Vérificateur.
+**Plan post-v1 :** Module `knowledge_judilibre/` symétrique à
+`knowledge_legifrance/`, source API PISTE (`api.piste.gouv.fr/cassation/
+judilibre/v1.0`) avec OAuth gratuite, ou exports JuriCA `data.gouv.fr`
+mensuels en alternative *zero-auth*.
+
+---
+
 ## Bloc 0 — découvertes du corpus exhaustif (2026-04-17)
 
 ### KI-001 — Filtre OOS insuffisant pour les questions médico-sociales

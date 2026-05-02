@@ -6,8 +6,8 @@
 
 Assistant multi-agents pour macOS — conçu pour les experts-comptables et professions réglementées.
 
-[![Version](https://img.shields.io/badge/version-0.2.0--beta-blue?style=flat-square)](https://github.com/mathieuballotma-sketch/Agent-Lucie/releases)
-[![Tests](https://img.shields.io/badge/tests-642_passed-brightgreen?style=flat-square)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)](https://github.com/mathieuballotma-sketch/Agent-Lucie/releases)
+[![Tests](https://img.shields.io/badge/tests-512_passed-brightgreen?style=flat-square)]()
 [![Python](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![macOS](https://img.shields.io/badge/macOS-Apple_Silicon-black?style=flat-square&logo=apple)](https://apple.com)
 [![License](https://img.shields.io/badge/license-BSL_1.1-orange?style=flat-square)](LICENSE)
