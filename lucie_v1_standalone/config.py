@@ -17,8 +17,8 @@ QUALITY_MODEL = "gemma4:26b"  # Pour plus tard (rédaction qualité)
 KNOWLEDGE_BASE_PATH = Path("knowledge/droit_social/licenciement_economique")
 
 # ─── Légifrance (base DILA live) ──────────────────────────────────────────────
-# Feature flag off par défaut — activer seulement après un premier sync.
-LEGIFRANCE_ENABLED: bool = os.environ.get("LUCIE_LEGIFRANCE", "0") == "1"
+# Feature flag on par défaut (Bloquant #1 v1.0.0). Override avec LUCIE_LEGIFRANCE=0 pour désactiver.
+LEGIFRANCE_ENABLED: bool = os.environ.get("LUCIE_LEGIFRANCE", "1") == "1"
 LEGIFRANCE_SYNC_INTERVAL_HOURS: int = 48
 
 
