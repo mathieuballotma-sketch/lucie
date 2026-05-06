@@ -32,14 +32,20 @@ from functools import lru_cache
 from typing import Optional
 
 from lucie_v1_standalone.config import LEGIFRANCE_ENABLED, get_legifrance_db_path
+from lucie_v1_standalone.dialogue.article_bounds import is_article_impossible
 from lucie_v1_standalone.dialogue.whitelist_ct import is_whitelisted, whitelist_size
 
 logger = logging.getLogger(__name__)
 
-# Accepte : L.1234-1 | L 1234-1 | L1234-1 | L.1234 | R.1234-99 ...
-# Capture : (prefix, numeric, suffix_optionnel)
+# Accepte : L.1234-1 | L 1234-1 | L1234-1 | L.1234 | R.1234-99 | L.1234-12345 ...
+# Capture : (prefix, numeric, suffix_optionnel).
+# Suffixe étendu à 5 chiffres (Cerveau Oiseaux v2) pour que le préfiltre
+# bornes capture les formats fantaisistes type L.1234-12345 — la borne max
+# DILA observée est 963, donc tout suffixe ≥ 4 chiffres est nécessairement
+# rejeté par `is_article_impossible`. Pas d'effet de bord : aucun article
+# en VIGUEUR dans la DILA n'a un suffixe à 5 chiffres.
 ARTICLE_PATTERN = re.compile(
-    r"\b([LR])\.?\s?(\d{3,4})(?:-(\d{1,4}))?\b",
+    r"\b([LR])\.?\s?(\d{3,4})(?:-(\d{1,5}))?\b",
     re.IGNORECASE,
 )
 
@@ -222,6 +228,27 @@ def validate_article_refs(
     codes = extract_article_codes(query)
     if not codes:
         return None
+
+    # Idempotent (lru_cache) — émet le WARNING "mode dégradé" si Légifrance
+    # est désactivée ou DB absente. Doit être appelé AVANT le préfiltre pour
+    # que la bannière soit visible même quand le préfiltre court-circuite la
+    # chain (sinon le warning serait masqué sur les refus instantanés).
+    if resolver_chain is None:
+        _db_connection()
+
+    # ─── GATE 0 : préfiltre bornes numériques (Cerveau Oiseaux v2) ──────────
+    # Refuse en <1ms les articles mathématiquement impossibles, AVANT tout
+    # I/O SQLite. Ex: L.1234-999 quand la racine L.1234-x s'arrête à 20.
+    # Source d'autorité : article_bounds_data.py (généré depuis DILA).
+    for prefix, canonical, display in codes:
+        impossible, raison = is_article_impossible(display)
+        if impossible:
+            logger.info(
+                "[EarlyValidation] article=%s impossible par bornes (%s) → refus immédiat",
+                display,
+                raison,
+            )
+            return _REFUSAL_TEMPLATE.format(display=display)
 
     chain = resolver_chain if resolver_chain is not None else _default_resolver_chain()
     if not chain:
