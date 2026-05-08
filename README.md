@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧠 Lucie
+# 🧠 Beaume
 
 **L'IA locale qui respecte vos données.**
 
@@ -14,18 +14,18 @@ Assistant multi-agents pour macOS — conçu pour les experts-comptables et prof
 
 <br/>
 
-[Pourquoi Lucie ?](#-pourquoi-lucie) · [Architecture](#-architecture) · [Installation](#-installation) · [Fonctionnalités](#-fonctionnalités) · [Sécurité](#-sécurité) · [Roadmap](#-roadmap)
+[Pourquoi Beaume ?](#-pourquoi-beaume) · [Architecture](#-architecture) · [Installation](#-installation) · [Fonctionnalités](#-fonctionnalités) · [Sécurité](#-sécurité) · [Roadmap](#-roadmap)
 
 </div>
 
 ---
 
-## 🔥 Pourquoi Lucie ?
+## 🔥 Pourquoi Beaume ?
 
 Chaque assistant IA envoie vos données sur un serveur que vous ne contrôlez pas.
 Pour un expert-comptable, un avocat ou un médecin, c'est un problème réglementaire. Pour tout le monde, c'est un problème de confiance.
 
-Lucie est différente :
+Beaume est différente :
 
 🔒 **100% local** — vos données ne quittent jamais votre Mac. Zéro cloud, zéro API externe.
 
@@ -119,11 +119,11 @@ cd Agent-Lucie
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Lancer Lucie
+# 3. Lancer Beaume
 PYTHONPATH=. python3 main_hud.py
 ```
 
-> Lucie crée son stockage local dans `~/.lucie/` au premier lancement. Aucune configuration requise.
+> Beaume crée son stockage local dans `~/.lucie/` au premier lancement (chemin runtime préservé pour compat). Aucune configuration requise.
 
 ### Configuration matérielle
 
@@ -137,7 +137,7 @@ PYTHONPATH=. python3 main_hud.py
 
 ## ⚡ Performance
 
-Lucie v1 optimise la latence des réponses juridiques via plusieurs leviers activables par variables d'environnement.
+Beaume v1 optimise la latence des réponses juridiques via plusieurs leviers activables par variables d'environnement.
 
 ### Variables d'environnement
 
@@ -150,9 +150,9 @@ Lucie v1 optimise la latence des réponses juridiques via plusieurs leviers acti
 
 ### `OLLAMA_KEEP_ALIVE=24h` (défaut)
 
-Par défaut, Ollama décharge chaque modèle ~5 minutes après le dernier appel. Sur un pipeline multi-LLM comme Lucie, ce comportement provoque un reload de ~2-3s par appel (soit ~6-9s cumulés sur un niveau 3).
+Par défaut, Ollama décharge chaque modèle ~5 minutes après le dernier appel. Sur un pipeline multi-LLM comme Beaume, ce comportement provoque un reload de ~2-3s par appel (soit ~6-9s cumulés sur un niveau 3).
 
-Lucie force `keep_alive=24h` sur chaque requête `/api/generate` pour garder le modèle en RAM toute la journée.
+Beaume force `keep_alive=24h` sur chaque requête `/api/generate` pour garder le modèle en RAM toute la journée.
 
 **Impact mémoire** : `gemma4:e4b` mobilise ~4-5 Go de RAM en continu. Recommandé : M-series 16 Go+. Si RAM limitée, abaisser le flag :
 
@@ -191,7 +191,7 @@ Valeur passée telle quelle à Ollama — supporte tous les formats documentés 
 
 ## 📚 Base juridique Légifrance
 
-Lucie embarque une **base Légifrance locale** alimentée par le dump officiel DILA (`echanges.dila.gouv.fr/OPENDATA/LEGI/`, Licence Ouverte Etalab). Zéro API externe, zéro clé, 100% local — cohérent avec la promesse du projet : **sources vérifiables, jamais d'hallucination.**
+Beaume embarque une **base Légifrance locale** alimentée par le dump officiel DILA (`echanges.dila.gouv.fr/OPENDATA/LEGI/`, Licence Ouverte Etalab). Zéro API externe, zéro clé, 100% local — cohérent avec la promesse du projet : **sources vérifiables, jamais d'hallucination.**
 
 ### Ce que ça couvre
 
@@ -264,7 +264,7 @@ bash scripts/legifrance_rollback.sh --dry-run
 bash scripts/legifrance_rollback.sh --yes
 ```
 
-En cas de rollback, Lucie retombe automatiquement sur la base curatée `knowledge/droit_social/licenciement_economique/` (feature flag OFF). Zéro régression pipeline.
+En cas de rollback, Beaume retombe automatiquement sur la base curatée `knowledge/droit_social/licenciement_economique/` (feature flag OFF). Zéro régression pipeline.
 
 ---
 
@@ -272,7 +272,7 @@ En cas de rollback, Lucie retombe automatiquement sur la base curatée `knowledg
 
 ### Le vrai argument sécurité : local-first
 
-La garantie principale de Lucie est architecturale : **vos données ne quittent jamais votre machine.** Aucun cloud, aucune API externe, aucune possibilité d'exfiltration vers des serveurs tiers. Pour un professionnel réglementé, c'est la seule garantie qui vaille vraiment.
+La garantie principale de Beaume est architecturale : **vos données ne quittent jamais votre machine.** Aucun cloud, aucune API externe, aucune possibilité d'exfiltration vers des serveurs tiers. Pour un professionnel réglementé, c'est la seule garantie qui vaille vraiment.
 
 ### Ce qui est sécurisé au niveau système
 
@@ -292,7 +292,7 @@ Ces modules apportent une valeur réelle, mais sont implémentés en Python : un
 | **Security Response** | SEC-05 | Réponse automatisée aux événements internes — termine les agents anormaux, publie des alertes via EventBus. |
 | **Content Filter** | SEC-06 | Heuristiques réseau (psutil) sur les connexions sortantes + filtrage regex de données sensibles (NIR, IBAN, CB, clés API). Alerte — ne bloque pas au niveau OS. |
 
-> **Sur `sandbox-exec`** : utilisé par Lucie pour l'isolation inter-processus, `sandbox-exec` est officiellement déprécié depuis macOS 13 mais continue de fonctionner. Il sera remplacé par le vrai **macOS App Sandbox** lors de la distribution en `.dmg` — c'est là que résidera l'isolation système certifiée Apple.
+> **Sur `sandbox-exec`** : utilisé par Beaume pour l'isolation inter-processus, `sandbox-exec` est officiellement déprécié depuis macOS 13 mais continue de fonctionner. Il sera remplacé par le vrai **macOS App Sandbox** lors de la distribution en `.dmg` — c'est là que résidera l'isolation système certifiée Apple.
 
 **Pipeline de sanitisation** : chaque entrée (mail, document, prompt) passe par `TextSanitizer` (HTML, base64, unicode) puis `PromptInjectionDetector` (scoring + analyse LLM). Verdicts : `SAFE`, `SUSPICIOUS`, `MALICIOUS`.
 
@@ -358,7 +358,7 @@ python -m mypy app/ --ignore-missing-imports         # strict mode
 
 **Mathieu Bellot** — développeur, 18 ans, France.
 
-> *« J'ai créé Lucie parce que l'IA devrait tourner là où vivent vos données — sur votre machine. »*
+> *« J'ai créé Beaume parce que l'IA devrait tourner là où vivent vos données — sur votre machine. »*
 
 ---
 
@@ -366,6 +366,6 @@ python -m mypy app/ --ignore-missing-imports         # strict mode
 
 ⭐ **Star ce repo si vous croyez en l'IA locale.**
 
-*Lucie v0.2.0-beta — données 100% locales, chiffrées, souveraines.*
+*Beaume v0.2.0-beta — données 100% locales, chiffrées, souveraines.*
 
 </div>

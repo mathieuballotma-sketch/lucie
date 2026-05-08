@@ -1,4 +1,4 @@
-# KNOWN_ISSUES — Lucie V1
+# KNOWN_ISSUES — Beaume V1 (ex-Lucie)
 
 Fichier de suivi des problèmes connus, classés par bloc et priorité.
 Mis à jour par chaque agent lors de ses découvertes.
@@ -18,7 +18,7 @@ question (cible v1 : ≤ 5 s). Le premier token *thinking* arrive en 1,25 s.
 Gemma4 absorbe la chain-of-thought en interne avant de relâcher le content,
 hors-portée d'un fix client (httpx `aiter_lines` n'est pas le coupable).
 **Mitigation v1 :** Le HUD affiche le « thinking » dès **TTFT 1,25 s** —
-l'utilisateur perçoit immédiatement que Lucie travaille (`ollama_client.
+l'utilisateur perçoit immédiatement que Beaume travaille (`ollama_client.
 generate_stream_chat`, commit `8d96b55`).
 **Plan post-v1 :** sprint dédié — évaluer migration `llama-cpp`, compresser
 `redacteur_system.txt` (1 180 → < 400 tokens), cache LRU intent répété.
@@ -28,7 +28,7 @@ Cf. `PERF_OPTIM_PROGRESS.md` § R5 / R7.
 **Statut :** ATTENDU (test E2E)
 **Priorité :** BASSE
 **Détecté par :** `tests/test_legal_pipeline_v1.py::test_pipeline_smoke`
-**Symptôme :** Le test timeout après 300 s avec « Lucie prend plus de
+**Symptôme :** Le test timeout après 300 s avec « Beaume prend plus de
 temps que prévu » si Ollama n'est pas actif ou n'a pas le modèle chargé.
 **Note :** Comportement intentionnel. Le test fait un round-trip complet
 contre `localhost:11434`. À skipper en CI sans Ollama. Pas une régression.

@@ -1,13 +1,13 @@
 # Changelog
 
-Toutes les versions notables de Lucie sont documentées ici.
+Toutes les versions notables de Beaume (ex-Lucie, rebrand 2026-05-02) sont documentées ici.
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
 ## [1.0.0] — 2026-05-02
 
-Première version *production-ready* de Lucie. Trois P0 identifiés par les
+Première version *production-ready* de Beaume (ex-Lucie). Trois P0 identifiés par les
 audits parallèles du 30 avril ont été traités ; un troisième a été reclassé
 P1 et documenté.
 
@@ -21,7 +21,7 @@ P1 et documenté.
     incrémental piloté par launchd.
   - Si la base est absente → installation automatique de l'agent launchd
     (`scripts/install_launchd.sh`) puis `legifrance_sync.py --first-run`
-    en thread daemon. Lucie tourne sur la whitelist (3 700 codes CT) en
+    en thread daemon. Beaume tourne sur la whitelist (3 700 codes CT) en
     attendant que le sync se termine.
   - Le bootstrap retourne sous 100 ms : tous les travaux longs (download,
     install) sont déportés en arrière-plan, jamais bloquants.
@@ -64,7 +64,7 @@ P1 et documenté.
 - **TTFT content ~18 s sur Gemma4 chain-of-thought** — la cause est le
   buffering thinking→content côté serveur Ollama, hors-portée d'un fix
   client. Le HUD affiche le « thinking » à **TTFT 1,25 s** : l'utilisateur
-  perçoit immédiatement que Lucie travaille. Migration vers `llama-cpp`
+  perçoit immédiatement que Beaume travaille. Migration vers `llama-cpp`
   ou compression du system prompt rédacteur prévue post-v1 (sprint dédié,
   cf. `PERF_OPTIM_PROGRESS.md`).
 - **Synchro JudiLibre / Cour de cassation** non câblée. Le manifeste

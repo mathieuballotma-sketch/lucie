@@ -1,7 +1,13 @@
-# Packaging macOS — Lucie
+# Packaging macOS — Beaume (ex-Lucie)
 
-Infrastructure de packaging pour produire `Lucie.app` signée Developer ID et
+Infrastructure de packaging pour produire `Beaume.app` signée Developer ID et
 notarizée Apple, distribuable aux avocats pilotes sans friction Gatekeeper.
+
+> **Rebrand 2026-05-02** : `CFBundleName/DisplayName/Executable` passent à
+> `Beaume`. Les noms de fichiers internes au répertoire `packaging/`
+> (`Lucie.entitlements` etc.) sont conservés tels quels tant que les scripts
+> n'ont pas été renommés — voir `KNOWN_ISSUES_REBRAND` dans le rapport
+> 2026-05-07. Le bundle produit s'appellera `dist/Beaume.app` après rebuild.
 
 ---
 
