@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 _PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # ── Identité ─────────────────────────────────────────────────────────────
     (re.compile(r'\b(qui es.tu|comment tu t\'appelles|c\'est quoi ton nom|quel est ton nom)\b', re.I | re.U),
-     "Je suis Lucie, assistant juridique spécialisé en licenciement économique."),
+     "Je suis Beaume, assistant juridique spécialisé en licenciement économique."),
 
     (re.compile(r'\b(tu es (un |une )?(quoi|qui)|qu\'est.ce que tu es)\b', re.I | re.U),
-     "Je suis Lucie, un assistant juridique dédié au droit du licenciement économique."),
+     "Je suis Beaume, un assistant juridique dédié au droit du licenciement économique."),
 
     # ── Fonctions ─────────────────────────────────────────────────────────────
     (re.compile(r'\b(tu peux faire quoi|quelles sont tes fonctions|qu\'est.ce que tu (fais|peux)|tes capacités|tu es capable de quoi)\b', re.I | re.U),

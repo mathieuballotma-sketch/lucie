@@ -81,5 +81,32 @@
       {"field": "answer", "op": "min_len", "value": 1},
       {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
     ]
+  },
+  "swiss_watch_quality": {
+    "description": "Battery Swiss watch v1.2.1 — réponse in-scope qualité montre suisse : pas de refus, score vérificateur ≥ seuil, au moins 1 citation extraite (KI-003 mitigation), latence wall-clock < seuil.",
+    "assertions": [
+      {"field": "refused", "op": "eq", "value": false},
+      {"field": "early_validation_triggered", "op": "is_none"},
+      {"field": "answer", "op": "min_len", "value_from": "answer_min_chars"},
+      {"field": "verifier_score", "op": "gte", "value_from": "verifier_score_min"},
+      {"field": "citations_total", "op": "gte", "value_from": "citations_total_min"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "swiss_watch_small_talk": {
+    "description": "Battery Swiss watch v1.2.1 — petites tâches / accueil : pas de refus, latence rapide (<5s wall-clock), pas de citation requise. Le pipeline doit router vers level=direct (Niveau 1).",
+    "assertions": [
+      {"field": "refused", "op": "eq", "value": false},
+      {"field": "early_validation_triggered", "op": "is_none"},
+      {"field": "answer", "op": "min_len", "value_from": "answer_min_chars"},
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}
+    ]
+  },
+  "swiss_watch_hallucination_blocked": {
+    "description": "Battery Swiss watch v1.2.1 — cas piège (jurisprudence inventée, demande d'invention, premise fausse) : Beaume DOIT refuser OU produire une réponse à très faible score (truth rule absolue). PASS si refused=true OU verifier_score < 0.5.",
+    "assertions": [
+      {"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"},
+      {"field": "_swiss_watch_hallucination_signal", "op": "eq", "value": true}
+    ]
   }
 }

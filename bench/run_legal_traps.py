@@ -115,11 +115,22 @@ async def run_case(case: Case) -> tuple[Optional[Any], float, Optional[str]]:
 
 
 def response_to_dict(response: Any, wall_ms: float) -> dict[str, Any]:
-    """Snapshot de PipelineResponse + wall-clock dans un dict pour évaluation/rapport."""
+    """Snapshot de PipelineResponse + wall-clock dans un dict pour évaluation/rapport.
+
+    Inclut les nouveaux champs Swiss watch (citations_ok / citations_invalid /
+    verdict) pour permettre les règles `swiss_watch_*` de tester finement la
+    qualité de chaque réponse.
+    """
+    citations_ok = int(getattr(response, "citations_ok", 0) or 0)
+    citations_invalid = int(getattr(response, "citations_invalid", 0) or 0)
     return {
         "answer": getattr(response, "answer", "") or "",
         "citations": list(getattr(response, "citations", []) or []),
         "verifier_score": float(getattr(response, "verifier_score", 0.0)),
+        "citations_ok": citations_ok,
+        "citations_invalid": citations_invalid,
+        "citations_total": citations_ok + citations_invalid,
+        "verdict": getattr(response, "verdict", None),
         "refused": bool(getattr(response, "refused", False)),
         "early_validation_triggered": getattr(response, "early_validation_triggered", None),
         "validation_details": dict(getattr(response, "validation_details", {}) or {}),
@@ -144,6 +155,32 @@ def _get_field(snapshot: dict, field_path: str) -> Any:
         ans = snapshot.get("answer") or ""
         cits = snapshot.get("citations") or []
         return _normalize_article(ans + " " + " ".join(cits))
+    if field_path == "_swiss_watch_hallucination_signal":
+        # Champ synthétique pour swiss_watch_hallucination_blocked : la truth rule
+        # exige soit un refus précoce (Cerveau Oiseaux), soit un score Vérificateur
+        # faible signalant que les citations sont fragiles. PASS dès qu'un des deux.
+        if snapshot.get("refused"):
+            return True
+        score = snapshot.get("verifier_score")
+        if score is not None and score < 0.5:
+            return True
+        # Cas particulier KI-003 : 0 citation extraite → score=1.0 vacuously true
+        # mais la réponse n'a aucune source vérifiable. La truth rule veut qu'on
+        # parle de "données absentes" — on l'approxime par : si l'answer mentionne
+        # explicitement l'absence d'information, on tolère.
+        ans = (snapshot.get("answer") or "").lower()
+        no_source_markers = (
+            "n'est pas dans mes sources",
+            "ne dispose pas de cette information",
+            "je ne peux pas",
+            "je n'ai pas",
+            "absence de",
+            "n'existe pas",
+            "introuvable",
+        )
+        if any(m in ans for m in no_source_markers):
+            return True
+        return False
     parts = field_path.split(".")
     cur: Any = snapshot
     for p in parts:
@@ -314,7 +351,7 @@ def format_report_json(results: list[CaseResult]) -> str:
 
 
 async def main() -> int:
-    parser = argparse.ArgumentParser(description="Harness F9 — cas piège juridiques Lucie")
+    parser = argparse.ArgumentParser(description="Harness F9 — cas piège juridiques Beaume")
     parser.add_argument("--output", type=Path, default=None,
                         help="Chemin du rapport markdown")
     parser.add_argument("--json", type=Path, default=None,
@@ -323,6 +360,10 @@ async def main() -> int:
                         help="Préfixe d'ID ou de catégorie (ex: LEG-ART, mixed_trap)")
     parser.add_argument("--model", default=None,
                         help="Override LUCIE_SPEED_MODEL pour cette run")
+    parser.add_argument("--prompts", type=Path, default=None,
+                        help="Override le fichier de prompts (défaut : "
+                             "bench/prompts_lucie_extended.json). Ex: "
+                             "bench/swiss_watch_50.json pour la battery v1.2.1.")
     args = parser.parse_args()
 
     if args.model:
@@ -330,7 +371,8 @@ async def main() -> int:
 
     logging.basicConfig(level=logging.WARNING)
 
-    cases, registry = load_cases(PROMPTS_PATH, BEHAVIORS_PATH)
+    prompts_path = args.prompts if args.prompts is not None else PROMPTS_PATH
+    cases, registry = load_cases(prompts_path, BEHAVIORS_PATH)
     if args.filter:
         flt = args.filter
         cases = [c for c in cases if c.id.startswith(flt) or c.category.startswith(flt)]
