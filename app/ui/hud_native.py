@@ -48,11 +48,13 @@ _AGENT_BAR_Y = _HEADER_Y - AGENT_BAR_H             # 422
 _TEXT_H = _AGENT_BAR_Y - 2 - _TEXT_Y               # 334
 _TEXT_W = WINDOW_W - PADDING * 2                    # 492
 
-# Pipeline stages zone (« Lucie réfléchit »), insérée au-dessus du texte
-# quand le pipeline travaille. Dimensions : 4 lignes * 16px + gaps + padding.
-_STAGES_H = 80                                      # hauteur de la zone
-_STAGES_Y = _AGENT_BAR_Y - 2 - _STAGES_H           # 340 (juste sous sep2)
-_TEXT_H_ACTIVE = _STAGES_Y - 4 - _TEXT_Y           # 250 (text scroll réduit)
+# Pipeline stages zone (« Beaume réfléchit »), insérée au-dessus du texte
+# quand le pipeline travaille. Hauteur 120px (4 lignes parents 20px + jusqu'à
+# 4 sous-événements 17px par parent + padding) — refonte expressive 2026-05-07
+# pour que l'avocat perçoive nettement les étapes au lieu d'une ligne discrète.
+_STAGES_H = 120                                     # hauteur de la zone
+_STAGES_Y = _AGENT_BAR_Y - 2 - _STAGES_H           # 300 (juste sous sep2)
+_TEXT_H_ACTIVE = _STAGES_Y - 4 - _TEXT_Y           # 210 (text scroll réduit)
 _RETRY_H = 22                                       # hauteur du bouton Ré-essayer
 
 # Streaming parameters — word-chunk feel
@@ -271,17 +273,17 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
     arrivent. Ordre = ordre d'arrivée de started pour chaque stage.
     """
 
-    _ROW_H: float = 16.0
-    _ROW_GAP: float = 2.0
-    _ICON_W: float = 20.0
-    _DUR_W: float = 72.0
-    _TOP_PAD: float = 6.0
+    _ROW_H: float = 20.0
+    _ROW_GAP: float = 3.0
+    _ICON_W: float = 22.0
+    _DUR_W: float = 78.0
+    _TOP_PAD: float = 8.0
     _MAX_ROWS: int = 4
-    # Sous-événements (hook_name) indentés sous l'étape parent. Constantes
-    # tirées du plan Phase 1ter — chaque sous-ligne = 14 px, indent de 16 px.
-    _SUB_ROW_H: float = 14.0
-    _SUB_ROW_GAP: float = 1.0
-    _SUB_INDENT: float = 16.0
+    # Sous-événements (hook_name) indentés sous l'étape parent. Refonte
+    # expressive 2026-05-07 : sous-ligne 17 px (vs 14), indent 18 px.
+    _SUB_ROW_H: float = 17.0
+    _SUB_ROW_GAP: float = 2.0
+    _SUB_INDENT: float = 18.0
     _MAX_SUB_ROWS_PER_PARENT: int = 4
     # Limite douce : si la somme (parents + enfants) dépasse ce ratio de la
     # hauteur de la vue, on n'ajoute plus de sous-rangées visuellement.
@@ -335,8 +337,8 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         icon.setEditable_(False)
         icon.setBezeled_(False)
         icon.setDrawsBackground_(False)
-        icon.setFont_(AppKit.NSFont.systemFontOfSize_(11))
-        icon.setTextColor_(_adaptive_tertiary())
+        icon.setFont_(AppKit.NSFont.systemFontOfSize_(13))
+        icon.setTextColor_(_adaptive_secondary())
         icon.setAlignment_(AppKit.NSTextAlignmentCenter)
         icon.setWantsLayer_(True)
         self.addSubview_(icon)
@@ -350,7 +352,7 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         label.setEditable_(False)
         label.setBezeled_(False)
         label.setDrawsBackground_(False)
-        label.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+        label.setFont_(AppKit.NSFont.systemFontOfSize_weight_(13, AppKit.NSFontWeightMedium))
         label.setTextColor_(_adaptive_text())
         label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
         self.addSubview_(label)
@@ -362,8 +364,8 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         dur.setEditable_(False)
         dur.setBezeled_(False)
         dur.setDrawsBackground_(False)
-        dur.setFont_(AppKit.NSFont.systemFontOfSize_(10))
-        dur.setTextColor_(_adaptive_tertiary())
+        dur.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        dur.setTextColor_(_adaptive_secondary())
         dur.setAlignment_(AppKit.NSTextAlignmentRight)
         self.addSubview_(dur)
 
@@ -389,8 +391,8 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         icon.setEditable_(False)
         icon.setBezeled_(False)
         icon.setDrawsBackground_(False)
-        icon.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
-        icon.setTextColor_(_adaptive_tertiary())
+        icon.setFont_(AppKit.NSFont.systemFontOfSize_(12))
+        icon.setTextColor_(_adaptive_secondary())
         icon.setAlignment_(AppKit.NSTextAlignmentCenter)
         self.addSubview_(icon)
 
@@ -403,8 +405,8 @@ class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
         label.setEditable_(False)
         label.setBezeled_(False)
         label.setDrawsBackground_(False)
-        label.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
-        label.setTextColor_(_adaptive_tertiary())
+        label.setFont_(AppKit.NSFont.systemFontOfSize_(12))
+        label.setTextColor_(_adaptive_secondary())
         label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
         self.addSubview_(label)
 
@@ -3208,17 +3210,20 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def _finalize_pipeline_stages(self) -> None:
-        """Fin de run : fade-out 400 ms si succès, zone conservée si erreur."""
+        """Fin de run : zone conservée visible (refonte 2026-05-07).
+
+        L'avocat doit pouvoir relire les étapes pendant qu'il lit la réponse —
+        avant on faisait un fade-out de 400 ms, ce qui rendait les étapes
+        difficiles à percevoir et donnait une impression de boîte noire.
+        La zone est désormais réinitialisée uniquement au prochain submit
+        (cf. ``_reset_pipeline_stages``).
+        """
         if not hasattr(self, "_stages_view"):
             return
         if self._stages_view.isHidden():
             return
-        if self._stages_view.any_error():
-            return
-        self._stages_view.fade_out(
-            0.4,
-            on_complete=lambda: self._stages_view.setHidden_(True),
-        )
+        # Garde l'opacité pleine, pas de fade-out.
+        self._stages_view.setAlphaValue_(1.0)
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def retryLastQuery_(self, sender: Any) -> None:
