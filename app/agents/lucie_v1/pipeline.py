@@ -168,7 +168,7 @@ class LegalPipeline:
                 f"```json\n{faits_json}\n```\n\n"
                 "## Sources disponibles\n\n"
                 f"{note_markdown}\n\n"
-                "_Note générée par Lucie V1 — à vérifier par un avocat qualifié._"
+                "_Note générée par Beaume V1 — à vérifier par un avocat qualifié._"
             )
 
         logger.info("✅ Rédacteur : note rédigée")
@@ -197,7 +197,7 @@ class LegalPipeline:
         # ── Réponse finale ────────────────────────────────────────────────────
         disclaimer = (
             "\n\n---\n"
-            f"_Note générée par Lucie V1 — "
+            f"_Note générée par Beaume V1 — "
             f"Score de fiabilité : {score:.0%} — Verdict : {verdict}_\n"
             "_À vérifier par un avocat qualifié avant tout usage professionnel._"
         )

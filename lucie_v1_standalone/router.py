@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 _REFUSAL_MESSAGE = (
-    "Cette requête sort du périmètre de Lucie V1 (licenciement économique). "
+    "Cette requête sort du périmètre de Beaume V1 (licenciement économique). "
     "Je ne traite que les questions relatives au droit social du travail sur ce thème précis. "
     "Merci de reformuler ou de poser une question sur le licenciement économique."
 )

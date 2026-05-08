@@ -203,7 +203,7 @@ Conformément à l'**article 1231-1** du Code civil, je vous *mets en demeure* d
 > Cette lettre vaut mise en demeure formelle.
 
 ---
-_Note générée par Lucie V1 — Score de fiabilité : 92% — Verdict : FIABLE_
+_Note générée par Beaume V1 — Score de fiabilité : 92% — Verdict : FIABLE_
 _À vérifier par un avocat qualifié avant tout usage professionnel._
 """
 

@@ -21,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m lucie_v1_standalone",
         description=(
-            "Lucie V1 — Pipeline juridique droit social (licenciement économique).\n"
+            "Beaume V1 — Pipeline juridique droit social (licenciement économique).\n"
             "Analyse une requête et/ou un document via 5 agents Ollama enchaînés :\n"
             "  Router → Lecteur → Retriever → Rédacteur → Vérificateur\n\n"
             "Requiert Ollama en local (http://localhost:11434) avec gemma4:e4b chargé."

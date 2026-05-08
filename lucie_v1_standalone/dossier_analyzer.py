@@ -546,7 +546,7 @@ def format_report(report: DossierReport) -> str:
     parts: List[str] = []
 
     # Entête
-    parts.append("# Rapport d'analyse de dossier — Lucie V1\n")
+    parts.append("# Rapport d'analyse de dossier — Beaume V1\n")
     parts.append(
         f"- **Fichiers analysés** : {len(report.fichiers_analyses)}\n"
         f"- **Chunks traités** : {report.nb_chunks_traites}\n"
@@ -582,7 +582,7 @@ def format_report(report: DossierReport) -> str:
     # Disclaimer
     parts.append(
         "\n---\n"
-        f"_Rapport généré par Lucie V1 — Analyse de dossier — "
+        f"_Rapport généré par Beaume V1 — Analyse de dossier — "
         f"{report.duree_secondes:.1f}s_\n"
         "_À vérifier par un avocat qualifié avant tout usage professionnel._"
     )
