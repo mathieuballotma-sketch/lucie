@@ -3288,10 +3288,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def copyResponseAction_(self, sender: Any) -> None:
-        """Copie la réponse Markdown brute au NSPasteboard, avec feedback visuel."""
-        text = self._streaming_full_text or ""
-        if not text:
+        """Copie la réponse au format pro (citations dépliées, sans Markdown)."""
+        from app.ui.copy_format import format_response_for_copy  # lazy
+        raw = self._streaming_full_text or ""
+        if not raw:
             return
+        text = format_response_for_copy(raw)
         try:
             pb = AppKit.NSPasteboard.generalPasteboard()
             pb.clearContents()
