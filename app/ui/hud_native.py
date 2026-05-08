@@ -2419,7 +2419,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def showMemoryPopover_(self, sender: Any) -> None:
-        """Ouvre une popover listant les 5 types de souvenirs (sans contenu)."""
+        """Page « Ce que Beaume sait de vous » — popover enrichie (Swiss watch règle 6).
+
+        Affiche le décompte par type de souvenir + indication 100% local +
+        bouton « Effacer toute la mémoire » avec double confirmation
+        (NSAlert + saisie « EFFACER »).
+        """
         from .memory_indicator import format_popover_lines as _mem_pop  # lazy
 
         if self._memory_popover is not None and self._memory_popover.isShown():
@@ -2427,17 +2432,55 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             return
 
         lines = _mem_pop(self._last_memory_types)
-        body = "\n".join(lines)
 
-        width = 220.0
-        height = 16.0 * max(1, len(lines)) + 24.0
+        # Layout : header (40) + sous-titre (28) + lines (16/ligne) + séparateur
+        # (12) + bouton (32) + paddings (24+12).
+        width = 320.0
+        body_h = 16.0 * max(1, len(lines)) + 8.0
+        height = 40.0 + 28.0 + body_h + 12.0 + 32.0 + 24.0
+
         view = AppKit.NSView.alloc().initWithFrame_(
             Foundation.NSMakeRect(0, 0, width, height)
         )
-        label = AppKit.NSTextField.alloc().initWithFrame_(
-            Foundation.NSMakeRect(12, 12, width - 24, height - 24)
+
+        # ── Header : titre ────────────────────────────────────────────────
+        title_y = height - 32.0
+        title = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, title_y, width - 28, 18)
         )
-        label.setStringValue_(body)
+        title.setStringValue_("Ce que Beaume sait de vous")
+        title.setEditable_(False)
+        title.setBezeled_(False)
+        title.setDrawsBackground_(False)
+        title.setFont_(
+            AppKit.NSFont.systemFontOfSize_weight_(13, AppKit.NSFontWeightSemibold)
+        )
+        view.addSubview_(title)
+
+        # ── Sous-titre : 100% local + path ────────────────────────────────
+        subtitle_y = title_y - 22.0
+        subtitle = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, subtitle_y, width - 28, 16)
+        )
+        subtitle.setStringValue_(
+            "🔒 100 % local — ~/Library/Application Support/Beaume"
+        )
+        subtitle.setEditable_(False)
+        subtitle.setBezeled_(False)
+        subtitle.setDrawsBackground_(False)
+        subtitle.setFont_(AppKit.NSFont.systemFontOfSize_(10))
+        try:
+            subtitle.setTextColor_(_adaptive_secondary())
+        except Exception:
+            pass
+        view.addSubview_(subtitle)
+
+        # ── Body : 5 types de souvenirs ───────────────────────────────────
+        body_y = subtitle_y - body_h - 4.0
+        label = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, body_y, width - 28, body_h)
+        )
+        label.setStringValue_("\n".join(lines))
         label.setEditable_(False)
         label.setBezeled_(False)
         label.setDrawsBackground_(False)
@@ -2447,6 +2490,40 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         except Exception:
             pass
         view.addSubview_(label)
+
+        # ── Séparateur ────────────────────────────────────────────────────
+        sep_y = body_y - 6.0
+        sep = AppKit.NSBox.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, sep_y, width - 28, 1)
+        )
+        sep.setBoxType_(AppKit.NSBoxSeparator)
+        sep.setAlphaValue_(0.15)
+        view.addSubview_(sep)
+
+        # ── Bouton « Effacer toute la mémoire » ──────────────────────────
+        btn_y = sep_y - 32.0
+        erase_btn = AppKit.NSButton.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, btn_y, width - 28, 26)
+        )
+        erase_btn.setTitle_("Effacer toute la mémoire…")
+        erase_btn.setBezelStyle_(AppKit.NSBezelStyleInline)
+        erase_btn.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        try:
+            # Teinte rouge sobre — action destructive
+            erase_btn.setContentTintColor_(
+                AppKit.NSColor.colorWithRed_green_blue_alpha_(
+                    0.78, 0.20, 0.20, 1.0
+                )
+            )
+        except Exception:
+            pass
+        erase_btn.setTarget_(self)
+        erase_btn.setAction_("eraseMemoryAction:")
+        erase_btn.setToolTip_(
+            "Supprime définitivement tous les souvenirs personnels et les "
+            "patterns abstraits stockés sur votre Mac."
+        )
+        view.addSubview_(erase_btn)
 
         controller = AppKit.NSViewController.alloc().init()
         controller.setView_(view)
@@ -2458,6 +2535,109 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             sender.bounds(), sender, AppKit.NSRectEdgeMaxY
         )
         self._memory_popover = popover
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def eraseMemoryAction_(self, sender: Any) -> None:
+        """Demande double confirmation puis appelle MemoryStore.reset().
+
+        Étape 1 : NSAlert « Cette action est irréversible. Confirmer ? »
+        Étape 2 : NSAlert avec NSTextField — l'utilisateur doit taper
+        exactement « EFFACER » pour valider.
+
+        Sur succès : feedback en bas de la fenêtre (badge mémoire à 0).
+        """
+        # Fermer le popover d'abord (sinon NSAlert s'ouvre derrière)
+        if self._memory_popover is not None and self._memory_popover.isShown():
+            self._memory_popover.performClose_(sender)
+
+        alert1 = AppKit.NSAlert.alloc().init()
+        alert1.setMessageText_("Effacer toute la mémoire de Beaume ?")
+        alert1.setInformativeText_(
+            "Cette action est irréversible. Tous les souvenirs personnels "
+            "et les patterns abstraits seront supprimés définitivement de "
+            "votre Mac."
+        )
+        alert1.setAlertStyle_(AppKit.NSAlertStyleWarning)
+        alert1.addButtonWithTitle_("Continuer…")
+        alert1.addButtonWithTitle_("Annuler")
+        # Le bouton "Annuler" devient le bouton par défaut (sécurité)
+        try:
+            alert1.buttons()[1].setKeyEquivalent_("\r")
+            alert1.buttons()[0].setKeyEquivalent_("")
+        except Exception:
+            pass
+        if alert1.runModal() != AppKit.NSAlertFirstButtonReturn:
+            return
+
+        # ── Étape 2 : saisie de "EFFACER" ────────────────────────────────
+        alert2 = AppKit.NSAlert.alloc().init()
+        alert2.setMessageText_("Confirmation finale")
+        alert2.setInformativeText_(
+            "Tapez EFFACER (en majuscules) pour confirmer la suppression."
+        )
+        alert2.setAlertStyle_(AppKit.NSAlertStyleCritical)
+        alert2.addButtonWithTitle_("Effacer")
+        alert2.addButtonWithTitle_("Annuler")
+        try:
+            alert2.buttons()[1].setKeyEquivalent_("\r")
+            alert2.buttons()[0].setKeyEquivalent_("")
+        except Exception:
+            pass
+
+        text_input = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(0, 0, 280, 24)
+        )
+        text_input.setPlaceholderString_("EFFACER")
+        alert2.setAccessoryView_(text_input)
+
+        if alert2.runModal() != AppKit.NSAlertFirstButtonReturn:
+            return
+
+        typed = (text_input.stringValue() or "").strip()
+        if typed != "EFFACER":
+            err = AppKit.NSAlert.alloc().init()
+            err.setMessageText_("Mot-clé incorrect")
+            err.setInformativeText_(
+                "Vous deviez taper exactement « EFFACER ». Aucune donnée n'a "
+                "été supprimée."
+            )
+            err.runModal()
+            return
+
+        # ── Effacement effectif ────────────────────────────────────────────
+        store = self._memory_store
+        if store is None:
+            self.append_message_safe(
+                "Beaume",
+                "⚠️ Mémoire indisponible — rien à effacer.",
+                False,
+            )
+            return
+
+        import asyncio as _asyncio
+
+        def _do_reset() -> None:
+            try:
+                result = _asyncio.run(store.reset())
+                deleted = result.get("personal_deleted", 0)
+                AppHelper.callAfter(
+                    self.append_message_safe,
+                    "Beaume",
+                    f"✅ Mémoire effacée — {deleted} souvenirs supprimés. "
+                    "Beaume vous redécouvrira au fil de vos prochaines questions.",
+                    False,
+                )
+                AppHelper.callAfter(self._update_memory_badge)
+            except Exception as exc:  # noqa: BLE001
+                AppHelper.callAfter(
+                    self.append_message_safe,
+                    "Beaume",
+                    f"⚠️ Erreur lors de l'effacement : {exc}",
+                    False,
+                )
+
+        threading.Thread(target=_do_reset, name="beaume-mem-reset",
+                         daemon=True).start()
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def openFilePicker_(self, sender: Any) -> None:

@@ -195,10 +195,31 @@ class PersonalMemory:
         """
         Retourne le profil utilisateur structuré par type de nœud.
 
-        Utilisé pour "Ma fiche Lucie" dans l'onboarding et les rapports.
+        Utilisé pour "Ma fiche Beaume" dans l'onboarding et les rapports.
         Toutes les données sont datées et sourcées (garde-fou vérité).
         """
         return await self.get_user_profile()
+
+    async def reset_all(self) -> int:
+        """Drop tous les nœuds et arêtes du graphe personnel.
+
+        Utilisé par le bouton « Effacer toute la mémoire » de la page
+        « Ce que Beaume sait de vous » (Swiss watch — règle 6 transparence
+        radicale). Action irréversible — la double confirmation utilisateur
+        est gérée côté HUD (NSAlert avec saisie « EFFACER »).
+
+        Returns:
+            Nombre de nœuds supprimés (avant reset). Utile pour feedback UI.
+        """
+        conn = await self._get_conn()
+        cursor = await conn.execute("SELECT COUNT(*) FROM context_nodes")
+        row = await cursor.fetchone()
+        before = int(row[0]) if row else 0
+        # Drop nœuds + arêtes. Ne touche pas le schema (init_schema reste idem).
+        await conn.execute("DELETE FROM context_edges")
+        await conn.execute("DELETE FROM context_nodes")
+        await conn.commit()
+        return before
 
     # ------------------------------------------------------------------
     # API bas niveau (ContextGraph interface préservée)

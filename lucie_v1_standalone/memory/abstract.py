@@ -244,6 +244,19 @@ class AbstractMemory:
             for p in self.patterns_above_threshold()
         ]
 
+    def clear(self) -> int:
+        """Drop tous les patterns abstraits (Swiss watch — règle 6).
+
+        Sync (sqlite3 standard, pas async) — appelée depuis MemoryStore.reset().
+        Retourne le nombre de patterns avant clear.
+        """
+        conn = self._get_conn()
+        cur = conn.execute("SELECT COUNT(*) FROM abstract_patterns")
+        before = int(cur.fetchone()[0])
+        conn.execute("DELETE FROM abstract_patterns")
+        conn.commit()
+        return before
+
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
