@@ -49,8 +49,8 @@ _TEXT_H = _AGENT_BAR_Y - 2 - _TEXT_Y               # 334
 _TEXT_W = WINDOW_W - PADDING * 2                    # 492
 
 # Pipeline stages zone (« Beaume réfléchit »), insérée au-dessus du texte
-# quand le pipeline travaille. Hauteur 120px (4 lignes parents 20px + jusqu'à
-# 4 sous-événements 17px par parent + padding) — refonte expressive 2026-05-07
+# quand le pipeline travaille. Hauteur 120 px (4 lignes parents 20 px + jusqu'à
+# 4 sous-événements 17 px par parent + padding) — refonte expressive 2026-05-07
 # pour que l'avocat perçoive nettement les étapes au lieu d'une ligne discrète.
 _STAGES_H = 120                                     # hauteur de la zone
 _STAGES_Y = _AGENT_BAR_Y - 2 - _STAGES_H           # 300 (juste sous sep2)
@@ -259,7 +259,7 @@ class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
 
 # ─── PipelineStagesView ──────────────────────────────────────────────────────
 class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
-    """Zone "Lucie réfléchit" — liste verticale d'étapes avec état visuel.
+    """Zone "Beaume réfléchit" — liste verticale d'étapes avec état visuel.
 
     Rendu minimal, une ligne par étape : icône d'état (⏸ ⏳ ✅ ❌) à gauche,
     libellé utilisateur (traduit depuis le nom interne via stage_labels) au
@@ -1749,7 +1749,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         content.addSubview_(self._copy_btn)
         self._copy_btn_feedback_timer: Optional[Any] = None
 
-        # ══ PIPELINE STAGES ZONE (« Lucie réfléchit ») ═══════════════════════
+        # ══ PIPELINE STAGES ZONE (« Beaume réfléchit ») ═══════════════════════
         # Zone au-dessus du texte qui affiche les étapes en temps réel. Cachée
         # par défaut, montrée au premier event "started", fade-out à la fin.
         self._stages_view = PipelineStagesView.alloc().initWithFrame_(
@@ -1900,7 +1900,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._drop_highlight.setHidden_(True)
         content.addSubview_(self._drop_highlight)
 
-        # ══ OUTPUT DRAG CARD (visible quand Lucie a produit un résultat) ═════
+        # ══ OUTPUT DRAG CARD (visible quand Beaume a produit un résultat) ════
         # Nouvelles dimensions : 380×72, placée en overlay au-dessus de l'input.
         card_x = (WINDOW_W - DraggableFileCard._CARD_W) / 2
         self._output_card = DraggableFileCard.alloc().initWithFrame_(
@@ -1916,7 +1916,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._output_card.setAlphaValue_(0.0)
         content.addSubview_(self._output_card)
 
-        # ══ PROPOSAL CARD (visible quand Lucie propose une production) ═══════
+        # ══ PROPOSAL CARD (visible quand Beaume propose une production) ══════
         proposal_x = PADDING
         self._proposal_card = ProposalCardView.alloc().initWithFrame_(
             make_rect(
@@ -3099,7 +3099,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     def _hideOutputCardTimer_(self, timer: Any) -> None:
         self._output_card.setHidden_(True)
 
-    # ── Pipeline stages zone (« Lucie réfléchit ») ────────────────────────────
+    # ── Pipeline stages zone (« Beaume réfléchit ») ───────────────────────────
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def _reset_pipeline_stages(self) -> None:
