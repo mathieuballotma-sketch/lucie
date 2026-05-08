@@ -13,19 +13,19 @@ from lucie_v1_standalone.dialogue.small_talk_handler import handle, handle_or_de
 def test_qui_es_tu() -> None:
     r = handle("Qui es-tu ?")
     assert r is not None
-    assert "Lucie" in r
+    assert "Beaume" in r
 
 
 def test_comment_tu_tappelles() -> None:
     r = handle("Comment tu t'appelles ?")
     assert r is not None
-    assert "Lucie" in r
+    assert "Beaume" in r
 
 
 def test_cest_quoi_ton_nom() -> None:
     r = handle("C'est quoi ton nom ?")
     assert r is not None
-    assert "Lucie" in r
+    assert "Beaume" in r
 
 
 # ── Fonctions ─────────────────────────────────────────────────────────────────

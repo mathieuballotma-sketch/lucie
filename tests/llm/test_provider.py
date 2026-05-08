@@ -88,10 +88,10 @@ def test_generate_passes_system_and_keep_alive(mock_client_cls: MagicMock) -> No
     mock_client.post.return_value = _make_response("ok")
 
     provider = OllamaProvider()
-    provider.generate("test", system="Tu es Lucie.", keep_alive="5m")
+    provider.generate("test", system="Tu es Beaume.", keep_alive="5m")
 
     call_json = mock_client.post.call_args[1]["json"]
-    assert call_json["system"] == "Tu es Lucie."
+    assert call_json["system"] == "Tu es Beaume."
     assert call_json["keep_alive"] == "5m"
 
 

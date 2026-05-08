@@ -37,7 +37,7 @@ async def test_small_talk_bypasses_pipeline():
 async def test_small_talk_identity_query():
     response = await pipeline.run("Qui es-tu ?")
     assert response.verifier_score == 1.0
-    assert "Lucie" in response.answer
+    assert "Beaume" in response.answer
 
 
 @pytest.mark.asyncio
