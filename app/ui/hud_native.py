@@ -16,6 +16,7 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import AppKit
@@ -1376,7 +1377,77 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             logger.debug(f"HUDWindow setDelegate self: {e}")
 
         logger.info("HUD v2 initialisé (resizable, %sx%s persistée)", int(rect.size.width), int(rect.size.height))
+
+        # ── Phrase d'accueil au premier lancement (Swiss watch — règle 5) ──
+        # Affichée une seule fois (flag `welcomed_v1` dans prefs.json) pour
+        # rappeler à l'avocat les 3 promesses Beaume avant sa première question.
+        try:
+            self._maybe_show_welcome_message()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"welcome message non affiché : {exc}")
+
         return self
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _maybe_show_welcome_message(self) -> None:
+        """Affiche le message d'accueil au premier lancement.
+
+        Le flag `welcomed_v1` est stocké dans
+        ``~/Library/Application Support/Beaume/prefs.json``. Une fois affiché,
+        on n'y revient pas (sauf si Mathieu supprime le fichier).
+        """
+        import json as _json
+
+        prefs_dir = Path.home() / "Library" / "Application Support" / "Beaume"
+        prefs_path = prefs_dir / "prefs.json"
+
+        try:
+            prefs = _json.loads(prefs_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, _json.JSONDecodeError):
+            prefs = {}
+
+        if prefs.get("welcomed_v1"):
+            return
+
+        welcome = (
+            "Bonjour, je suis **Beaume** — votre assistant en droit social.\n\n"
+            "🔒 **100 % local** — zéro envoi serveur, vos dossiers ne quittent "
+            "jamais votre Mac.\n"
+            "✅ **Je ne mens jamais** — chaque article cité est vérifié contre "
+            "Légifrance ; en cas de doute, je le dis.\n"
+            "🔗 **Sources cliquables** — accès direct aux articles cités.\n\n"
+            "Posez votre question."
+        )
+        # Petit délai pour laisser le HUD s'afficher avant le message
+        AppKit.NSTimer.scheduledTimerWithTimeInterval_repeats_block_(
+            0.4,
+            False,
+            lambda _t: self._show_welcome_now(welcome, prefs_dir, prefs_path, prefs),
+        )
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _show_welcome_now(
+        self,
+        welcome: str,
+        prefs_dir: Path,
+        prefs_path: Path,
+        prefs: Dict[str, Any],
+    ) -> None:
+        """Affiche le message et persiste le flag (callback du timer)."""
+        try:
+            self.append_message_safe("Beaume", welcome, False)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"welcome append: {exc}")
+            return
+        try:
+            import json as _json
+            prefs_dir.mkdir(parents=True, exist_ok=True)
+            prefs["welcomed_v1"] = True
+            prefs_path.write_text(
+                _json.dumps(prefs, ensure_ascii=False), encoding="utf-8"
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"welcome persist: {exc}")
 
     # ── Persistence position (H8) ─────────────────────────────────────────────
 
