@@ -1635,6 +1635,18 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         except Exception:
             self._local_badge_icon = None
 
+        # Tooltip enrichi (Swiss watch règle 5 : confidentialité visible)
+        _local_badge_tooltip = (
+            "100 % local — Beaume tourne sur votre Mac.\n"
+            "Vous pouvez couper votre Wi-Fi, Beaume continue de fonctionner.\n"
+            "Aucune donnée client ne quitte votre ordinateur."
+        )
+        if self._local_badge_icon is not None:
+            try:
+                self._local_badge_icon.setToolTip_(_local_badge_tooltip)
+            except Exception:
+                pass
+
         self._local_badge_label = AppKit.NSTextField.alloc().initWithFrame_(
             make_rect(_badge_x, bar_center_y, 86, 12)
         )
@@ -1644,10 +1656,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._local_badge_label.setDrawsBackground_(False)
         self._local_badge_label.setFont_(AppKit.NSFont.systemFontOfSize_(9))
         self._local_badge_label.setTextColor_(ns_white(0.55, 0.6))
-        self._local_badge_label.setToolTip_(
-            "Toutes les données restent sur votre Mac.\n"
-            "Aucun envoi vers un serveur externe."
-        )
+        self._local_badge_label.setToolTip_(_local_badge_tooltip)
         content.addSubview_(self._local_badge_label)
 
         # Separator: agent bar / text area
