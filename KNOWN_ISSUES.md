@@ -1,7 +1,60 @@
-# KNOWN_ISSUES — Lucie V1
+# KNOWN_ISSUES — Beaume v1 (anciennement Lucie)
 
 Fichier de suivi des problèmes connus, classés par bloc et priorité.
 Mis à jour par chaque agent lors de ses découvertes.
+
+---
+
+## v1.2.1-swiss-watch — 2026-05-08
+
+### KI-SW-001 — Cache pipeline ne propage pas verifier_score
+**Statut :** OUVERT (POST-PILOTE)
+**Priorité :** MOYENNE
+**Détecté par :** Battery Swiss watch run #1 (cache enabled).
+**Symptôme :** Quand `LUCIE_CACHE=1` (défaut), une query déjà observée
+retourne en 0 ms mais `verifier_score=0.0` (défaut PipelineResponse) car
+le cache stocke uniquement le string `answer`, pas le metadata du
+Vérificateur. Sur la battery 50, ~25 % des cas lic_eco étaient impactés.
+**Workaround :** Lancer la battery avec `LUCIE_CACHE=0` (rapport final
+fait avec cache off pour mesure honnête).
+**Fix v1.3 :** Étendre le cache pour stocker la `PipelineResponse`
+complète (citations + score + verdict + counts), pas juste le `answer`.
+Touche `lucie_v1_standalone/cache.py` et le wrapper `_run_pipeline_cached`.
+
+### KI-SW-002 — Rebrand physique du package Python reporté
+**Statut :** OUVERT (POST-PILOTE explicite)
+**Priorité :** BASSE
+**Symptôme :** Le code interne s'appelle toujours `lucie_v1_standalone/`
+malgré le rebrand officiel Beaume au 2026-05-02. Les imports legacy
+(`from lucie_v1_standalone import …`) restent fonctionnels et un alias
+`beaume/` ré-exporte tout (transparent côté client).
+**Pourquoi reporté :** Le rename physique (`git mv lucie_v1_standalone
+beaume_core` + sed sur ~200 sites d'import) est jugé risqué juste avant
+la prospection. Tous les noms user-facing sont déjà migrés (HUD,
+disclaimer, prompts, sender name).
+**Fix v1.3 (post-pilote) :** rename physique + suppression de l'alias.
+
+### KI-SW-003 — Battery Swiss watch — corpus `lic_perso` / `conges_rtt` faible
+**Statut :** OUVERT (KNOWN LIMITATION)
+**Priorité :** MOYENNE
+**Symptôme :** Beaume v1 est focus licenciement économique
+(sweet-spot). Le corpus curé est volontairement minimaliste sur lic_perso,
+congés/RTT, démission/rupture conventionnelle. Les seuils
+`verifier_score_min` ont été relâchés à 0,5 sur ces catégories
+(vs 0,85 sur lic_eco) pour mesurer le gap, pas pour cacher la faiblesse.
+**Plan v1.3 :** étendre la base curatée + Légifrance retriever full
+sur ces 4 sous-domaines. Cf. `bench/swiss_watch_50.json` catégories.
+
+### KI-SW-004 — `test_pipeline_response_score` : 0 citation → score=1.0
+**Statut :** REPORTÉ (héritage de KI-003 v1.0.0)
+**Priorité :** BASSE
+**Symptôme :** Quand le Vérificateur ne trouve aucune citation à
+extraire (`nb_total=0`), il retourne `score=1.0` (vacuously true).
+**Mitigation Swiss watch :** Le HUD cache désormais le badge dans ce
+cas (cf. `_update_score_badge` qui requiert `n_total > 0`). L'avocat
+ne voit plus de faux 100 % sur les refus.
+**Fix v1.3 :** `verificateur.py` doit distinguer `n_total=0` (« pas
+applicable ») d'un vrai score. Champ supplémentaire `applicable: bool`.
 
 ---
 
