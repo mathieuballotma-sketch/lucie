@@ -1756,6 +1756,32 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         content.addSubview_(self._copy_btn)
         self._copy_btn_feedback_timer: Optional[Any] = None
 
+        # ── Badge verifier_score (Swiss watch — règle 5) ────────────────────
+        # Position : à gauche du bouton "Copier", même ligne. Couleur dérivée
+        # du score : vert ≥ 0.9, ambre 0.7-0.89, rouge < 0.7. Caché par défaut.
+        _score_badge_w = 110.0
+        _score_badge_h = 22.0
+        _score_badge_x = _copy_btn_x - _score_badge_w - 6.0
+        _score_badge_y = _copy_btn_y
+        self._score_badge = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(_score_badge_x, _score_badge_y, _score_badge_w, _score_badge_h)
+        )
+        self._score_badge.setStringValue_("")
+        self._score_badge.setEditable_(False)
+        self._score_badge.setBezeled_(False)
+        self._score_badge.setBordered_(False)
+        self._score_badge.setDrawsBackground_(True)
+        self._score_badge.setBackgroundColor_(AppKit.NSColor.clearColor())
+        self._score_badge.setAlignment_(AppKit.NSTextAlignmentCenter)
+        self._score_badge.setFont_(
+            AppKit.NSFont.systemFontOfSize_weight_(11, AppKit.NSFontWeightMedium)
+        )
+        self._score_badge.setWantsLayer_(True)
+        self._score_badge.layer().setCornerRadius_(_score_badge_h / 2.0)
+        self._score_badge.setHidden_(True)
+        self._score_badge.setAlphaValue_(0.0)
+        content.addSubview_(self._score_badge)
+
         # ══ PIPELINE STAGES ZONE (« Lucie réfléchit ») ═══════════════════════
         # Zone au-dessus du texte qui affiche les étapes en temps réel. Cachée
         # par défaut, montrée au premier event "started", fade-out à la fin.
@@ -2573,6 +2599,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                     "document_kind": getattr(response, "document_kind", None),
                     "document_path": getattr(response, "document_path", None),
                     "suggested_replies": getattr(response, "suggested_replies", []) or [],
+                    # Swiss watch (règle 5) — score vérificateur surfacé sous chaque réponse
+                    "verifier_score": getattr(response, "verifier_score", 0.0),
+                    "citations_ok": getattr(response, "citations_ok", 0),
+                    "citations_invalid": getattr(response, "citations_invalid", 0),
+                    "verdict": getattr(response, "verdict", None),
+                    "refused": getattr(response, "refused", False),
                 }
 
             if not response_text or not response_text.strip():
@@ -2633,6 +2665,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                         "document_kind": getattr(evt, "document_kind", None),
                         "document_path": getattr(evt, "document_path", None),
                         "suggested_replies": getattr(evt, "suggested_replies", []) or [],
+                        # Swiss watch (règle 5) — score vérificateur surfacé
+                        "verifier_score": getattr(evt, "verifier_score", 0.0),
+                        "citations_ok": getattr(evt, "citations_ok", 0),
+                        "citations_invalid": getattr(evt, "citations_invalid", 0),
+                        "verdict": getattr(evt, "verdict", None),
+                        "refused": getattr(evt, "refused", False),
                     }
                     # Path SMALL_TALK / blocage : pas de chunks précédents,
                     # on affiche la réponse complète en une fois.
@@ -3289,6 +3327,75 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._copy_btn_feedback_timer = None
         btn.setAlphaValue_(0.0)
         btn.setHidden_(True)
+        # Le badge score suit la même visibilité que le bouton Copier
+        self._hide_score_badge()
+
+    # ── Badge verifier_score (Swiss watch — règle 5) ──────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _update_score_badge(
+        self,
+        score: float,
+        citations_ok: int,
+        citations_invalid: int,
+        verdict: Optional[str],
+        refused: bool = False,
+    ) -> None:
+        """Met à jour et affiche le badge score selon le verifier_score.
+
+        Règles d'affichage (Swiss watch — élégance silencieuse) :
+          - refused=True OU verdict=NON VÉRIFIABLE OU 0 citation : badge caché
+          - score >= 0.9 : vert "Vérifié X%"
+          - score 0.7-0.89 : ambre "Vérifié X% — relisez"
+          - score < 0.7 : rouge "Fiabilité faible X%"
+        """
+        badge = getattr(self, "_score_badge", None)
+        if badge is None:
+            return
+        n_total = int(citations_ok) + int(citations_invalid)
+        # Pas de badge sur refus précoce (Cerveau Oiseaux) ni si aucune citation
+        # extraite — affiche un score=1.0 vacuously true (KI-003), trompeur.
+        if refused or n_total == 0:
+            self._hide_score_badge()
+            return
+        s = float(score or 0.0)
+        pct = max(0, min(100, round(s * 100)))
+        if s >= 0.9:
+            color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.24, 0.74, 0.44, 0.18)
+            text_color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.16, 0.56, 0.32, 1.0)
+            text = f"✓ Vérifié {pct}%"
+        elif s >= 0.7:
+            color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.95, 0.66, 0.20, 0.20)
+            text_color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.78, 0.50, 0.10, 1.0)
+            text = f"⚠ Vérifié {pct}% — relisez"
+        else:
+            color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.30, 0.30, 0.20)
+            text_color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.18, 0.18, 1.0)
+            text = f"⚠ Fiabilité {pct}%"
+        badge.setStringValue_(text)
+        badge.setTextColor_(text_color)
+        try:
+            badge.layer().setBackgroundColor_(color.CGColor())
+        except Exception:
+            pass
+        badge.setToolTip_(
+            f"{citations_ok} citation(s) vérifiée(s) sur {n_total} extraite(s)."
+            + (f"\nVerdict : {verdict}" if verdict else "")
+        )
+        badge.setHidden_(False)
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.22)
+        badge.animator().setAlphaValue_(1.0)
+        AppKit.NSAnimationContext.endGrouping()
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _hide_score_badge(self) -> None:
+        """Masque le badge score."""
+        badge = getattr(self, "_score_badge", None)
+        if badge is None:
+            return
+        badge.setAlphaValue_(0.0)
+        badge.setHidden_(True)
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def copyResponseAction_(self, sender: Any) -> None:
@@ -3442,6 +3549,20 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         meta = self._last_response_meta or {}
         original_query = self._last_query
+
+        # Swiss watch (règle 5) — badge verifier_score sous chaque réponse non
+        # refusée. Caché automatiquement si refus Cerveau Oiseaux ou 0 citation.
+        if self._streaming_sender != "Toi":
+            try:
+                self._update_score_badge(
+                    score=float(meta.get("verifier_score", 0.0) or 0.0),
+                    citations_ok=int(meta.get("citations_ok", 0) or 0),
+                    citations_invalid=int(meta.get("citations_invalid", 0) or 0),
+                    verdict=meta.get("verdict"),
+                    refused=bool(meta.get("refused", False)),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(f"_update_score_badge: {exc}")
 
         document_path = meta.get("document_path")
         if document_path and os.path.exists(document_path):

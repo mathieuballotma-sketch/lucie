@@ -20,6 +20,7 @@ import logging
 import os
 import re
 import time
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, AsyncIterator, Dict, List, Optional, Tuple, Union
@@ -104,11 +105,25 @@ _CLOSED_QUESTION_RE = re.compile(
 )
 
 
+# ── Swiss watch (règle 5) — propagation du metadata vérificateur ──────────────
+# `_format_final` set ce ContextVar avec {score, citations_ok, citations_invalid,
+# verdict} pour que `run()` / `run_stream()` puissent peupler la PipelineResponse
+# sans changer la signature des fonctions intermédiaires.
+_VERIFICATION_META: "ContextVar[Optional[Dict[str, Any]]]" = ContextVar(
+    "_lucie_verification_meta", default=None
+)
+
+
 @dataclass
 class PipelineResponse:
     answer: str
     citations: List[str] = field(default_factory=list)
     verifier_score: float = 0.0
+    # Counts pour affichage HUD ("X citations vérifiées / Y trouvées")
+    # Peuplés uniquement quand la pipeline a appelé le Vérificateur (niveau 2/3).
+    citations_ok: int = 0
+    citations_invalid: int = 0
+    verdict: Optional[str] = None  # "VALIDÉ" | "CORRIGÉ" | "INSUFFISANT" | None
     disclaimer: Optional[str] = None
     mode: Optional[str] = None
     # Indique au HUD qu'un document peut être produit : afficher ProposalCard au lieu
@@ -469,6 +484,8 @@ async def run(
     start = time.time()
     if verbose:
         print(f"⚖️  Pipeline démarré — {query[:80]}…", flush=True)
+    # Reset metadata vérificateur (swiss watch — règle 5)
+    _VERIFICATION_META.set(None)
     try:
         async with profile_bucket():
             result = await asyncio.wait_for(
@@ -480,6 +497,13 @@ async def run(
             print(f"⚖️  Pipeline terminé en {elapsed:.1f}s", flush=True)
 
         response = PipelineResponse(answer=result, mode=mode)
+        # Surfacer le score vérificateur dans la PipelineResponse (HUD badge)
+        meta = _VERIFICATION_META.get()
+        if meta is not None:
+            response.verifier_score = meta["score"]
+            response.citations_ok = meta["citations_ok"]
+            response.citations_invalid = meta["citations_invalid"]
+            response.verdict = meta["verdict"]
 
         # Si l'utilisateur a confirmé "yes_produce", on écrit un DOCX et on
         # expose le chemin au HUD (qui l'affichera dans une DraggableFileCard).
@@ -757,6 +781,9 @@ async def run_stream(
         yield resp
         return
 
+    # Reset metadata vérificateur (Swiss watch — règle 5)
+    _VERIFICATION_META.set(None)
+
     # ── R3 sprint S1 : TTFT pipeline-side ────────────────────────────────────
     # Mesure le temps entre l'entrée dans run_stream et le 1er chunk de
     # texte émis vers le HUD (incluant routing, scope, retriever pour N2).
@@ -980,6 +1007,13 @@ async def run_stream(
 
                 final = _format_final(note_markdown, verification_json, False)
                 response = PipelineResponse(answer=final, mode=mode)
+                # Surfacer le score vérificateur (Swiss watch — règle 5)
+                meta = _VERIFICATION_META.get()
+                if meta is not None:
+                    response.verifier_score = meta["score"]
+                    response.citations_ok = meta["citations_ok"]
+                    response.citations_invalid = meta["citations_invalid"]
+                    response.verdict = meta["verdict"]
                 yield _attach_suggested_replies(response)
                 if memory is not None:
                     await _memory_observe(memory, query, "search", routing["intent"])
@@ -1041,23 +1075,41 @@ async def _memory_observe(
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _format_final(note_markdown: str, verification_json: str, verbose: bool) -> str:
-    """Applique le résultat du vérificateur et ajoute le disclaimer."""
+    """Applique le résultat du vérificateur et ajoute le disclaimer.
+
+    Side-effect (Swiss watch — règle 5) : peuple `_VERIFICATION_META` avec
+    `{score, citations_ok, citations_invalid, verdict}` pour que `run()` /
+    `run_stream()` puissent surfacer ces infos dans la PipelineResponse
+    consommée par le HUD (badge couleur sous chaque réponse).
+    """
+    citations_ok = 0
+    citations_invalid = 0
     try:
         verification = json.loads(verification_json)
         note_finale = verification.get("note_corrigee", note_markdown)
         score = verification.get("score_fiabilite", 1.0)
         verdict = verification.get("verdict", "INCONNU")
+        citations_ok = len(verification.get("citations_verifiees", []) or [])
+        citations_invalid = len(verification.get("citations_invalides", []) or [])
     except json.JSONDecodeError:
         note_finale = note_markdown
         score = 0.0
         verdict = "ERREUR VÉRIFICATION"
+
+    # Propagation pour la PipelineResponse (lue par run() / run_stream()).
+    _VERIFICATION_META.set({
+        "score": float(score),
+        "citations_ok": int(citations_ok),
+        "citations_invalid": int(citations_invalid),
+        "verdict": verdict,
+    })
 
     if verbose:
         print(f"✅ Vérificateur : {verdict} (score={score:.2f})", flush=True)
 
     disclaimer = (
         "\n\n---\n"
-        f"_Note générée par Lucie V1 — "
+        f"_Note générée par Beaume v1 — "
         f"Score de fiabilité : {score:.0%} — Verdict : {verdict}_\n"
         "_À vérifier par un avocat qualifié avant tout usage professionnel._"
     )
