@@ -75,6 +75,19 @@ class MenuBarController(AppKit.NSObject):  # type: ignore[misc]
 
         menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
+        # Export du journal d'audit PAF (HMAC-SHA256, format CSV) — câblé
+        # côté HUD via ``exportPafAudit_`` (cf. hud_native.py:2304).
+        audit_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "Exporter le journal d'audit (PAF)…", "exportPafAudit:", "e"
+        )
+        audit_item.setKeyEquivalentModifierMask_(
+            AppKit.NSEventModifierFlagCommand | AppKit.NSEventModifierFlagShift
+        )
+        audit_item.setTarget_(self._hud)
+        menu.addItem_(audit_item)
+
+        menu.addItem_(AppKit.NSMenuItem.separatorItem())
+
         quit_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "Quitter Beaume", "terminate:", "q"
         )
