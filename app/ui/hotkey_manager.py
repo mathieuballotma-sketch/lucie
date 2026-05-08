@@ -35,7 +35,7 @@ class HotkeyManager:
         if not AXIsProcessTrusted():
             logger.warning(
                 "⌨️ Accessibilité non autorisée → Cmd+Shift+L désactivé. "
-                "Autoriser Lucie dans Réglages → Confidentialité → Accessibilité"
+                "Autoriser Beaume dans Réglages → Confidentialité → Accessibilité"
             )
             try:
                 AppKit.NSWorkspace.sharedWorkspace().openURL_(

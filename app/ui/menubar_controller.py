@@ -43,7 +43,7 @@ class MenuBarController(AppKit.NSObject):  # type: ignore[misc]
         btn = self._item.button()
         try:
             img = AppKit.NSImage.imageWithSystemSymbolName_accessibilityDescription_(
-                symbol, "Lucie"
+                symbol, "Beaume"
             )
             if img:
                 img.setTemplate_(True)   # adapts to light/dark mode
@@ -57,7 +57,7 @@ class MenuBarController(AppKit.NSObject):  # type: ignore[misc]
         menu = AppKit.NSMenu.alloc().init()
 
         toggle = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Afficher / Masquer Lucie", "toggleHUD:", "l"
+            "Afficher / Masquer Beaume", "toggleHUD:", "l"
         )
         toggle.setKeyEquivalentModifierMask_(
             AppKit.NSEventModifierFlagCommand | AppKit.NSEventModifierFlagShift
@@ -68,7 +68,7 @@ class MenuBarController(AppKit.NSObject):  # type: ignore[misc]
         menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         about = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "À propos de Lucie", "showAbout:", ""
+            "À propos de Beaume", "showAbout:", ""
         )
         about.setTarget_(self)
         menu.addItem_(about)
@@ -76,7 +76,7 @@ class MenuBarController(AppKit.NSObject):  # type: ignore[misc]
         menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         quit_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Quitter Lucie", "terminate:", "q"
+            "Quitter Beaume", "terminate:", "q"
         )
         # terminate: is handled by NSApp — no target override needed
         menu.addItem_(quit_item)
