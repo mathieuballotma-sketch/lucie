@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Point d'entrée HUD Lucie V1 — interface macOS native.
-Lance le HUD PyObjC qui route toutes les requêtes via lucie_v1_standalone/.
+Point d'entrée HUD Beaume v1 — interface macOS native.
+Lance le HUD PyObjC qui route toutes les requêtes via lucie_v1_standalone/
+(le module Python conserve l'ancien nom — alias `beaume` exposé en parallèle).
 
 Au démarrage, un warm-up Ollama est lancé en background thread (R2 sprint S1)
 pour éliminer le cold-start gemma4:e4b (~62 s prompt_eval mesurés au 1er call,
@@ -56,7 +57,7 @@ def _warmup_blocking() -> None:
 
 
 def main() -> None:
-    print("🚀 Lancement HUD Lucie V1")
+    print("🚀 Lancement HUD Beaume v1")
     threading.Thread(
         target=_warmup_blocking,
         name="lucie-warmup",

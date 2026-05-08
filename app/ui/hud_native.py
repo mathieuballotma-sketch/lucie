@@ -48,7 +48,7 @@ _AGENT_BAR_Y = _HEADER_Y - AGENT_BAR_H             # 422
 _TEXT_H = _AGENT_BAR_Y - 2 - _TEXT_Y               # 334
 _TEXT_W = WINDOW_W - PADDING * 2                    # 492
 
-# Pipeline stages zone (« Lucie réfléchit »), insérée au-dessus du texte
+# Pipeline stages zone (« Beaume réfléchit »), insérée au-dessus du texte
 # quand le pipeline travaille. Dimensions : 4 lignes * 16px + gaps + padding.
 _STAGES_H = 80                                      # hauteur de la zone
 _STAGES_Y = _AGENT_BAR_Y - 2 - _STAGES_H           # 340 (juste sous sep2)
@@ -75,7 +75,7 @@ class LucieState:
 # (dot_rgba, status_text, sound_name_or_None)
 _STATE_CONFIG: Dict[str, Tuple[Tuple[float, ...], str, Optional[str]]] = {
     LucieState.IDLE:      ((0.20, 0.85, 0.40, 0.9), "Prête",                   None),
-    LucieState.THINKING:  ((1.00, 0.60, 0.00, 0.9), "Lucie réfléchit…",       None),
+    LucieState.THINKING:  ((1.00, 0.60, 0.00, 0.9), "Beaume réfléchit…",       None),
     LucieState.SEARCHING: ((0.27, 0.52, 0.97, 0.9), "Recherche en cours…",    None),
     LucieState.WRITING:   ((0.70, 0.40, 1.00, 0.9), "Rédaction en cours…",    None),
     LucieState.EXECUTING: ((1.00, 0.60, 0.00, 0.9), "Exécution…",             "Funk"),
@@ -257,7 +257,7 @@ class ThinkingIndicatorView(AppKit.NSView):  # type: ignore[misc]
 
 # ─── PipelineStagesView ──────────────────────────────────────────────────────
 class PipelineStagesView(AppKit.NSView):  # type: ignore[misc]
-    """Zone "Lucie réfléchit" — liste verticale d'étapes avec état visuel.
+    """Zone "Beaume réfléchit" — liste verticale d'étapes avec état visuel.
 
     Rendu minimal, une ligne par étape : icône d'état (⏸ ⏳ ✅ ❌) à gauche,
     libellé utilisateur (traduit depuis le nom interne via stage_labels) au
@@ -1060,7 +1060,7 @@ class DraggableFileCard(AppKit.NSView):  # type: ignore[misc]
             return
         if self._hud_ref is not None and hasattr(self._hud_ref, "append_message_safe"):
             self._hud_ref.append_message_safe(
-                "Lucie", f"✅ Enregistré dans {dest}", False
+                "Beaume", f"✅ Enregistré dans {dest}", False
             )
 
     def draggingSession_sourceOperationMaskForDraggingContext_(
@@ -1782,7 +1782,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._score_badge.setAlphaValue_(0.0)
         content.addSubview_(self._score_badge)
 
-        # ══ PIPELINE STAGES ZONE (« Lucie réfléchit ») ═══════════════════════
+        # ══ PIPELINE STAGES ZONE (« Beaume réfléchit ») ═══════════════════════
         # Zone au-dessus du texte qui affiche les étapes en temps réel. Cachée
         # par défaut, montrée au premier event "started", fade-out à la fin.
         self._stages_view = PipelineStagesView.alloc().initWithFrame_(
@@ -1933,7 +1933,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._drop_highlight.setHidden_(True)
         content.addSubview_(self._drop_highlight)
 
-        # ══ OUTPUT DRAG CARD (visible quand Lucie a produit un résultat) ═════
+        # ══ OUTPUT DRAG CARD (visible quand Beaume a produit un résultat) ═══
         # Nouvelles dimensions : 380×72, placée en overlay au-dessus de l'input.
         card_x = (WINDOW_W - DraggableFileCard._CARD_W) / 2
         self._output_card = DraggableFileCard.alloc().initWithFrame_(
@@ -1949,7 +1949,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._output_card.setAlphaValue_(0.0)
         content.addSubview_(self._output_card)
 
-        # ══ PROPOSAL CARD (visible quand Lucie propose une production) ═══════
+        # ══ PROPOSAL CARD (visible quand Beaume propose une production) ═════
         proposal_x = PADDING
         self._proposal_card = ProposalCardView.alloc().initWithFrame_(
             make_rect(
@@ -2343,7 +2343,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         trail = self._get_or_create_audit_trail()
         if trail is None:
             self.append_message_safe(
-                "Lucie",
+                "Beaume",
                 "⚠️ Audit PAF indisponible (init DB échouée).",
                 False,
             )
@@ -2370,7 +2370,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         target = url.path()
         success, message = export_to_path(trail, target)
-        sender_name = "Lucie"
+        sender_name = "Beaume"
         self.append_message_safe(sender_name, message, False)
 
     # ── N11: MemoryStore badge ──────────────────────────────────────────────
@@ -2487,7 +2487,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._current_dossier_path = path
             self._current_document = None
             self.append_message_safe(
-                "Lucie",
+                "Beaume",
                 f"📁 Dossier **{name}** prêt — posez votre question pour lancer l'analyse.",
                 False,
             )
@@ -2495,7 +2495,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         else:
             # Immediate feedback — extraction runs in background to avoid UI freeze
             self.append_message_safe(
-                "Lucie",
+                "Beaume",
                 f"📄 Lecture de **{name}**…",
                 False,
             )
@@ -2509,7 +2509,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                     size_str = f"{size_kb} Ko" if size_kb < 1024 else f"{size_kb // 1024} Mo"
                     AppHelper.callAfter(
                         self.append_message_safe,
-                        "Lucie",
+                        "Beaume",
                         f"✅ **{name}** prêt ({size_str}, {len(text)} car.) — posez votre question.",
                         False,
                     )
@@ -2520,7 +2520,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 else:
                     AppHelper.callAfter(
                         self.append_message_safe,
-                        "Lucie",
+                        "Beaume",
                         f"⚠️ Impossible de lire **{name}**. Formats supportés : PDF, DOCX, TXT, MD.",
                         False,
                     )
@@ -2617,7 +2617,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             # Stocker les meta AVANT de démarrer le streaming : _on_streaming_complete
             # les consultera à la fin.
             self._last_response_meta = meta
-            AppHelper.callAfter(self._start_streaming, "Lucie", response_text, False)
+            AppHelper.callAfter(self._start_streaming, "Beaume", response_text, False)
 
         except Exception as e:
             logger.error(f"Erreur _process_query: {e}", exc_info=True)
@@ -2650,7 +2650,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         async def _consume() -> None:
             nonlocal meta, got_chunks
-            AppHelper.callAfter(self._begin_live_stream, "Lucie")
+            AppHelper.callAfter(self._begin_live_stream, "Beaume")
 
             async for evt in lv1.run_stream(query, document_text=document_text, force=False):
                 if isinstance(evt, str):
@@ -2789,7 +2789,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             # Décision d'affichage post-streaming : ProposalCard / DraggableFileCard
             # / boutons Oui-Non / rien, selon les meta du PipelineResponse.
             self._on_streaming_complete()
-            self._send_notification("Lucie", f"Réponse prête en {latency:.1f}s")
+            self._send_notification("Beaume", f"Réponse prête en {latency:.1f}s")
             # Onboarding: schedule next step
             next_step = getattr(self, "_onboard_next_step", None)
             if next_step is not None:
@@ -2851,7 +2851,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._update_scroll_button_visibility()
 
     def _on_response_error(self, error_text: str) -> None:
-        self.append_message_safe("Lucie", error_text, False)
+        self.append_message_safe("Beaume", error_text, False)
         self._is_processing = False
         self._is_dragging = False
         self.set_state(LucieState.ERROR)  # Basso sound + red + "Erreur"
@@ -3144,7 +3144,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     def _hideOutputCardTimer_(self, timer: Any) -> None:
         self._output_card.setHidden_(True)
 
-    # ── Pipeline stages zone (« Lucie réfléchit ») ────────────────────────────
+    # ── Pipeline stages zone (« Beaume réfléchit ») ────────────────────────────
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def _reset_pipeline_stages(self) -> None:
