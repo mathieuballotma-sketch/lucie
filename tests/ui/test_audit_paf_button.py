@@ -34,15 +34,15 @@ def test_default_audit_db_path_is_inside_data_audit() -> None:
 
 def test_default_export_filename_uses_iso_date() -> None:
     fn = default_export_filename(datetime.date(2026, 4, 28))
-    assert fn == "lucie_audit_2026-04-28.csv"
+    assert fn == "beaume_audit_2026-04-28.csv"
 
 
 def test_default_export_filename_uses_today_when_none() -> None:
     fn = default_export_filename()
-    assert fn.startswith("lucie_audit_")
+    assert fn.startswith("beaume_audit_")
     assert fn.endswith(".csv")
     # Format YYYY-MM-DD entre les deux
-    middle = fn[len("lucie_audit_"):-len(".csv")]
+    middle = fn[len("beaume_audit_"):-len(".csv")]
     datetime.date.fromisoformat(middle)
 
 

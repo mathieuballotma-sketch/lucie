@@ -56,7 +56,7 @@ def _warmup_blocking() -> None:
 
 
 def main() -> None:
-    print("🚀 Lancement HUD Lucie V1")
+    print("🚀 Lancement HUD Beaume V1")
     threading.Thread(
         target=_warmup_blocking,
         name="lucie-warmup",

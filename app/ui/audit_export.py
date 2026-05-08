@@ -32,10 +32,10 @@ def default_export_filename(today: datetime.date | None = None) -> str:
     Nom de fichier suggéré dans NSSavePanel.
 
     >>> default_export_filename(datetime.date(2026, 4, 28))
-    'lucie_audit_2026-04-28.csv'
+    'beaume_audit_2026-04-28.csv'
     """
     d = today or datetime.date.today()
-    return f"lucie_audit_{d.isoformat()}.csv"
+    return f"beaume_audit_{d.isoformat()}.csv"
 
 
 def export_to_path(audit_trail: Any, target_path: Path | str) -> Tuple[bool, str]:
