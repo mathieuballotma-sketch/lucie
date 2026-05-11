@@ -1,4 +1,4 @@
-# KNOWN_ISSUES — Beaume V1 (ex-Lucie)
+# KNOWN_ISSUES — Beaume v1 (ex-Lucie)
 
 Fichier de suivi des problèmes connus, classés par bloc et priorité.
 Mis à jour par chaque agent lors de ses découvertes.

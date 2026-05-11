@@ -1112,7 +1112,7 @@ def _format_final(note_markdown: str, verification_json: str, verbose: bool) -> 
 
     disclaimer = (
         "\n\n---\n"
-        f"_Note générée par Beaume V1 — "
+        f"_Note générée par Beaume v1 — "
         f"Score de fiabilité : {score:.0%} — Verdict : {verdict}_\n"
         "_À vérifier par un avocat qualifié avant tout usage professionnel._"
     )
