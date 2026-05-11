@@ -1,6 +1,7 @@
 """Perf utilities : profilage, instrumentation, bench harness.
 
-Tout le code de ce sous-paquet est activable via env flags (`LUCIE_PROFILE=1`).
+Tout le code de ce sous-paquet est activable via env flags (`BEAUME_PROFILE=1`,
+ancien `LUCIE_PROFILE` accepté en alias deprecated).
 Aucun impact runtime quand désactivé (no-op).
 """
 

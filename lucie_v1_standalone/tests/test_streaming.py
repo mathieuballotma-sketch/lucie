@@ -22,12 +22,14 @@ def _as_stream(chunks: List[str]) -> AsyncIterator[str]:
 
 
 def test_streaming_enabled_default(monkeypatch):
+    monkeypatch.delenv("BEAUME_STREAM", raising=False)
     monkeypatch.delenv("LUCIE_STREAM", raising=False)
     assert streaming_enabled() is True
 
 
 def test_streaming_disabled_when_flag_off(monkeypatch):
-    monkeypatch.setenv("LUCIE_STREAM", "0")
+    monkeypatch.delenv("LUCIE_STREAM", raising=False)
+    monkeypatch.setenv("BEAUME_STREAM", "0")
     assert streaming_enabled() is False
 
 
@@ -89,8 +91,9 @@ def test_run_stream_small_talk_yields_response_directly():
 
 
 def test_run_stream_falls_back_to_run_when_disabled(monkeypatch):
-    """LUCIE_STREAM=0 → fallback sur run() — on yield 1 seul PipelineResponse."""
-    monkeypatch.setenv("LUCIE_STREAM", "0")
+    """BEAUME_STREAM=0 → fallback sur run() — on yield 1 seul PipelineResponse."""
+    monkeypatch.delenv("LUCIE_STREAM", raising=False)
+    monkeypatch.setenv("BEAUME_STREAM", "0")
     fake = PipelineResponse(answer="final", mode="analysis")
 
     with patch.object(pipeline, "run", new=AsyncMock(return_value=fake)):
@@ -194,7 +197,7 @@ def test_generate_stream_chat_passes_system_as_message():
 
 def test_run_stream_n2_streams_chunks_then_final(monkeypatch):
     """Niveau 2 : doit yield des strings (chunks) puis 1 PipelineResponse final."""
-    monkeypatch.setenv("LUCIE_STREAM", "1")
+    monkeypatch.setenv("BEAUME_STREAM", "1")
 
     # Mock redacteur.handle_stream pour éviter appel LLM
     async def fake_red_stream(*args, **kwargs):

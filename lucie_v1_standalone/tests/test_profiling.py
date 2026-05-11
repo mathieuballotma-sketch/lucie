@@ -18,14 +18,14 @@ from lucie_v1_standalone.perf import (
 
 @pytest.fixture(autouse=True)
 def enable_profiling(monkeypatch):
-    monkeypatch.setenv("LUCIE_PROFILE", "1")
+    monkeypatch.setenv("BEAUME_PROFILE", "1")
     yield
 
 
 def test_is_profiling_enabled_reads_env(monkeypatch):
-    monkeypatch.setenv("LUCIE_PROFILE", "1")
+    monkeypatch.setenv("BEAUME_PROFILE", "1")
     assert is_profiling_enabled() is True
-    monkeypatch.setenv("LUCIE_PROFILE", "0")
+    monkeypatch.setenv("BEAUME_PROFILE", "0")
     assert is_profiling_enabled() is False
 
 
@@ -60,7 +60,7 @@ def test_profile_step_is_noop_without_bucket():
 
 
 def test_profile_step_is_noop_when_disabled(monkeypatch):
-    monkeypatch.setenv("LUCIE_PROFILE", "0")
+    monkeypatch.setenv("BEAUME_PROFILE", "0")
 
     async def run():
         async with profile_bucket() as bucket:

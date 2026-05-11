@@ -6,7 +6,7 @@ Couvre :
   3. Déduplication des refs répétées
   4. Validation OK si DB contient l'article
   5. Validation KO si DB ne contient PAS l'article → message de refus
-  6. LUCIE_LEGIFRANCE=0 / DB absente → no-op silencieux (None)
+  6. BEAUME_LEGIFRANCE=0 / DB absente → no-op silencieux (None)
   7. Perf : < 200 ms même avec 3 refs
 """
 
@@ -101,8 +101,8 @@ def fake_legifrance_db(tmp_path, monkeypatch):
     conn.close()
 
     # Pointer la config vers cette DB
-    monkeypatch.setenv("LUCIE_LEGIFRANCE", "1")
-    monkeypatch.setenv("LUCIE_LEGIFRANCE_DIR", str(db_dir))
+    monkeypatch.setenv("BEAUME_LEGIFRANCE", "1")
+    monkeypatch.setenv("BEAUME_LEGIFRANCE_DIR", str(db_dir))
     # Reimport config pour que LEGIFRANCE_ENABLED soit rechargé
     import importlib
 
@@ -183,9 +183,9 @@ def test_perf_under_200ms(fake_legifrance_db):
 
 
 def test_degraded_mode_legifrance_disabled_whitelist_active(tmp_path, monkeypatch, caplog):
-    """LUCIE_LEGIFRANCE=0 → whitelist CT fallback active, article inexistant refusé."""
-    monkeypatch.setenv("LUCIE_LEGIFRANCE", "0")
-    monkeypatch.setenv("LUCIE_LEGIFRANCE_DIR", str(tmp_path))
+    """BEAUME_LEGIFRANCE=0 → whitelist CT fallback active, article inexistant refusé."""
+    monkeypatch.setenv("BEAUME_LEGIFRANCE", "0")
+    monkeypatch.setenv("BEAUME_LEGIFRANCE_DIR", str(tmp_path))
     import importlib
 
     import lucie_v1_standalone.config as cfg
@@ -215,8 +215,8 @@ def test_degraded_mode_db_missing_whitelist_active(tmp_path, monkeypatch, caplog
     """LEGIFRANCE=1 mais DB absente → WARNING log + whitelist CT fallback."""
     empty_dir = tmp_path / "empty"
     empty_dir.mkdir()
-    monkeypatch.setenv("LUCIE_LEGIFRANCE", "1")
-    monkeypatch.setenv("LUCIE_LEGIFRANCE_DIR", str(empty_dir))
+    monkeypatch.setenv("BEAUME_LEGIFRANCE", "1")
+    monkeypatch.setenv("BEAUME_LEGIFRANCE_DIR", str(empty_dir))
     import importlib
 
     import lucie_v1_standalone.config as cfg

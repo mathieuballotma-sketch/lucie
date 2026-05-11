@@ -56,7 +56,9 @@ def clean_root_logger():
 
 def test_setup_logging_installs_two_handlers(clean_root_logger, monkeypatch):
     """Un StreamHandler + un RotatingFileHandler après setup_logging()."""
+    monkeypatch.delenv("BEAUME_QUIET", raising=False)
     monkeypatch.delenv("LUCIE_QUIET", raising=False)
+    monkeypatch.delenv("BEAUME_LOG_LEVEL", raising=False)
     monkeypatch.delenv("LUCIE_LOG_LEVEL", raising=False)
     setup_logging()
     assert _count_lucie_handlers(clean_root_logger) == 2
@@ -66,6 +68,7 @@ def test_setup_logging_installs_two_handlers(clean_root_logger, monkeypatch):
 
 def test_setup_logging_idempotent(clean_root_logger, monkeypatch):
     """Un second appel ne doit PAS ajouter de handlers Lucie supplémentaires."""
+    monkeypatch.delenv("BEAUME_QUIET", raising=False)
     monkeypatch.delenv("LUCIE_QUIET", raising=False)
     setup_logging()
     count_after_first = _count_lucie_handlers(clean_root_logger)
@@ -75,16 +78,19 @@ def test_setup_logging_idempotent(clean_root_logger, monkeypatch):
 
 
 def test_lucie_quiet_bypass(clean_root_logger, monkeypatch):
-    """LUCIE_QUIET=1 → setup_logging est un no-op complet (aucun handler Lucie)."""
-    monkeypatch.setenv("LUCIE_QUIET", "1")
+    """BEAUME_QUIET=1 → setup_logging est un no-op complet (aucun handler Lucie)."""
+    monkeypatch.delenv("LUCIE_QUIET", raising=False)
+    monkeypatch.setenv("BEAUME_QUIET", "1")
     setup_logging()
     assert _count_lucie_handlers(clean_root_logger) == 0
     assert getattr(clean_root_logger, _SENTINEL, False) is False
 
 
 def test_lucie_log_level_override(clean_root_logger, monkeypatch):
-    """LUCIE_LOG_LEVEL=DEBUG doit se refléter sur le root logger."""
+    """BEAUME_LOG_LEVEL=DEBUG doit se refléter sur le root logger."""
+    monkeypatch.delenv("BEAUME_QUIET", raising=False)
     monkeypatch.delenv("LUCIE_QUIET", raising=False)
-    monkeypatch.setenv("LUCIE_LOG_LEVEL", "DEBUG")
+    monkeypatch.delenv("LUCIE_LOG_LEVEL", raising=False)
+    monkeypatch.setenv("BEAUME_LOG_LEVEL", "DEBUG")
     setup_logging()
     assert clean_root_logger.level == logging.DEBUG

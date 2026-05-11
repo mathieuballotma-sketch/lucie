@@ -194,7 +194,7 @@ def test_validate_article_refs_court_circuite_par_bornes():
     """
     import os
 
-    os.environ["LUCIE_LEGIFRANCE"] = "1"
+    os.environ["BEAUME_LEGIFRANCE"] = "1"
     from lucie_v1_standalone.dialogue.article_validator import (
         clear_validator_cache,
         validate_article_refs,

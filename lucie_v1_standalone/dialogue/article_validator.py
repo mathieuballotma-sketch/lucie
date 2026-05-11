@@ -161,7 +161,7 @@ def _emit_degraded_warning(reason: str) -> None:
         "┃    Raison : %-52s┃\n"
         "┃ Fallback whitelist CT (%d codes) engagé pour garantir <1s.  ┃\n"
         "┃ Articles récents/obscurs non whitelistés : résolution imprécise. ┃\n"
-        "┃ Activer : export LUCIE_LEGIFRANCE=1 + synchroniser la DB DILA.   ┃\n"
+        "┃ Activer : export BEAUME_LEGIFRANCE=1 + synchroniser la DB DILA.  ┃\n"
         "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
         reason[:52],
         whitelist_size(),
@@ -173,7 +173,7 @@ def _db_connection() -> Optional[sqlite3.Connection]:
     """Connexion SQLite read-only cachée. Retourne None si Légifrance est
     désactivée ou la DB absente — le caller active le fallback whitelist."""
     if not LEGIFRANCE_ENABLED:
-        _emit_degraded_warning("LUCIE_LEGIFRANCE=0 (env var non activée)")
+        _emit_degraded_warning("BEAUME_LEGIFRANCE=0 (env var non activée)")
         return None
     db_path = get_legifrance_db_path()
     if not db_path.exists():
