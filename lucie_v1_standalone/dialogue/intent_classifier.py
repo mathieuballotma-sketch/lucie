@@ -96,13 +96,70 @@ _LEGAL_PROCEDURE_RE = re.compile(
 _LEGAL_KEYWORD_RE = re.compile(
     # No trailing \b — stems like licenci→licencié/licenciement, employ→employeur,
     # salar→salarié, indemnit→indemnité, économ→économique/économiques.
+    # Sprint 6 P1 — extension : congés/RTT/jours fériés + termes de droit social
+    # courants ("faute simple" inclus, repos compensateur, durée du travail, etc.)
+    # pour éviter le fall-through `SMALL_TALK` sur questions in-scope.
     r'\b(licenci|employ|salar|contrat de travail|droit du travail|'
     r'code du travail|'
     r'rupture|indemnit|préavis|prud|tribunal|juridique|légal|'
     r'économ|cse|consultation|reclassement|restructur|réorganis|suppression de poste|'
-    r'ancienneté|motif|faute (grave|lourde)|conseil de prud|délai|contester)',
+    r'ancienneté|motif|faute (simple|grave|lourde)|conseil de prud|délai|contester|'
+    r'congé|congés|rtt|jour férié|jours fériés|repos compensateur|'
+    r'fractionnement|décompte des congés|temps de travail|durée du travail|'
+    r'rupture conventionnelle|démission|abandon de poste|résiliation judiciaire|'
+    r'prise d\'acte|barème macron|insuffisance professionnelle|nullité du licenciement|'
+    r'entretien préalable|lettre de licenciement|sauvegarde de la compétitivité)',
     re.IGNORECASE | re.UNICODE,
 )
+
+# ── Sprint 6 P1 — Détecteur licenciement personnel (hors-périmètre v1) ────────
+# Beaume v1 couvre uniquement le licenciement économique. Les questions de
+# licenciement personnel (disciplinaire, faute, insuffisance) doivent être
+# refusées AVEC contexte (explication + redirection), pas avec un canned
+# générique "imprecise_legal".
+#
+# Match → on déclenche un refus contextuel dans pipeline.py qui informe
+# l'avocat du périmètre v1 et liste les sujets que Beaume sait traiter
+# (motifs économiques, indemnité légale L.1234-9, PSE, CSP…).
+_LIC_PERSO_RE = re.compile(
+    r'\b('
+    r'faute (simple|grave|lourde)'
+    r'|insuffisance professionnelle'
+    r'|insubordination|mésentente|abandon de poste'
+    r'|barème macron'
+    r'|licenciement (disciplinaire|pour motif personnel|pour faute)'
+    r'|nullité du licenciement'
+    r'|entretien préalable'
+    r'|sanction disciplinaire'
+    r')\b',
+    re.IGNORECASE | re.UNICODE,
+)
+
+
+def detect_lic_perso(query: str) -> bool:
+    """Retourne True si la query semble porter sur du licenciement personnel
+    (hors périmètre Beaume v1 — qui ne couvre que le licenciement économique).
+
+    Détection pure regex, déterministe, <1ms. Utilisée par le pipeline pour
+    court-circuiter avec un message contextuel au lieu du canned générique
+    `_IMPRECISE_LEGAL_REFUSAL`.
+
+    NB : sauf indication contraire (mot-clé "économique"/"lic éco"), un match
+    sur "faute grave"/"entretien préalable" est considéré lic_perso. Si la
+    query contient AUSSI "licenciement économique", on laisse passer (la
+    requête est mixte → traiter comme lic_eco standard).
+    """
+    if not query or not query.strip():
+        return False
+    # Court-circuit : si la query parle explicitement de "économique" ou
+    # "L.1233-X" (articles lic éco), on considère que c'est une question
+    # lic_eco même si elle mentionne "faute grave" en contexte.
+    text = query.lower()
+    if "économique" in text or "economique" in text:
+        return False
+    if re.search(r'\bl\.?\s?1233\b', text):
+        return False
+    return bool(_LIC_PERSO_RE.search(query))
 
 
 def _precision_score(text: str) -> int:
@@ -115,6 +172,66 @@ def _precision_score(text: str) -> int:
     if _LEGAL_PROCEDURE_RE.search(text):
         score += 1
     return score
+
+
+# ── Sprint 6 P1 — détection question vs énoncé ───────────────────────────────
+# Une question (« Quelle est la procédure… ? ») peut être adressée par le LLM
+# même sans tous les paramètres chiffrés. Un énoncé (« Mon employeur veut me
+# licencier. ») reste IMPRECISE_LEGAL : l'avocat doit préciser sa demande.
+_QUESTION_OPENER_RE = re.compile(
+    r"^(quel(le|s|les)?|comment|pourquoi|où|quand|combien|est-ce|"
+    r"qui|que|qu'|peut-on|peut on|y a-t-il|y a t il|dans quel)\b",
+    re.IGNORECASE | re.UNICODE,
+)
+
+
+def _looks_like_question(text: str) -> bool:
+    """True si la query ressemble à une question explicite (vs un énoncé)."""
+    if not text:
+        return False
+    if "?" in text:
+        return True
+    return bool(_QUESTION_OPENER_RE.match(text.strip()))
+
+
+# ── Sprint 6 P1 — filet de sécurité : références d'articles fictives ─────────
+# Le validator d'article (`dialogue/article_validator.py`) n'extrait que
+# L./R. + 3-4 chiffres. Les formats fantaisistes type `D.1234-99999`,
+# `L.99-99`, `N.1234-1` ne sont pas extraits → ne déclenchent pas le refus
+# `article_invalid`. Avant Sprint 6 P1, ces queries tombaient en
+# IMPRECISE_LEGAL (filet de sécurité). Avec l'assouplissement Sprint 6 P1,
+# elles risquent de passer au LLM (test_A1 adversarial).
+# → On garde la classification IMPRECISE_LEGAL quand on voit un pattern
+#   « article X.YYY-ZZZ » qui ne correspond pas au format valide L/R + 3-4
+#   chiffres. Cela préserve la non-régression de `test_A1_article_inexistant`.
+_FAKE_ARTICLE_RE = re.compile(
+    # « article » + un code qui ressemble à une ref mais n'est pas valide :
+    # - lettre ≠ L/R (D, A, B, C, N, T, etc.) suivie de chiffres
+    #   → character class [A-KM-QS-Z] exclut L (12e) et R (18e)
+    # - L/R avec 1-2 chiffres seulement (« L.99-99 »)
+    # - L/R avec 5+ chiffres en base (« L.99999-1 »)
+    r"\barticle\s+"
+    r"("
+    r"[A-KM-QS-Z]\.?\s?\d+(?:-\d+)?"
+    r"|[LRlr]\.?\s?\d{1,2}(?!\d)(?:-\d+)?"
+    r"|[LRlr]\.?\s?\d{5,}(?:-\d+)?"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _has_fake_article_ref(text: str) -> bool:
+    """True si la query cite un code d'article qui ne sera pas validé par
+    l'article_validator (préfixe ≠ L/R, ou nombre de chiffres incorrect).
+
+    Sert de filet de sécurité : on garde la classification IMPRECISE_LEGAL
+    sur ces queries pour ne pas laisser le LLM halluciner sur des articles
+    fictifs hors-format. Le validator article (`dialogue/article_validator`)
+    couvre déjà L/R + 3-4 chiffres ; ce filet couvre tout le reste.
+    """
+    if not text:
+        return False
+    return bool(_FAKE_ARTICLE_RE.search(text))
 
 
 def classify(query: str) -> Intent:
@@ -159,6 +276,31 @@ def classify(query: str) -> Intent:
 
     if has_legal_ref or has_legal_kw:
         score = _precision_score(text)
+        # Sprint 6 P1 — filet de sécurité prioritaire : si la query cite un
+        # code d'article fictif/mal-formé (D.XX, L.99-99, N.1234…) que le
+        # validator article n'extrait pas, on FORCE IMPRECISE_LEGAL pour ne
+        # pas laisser le LLM inventer un contenu sur un article qui n'existe
+        # pas. Cf. test_A1_article_inexistant adversarial.
+        if _has_fake_article_ref(text):
+            logger.info(
+                "IntentClassifier: %r → IMPRECISE_LEGAL "
+                "(filet sécurité : article ref fictive)", preview,
+            )
+            return Intent.IMPRECISE_LEGAL
+        # Sprint 6 P1 — assouplissement : si la query est une vraie question
+        # (« Quelle… ? », « Comment… ? » ou se termine par « ? ») ET contient
+        # un mot-clé juridique métier, on la considère PRECISE_LEGAL : un
+        # avocat pose ce type de question naturellement, et la KB + le LLM +
+        # le vérificateur déterministe sauront répondre (ou refuser
+        # honnêtement « pas dans mes sources »). Sans cet assouplissement,
+        # 22/50 questions in-scope étaient rejetées en `imprecise_legal`
+        # (Sprint 5 baseline, cause #1 du score 27/50).
+        if has_legal_kw and _looks_like_question(text):
+            logger.info(
+                "IntentClassifier: %r → PRECISE_LEGAL (question + kw, score=%d)",
+                preview, score,
+            )
+            return Intent.PRECISE_LEGAL
         if score >= 2:
             logger.info(
                 "IntentClassifier: %r → PRECISE_LEGAL (score=%d)", preview, score

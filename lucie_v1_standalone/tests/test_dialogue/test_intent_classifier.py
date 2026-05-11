@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from lucie_v1_standalone.dialogue.intent_classifier import Intent, classify
+from lucie_v1_standalone.dialogue.intent_classifier import Intent, classify, detect_lic_perso
 
 
 # ── SMALL_TALK (5 cas) ────────────────────────────────────────────────────────
@@ -22,12 +22,16 @@ def test_small_talk(query: str) -> None:
     assert classify(query) == Intent.SMALL_TALK, f"Attendu SMALL_TALK pour : {query!r}"
 
 
-# ── IMPRECISE_LEGAL (5 cas) ───────────────────────────────────────────────────
+# ── IMPRECISE_LEGAL (4 cas — énoncés sans question) ─────────────────────────
+# Sprint 6 P1 : les énoncés vagues (sans « ? » ni mot interrogatif) restent
+# IMPRECISE_LEGAL. Le filet « pour répondre précisément… » se déclenche
+# encore : ces énoncés ne sont pas adressables en l'état par le LLM.
+# « Quels sont mes droits de salarié ? » a été retiré : c'est une vraie
+# question d'avocat avec un mot-clé fort → PRECISE_LEGAL (cf. test ci-dessous).
 
 @pytest.mark.parametrize("query", [
     "J'ai été licencié.",
     "Mon contrat de travail a été rompu.",
-    "Quels sont mes droits de salarié ?",
     "Mon employeur veut me licencier.",
     "J'ai reçu une lettre de mon employeur.",
 ])
@@ -61,27 +65,84 @@ def test_explicit_order(query: str) -> None:
     assert classify(query) == Intent.EXPLICIT_ORDER, f"Attendu EXPLICIT_ORDER pour : {query!r}"
 
 
-# ── Matrice Mathieu 2026-04-22 — fix routing v0.4.2 ──────────────────────────
-# Avant fix : questions factuelles classées SMALL_TALK → réponse générique
-#            « Je me spécialise en droit du licenciement économique. »
-# Après fix : les 9 questions juridiques doivent router vers le pipeline
-#            (EXPLICIT_ORDER ou IMPRECISE_LEGAL), seul "Bonjour" → SMALL_TALK.
+# ── Matrice Mathieu — fix routing v0.4.2 + Sprint 6 P1 ──────────────────────
+# Avant fix v0.4.2 : questions factuelles classées SMALL_TALK → réponse
+#            générique « Je me spécialise en droit du licenciement éco. »
+# Après fix v0.4.2 : routées EXPLICIT_ORDER ou IMPRECISE_LEGAL.
+# Après Sprint 6 P1 : les vraies questions (« ? » ou mot interrogatif) AVEC
+#            un mot-clé juridique sont désormais PRECISE_LEGAL → traitées
+#            par le LLM (auparavant rejetées en `imprecise_legal`, cause
+#            #1 du score batterie 27/50 Sprint 5).
 
 @pytest.mark.parametrize("query,expected", [
-    ("Quelle est la durée légale du préavis ?", Intent.IMPRECISE_LEGAL),
-    ("L.1233-3 ?", Intent.IMPRECISE_LEGAL),
+    # Sprint 6 P1 — flip: vraie question + mot-clé fort → PRECISE_LEGAL
+    ("Quelle est la durée légale du préavis ?", Intent.PRECISE_LEGAL),
+    ("L.1233-3 ?", Intent.IMPRECISE_LEGAL),  # ref article seule sans question
     ("Peux-tu m'expliquer le licenciement économique ?", Intent.EXPLICIT_ORDER),
-    ("J'ai besoin d'une note sur le préavis", Intent.IMPRECISE_LEGAL),
-    ("Donne-moi les motifs de licenciement économique", Intent.IMPRECISE_LEGAL),
-    ("Dans combien de temps peut-on contester un licenciement ?", Intent.IMPRECISE_LEGAL),
-    ("Quelle indemnité pour 12 ans d'ancienneté ?", Intent.IMPRECISE_LEGAL),
-    ("Que dit L.1233-3 ?", Intent.IMPRECISE_LEGAL),
+    ("J'ai besoin d'une note sur le préavis", Intent.IMPRECISE_LEGAL),  # énoncé
+    ("Donne-moi les motifs de licenciement économique", Intent.IMPRECISE_LEGAL),  # impératif sans verbe EXPLICIT_ORDER, pas de "?"
+    # Sprint 6 P1 — flip: "combien" + "licenciement" → PRECISE_LEGAL
+    ("Dans combien de temps peut-on contester un licenciement ?", Intent.PRECISE_LEGAL),
+    # Sprint 6 P1 — flip: "Quelle indemnité ?" + figure → PRECISE_LEGAL
+    ("Quelle indemnité pour 12 ans d'ancienneté ?", Intent.PRECISE_LEGAL),
+    ("Que dit L.1233-3 ?", Intent.IMPRECISE_LEGAL),  # has_legal_ref only, no kw
     ("Recherche l'article L.1234-1", Intent.EXPLICIT_ORDER),
     ("Bonjour", Intent.SMALL_TALK),
 ])
 def test_matrice_questions_avocats(query: str, expected: Intent) -> None:
     got = classify(query)
     assert got == expected, f"{query!r} → {got.value} (attendu {expected.value})"
+
+
+# ── PRECISE_LEGAL — élargissement Sprint 6 P1 ────────────────────────────────
+# Vraies questions d'avocat avec mot-clé juridique fort. Avant Sprint 6 P1
+# ces queries étaient rejetées en IMPRECISE_LEGAL (refus canned). C'est la
+# régression que Sprint 6 P1 corrige.
+
+@pytest.mark.parametrize("query", [
+    "Quelle est la procédure de licenciement économique individuel ?",
+    "Comment fonctionne le licenciement éco collectif <10 salariés ?",
+    "Un jour férié pendant les congés payés est-il décompté ?",
+    "Que sont les RTT et qui en bénéficie ?",
+    "Quels sont mes droits de salarié ?",
+])
+def test_precise_legal_sprint6_p1(query: str) -> None:
+    """Questions in-scope avocat qui doivent désormais être routées au LLM."""
+    assert classify(query) == Intent.PRECISE_LEGAL, (
+        f"Sprint 6 P1 : attendu PRECISE_LEGAL pour : {query!r}"
+    )
+
+
+# ── detect_lic_perso() — Sprint 6 P1 ──────────────────────────────────────────
+
+@pytest.mark.parametrize("query", [
+    "Quelle est la différence entre faute simple, faute grave et faute lourde ?",
+    "Que faire en cas d'insuffisance professionnelle ?",
+    "Quel est le barème Macron applicable ?",
+    "Comment se passe l'entretien préalable ?",
+    "Mon employeur invoque une mésentente, est-ce un motif valable ?",
+    "Quelle est la procédure de licenciement disciplinaire ?",
+    "Quel est l'effet d'une nullité du licenciement ?",
+    "Quelle indemnité pour un licenciement pour motif personnel hors faute ?",
+])
+def test_detect_lic_perso_match(query: str) -> None:
+    """Questions clairement lic_perso doivent être détectées."""
+    assert detect_lic_perso(query), f"Sprint 6 P1 : attendu lic_perso=True pour : {query!r}"
+
+
+@pytest.mark.parametrize("query", [
+    "Quelle est la procédure de licenciement économique individuel ?",
+    "Quels sont les motifs économiques selon L.1233-3 ?",
+    "Comment se calcule l'indemnité de licenciement économique ?",
+    "Le CSP s'applique-t-il en rupture conventionnelle ?",
+    "Un jour férié pendant les congés est-il décompté ?",
+    "Bonjour",
+])
+def test_detect_lic_perso_negative(query: str) -> None:
+    """Questions lic_eco ou hors-domaine ne doivent PAS être détectées lic_perso."""
+    assert not detect_lic_perso(query), (
+        f"Sprint 6 P1 : attendu lic_perso=False pour : {query!r}"
+    )
 
 
 # ── Cas limites ───────────────────────────────────────────────────────────────
