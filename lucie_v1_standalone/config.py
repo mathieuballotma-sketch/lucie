@@ -28,13 +28,13 @@ def get_legifrance_db_path() -> Path:
 
     Override via `LUCIE_LEGIFRANCE_DIR` (utile en dev / tests pour
     pointer vers un répertoire isolé). Par défaut :
-    `~/Library/Application Support/Lucie/legifrance/legi.sqlite`.
+    `~/Library/Application Support/Beaume/legifrance/legi.sqlite`.
     """
     override = os.environ.get("LUCIE_LEGIFRANCE_DIR")
     if override:
         base = Path(override).expanduser()
     else:
-        base = Path.home() / "Library" / "Application Support" / "Lucie" / "legifrance"
+        base = Path.home() / "Library" / "Application Support" / "Beaume" / "legifrance"
     return base / "legi.sqlite"
 
 # ─── Timeouts ─────────────────────────────────────────────────────────────────
