@@ -142,6 +142,23 @@ class MemoryStore:
         self._abstract.apply_decay()
         return {"personal_archived": personal_archived, "abstract_decayed": True}
 
+    async def reset(self) -> dict:
+        """Efface toute la mémoire (personal + abstract).
+
+        Action irréversible — la double confirmation utilisateur (saisie du
+        mot-clé « EFFACER ») doit être imposée côté HUD avant l'appel.
+        Swiss watch — règle 6 (transparence radicale + sortie facile).
+
+        Returns:
+            Dict {"personal_deleted": int, "abstract_deleted": int}.
+        """
+        personal_deleted = await self._personal.reset_all()
+        abstract_deleted = self._abstract.clear()
+        return {
+            "personal_deleted": personal_deleted,
+            "abstract_deleted": abstract_deleted,
+        }
+
     async def snapshot(self) -> dict:
         """
         Profil complet de l'utilisateur.
