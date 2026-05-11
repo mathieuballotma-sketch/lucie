@@ -285,15 +285,18 @@ def test_run_stream_out_of_scope_short_circuit():
 
 
 def test_run_stream_imprecise_legal_polite_refusal():
-    """Question juridique imprécise (score=0) → refus court avec demande
-    de précision, refused=True, <500ms. Avant Phase B v0.5.6, fallthrough
-    LLM 11s qui finissait par 'Cette information n'est pas dans mes sources'."""
+    """Énoncé vague juridique (sans question explicite) → refus court avec
+    demande de précision, refused=True, <500ms. Filet de sécurité conservé
+    par Sprint 6 P1 pour les énoncés (« Mon contrat… »), tandis que les
+    vraies questions in-scope sont désormais routées au LLM."""
     import time
 
     async def go():
         t0 = time.perf_counter()
         events = []
-        async for evt in run_stream("quel est le délai de prescription pour contester ?"):
+        # Énoncé sans « ? » et sans mot interrogatif → toujours IMPRECISE_LEGAL.
+        # Le filet « pour répondre précisément… » se déclenche encore ici.
+        async for evt in run_stream("Mon contrat de travail a été rompu."):
             events.append(evt)
         return events, (time.perf_counter() - t0) * 1000
 
@@ -307,4 +310,39 @@ def test_run_stream_imprecise_legal_polite_refusal():
     assert finals[0].early_validation_triggered == "imprecise_legal"
     # Le message contient une demande de précision exploitable
     assert "précis" in finals[0].answer.lower() or "contexte" in finals[0].answer.lower()
+    assert dt_ms < 500, f"Trop lent: {dt_ms:.0f}ms"
+
+
+def test_run_stream_lic_perso_contextual_refusal():
+    """Sprint 6 P1 — Question lic_perso (hors-périmètre v1) → refus EXPLICATIF
+    avec subcategory='lic_perso', reason, redirect_to, < 500ms.
+    Cf. Rapport Sprint 5 (22 questions in-scope rejetées canned). Cette
+    branche transforme les 10 SW-LPER en réponses contextuelles utiles à
+    l'avocat (au lieu du canned générique 'Pour répondre précisément...')."""
+    import time
+
+    async def go():
+        t0 = time.perf_counter()
+        events = []
+        async for evt in run_stream(
+            "Quelle est la différence entre faute simple, faute grave et faute lourde ?"
+        ):
+            events.append(evt)
+        return events, (time.perf_counter() - t0) * 1000
+
+    events, dt_ms = asyncio.run(go())
+
+    chunks = [e for e in events if isinstance(e, str)]
+    finals = [e for e in events if isinstance(e, PipelineResponse)]
+    assert not chunks, f"Aucun chunk attendu, reçu: {chunks!r}"
+    assert len(finals) == 1
+    resp = finals[0]
+    assert resp.refused is True
+    assert resp.early_validation_triggered == "lic_perso_v1"
+    assert resp.subcategory == "lic_perso"
+    assert resp.reason and "économique" in resp.reason.lower()
+    assert resp.redirect_to and len(resp.redirect_to) >= 3
+    # La réponse doit citer le périmètre v1 et lister des sujets traités
+    assert "lic" in resp.answer.lower()
+    assert "L.1233-3" in resp.answer or "L.1234-9" in resp.answer
     assert dt_ms < 500, f"Trop lent: {dt_ms:.0f}ms"

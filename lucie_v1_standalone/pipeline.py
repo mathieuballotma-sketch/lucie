@@ -35,7 +35,7 @@ from .dialogue.article_validator import (
     extract_article_codes,
     validate_article_refs,
 )
-from .dialogue.intent_classifier import Intent, classify as classify_intent
+from .dialogue.intent_classifier import Intent, classify as classify_intent, detect_lic_perso
 from .dialogue.out_of_scope import detect_out_of_scope
 from .dialogue.small_talk_handler import handle_or_default as small_talk_reply
 from .perf import (
@@ -140,11 +140,20 @@ class PipelineResponse:
     # avant tout appel LLM. `early_validation_triggered` identifie la règle :
     #   - "out_of_scope"    : domaine hors Droit Social
     #   - "article_invalid" : article cité non reconnu par la chaîne de résolveurs
+    #   - "lic_perso_v1"    : licenciement personnel hors-périmètre Beaume v1 (Sprint 6 P1)
     # `validation_details` porte les métadonnées (domain, codes, duration_ms,
     # resolvers actifs) pour audit/rapport.
     refused: bool = False
     early_validation_triggered: Optional[str] = None
     validation_details: Dict[str, Any] = field(default_factory=dict)
+    # ── Sprint 6 P1 — verdict structuré pour HUD contextuel ──
+    # Permet de surfacer un message contextuel à l'avocat : pourquoi Beaume
+    # refuse, et vers quels sujets rediriger. Renseignés uniquement pour les
+    # refus enrichis (lic_perso aujourd'hui ; out_of_scope/article_invalid
+    # peuvent les peupler à terme).
+    subcategory: Optional[str] = None
+    reason: Optional[str] = None
+    redirect_to: List[str] = field(default_factory=list)
 
     def __str__(self) -> str:
         return self.answer
@@ -283,12 +292,68 @@ def _format_exception_for_user(exc: BaseException) -> str:
 # Message de demande de précision pour les questions IMPRECISE_LEGAL.
 # Court-circuit avant LLM (~50ms) pour éviter les 11s d'un pipeline qui
 # finirait par produire "Cette information n'est pas dans mes sources."
+#
+# Sprint 6 P1 — ce message reste un filet de sécurité pour les énoncés trop
+# courts (« J'ai été licencié. ») ou les références d'article sans question
+# (« L.1233-3 ? »). Les vraies questions d'avocat (« Quelle est la procédure
+# de licenciement éco individuel ? ») sont maintenant routées vers le LLM
+# grâce à l'assouplissement de `classify()` (cf. dialogue/intent_classifier.py).
 _IMPRECISE_LEGAL_REFUSAL = (
     "Pour répondre précisément, j'ai besoin de plus de contexte : "
     "référence d'article (ex. L.1233-3), type de procédure visé, "
     "ou éléments factuels (ancienneté, motif, effectif). "
     "Ma base couvre principalement le licenciement économique pour le moment."
 )
+
+
+# ── Sprint 6 P1 — Refus contextuel lic_perso (hors-périmètre v1) ──────────────
+# Beaume v1 couvre uniquement le licenciement économique. Une question sur
+# le licenciement personnel (faute simple/grave, insuffisance pro, barème
+# Macron, entretien préalable, nullité…) reçoit un refus EXPLICATIF qui dit
+# pourquoi (périmètre v1) et redirige vers ce que Beaume sait traiter.
+# Mieux qu'un canned générique « imprecise_legal » qui frustre l'avocat.
+_LIC_PERSO_REDIRECTIONS = [
+    "motifs économiques (L.1233-3)",
+    "procédure d'information-consultation du CSE",
+    "indemnité légale de licenciement (L.1234-9 / R.1234-2)",
+    "seuils PSE et licenciement collectif (L.1233-61)",
+    "contrat de sécurisation professionnelle CSP (L.1233-65)",
+    "contestation devant les prud'hommes (L.1235-7)",
+]
+_LIC_PERSO_REASON = (
+    "Beaume v1 couvre uniquement le licenciement économique. "
+    "Le licenciement pour motif personnel (faute, insuffisance, "
+    "nullité…) sera ajouté ultérieurement."
+)
+
+
+def _build_lic_perso_refusal() -> "PipelineResponse":
+    """Construit la réponse contextuelle pour une question lic_perso.
+
+    Le HUD peut surfacer `subcategory`, `reason` et `redirect_to` séparément
+    pour offrir une UX de redirection plus riche que le simple `answer` brut.
+    """
+    bullets = "\n".join(f"- {sujet}" for sujet in _LIC_PERSO_REDIRECTIONS)
+    answer = (
+        f"{_LIC_PERSO_REASON}\n\n"
+        "Sujets que je sais traiter :\n"
+        f"{bullets}\n\n"
+        "Reformulez votre question sur l'un de ces axes et je ferai "
+        "de mon mieux pour vous aider."
+    )
+    return PipelineResponse(
+        answer=answer,
+        citations=[],
+        verifier_score=1.0,
+        disclaimer=None,
+        mode="analysis",
+        refused=True,
+        early_validation_triggered="lic_perso_v1",
+        subcategory="lic_perso",
+        reason=_LIC_PERSO_REASON,
+        redirect_to=list(_LIC_PERSO_REDIRECTIONS),
+        validation_details={"scope_v1": "lic_eco_only"},
+    )
 
 
 async def _run_cerveau_oiseau_gates(
@@ -433,6 +498,24 @@ async def run(
 
     # ── Intent routing (< 1ms, 0 LLM) — bypass dossier mode ─────────────────
     if not dossier_path:
+        # Sprint 6 P1 — Gate lic_perso (hors-périmètre v1) avant classify.
+        # Court-circuit déterministe avec verdict contextuel + redirect.
+        if detect_lic_perso(query):
+            t0_lp = time.perf_counter()
+            dt_lp_ms = (time.perf_counter() - t0_lp) * 1000
+            emit(
+                "cerveau_oiseau",
+                "completed",
+                hook_name="early_lic_perso",
+                duration_ms=dt_lp_ms,
+                subcategory="lic_perso",
+            )
+            logger.info(
+                "[CerveauOiseau] LIC_PERSO détecté (hors v1) → refus contextuel (%.0fms)",
+                dt_lp_ms,
+            )
+            return _build_lic_perso_refusal()
+
         intent = classify_intent(query)
         logger.info(
             "[Routage] query=%r → intent=%s → handler=%s",
@@ -831,6 +914,25 @@ async def run_stream(
 
     # ── Intent routing ──────────────────────────────────────────────────────
     if not dossier_path:
+        # Sprint 6 P1 — Gate lic_perso avant classify (cf. run() ci-dessus).
+        if detect_lic_perso(query):
+            t0_lp = time.perf_counter()
+            dt_lp_ms = (time.perf_counter() - t0_lp) * 1000
+            emit(
+                "cerveau_oiseau",
+                "completed",
+                hook_name="early_lic_perso",
+                duration_ms=dt_lp_ms,
+                subcategory="lic_perso",
+            )
+            logger.info(
+                "[CerveauOiseau] LIC_PERSO détecté (hors v1) → refus contextuel (%.0fms)",
+                dt_lp_ms,
+            )
+            _mark_pipeline_ttft()
+            yield _build_lic_perso_refusal()
+            return
+
         intent = classify_intent(query)
         if intent == Intent.SMALL_TALK:
             yield PipelineResponse(
