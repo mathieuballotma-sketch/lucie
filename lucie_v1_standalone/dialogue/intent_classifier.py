@@ -84,10 +84,14 @@ _LEGAL_FIGURE_RE = re.compile(
 )
 
 _LEGAL_PROCEDURE_RE = re.compile(
-    r'(licenciement économique|licenciement éco|licenciement collectif|préavis|cse|consultation|'
-    r'indemnité légale|indemnité conventionnelle|reclassement|ordre des licenciements|'
-    r'critères d\'ordre|plan de sauvegarde|convention collective|salarié protégé|'
-    r'sauvegarde de la compétitivité|motif économique|difficultés économiques|'
+    # Sprint 6 P1bis (live test 2026-05-11) — variantes plurielles ajoutées
+    # pour matcher « motifs économiques » (utilisé par Mathieu), « indemnités
+    # légales », « licenciements économiques », etc. Sans ces variantes, le
+    # _precision_score restait à 0 sur des questions pourtant claires.
+    r'(licenciements? économiques?|licenciement éco|licenciements? collectifs?|préavis|cse|consultations?|'
+    r'indemnités? légales?|indemnités? conventionnelles?|reclassement|ordre des licenciements|'
+    r'critères d\'ordre|plan de sauvegarde|convention collective|salariés? protégés?|'
+    r'sauvegarde de la compétitivité|motifs? économiques?|difficultés économiques|'
     r'pse|rcc|csp)',
     re.IGNORECASE,
 )
@@ -298,6 +302,20 @@ def classify(query: str) -> Intent:
         if has_legal_kw and _looks_like_question(text):
             logger.info(
                 "IntentClassifier: %r → PRECISE_LEGAL (question + kw, score=%d)",
+                preview, score,
+            )
+            return Intent.PRECISE_LEGAL
+        # Sprint 6 P1bis — assouplissement #2 (live test 2026-05-11) :
+        # Énoncé court mais précis avec mot-clé juridique fort + indicateur
+        # PROCEDURE ou FIGURE matché (exclut le ref-only « Code du travail »
+        # seul, qui reste IMPRECISE_LEGAL car trop vague). Couvre les inputs
+        # type « procédure CSE pour licenciement éco » que l'avocat tape
+        # rapidement sans ponctuation interrogative.
+        if has_legal_kw and (
+            _LEGAL_PROCEDURE_RE.search(text) or _LEGAL_FIGURE_RE.search(text)
+        ):
+            logger.info(
+                "IntentClassifier: %r → PRECISE_LEGAL (kw + procedure/figure, score=%d)",
                 preview, score,
             )
             return Intent.PRECISE_LEGAL

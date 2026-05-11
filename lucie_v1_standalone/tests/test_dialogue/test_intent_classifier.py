@@ -79,8 +79,10 @@ def test_explicit_order(query: str) -> None:
     ("Quelle est la durée légale du préavis ?", Intent.PRECISE_LEGAL),
     ("L.1233-3 ?", Intent.IMPRECISE_LEGAL),  # ref article seule sans question
     ("Peux-tu m'expliquer le licenciement économique ?", Intent.EXPLICIT_ORDER),
-    ("J'ai besoin d'une note sur le préavis", Intent.IMPRECISE_LEGAL),  # énoncé
-    ("Donne-moi les motifs de licenciement économique", Intent.IMPRECISE_LEGAL),  # impératif sans verbe EXPLICIT_ORDER, pas de "?"
+    # Sprint 6 P1bis (live test 2026-05-11) : énoncé court mais précis avec
+    # PROCEDURE matché → PRECISE_LEGAL (auparavant IMPRECISE_LEGAL).
+    ("J'ai besoin d'une note sur le préavis", Intent.PRECISE_LEGAL),
+    ("Donne-moi les motifs de licenciement économique", Intent.PRECISE_LEGAL),
     # Sprint 6 P1 — flip: "combien" + "licenciement" → PRECISE_LEGAL
     ("Dans combien de temps peut-on contester un licenciement ?", Intent.PRECISE_LEGAL),
     # Sprint 6 P1 — flip: "Quelle indemnité ?" + figure → PRECISE_LEGAL
