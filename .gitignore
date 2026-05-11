@@ -1,3 +1,17 @@
+# =============================================================================
+# Sprint 1 — Grand nettoyage Beaume (2026-05-08)
+# Réf: ~/Desktop/Rapport_salvage_base_propre_2026-05-08.md (hash 29eed10…ca22)
+#
+# Patterns morts confirmés (0 import entrant vérifié grep) :
+#   - Agent-Lucie/        : projet legacy "30 agents" pré-pivot juridique (2,9 MB)
+#   - _archive/, _backups/, Lucid_Docs/ : vestiges projet Lucie originale
+#   - *.bak*, *.deprecated dans app/{agents,services}/ : 80 fichiers cimetière
+#   - PROMPT_*.md (racine) : prompts coach obsolètes (mars-avril 2026)
+#   - config.yaml.bak2/3/4 : snapshots config obsolètes
+#
+# Les entrées ci-dessous étaient déjà présentes — ce bloc sert de traçabilité.
+# =============================================================================
+
 # ===== ENVIRONNEMENT =====
 .env
 .env.*
