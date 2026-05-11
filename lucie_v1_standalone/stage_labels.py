@@ -89,6 +89,10 @@ def sub_label(hook_name: str, details: Optional[dict] = None) -> str:
     if hook_name == "early_article_invalid":
         code = details.get("code") or ""
         return f"Article {code} inexistant" if code else "Article inexistant"
+    if hook_name == "early_lic_perso":
+        # Sprint 6 P1 — sous-périmètre v1 (lic_eco only). On informe l'avocat
+        # sans exposer le mot « refus » : c'est une redirection, pas un rejet.
+        return "Hors périmètre v1 (licenciement personnel)"
     if hook_name == "verifie_citations":
         n_ok = details.get("n_ok")
         n_total = details.get("n_total")

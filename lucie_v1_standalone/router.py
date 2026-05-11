@@ -146,6 +146,27 @@ _AMBIGUOUS_TRIGGERS: List[str] = [
     "suppression",
     "plan social",
     "poste supprimé",
+    # Sprint 6 P1bis (post Sprint 5 baseline review) — termes congés/RTT/
+    # démission/rupture conventionnelle ajoutés. Sans eux, le router refusait
+    # CONG-001/003/004 et DEMR-002 en « hors-périmètre Beaume V1 » alors que
+    # la batterie les considère in-scope. Le retriever + vérificateur déter
+    # gardent la truth-rule en aval.
+    "congé",
+    "congés",
+    "congés payés",
+    "rtt",
+    "jour férié",
+    "jours fériés",
+    "repos compensateur",
+    "fractionnement",
+    "durée du travail",
+    "temps de travail",
+    "démission",
+    "lettre de démission",
+    "rupture conventionnelle",
+    "abandon de poste",
+    "prise d'acte",
+    "résiliation judiciaire",
 ]
 
 
