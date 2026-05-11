@@ -58,13 +58,41 @@ LEGIFRANCE_ENABLED: bool = env_legacy("LEGIFRANCE", "1") == "1"
 LEGIFRANCE_SYNC_INTERVAL_HOURS: int = 48
 
 
+def _get_app_support_dir() -> Path:
+    """Répertoire Application Support utilisé par Beaume.
+
+    Politique de migration (rebrand Lucie → Beaume, 2026-05-02) :
+      - Si ``~/Library/Application Support/Lucie`` existe SEUL, on le copie
+        vers ``Beaume`` au premier démarrage (idempotent : skip si Beaume
+        existe déjà).
+      - Le code interne continue à pointer vers Beaume après migration.
+
+    Ne lève jamais — un échec de migration est loggé mais on retombe sur le
+    legacy pour ne pas casser le démarrage HUD.
+    """
+    home = Path.home() / "Library" / "Application Support"
+    legacy = home / "Lucie"
+    current = home / "Beaume"
+
+    if legacy.exists() and not current.exists():
+        try:
+            import shutil
+            shutil.copytree(legacy, current)
+        except Exception:
+            # Migration best-effort. Si elle échoue, on continue sur le legacy
+            # pour que le HUD démarre quand même.
+            return legacy
+    return current if current.exists() else legacy
+
+
 def get_legifrance_db_path() -> Path:
     """
     Chemin de la base SQLite Légifrance.
 
     Override via `BEAUME_LEGIFRANCE_DIR` (utile en dev / tests pour
     pointer vers un répertoire isolé). Par défaut :
-    `~/Library/Application Support/Beaume/legifrance/legi.sqlite`.
+    `~/Library/Application Support/Beaume/legifrance/legi.sqlite`
+    (migration auto depuis l'ancien répertoire ``Lucie/`` au premier démarrage).
 
     Ancien `LUCIE_LEGIFRANCE_DIR` accepté en alias deprecated.
     """
@@ -72,7 +100,7 @@ def get_legifrance_db_path() -> Path:
     if override:
         base = Path(override).expanduser()
     else:
-        base = Path.home() / "Library" / "Application Support" / "Beaume" / "legifrance"
+        base = _get_app_support_dir() / "legifrance"
     return base / "legi.sqlite"
 
 # ─── Timeouts ─────────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import AppKit
@@ -1378,7 +1379,77 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             logger.debug(f"HUDWindow setDelegate self: {e}")
 
         logger.info("HUD v2 initialisé (resizable, %sx%s persistée)", int(rect.size.width), int(rect.size.height))
+
+        # ── Phrase d'accueil au premier lancement (Swiss watch — règle 5) ──
+        # Affichée une seule fois (flag `welcomed_v1` dans prefs.json) pour
+        # rappeler à l'avocat les 3 promesses Beaume avant sa première question.
+        try:
+            self._maybe_show_welcome_message()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"welcome message non affiché : {exc}")
+
         return self
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _maybe_show_welcome_message(self) -> None:
+        """Affiche le message d'accueil au premier lancement.
+
+        Le flag `welcomed_v1` est stocké dans
+        ``~/Library/Application Support/Beaume/prefs.json``. Une fois affiché,
+        on n'y revient pas (sauf si Mathieu supprime le fichier).
+        """
+        import json as _json
+
+        prefs_dir = Path.home() / "Library" / "Application Support" / "Beaume"
+        prefs_path = prefs_dir / "prefs.json"
+
+        try:
+            prefs = _json.loads(prefs_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, _json.JSONDecodeError):
+            prefs = {}
+
+        if prefs.get("welcomed_v1"):
+            return
+
+        welcome = (
+            "Bonjour, je suis **Beaume** — votre assistant en droit social.\n\n"
+            "🔒 **100 % local** — zéro envoi serveur, vos dossiers ne quittent "
+            "jamais votre Mac.\n"
+            "✅ **Je ne mens jamais** — chaque article cité est vérifié contre "
+            "Légifrance ; en cas de doute, je le dis.\n"
+            "🔗 **Sources cliquables** — accès direct aux articles cités.\n\n"
+            "Posez votre question."
+        )
+        # Petit délai pour laisser le HUD s'afficher avant le message
+        AppKit.NSTimer.scheduledTimerWithTimeInterval_repeats_block_(
+            0.4,
+            False,
+            lambda _t: self._show_welcome_now(welcome, prefs_dir, prefs_path, prefs),
+        )
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _show_welcome_now(
+        self,
+        welcome: str,
+        prefs_dir: Path,
+        prefs_path: Path,
+        prefs: Dict[str, Any],
+    ) -> None:
+        """Affiche le message et persiste le flag (callback du timer)."""
+        try:
+            self.append_message_safe("Beaume", welcome, False)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"welcome append: {exc}")
+            return
+        try:
+            import json as _json
+            prefs_dir.mkdir(parents=True, exist_ok=True)
+            prefs["welcomed_v1"] = True
+            prefs_path.write_text(
+                _json.dumps(prefs, ensure_ascii=False), encoding="utf-8"
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"welcome persist: {exc}")
 
     # ── Persistence position (H8) ─────────────────────────────────────────────
 
@@ -1637,6 +1708,18 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         except Exception:
             self._local_badge_icon = None
 
+        # Tooltip enrichi (Swiss watch règle 5 : confidentialité visible)
+        _local_badge_tooltip = (
+            "100 % local — Beaume tourne sur votre Mac.\n"
+            "Vous pouvez couper votre Wi-Fi, Beaume continue de fonctionner.\n"
+            "Aucune donnée client ne quitte votre ordinateur."
+        )
+        if self._local_badge_icon is not None:
+            try:
+                self._local_badge_icon.setToolTip_(_local_badge_tooltip)
+            except Exception:
+                pass
+
         self._local_badge_label = AppKit.NSTextField.alloc().initWithFrame_(
             make_rect(_badge_x, bar_center_y, 86, 12)
         )
@@ -1646,10 +1729,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._local_badge_label.setDrawsBackground_(False)
         self._local_badge_label.setFont_(AppKit.NSFont.systemFontOfSize_(9))
         self._local_badge_label.setTextColor_(ns_white(0.55, 0.6))
-        self._local_badge_label.setToolTip_(
-            "Toutes les données restent sur votre Mac.\n"
-            "Aucun envoi vers un serveur externe."
-        )
+        self._local_badge_label.setToolTip_(_local_badge_tooltip)
         content.addSubview_(self._local_badge_label)
 
         # Separator: agent bar / text area
@@ -1748,6 +1828,32 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._copy_btn.setToolTip_("Copier la réponse au presse-papier")
         content.addSubview_(self._copy_btn)
         self._copy_btn_feedback_timer: Optional[Any] = None
+
+        # ── Badge verifier_score (Swiss watch — règle 5) ────────────────────
+        # Position : à gauche du bouton "Copier", même ligne. Couleur dérivée
+        # du score : vert ≥ 0.9, ambre 0.7-0.89, rouge < 0.7. Caché par défaut.
+        _score_badge_w = 110.0
+        _score_badge_h = 22.0
+        _score_badge_x = _copy_btn_x - _score_badge_w - 6.0
+        _score_badge_y = _copy_btn_y
+        self._score_badge = AppKit.NSTextField.alloc().initWithFrame_(
+            make_rect(_score_badge_x, _score_badge_y, _score_badge_w, _score_badge_h)
+        )
+        self._score_badge.setStringValue_("")
+        self._score_badge.setEditable_(False)
+        self._score_badge.setBezeled_(False)
+        self._score_badge.setBordered_(False)
+        self._score_badge.setDrawsBackground_(True)
+        self._score_badge.setBackgroundColor_(AppKit.NSColor.clearColor())
+        self._score_badge.setAlignment_(AppKit.NSTextAlignmentCenter)
+        self._score_badge.setFont_(
+            AppKit.NSFont.systemFontOfSize_weight_(11, AppKit.NSFontWeightMedium)
+        )
+        self._score_badge.setWantsLayer_(True)
+        self._score_badge.layer().setCornerRadius_(_score_badge_h / 2.0)
+        self._score_badge.setHidden_(True)
+        self._score_badge.setAlphaValue_(0.0)
+        content.addSubview_(self._score_badge)
 
         # ══ PIPELINE STAGES ZONE (« Beaume réfléchit ») ═══════════════════════
         # Zone au-dessus du texte qui affiche les étapes en temps réel. Cachée
@@ -2386,7 +2492,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def showMemoryPopover_(self, sender: Any) -> None:
-        """Ouvre une popover listant les 5 types de souvenirs (sans contenu)."""
+        """Page « Ce que Beaume sait de vous » — popover enrichie (Swiss watch règle 6).
+
+        Affiche le décompte par type de souvenir + indication 100% local +
+        bouton « Effacer toute la mémoire » avec double confirmation
+        (NSAlert + saisie « EFFACER »).
+        """
         from .memory_indicator import format_popover_lines as _mem_pop  # lazy
 
         if self._memory_popover is not None and self._memory_popover.isShown():
@@ -2394,17 +2505,55 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             return
 
         lines = _mem_pop(self._last_memory_types)
-        body = "\n".join(lines)
 
-        width = 220.0
-        height = 16.0 * max(1, len(lines)) + 24.0
+        # Layout : header (40) + sous-titre (28) + lines (16/ligne) + séparateur
+        # (12) + bouton (32) + paddings (24+12).
+        width = 320.0
+        body_h = 16.0 * max(1, len(lines)) + 8.0
+        height = 40.0 + 28.0 + body_h + 12.0 + 32.0 + 24.0
+
         view = AppKit.NSView.alloc().initWithFrame_(
             Foundation.NSMakeRect(0, 0, width, height)
         )
-        label = AppKit.NSTextField.alloc().initWithFrame_(
-            Foundation.NSMakeRect(12, 12, width - 24, height - 24)
+
+        # ── Header : titre ────────────────────────────────────────────────
+        title_y = height - 32.0
+        title = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, title_y, width - 28, 18)
         )
-        label.setStringValue_(body)
+        title.setStringValue_("Ce que Beaume sait de vous")
+        title.setEditable_(False)
+        title.setBezeled_(False)
+        title.setDrawsBackground_(False)
+        title.setFont_(
+            AppKit.NSFont.systemFontOfSize_weight_(13, AppKit.NSFontWeightSemibold)
+        )
+        view.addSubview_(title)
+
+        # ── Sous-titre : 100% local + path ────────────────────────────────
+        subtitle_y = title_y - 22.0
+        subtitle = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, subtitle_y, width - 28, 16)
+        )
+        subtitle.setStringValue_(
+            "🔒 100 % local — ~/Library/Application Support/Beaume"
+        )
+        subtitle.setEditable_(False)
+        subtitle.setBezeled_(False)
+        subtitle.setDrawsBackground_(False)
+        subtitle.setFont_(AppKit.NSFont.systemFontOfSize_(10))
+        try:
+            subtitle.setTextColor_(_adaptive_secondary())
+        except Exception:
+            pass
+        view.addSubview_(subtitle)
+
+        # ── Body : 5 types de souvenirs ───────────────────────────────────
+        body_y = subtitle_y - body_h - 4.0
+        label = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, body_y, width - 28, body_h)
+        )
+        label.setStringValue_("\n".join(lines))
         label.setEditable_(False)
         label.setBezeled_(False)
         label.setDrawsBackground_(False)
@@ -2414,6 +2563,40 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         except Exception:
             pass
         view.addSubview_(label)
+
+        # ── Séparateur ────────────────────────────────────────────────────
+        sep_y = body_y - 6.0
+        sep = AppKit.NSBox.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, sep_y, width - 28, 1)
+        )
+        sep.setBoxType_(AppKit.NSBoxSeparator)
+        sep.setAlphaValue_(0.15)
+        view.addSubview_(sep)
+
+        # ── Bouton « Effacer toute la mémoire » ──────────────────────────
+        btn_y = sep_y - 32.0
+        erase_btn = AppKit.NSButton.alloc().initWithFrame_(
+            Foundation.NSMakeRect(14, btn_y, width - 28, 26)
+        )
+        erase_btn.setTitle_("Effacer toute la mémoire…")
+        erase_btn.setBezelStyle_(AppKit.NSBezelStyleInline)
+        erase_btn.setFont_(AppKit.NSFont.systemFontOfSize_(11))
+        try:
+            # Teinte rouge sobre — action destructive
+            erase_btn.setContentTintColor_(
+                AppKit.NSColor.colorWithRed_green_blue_alpha_(
+                    0.78, 0.20, 0.20, 1.0
+                )
+            )
+        except Exception:
+            pass
+        erase_btn.setTarget_(self)
+        erase_btn.setAction_("eraseMemoryAction:")
+        erase_btn.setToolTip_(
+            "Supprime définitivement tous les souvenirs personnels et les "
+            "patterns abstraits stockés sur votre Mac."
+        )
+        view.addSubview_(erase_btn)
 
         controller = AppKit.NSViewController.alloc().init()
         controller.setView_(view)
@@ -2425,6 +2608,109 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             sender.bounds(), sender, AppKit.NSRectEdgeMaxY
         )
         self._memory_popover = popover
+
+    @objc.IBAction  # type: ignore[untyped-decorator]
+    def eraseMemoryAction_(self, sender: Any) -> None:
+        """Demande double confirmation puis appelle MemoryStore.reset().
+
+        Étape 1 : NSAlert « Cette action est irréversible. Confirmer ? »
+        Étape 2 : NSAlert avec NSTextField — l'utilisateur doit taper
+        exactement « EFFACER » pour valider.
+
+        Sur succès : feedback en bas de la fenêtre (badge mémoire à 0).
+        """
+        # Fermer le popover d'abord (sinon NSAlert s'ouvre derrière)
+        if self._memory_popover is not None and self._memory_popover.isShown():
+            self._memory_popover.performClose_(sender)
+
+        alert1 = AppKit.NSAlert.alloc().init()
+        alert1.setMessageText_("Effacer toute la mémoire de Beaume ?")
+        alert1.setInformativeText_(
+            "Cette action est irréversible. Tous les souvenirs personnels "
+            "et les patterns abstraits seront supprimés définitivement de "
+            "votre Mac."
+        )
+        alert1.setAlertStyle_(AppKit.NSAlertStyleWarning)
+        alert1.addButtonWithTitle_("Continuer…")
+        alert1.addButtonWithTitle_("Annuler")
+        # Le bouton "Annuler" devient le bouton par défaut (sécurité)
+        try:
+            alert1.buttons()[1].setKeyEquivalent_("\r")
+            alert1.buttons()[0].setKeyEquivalent_("")
+        except Exception:
+            pass
+        if alert1.runModal() != AppKit.NSAlertFirstButtonReturn:
+            return
+
+        # ── Étape 2 : saisie de "EFFACER" ────────────────────────────────
+        alert2 = AppKit.NSAlert.alloc().init()
+        alert2.setMessageText_("Confirmation finale")
+        alert2.setInformativeText_(
+            "Tapez EFFACER (en majuscules) pour confirmer la suppression."
+        )
+        alert2.setAlertStyle_(AppKit.NSAlertStyleCritical)
+        alert2.addButtonWithTitle_("Effacer")
+        alert2.addButtonWithTitle_("Annuler")
+        try:
+            alert2.buttons()[1].setKeyEquivalent_("\r")
+            alert2.buttons()[0].setKeyEquivalent_("")
+        except Exception:
+            pass
+
+        text_input = AppKit.NSTextField.alloc().initWithFrame_(
+            Foundation.NSMakeRect(0, 0, 280, 24)
+        )
+        text_input.setPlaceholderString_("EFFACER")
+        alert2.setAccessoryView_(text_input)
+
+        if alert2.runModal() != AppKit.NSAlertFirstButtonReturn:
+            return
+
+        typed = (text_input.stringValue() or "").strip()
+        if typed != "EFFACER":
+            err = AppKit.NSAlert.alloc().init()
+            err.setMessageText_("Mot-clé incorrect")
+            err.setInformativeText_(
+                "Vous deviez taper exactement « EFFACER ». Aucune donnée n'a "
+                "été supprimée."
+            )
+            err.runModal()
+            return
+
+        # ── Effacement effectif ────────────────────────────────────────────
+        store = self._memory_store
+        if store is None:
+            self.append_message_safe(
+                "Beaume",
+                "⚠️ Mémoire indisponible — rien à effacer.",
+                False,
+            )
+            return
+
+        import asyncio as _asyncio
+
+        def _do_reset() -> None:
+            try:
+                result = _asyncio.run(store.reset())
+                deleted = result.get("personal_deleted", 0)
+                AppHelper.callAfter(
+                    self.append_message_safe,
+                    "Beaume",
+                    f"✅ Mémoire effacée — {deleted} souvenirs supprimés. "
+                    "Beaume vous redécouvrira au fil de vos prochaines questions.",
+                    False,
+                )
+                AppHelper.callAfter(self._update_memory_badge)
+            except Exception as exc:  # noqa: BLE001
+                AppHelper.callAfter(
+                    self.append_message_safe,
+                    "Beaume",
+                    f"⚠️ Erreur lors de l'effacement : {exc}",
+                    False,
+                )
+
+        threading.Thread(target=_do_reset, name="beaume-mem-reset",
+                         daemon=True).start()
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def openFilePicker_(self, sender: Any) -> None:
@@ -2566,6 +2852,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                     "document_kind": getattr(response, "document_kind", None),
                     "document_path": getattr(response, "document_path", None),
                     "suggested_replies": getattr(response, "suggested_replies", []) or [],
+                    # Swiss watch (règle 5) — score vérificateur surfacé sous chaque réponse
+                    "verifier_score": getattr(response, "verifier_score", 0.0),
+                    "citations_ok": getattr(response, "citations_ok", 0),
+                    "citations_invalid": getattr(response, "citations_invalid", 0),
+                    "verdict": getattr(response, "verdict", None),
+                    "refused": getattr(response, "refused", False),
                 }
 
             if not response_text or not response_text.strip():
@@ -2626,6 +2918,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                         "document_kind": getattr(evt, "document_kind", None),
                         "document_path": getattr(evt, "document_path", None),
                         "suggested_replies": getattr(evt, "suggested_replies", []) or [],
+                        # Swiss watch (règle 5) — score vérificateur surfacé
+                        "verifier_score": getattr(evt, "verifier_score", 0.0),
+                        "citations_ok": getattr(evt, "citations_ok", 0),
+                        "citations_invalid": getattr(evt, "citations_invalid", 0),
+                        "verdict": getattr(evt, "verdict", None),
+                        "refused": getattr(evt, "refused", False),
                     }
                     # Path SMALL_TALK / blocage : pas de chunks précédents,
                     # on affiche la réponse complète en une fois.
@@ -3285,6 +3583,75 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             self._copy_btn_feedback_timer = None
         btn.setAlphaValue_(0.0)
         btn.setHidden_(True)
+        # Le badge score suit la même visibilité que le bouton Copier
+        self._hide_score_badge()
+
+    # ── Badge verifier_score (Swiss watch — règle 5) ──────────────────────────
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _update_score_badge(
+        self,
+        score: float,
+        citations_ok: int,
+        citations_invalid: int,
+        verdict: Optional[str],
+        refused: bool = False,
+    ) -> None:
+        """Met à jour et affiche le badge score selon le verifier_score.
+
+        Règles d'affichage (Swiss watch — élégance silencieuse) :
+          - refused=True OU verdict=NON VÉRIFIABLE OU 0 citation : badge caché
+          - score >= 0.9 : vert "Vérifié X%"
+          - score 0.7-0.89 : ambre "Vérifié X% — relisez"
+          - score < 0.7 : rouge "Fiabilité faible X%"
+        """
+        badge = getattr(self, "_score_badge", None)
+        if badge is None:
+            return
+        n_total = int(citations_ok) + int(citations_invalid)
+        # Pas de badge sur refus précoce (Cerveau Oiseaux) ni si aucune citation
+        # extraite — affiche un score=1.0 vacuously true (KI-003), trompeur.
+        if refused or n_total == 0:
+            self._hide_score_badge()
+            return
+        s = float(score or 0.0)
+        pct = max(0, min(100, round(s * 100)))
+        if s >= 0.9:
+            color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.24, 0.74, 0.44, 0.18)
+            text_color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.16, 0.56, 0.32, 1.0)
+            text = f"✓ Vérifié {pct}%"
+        elif s >= 0.7:
+            color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.95, 0.66, 0.20, 0.20)
+            text_color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.78, 0.50, 0.10, 1.0)
+            text = f"⚠ Vérifié {pct}% — relisez"
+        else:
+            color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.30, 0.30, 0.20)
+            text_color = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.18, 0.18, 1.0)
+            text = f"⚠ Fiabilité {pct}%"
+        badge.setStringValue_(text)
+        badge.setTextColor_(text_color)
+        try:
+            badge.layer().setBackgroundColor_(color.CGColor())
+        except Exception:
+            pass
+        badge.setToolTip_(
+            f"{citations_ok} citation(s) vérifiée(s) sur {n_total} extraite(s)."
+            + (f"\nVerdict : {verdict}" if verdict else "")
+        )
+        badge.setHidden_(False)
+        AppKit.NSAnimationContext.beginGrouping()
+        AppKit.NSAnimationContext.currentContext().setDuration_(0.22)
+        badge.animator().setAlphaValue_(1.0)
+        AppKit.NSAnimationContext.endGrouping()
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _hide_score_badge(self) -> None:
+        """Masque le badge score."""
+        badge = getattr(self, "_score_badge", None)
+        if badge is None:
+            return
+        badge.setAlphaValue_(0.0)
+        badge.setHidden_(True)
 
     @objc.IBAction  # type: ignore[untyped-decorator]
     def copyResponseAction_(self, sender: Any) -> None:
@@ -3440,6 +3807,20 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         meta = self._last_response_meta or {}
         original_query = self._last_query
+
+        # Swiss watch (règle 5) — badge verifier_score sous chaque réponse non
+        # refusée. Caché automatiquement si refus Cerveau Oiseaux ou 0 citation.
+        if self._streaming_sender != "Toi":
+            try:
+                self._update_score_badge(
+                    score=float(meta.get("verifier_score", 0.0) or 0.0),
+                    citations_ok=int(meta.get("citations_ok", 0) or 0),
+                    citations_invalid=int(meta.get("citations_invalid", 0) or 0),
+                    verdict=meta.get("verdict"),
+                    refused=bool(meta.get("refused", False)),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(f"_update_score_badge: {exc}")
 
         document_path = meta.get("document_path")
         if document_path and os.path.exists(document_path):

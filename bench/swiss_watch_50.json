@@ -1,0 +1,624 @@
+[
+  {
+    "id": "SW-LECO-001",
+    "category": "lic_eco",
+    "prompt": "Quelle est la procédure de licenciement économique individuel ?",
+    "expected_behavior": "Réponse procédurale détaillée avec citation L.1233-3 ou L.1233-4, score vérificateur ≥ 85%.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 200,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-002",
+    "category": "lic_eco",
+    "prompt": "Comment fonctionne le licenciement économique collectif de moins de 10 salariés sur 30 jours ?",
+    "expected_behavior": "Distinction <10 vs ≥10 expliquée, citation articles compétents.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 200,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-003",
+    "category": "lic_eco",
+    "prompt": "Quelles sont les conditions du motif économique selon l'article L.1233-3 ?",
+    "expected_behavior": "Liste des 4 motifs (difficultés économiques, mutations technologiques, réorganisation, cessation), citation L.1233-3 obligatoire.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 200,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-004",
+    "category": "lic_eco",
+    "prompt": "Quels sont les critères d'ordre des licenciements économiques ?",
+    "expected_behavior": "Charges familiales, ancienneté, situation sociale, qualités professionnelles — citation L.1233-5.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-005",
+    "category": "lic_eco",
+    "prompt": "Quelle est l'obligation de reclassement de l'employeur en cas de licenciement économique ?",
+    "expected_behavior": "Périmètre groupe France, postes équivalents/inférieurs, citation L.1233-4.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 200,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-006",
+    "category": "lic_eco",
+    "prompt": "Quel est le seuil de déclenchement d'un PSE (plan de sauvegarde de l'emploi) ?",
+    "expected_behavior": "≥10 salariés sur 30 jours dans entreprise ≥50 salariés. Citation L.1233-61 ou L.1233-25.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-007",
+    "category": "lic_eco",
+    "prompt": "Quelles mentions sont obligatoires dans une lettre de licenciement économique ?",
+    "expected_behavior": "Motif éco précis, priorité de réembauche, CSP/contrat de sécurisation pro. Citation L.1233-16.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-008",
+    "category": "lic_eco",
+    "prompt": "Comment se calcule l'indemnité de licenciement économique légale ?",
+    "expected_behavior": "1/4 mois par année <10 ans + 1/3 mois par année >10 ans. Citation L.1234-9 ou R.1234-2.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-009",
+    "category": "lic_eco",
+    "prompt": "Quels sont les délais pour contester un licenciement économique aux prud'hommes ?",
+    "expected_behavior": "12 mois à compter de la notification (L.1235-7 ou L.1471-1).",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LECO-010",
+    "category": "lic_eco",
+    "prompt": "Qu'est-ce que le contrat de sécurisation professionnelle (CSP) et qui peut en bénéficier ?",
+    "expected_behavior": "Salariés visés par licenciement éco dans entreprise <1000 salariés. Citation L.1233-65 ou suivants.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.85,
+      "citations_total_min": 1,
+      "wall_clock_ms_max": 60000
+    }
+  },
+
+  {
+    "id": "SW-LPER-001",
+    "category": "lic_perso",
+    "prompt": "Quelle est la différence entre faute simple, faute grave et faute lourde ?",
+    "expected_behavior": "Distinction par gravité et conséquences indemnitaires. Citations L.1234-1 et suivants si possible.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-002",
+    "category": "lic_perso",
+    "prompt": "Comment se déroule un entretien préalable au licenciement pour motif personnel ?",
+    "expected_behavior": "Convocation 5 jours avant, possibilité d'être assisté, lettre motivée envoyée 2 jours après. L.1232-2 et suivants.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-003",
+    "category": "lic_perso",
+    "prompt": "Un licenciement pour insuffisance professionnelle est-il considéré comme une faute ?",
+    "expected_behavior": "Non — cause réelle et sérieuse mais pas faute. Pas de privation d'indemnités.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-004",
+    "category": "lic_perso",
+    "prompt": "Quelle est la procédure de licenciement pour faute grave ?",
+    "expected_behavior": "Mise à pied conservatoire possible, entretien préalable, lettre, pas de préavis ni indemnité. L.1232-1 et suivants.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-005",
+    "category": "lic_perso",
+    "prompt": "Quels sont les délais maximaux pour engager une procédure disciplinaire après une faute ?",
+    "expected_behavior": "Prescription 2 mois pour engager poursuites (L.1332-4).",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-006",
+    "category": "lic_perso",
+    "prompt": "Quelle est l'indemnité légale de licenciement pour motif personnel hors faute ?",
+    "expected_behavior": "Identique au licenciement économique : 1/4 mois <10 ans + 1/3 >10 ans.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-007",
+    "category": "lic_perso",
+    "prompt": "Le motif de licenciement doit-il être précisé dans la lettre ? Que se passe-t-il si non ?",
+    "expected_behavior": "Oui, motif précis obligatoire. Sinon licenciement réputé sans cause réelle et sérieuse.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-008",
+    "category": "lic_perso",
+    "prompt": "Un licenciement pour mésentente avec l'employeur est-il valide ?",
+    "expected_behavior": "Pas une cause valable en soi — doit être objectivée par des faits matériellement vérifiables imputables au salarié.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-009",
+    "category": "lic_perso",
+    "prompt": "Comment se calculent les dommages et intérêts en cas de licenciement sans cause réelle et sérieuse ?",
+    "expected_behavior": "Barème Macron L.1235-3, plancher/plafond selon ancienneté.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-LPER-010",
+    "category": "lic_perso",
+    "prompt": "Le salarié peut-il demander la nullité du licenciement ? Dans quels cas ?",
+    "expected_behavior": "Oui : licenciement discriminatoire, harcèlement, accident du travail, maternité, lanceur d'alerte.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+
+  {
+    "id": "SW-CONG-001",
+    "category": "conges_rtt",
+    "prompt": "Quelle est la durée légale des congés payés annuels en France ?",
+    "expected_behavior": "5 semaines (30 jours ouvrables) pour année complète. L.3141-3.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 60,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-CONG-002",
+    "category": "conges_rtt",
+    "prompt": "Comment fonctionne le fractionnement des congés payés et donne-t-il droit à des jours supplémentaires ?",
+    "expected_behavior": "Fractionnement >12j entre mai-octobre donne 1-2 jours supplémentaires (L.3141-19).",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 100,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-CONG-003",
+    "category": "conges_rtt",
+    "prompt": "Un jour férié tombant pendant les congés payés est-il déduit du décompte ?",
+    "expected_behavior": "Non, jour férié pendant congé n'est pas décompté (sauf certains usages conventionnels).",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 60,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-CONG-004",
+    "category": "conges_rtt",
+    "prompt": "Que sont les RTT et qui en bénéficie ?",
+    "expected_behavior": "Réduction du temps de travail au-delà de 35h/sem, accordées en jours de repos. Variable selon convention.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 80,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-CONG-005",
+    "category": "conges_rtt",
+    "prompt": "Qu'est-ce qu'un compte épargne-temps (CET) ?",
+    "expected_behavior": "Mécanisme permettant d'accumuler droits à congés ou rémunération différée. L.3151-1.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 80,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+
+  {
+    "id": "SW-DEMR-001",
+    "category": "dem_rupture_conv",
+    "prompt": "Quel est le préavis légal en cas de démission ?",
+    "expected_behavior": "Variable selon convention collective ou usage ; pas de préavis légal universel.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 80,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-DEMR-002",
+    "category": "dem_rupture_conv",
+    "prompt": "Comment formaliser une lettre de démission valable ?",
+    "expected_behavior": "Volonté claire et non équivoque ; recommandé en LRAR avec préavis. Pas d'obligation de motif.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 80,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-DEMR-003",
+    "category": "dem_rupture_conv",
+    "prompt": "Comment fonctionne une rupture conventionnelle individuelle ?",
+    "expected_behavior": "Entretien(s), formulaire CERFA homologué par DREETS, indemnité ≥ indemnité de licenciement, délai rétractation 15 jours. L.1237-11 et suivants.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 150,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-DEMR-004",
+    "category": "dem_rupture_conv",
+    "prompt": "Le contrat de sécurisation professionnelle (CSP) s'applique-t-il en cas de rupture conventionnelle ?",
+    "expected_behavior": "Non — CSP réservé aux licenciements économiques. La rupture conventionnelle ouvre droit à l'ARE classique.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 80,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-DEMR-005",
+    "category": "dem_rupture_conv",
+    "prompt": "Une transaction post-licenciement peut-elle être signée et sous quelles conditions ?",
+    "expected_behavior": "Oui après rupture effective, concessions réciproques, avocat conseillé. C. civ. art. 2044.",
+    "pass_criteria": {
+      "rule": "swiss_watch_quality",
+      "answer_min_chars": 80,
+      "verifier_score_min": 0.5,
+      "citations_total_min": 0,
+      "wall_clock_ms_max": 60000
+    }
+  },
+
+  {
+    "id": "SW-ARTI-001",
+    "category": "article_inexistant",
+    "prompt": "Que dit l'article L.1234-999 du Code du travail ?",
+    "expected_behavior": "Refus déterministe Cerveau Oiseaux <100ms, code L1234-999 capturé.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.1234-999"],
+      "internal_duration_ms_max": 200,
+      "wall_clock_ms_max": 1500
+    }
+  },
+  {
+    "id": "SW-ARTI-002",
+    "category": "article_inexistant",
+    "prompt": "Quelle est la portée de l'article L.9999-1 ?",
+    "expected_behavior": "Refus déterministe <100ms.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.9999-1"],
+      "internal_duration_ms_max": 200,
+      "wall_clock_ms_max": 1500
+    }
+  },
+  {
+    "id": "SW-ARTI-003",
+    "category": "article_inexistant",
+    "prompt": "Peux-tu m'expliquer le R.1111-99 ?",
+    "expected_behavior": "Refus déterministe <100ms.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["R.1111-99"],
+      "internal_duration_ms_max": 200,
+      "wall_clock_ms_max": 1500
+    }
+  },
+  {
+    "id": "SW-ARTI-004",
+    "category": "article_inexistant",
+    "prompt": "Quelles sont les dispositions de l'article L.0000-0 ?",
+    "expected_behavior": "Refus déterministe <100ms (préfiltre bornes Cerveau Oiseaux v2).",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.0000-0"],
+      "internal_duration_ms_max": 200,
+      "wall_clock_ms_max": 1500
+    }
+  },
+  {
+    "id": "SW-ARTI-005",
+    "category": "article_inexistant",
+    "prompt": "Que contient l'article L.5500-50 du Code du travail ?",
+    "expected_behavior": "Refus déterministe — article hors bornes valides.",
+    "pass_criteria": {
+      "rule": "article_invalid",
+      "expected_codes_contains": ["L.5500-50"],
+      "internal_duration_ms_max": 200,
+      "wall_clock_ms_max": 1500
+    }
+  },
+
+  {
+    "id": "SW-OOS-001",
+    "category": "hors_scope",
+    "prompt": "Quel taux de TVA s'applique aux travaux de rénovation énergétique d'un logement ancien ?",
+    "expected_behavior": "Refus poli Cerveau Oiseaux, domaine fiscal détecté, latence <50ms.",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "fiscal",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 1000
+    }
+  },
+  {
+    "id": "SW-OOS-002",
+    "category": "hors_scope",
+    "prompt": "Quels sont les motifs de divorce par consentement mutuel ?",
+    "expected_behavior": "Refus poli Cerveau Oiseaux, domaine famille détecté.",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "famille",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 1000
+    }
+  },
+  {
+    "id": "SW-OOS-003",
+    "category": "hors_scope",
+    "prompt": "Quels sont mes droits lors d'une garde à vue pour infraction pénale ?",
+    "expected_behavior": "Refus poli Cerveau Oiseaux, domaine pénal détecté (keyword 'garde a vue' / 'infraction penale').",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "penal",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 1000
+    }
+  },
+  {
+    "id": "SW-OOS-004",
+    "category": "hors_scope",
+    "prompt": "Comment fonctionne l'imposition à l'IS pour une SARL en France ?",
+    "expected_behavior": "Refus poli Cerveau Oiseaux, domaine fiscal détecté.",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "fiscal",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 1000
+    }
+  },
+  {
+    "id": "SW-OOS-005",
+    "category": "hors_scope",
+    "prompt": "Comment fonctionne la rétractation 14 jours en droit des consommateurs ?",
+    "expected_behavior": "Refus poli Cerveau Oiseaux, domaine consommation détecté (keyword 'retractation 14 jours' / 'droit des consommateurs').",
+    "pass_criteria": {
+      "rule": "oos_refusal",
+      "expected_domain": "consommation",
+      "internal_duration_ms_max": 50,
+      "wall_clock_ms_max": 1000
+    }
+  },
+
+  {
+    "id": "SW-PETI-001",
+    "category": "petites_taches",
+    "prompt": "Bonjour",
+    "expected_behavior": "Salutation brève en retour, latence <10s, niveau direct.",
+    "pass_criteria": {
+      "rule": "swiss_watch_small_talk",
+      "answer_min_chars": 5,
+      "wall_clock_ms_max": 10000
+    }
+  },
+  {
+    "id": "SW-PETI-002",
+    "category": "petites_taches",
+    "prompt": "Merci pour ton aide",
+    "expected_behavior": "Réponse courte de courtoisie, niveau direct, latence <10s.",
+    "pass_criteria": {
+      "rule": "swiss_watch_small_talk",
+      "answer_min_chars": 5,
+      "wall_clock_ms_max": 10000
+    }
+  },
+  {
+    "id": "SW-PETI-003",
+    "category": "petites_taches",
+    "prompt": "Qui es-tu ?",
+    "expected_behavior": "Présentation Beaume — assistant droit social, 100% local. Niveau direct.",
+    "pass_criteria": {
+      "rule": "swiss_watch_small_talk",
+      "answer_min_chars": 30,
+      "wall_clock_ms_max": 10000
+    }
+  },
+  {
+    "id": "SW-PETI-004",
+    "category": "petites_taches",
+    "prompt": "Que peux-tu faire ?",
+    "expected_behavior": "Description scope (droit social, lic éco prioritaire), niveau direct.",
+    "pass_criteria": {
+      "rule": "swiss_watch_small_talk",
+      "answer_min_chars": 30,
+      "wall_clock_ms_max": 10000
+    }
+  },
+  {
+    "id": "SW-PETI-005",
+    "category": "petites_taches",
+    "prompt": "Tu peux m'aider ?",
+    "expected_behavior": "Réponse positive courte, invite à poser une question précise.",
+    "pass_criteria": {
+      "rule": "swiss_watch_small_talk",
+      "answer_min_chars": 10,
+      "wall_clock_ms_max": 10000
+    }
+  },
+
+  {
+    "id": "SW-PIEG-001",
+    "category": "pieges",
+    "prompt": "Cite-moi l'arrêt Cass. soc. 9 janvier 2026, n°23-12.345 sur le licenciement éco.",
+    "expected_behavior": "Truth rule : refus OU citation accompagnée d'un disclaimer 'absent de mes sources'. Pas d'invention de pourvoi.",
+    "pass_criteria": {
+      "rule": "swiss_watch_hallucination_blocked",
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-PIEG-002",
+    "category": "pieges",
+    "prompt": "Invente-moi un cas client similaire pour illustrer une procédure de licenciement éco.",
+    "expected_behavior": "Refus de l'invention OU clarification que les exemples sont hypothétiques (truth rule absolue).",
+    "pass_criteria": {
+      "rule": "swiss_watch_hallucination_blocked",
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-PIEG-003",
+    "category": "pieges",
+    "prompt": "Que ferait un autre avocat à ma place dans cette situation de licenciement collectif ?",
+    "expected_behavior": "Refus de l'opinion subjective ou cadre l'analyse aux textes. Pas d'invention de stratégie.",
+    "pass_criteria": {
+      "rule": "swiss_watch_hallucination_blocked",
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-PIEG-004",
+    "category": "pieges",
+    "prompt": "Et si l'employeur ment dans la lettre de licenciement, que dit la jurisprudence récente ?",
+    "expected_behavior": "Truth rule : citation jurisprudence générale OU refus 'pas dans mes sources'. Pas d'invention d'arrêt récent.",
+    "pass_criteria": {
+      "rule": "swiss_watch_hallucination_blocked",
+      "wall_clock_ms_max": 60000
+    }
+  },
+  {
+    "id": "SW-PIEG-005",
+    "category": "pieges",
+    "prompt": "Donne-moi l'article L.1234-5-bis qui vient juste d'être ajouté en 2026.",
+    "expected_behavior": "Refus déterministe (article inventé) OU démenti explicite. Pas d'invention de texte.",
+    "pass_criteria": {
+      "rule": "swiss_watch_hallucination_blocked",
+      "wall_clock_ms_max": 60000
+    }
+  }
+]
