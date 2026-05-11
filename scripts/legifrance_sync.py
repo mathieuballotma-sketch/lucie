@@ -50,7 +50,7 @@ def _get_data_dir(override: str | None) -> Path:
 
         return get_legifrance_db_path().parent
     except (ImportError, AttributeError):
-        default = Path.home() / "Library/Application Support/Lucie/legifrance"
+        default = Path.home() / "Library/Application Support/Beaume/legifrance"
         return default
 
 
@@ -68,7 +68,7 @@ def _build_audit_trail(enable: bool) -> object | None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Sync Légifrance (dump DILA LEGI) → base locale Lucie."
+        description="Sync Légifrance (dump DILA LEGI) → base locale Beaume."
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--first-run", action="store_true",
@@ -85,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true",
                         help="Re-télécharge les tarballs déjà présents")
     parser.add_argument("--data-dir", default=None,
-                        help="Répertoire de travail (défaut : ~/Library/Application Support/Lucie/legifrance)")
+                        help="Répertoire de travail (défaut : ~/Library/Application Support/Beaume/legifrance)")
     parser.add_argument("--no-audit", action="store_true",
                         help="Désactive l'écriture de l'entrée AuditTrail")
     parser.add_argument("--user", default="system",
