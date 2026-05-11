@@ -1,7 +1,8 @@
-"""Profilage du pipeline Lucie v1.
+"""Profilage du pipeline Beaume v1.
 
 Instrumentation par context manager async + ContextVar — aucun code appelant
-ne passe le bucket explicitement. Activé via `LUCIE_PROFILE=1`, no-op sinon.
+ne passe le bucket explicitement. Activé via `BEAUME_PROFILE=1`
+(ancien `LUCIE_PROFILE` accepté en alias deprecated), no-op sinon.
 
 Usage :
     async with profile_bucket() as bucket:
@@ -15,18 +16,19 @@ Usage :
 from __future__ import annotations
 
 import logging
-import os
 import time
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import AsyncIterator, List, Optional
 
+from ..config import env_legacy
+
 logger = logging.getLogger("lucie.profiling")
 
 
 def is_profiling_enabled() -> bool:
-    return os.environ.get("LUCIE_PROFILE", "0") == "1"
+    return env_legacy("PROFILE", "0") == "1"
 
 
 @dataclass

@@ -141,12 +141,17 @@ Beaume v1 optimise la latence des réponses juridiques via plusieurs leviers act
 
 ### Variables d'environnement
 
+> **Sprint 1ter (2026-05-08)** : les variables d'env sont préfixées `BEAUME_*`.
+> Les anciennes `LUCIE_*` restent acceptées en alias deprecated (un `DeprecationWarning`
+> et un log WARNING sont émis au premier usage). Migration recommandée — pas de
+> breaking change pour les configs existantes.
+
 | Flag | Défaut | Effet |
 |------|--------|-------|
-| `LUCIE_STREAM` | `1` | Streaming des tokens Ollama → HUD en temps réel (premier token <3s) |
-| `LUCIE_PROFILE` | `0` | Active le profilage par étape (logs `lucie.profiling`) |
-| `LUCIE_OLLAMA_KEEP_ALIVE` | `24h` | Durée avant déchargement du modèle Ollama (évite le reload ~2-3s entre calls) |
-| `LUCIE_SPEED_MODEL` | `gemma4:e4b` | Modèle « rapide » utilisé pour les niveaux 1 et 2 |
+| `BEAUME_STREAM` | `1` | Streaming des tokens Ollama → HUD en temps réel (premier token <3s) |
+| `BEAUME_PROFILE` | `0` | Active le profilage par étape (logs `lucie.profiling`) |
+| `BEAUME_OLLAMA_KEEP_ALIVE` | `24h` | Durée avant déchargement du modèle Ollama (évite le reload ~2-3s entre calls) |
+| `BEAUME_SPEED_MODEL` | `gemma4:e4b` | Modèle « rapide » utilisé pour les niveaux 1 et 2 |
 
 ### `OLLAMA_KEEP_ALIVE=24h` (défaut)
 
@@ -158,10 +163,10 @@ Beaume force `keep_alive=24h` sur chaque requête `/api/generate` pour garder le
 
 ```bash
 # Décharger le modèle après 5 minutes d'inactivité
-export LUCIE_OLLAMA_KEEP_ALIVE=5m
+export BEAUME_OLLAMA_KEEP_ALIVE=5m
 
 # Décharger immédiatement après chaque call (comportement historique)
-export LUCIE_OLLAMA_KEEP_ALIVE=0s
+export BEAUME_OLLAMA_KEEP_ALIVE=0s
 ```
 
 Valeur passée telle quelle à Ollama — supporte tous les formats documentés (`30m`, `2h`, `-1` pour persistant illimité).
@@ -212,10 +217,10 @@ Ajouter une édition = éditer le YAML, relancer `legifrance_sync.py --force`. P
 
 ```bash
 # Activer la base Légifrance (off par défaut)
-export LUCIE_LEGIFRANCE=1
+export BEAUME_LEGIFRANCE=1
 
-# Optionnel : override du répertoire (défaut : ~/Library/Application Support/Lucie/legifrance/)
-export LUCIE_LEGIFRANCE_DIR=/chemin/custom
+# Optionnel : override du répertoire (défaut : ~/Library/Application Support/Beaume/legifrance/)
+export BEAUME_LEGIFRANCE_DIR=/chemin/custom
 
 # Premier sync (full + incrémentaux depuis la publication initiale, 20-40 min)
 python scripts/legifrance_sync.py --first-run
@@ -230,17 +235,20 @@ python scripts/legifrance_sync.py --status
 ### Sync automatique toutes les 48h (macOS)
 
 ```bash
-# Installer l'agent launchd (écrit ~/Library/LaunchAgents/com.lucie.legifrance.sync.plist)
+# Installer l'agent launchd (écrit ~/Library/LaunchAgents/com.beaume.legifrance.sync.plist)
 bash scripts/install_launchd.sh
 
 # Vérifier
-launchctl list | grep com.lucie.legifrance
+launchctl list | grep com.beaume.legifrance
 
 # Désinstaller
 bash scripts/uninstall_launchd.sh
+
+# Migration depuis un ancien job com.lucie.legifrance.sync (Sprint 1ter, à lancer une fois) :
+bash scripts/migrate_launchd_lucie_to_beaume.sh
 ```
 
-L'agent `launchd` réveille `legifrance_sync.py --incremental` toutes les 172 800 s (48 h). `RunAtLoad=false` pour ne jamais bloquer le démarrage. Logs : `~/Library/Logs/Lucie/legifrance-sync.log`.
+L'agent `launchd` réveille `legifrance_sync.py --incremental` toutes les 172 800 s (48 h). `RunAtLoad=false` pour ne jamais bloquer le démarrage. Logs : `~/Library/Logs/Beaume/legifrance_sync.{out,err}.log`.
 
 ### Audit & traçabilité
 

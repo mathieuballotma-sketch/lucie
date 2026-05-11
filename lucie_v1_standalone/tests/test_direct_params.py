@@ -34,7 +34,7 @@ def test_direct_params_passes_sweep_options_to_ollama_in_n1_path(monkeypatch):
     """Le chemin N1 (level=direct) doit transmettre top_k / repeat_penalty /
     num_predict / num_ctx à ollama_client.generate_stream — sinon le sweep
     n'a aucun effet runtime."""
-    monkeypatch.setenv("LUCIE_STREAM", "1")
+    monkeypatch.setenv("BEAUME_STREAM", "1")
     captured: dict = {}
 
     async def fake_stream(**kwargs):
@@ -75,7 +75,7 @@ def test_direct_params_n1_smoke_returns_full_streamed_text(monkeypatch):
     """Smoke : un stream de 250 chars sur N1 ne doit pas être tronqué côté
     pipeline. Vérifie qu'on n'a pas cassé le flow de chunks suite au
     changement num_predict 512 → 200 (cap appliqué côté Ollama uniquement)."""
-    monkeypatch.setenv("LUCIE_STREAM", "1")
+    monkeypatch.setenv("BEAUME_STREAM", "1")
     sample = "x" * 250
 
     async def fake_stream(**kwargs):

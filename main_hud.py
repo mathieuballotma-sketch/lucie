@@ -26,12 +26,15 @@ def _warmup_blocking() -> None:
     """Charge gemma4:e4b en VRAM dès le boot pour éliminer le cold-start.
 
     Lancée dans un thread daemon depuis main() : ne bloque jamais l'UI.
-    Skippable via LUCIE_SKIP_WARMUP=1 (CI / dev sans Ollama). Toute exception
-    est avalée (warning log) — un warm-up qui rate ne doit jamais empêcher
+    Skippable via BEAUME_SKIP_WARMUP=1 (CI / dev sans Ollama). Ancien
+    `LUCIE_SKIP_WARMUP` accepté en alias deprecated. Toute exception est
+    avalée (warning log) — un warm-up qui rate ne doit jamais empêcher
     le HUD de démarrer.
     """
-    if os.environ.get("LUCIE_SKIP_WARMUP", "0") == "1":
-        log.info("warmup skipped via LUCIE_SKIP_WARMUP")
+    from lucie_v1_standalone.config import env_legacy
+
+    if env_legacy("SKIP_WARMUP", "0") == "1":
+        log.info("warmup skipped via BEAUME_SKIP_WARMUP")
         return
     # Garde-fou : asyncio.run() crée un event loop qui entrerait en conflit
     # avec AppKit.runEventLoop() si exécuté sur le main thread.

@@ -38,16 +38,19 @@ def test_make_key_differs_by_index_version():
 
 
 def test_cache_enabled_default(monkeypatch):
+    monkeypatch.delenv("BEAUME_CACHE", raising=False)
     monkeypatch.delenv("LUCIE_CACHE", raising=False)
     assert cache_enabled() is True
 
 
 def test_cache_disabled_when_flag_off(monkeypatch):
-    monkeypatch.setenv("LUCIE_CACHE", "0")
+    monkeypatch.delenv("LUCIE_CACHE", raising=False)
+    monkeypatch.setenv("BEAUME_CACHE", "0")
     assert cache_enabled() is False
 
 
 def test_cache_dry_run_default(monkeypatch):
+    monkeypatch.delenv("BEAUME_CACHE_DRY_RUN", raising=False)
     monkeypatch.delenv("LUCIE_CACHE_DRY_RUN", raising=False)
     assert cache_dry_run_enabled() is False
 

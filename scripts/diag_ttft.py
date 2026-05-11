@@ -37,13 +37,17 @@ import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import httpx
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from lucie_v1_standalone.config import env_legacy  # noqa: E402
+
 
 OLLAMA_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.environ.get("LUCIE_DIAG_MODEL", "gemma4:e4b")
+DEFAULT_MODEL = env_legacy("DIAG_MODEL", "gemma4:e4b") or "gemma4:e4b"
 DEFAULT_RUNS = 5
 SHORT_PROMPT = "Bonjour, donne-moi une réponse simple."
 # ~800 tokens, similaire en volume à un prompt RAG complet du pipeline

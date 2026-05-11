@@ -1,4 +1,4 @@
-"""Cache LRU pour les réponses pipeline Lucie v1 (P5).
+"""Cache LRU pour les réponses pipeline Beaume v1 (P5).
 
 Clé = SHA1 de (query normalisée | version base Légifrance).
 Valeur = n'importe quel objet (typiquement PipelineResponse).
@@ -9,9 +9,11 @@ Invalidation : la clé intègre la mtime de `legi.sqlite`. Un sync
 Légifrance change la mtime → clés anciennes inaccessibles (évincées
 naturellement au TTL).
 
-Activation :
-    LUCIE_CACHE=1 (défaut)     active le cache
-    LUCIE_CACHE_DRY_RUN=1      mesure hits/misses sans servir la réponse cachée
+Activation (anciens noms `LUCIE_*` acceptés en alias deprecated) :
+    BEAUME_CACHE=1 (défaut)        active le cache
+    BEAUME_CACHE_DRY_RUN=1         mesure hits/misses sans servir la réponse cachée
+    BEAUME_CACHE_MAXSIZE=256       capacité LRU
+    BEAUME_CACHE_TTL_SECONDS=3600  TTL des entrées
 
 Pas thread-safe mais coroutine-safe (asyncio.Lock par instance).
 """
@@ -21,24 +23,24 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
-import os
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Optional
 
 from cachetools import TTLCache
 
+from ..config import env_legacy
 from ..perf.events import emit
 
 logger = logging.getLogger("lucie.cache")
 
 
 def cache_enabled() -> bool:
-    return os.environ.get("LUCIE_CACHE", "1") == "1"
+    return env_legacy("CACHE", "1") == "1"
 
 
 def cache_dry_run_enabled() -> bool:
-    return os.environ.get("LUCIE_CACHE_DRY_RUN", "0") == "1"
+    return env_legacy("CACHE_DRY_RUN", "0") == "1"
 
 
 def normalize_query(query: str) -> str:
@@ -148,7 +150,7 @@ def get_query_cache() -> QueryCache:
     """Retourne le singleton global (créé au premier appel)."""
     global _GLOBAL_CACHE
     if _GLOBAL_CACHE is None:
-        maxsize = int(os.environ.get("LUCIE_CACHE_MAXSIZE", "256"))
-        ttl = int(os.environ.get("LUCIE_CACHE_TTL_SECONDS", "3600"))
+        maxsize = int(env_legacy("CACHE_MAXSIZE", "256") or "256")
+        ttl = int(env_legacy("CACHE_TTL_SECONDS", "3600") or "3600")
         _GLOBAL_CACHE = QueryCache(maxsize=maxsize, ttl_seconds=ttl)
     return _GLOBAL_CACHE

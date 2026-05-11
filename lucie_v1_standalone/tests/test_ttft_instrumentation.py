@@ -68,7 +68,7 @@ class _FakeAsyncClient:
 def test_ollama_ttft_recorded_in_bucket(monkeypatch):
     """generate_stream doit pousser une step `ollama.<model>.ttft` dans
     le bucket courant dès le 1er chunk non vide."""
-    monkeypatch.setenv("LUCIE_PROFILE", "1")
+    monkeypatch.setenv("BEAUME_PROFILE", "1")
     _FakeAsyncClient.LINES = [
         json.dumps({"response": "Hello"}),
         json.dumps({"response": " world"}),
@@ -97,7 +97,7 @@ def test_ollama_ttft_recorded_in_bucket(monkeypatch):
 
 def test_ollama_ttft_only_recorded_once(monkeypatch):
     """Avec plusieurs chunks, la step ttft doit n'être enregistrée qu'une fois."""
-    monkeypatch.setenv("LUCIE_PROFILE", "1")
+    monkeypatch.setenv("BEAUME_PROFILE", "1")
     _FakeAsyncClient.LINES = [
         json.dumps({"response": c}) for c in ["a", "b", "c", "d"]
     ] + [json.dumps({"done": True})]
@@ -117,7 +117,8 @@ def test_ollama_ttft_only_recorded_once(monkeypatch):
 
 
 def test_ollama_ttft_not_recorded_when_profiling_off(monkeypatch):
-    """Sans LUCIE_PROFILE=1 : aucun bucket actif → no-op silencieux."""
+    """Sans BEAUME_PROFILE=1 : aucun bucket actif → no-op silencieux."""
+    monkeypatch.delenv("BEAUME_PROFILE", raising=False)
     monkeypatch.delenv("LUCIE_PROFILE", raising=False)
     _FakeAsyncClient.LINES = [
         json.dumps({"response": "x"}),
@@ -144,8 +145,8 @@ def test_ollama_ttft_not_recorded_when_profiling_off(monkeypatch):
 def test_pipeline_ttft_recorded_n1(monkeypatch):
     """run_stream sur un chemin N1 (level=direct) doit enregistrer
     `pipeline.ttft` au 1er chunk émis."""
-    monkeypatch.setenv("LUCIE_STREAM", "1")
-    monkeypatch.setenv("LUCIE_PROFILE", "1")
+    monkeypatch.setenv("BEAUME_STREAM", "1")
+    monkeypatch.setenv("BEAUME_PROFILE", "1")
 
     async def fake_stream(**kwargs):
         for c in ["Bon", "jour."]:
@@ -176,8 +177,8 @@ def test_pipeline_ttft_recorded_n1(monkeypatch):
 
 def test_pipeline_ttft_only_recorded_once_with_many_chunks(monkeypatch):
     """Plusieurs chunks → 1 seule entrée pipeline.ttft."""
-    monkeypatch.setenv("LUCIE_STREAM", "1")
-    monkeypatch.setenv("LUCIE_PROFILE", "1")
+    monkeypatch.setenv("BEAUME_STREAM", "1")
+    monkeypatch.setenv("BEAUME_PROFILE", "1")
 
     async def fake_stream(**kwargs):
         for c in ["a", "b", "c", "d", "e"]:
@@ -207,8 +208,8 @@ def test_pipeline_ttft_only_recorded_once_with_many_chunks(monkeypatch):
 def test_pipeline_ttft_not_recorded_for_small_talk(monkeypatch):
     """SMALL_TALK ne stream pas (early return PipelineResponse) → pas de
     pipeline.ttft puisque pas de chunk yieldé."""
-    monkeypatch.setenv("LUCIE_STREAM", "1")
-    monkeypatch.setenv("LUCIE_PROFILE", "1")
+    monkeypatch.setenv("BEAUME_STREAM", "1")
+    monkeypatch.setenv("BEAUME_PROFILE", "1")
 
     async def go():
         async with profile_bucket() as bucket:

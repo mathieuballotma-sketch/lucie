@@ -2,13 +2,14 @@
 # Rollback de l'intégration Légifrance.
 #
 # Actions (par défaut — confirmation demandée) :
-#   1. Désinstalle l'agent launchd com.lucie.legifrance.sync
+#   1. Désinstalle l'agent launchd com.beaume.legifrance.sync
 #   2. Supprime la base SQLite Légifrance
 #   3. Supprime le répertoire tarballs/
 #   4. Supprime last_sync.json
 #
-# Le code et le feature flag restent en place — passer LUCIE_LEGIFRANCE=0
-# pour désactiver proprement l'appel au retriever Légifrance.
+# Le code et le feature flag restent en place — passer BEAUME_LEGIFRANCE=0
+# (ou LUCIE_LEGIFRANCE=0, alias deprecated) pour désactiver proprement
+# l'appel au retriever Légifrance.
 #
 # Usage :
 #   bash scripts/legifrance_rollback.sh            # interactif (demande confirmation)
@@ -35,7 +36,7 @@ for arg in "$@"; do
 done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DATA_DIR="${LUCIE_LEGIFRANCE_DIR:-${HOME}/Library/Application Support/Beaume/legifrance}"
+DATA_DIR="${BEAUME_LEGIFRANCE_DIR:-${LUCIE_LEGIFRANCE_DIR:-${HOME}/Library/Application Support/Beaume/legifrance}}"
 
 echo "Rollback Légifrance"
 echo "  data_dir  = ${DATA_DIR}"
@@ -82,4 +83,5 @@ done
 
 echo ""
 echo "rollback terminé. Pour désactiver le feature flag, exportez :"
-echo "  unset LUCIE_LEGIFRANCE   # ou export LUCIE_LEGIFRANCE=0"
+echo "  unset BEAUME_LEGIFRANCE   # ou export BEAUME_LEGIFRANCE=0"
+echo "  (ancien LUCIE_LEGIFRANCE accepté en alias deprecated)"

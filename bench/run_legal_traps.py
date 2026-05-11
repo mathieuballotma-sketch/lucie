@@ -322,11 +322,11 @@ async def main() -> int:
     parser.add_argument("--filter", default=None,
                         help="Préfixe d'ID ou de catégorie (ex: LEG-ART, mixed_trap)")
     parser.add_argument("--model", default=None,
-                        help="Override LUCIE_SPEED_MODEL pour cette run")
+                        help="Override BEAUME_SPEED_MODEL pour cette run")
     args = parser.parse_args()
 
     if args.model:
-        os.environ["LUCIE_SPEED_MODEL"] = args.model
+        os.environ["BEAUME_SPEED_MODEL"] = args.model
 
     logging.basicConfig(level=logging.WARNING)
 
@@ -338,7 +338,8 @@ async def main() -> int:
             print(f"Aucun cas ne matche le filtre '{flt}'", file=sys.stderr)
             return 1
 
-    model = os.environ.get("LUCIE_SPEED_MODEL", "default")
+    from lucie_v1_standalone.config import env_legacy
+    model = env_legacy("SPEED_MODEL", "default") or "default"
     print(f"Run F9 — modèle={model} — {len(cases)} cas\n")
 
     results: list[CaseResult] = []
