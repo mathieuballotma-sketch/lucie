@@ -8,7 +8,7 @@ Joue 10 requêtes types contre le pipeline en mesurant :
   - durée par étape (profilage)
   - durée totale et médiane
 
-Activation profilage via `LUCIE_PROFILE=1` (auto-activé par le script).
+Activation profilage via `BEAUME_PROFILE=1` (auto-activé par le script).
 
 Usage :
     python3 scripts/bench_queries.py
@@ -222,7 +222,7 @@ async def main() -> int:
                         help="Écrit le rapport markdown à ce chemin")
     parser.add_argument("--queries", choices=["full", "reduced"], default="full")
     parser.add_argument("--model", default=None,
-                        help="Override LUCIE_SPEED_MODEL pour cette run")
+                        help="Override BEAUME_SPEED_MODEL pour cette run")
     parser.add_argument("--passes", type=int, default=1,
                         help="Rejoue le set N fois dans le même process (mesure cache hits)")
     parser.add_argument("--wait-warmup", action="store_true",
@@ -231,9 +231,9 @@ async def main() -> int:
     args = parser.parse_args()
 
     # Profilage actif par défaut dans ce harness
-    os.environ.setdefault("LUCIE_PROFILE", "1")
+    os.environ.setdefault("BEAUME_PROFILE", "1")
     if args.model:
-        os.environ["LUCIE_SPEED_MODEL"] = args.model
+        os.environ["BEAUME_SPEED_MODEL"] = args.model
 
     logging.basicConfig(level=logging.WARNING)
 

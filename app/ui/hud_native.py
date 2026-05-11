@@ -2543,7 +2543,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
                 # ── Pipeline standard : streaming tokens si activé ──────────
                 from lucie_v1_standalone import pipeline as _lv1
 
-                # Streaming live actif dès que LUCIE_STREAM=1 (défaut). En Level
+                # Streaming live actif dès que BEAUME_STREAM=1 (défaut). En Level
                 # 3 avec document, pas de tokens intermédiaires mais la zone
                 # d'étapes affiche bien Lecteur → Retriever → Rédacteur → Vérif.
                 use_live_stream = _lv1.streaming_enabled()

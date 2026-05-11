@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 from . import dossier_analyzer, document_writer, lecteur, ollama_client, redacteur, retriever, verificateur
 from .cache import cache_dry_run_enabled, cache_enabled, get_query_cache
-from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT
+from .config import DIRECT_PARAMS, DOSSIER_TIMEOUT, PIPELINE_TIMEOUT, env_legacy
 from .dialogue.article_validator import (
     active_resolver_names,
     extract_article_codes,
@@ -199,7 +199,7 @@ def _current_index_version() -> str:
             return f"{int(Path(db_path).stat().st_mtime)}"
     except Exception:
         pass
-    return os.environ.get("LUCIE_SPEED_MODEL", "_")
+    return env_legacy("SPEED_MODEL", "_") or "_"
 
 
 async def _run_pipeline_cached(
@@ -212,7 +212,7 @@ async def _run_pipeline_cached(
     """Wrapper cache autour de `_run_pipeline`.
 
     Bypass cache si :
-      - flag LUCIE_CACHE=0
+      - flag BEAUME_CACHE=0 (ou LUCIE_CACHE=0 deprecated)
       - `document_text` fourni (cache non pertinent : doc peut varier)
       - `force=True` (mode démo — on veut le chemin complet)
       - `memory` fourni (l'observation est cachée avec le reste sinon)
@@ -221,7 +221,7 @@ async def _run_pipeline_cached(
         return await _run_pipeline(query, document_text, force, verbose, memory)
 
     cache = get_query_cache()
-    speed_model = os.environ.get("LUCIE_SPEED_MODEL", "_")
+    speed_model = env_legacy("SPEED_MODEL", "_") or "_"
     key = cache.make_key(
         query=query,
         index_version=f"{_current_index_version()}|{speed_model}",
@@ -722,8 +722,11 @@ async def _full_pipeline(query: str, doc: Optional[str], verbose: bool) -> str:
 
 
 def streaming_enabled() -> bool:
-    """P1 : streaming activé par défaut, désactivable via `LUCIE_STREAM=0`."""
-    return os.environ.get("LUCIE_STREAM", "1") == "1"
+    """P1 : streaming activé par défaut, désactivable via `BEAUME_STREAM=0`.
+
+    Ancien `LUCIE_STREAM` accepté en alias deprecated.
+    """
+    return env_legacy("STREAM", "1") == "1"
 
 
 async def run_stream(
@@ -740,8 +743,8 @@ async def run_stream(
     (full pipeline avec document) ou dossier, pas de streaming intermédiaire —
     on yield la réponse complète d'un coup à la fin (compat).
 
-    Si `LUCIE_STREAM=0`, bascule automatiquement sur `run()` et yield juste
-    la réponse finale en un seul chunk.
+    Si `BEAUME_STREAM=0` (ou `LUCIE_STREAM=0` deprecated), bascule automatiquement
+    sur `run()` et yield juste la réponse finale en un seul chunk.
 
     Usage HUD :
         buffer = []

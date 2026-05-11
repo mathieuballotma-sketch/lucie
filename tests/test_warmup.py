@@ -23,6 +23,7 @@ def _run_in_thread(target, timeout: float = 5.0) -> None:
 def test_warmup_calls_generate_with_one_token(monkeypatch):
     """Le warm-up doit appeler ollama_client.generate avec num_predict=1
     sur SPEED_MODEL."""
+    monkeypatch.delenv("BEAUME_SKIP_WARMUP", raising=False)
     monkeypatch.delenv("LUCIE_SKIP_WARMUP", raising=False)
     captured = {}
 
@@ -45,8 +46,9 @@ def test_warmup_calls_generate_with_one_token(monkeypatch):
 
 
 def test_warmup_skipped_when_env_set(monkeypatch):
-    """LUCIE_SKIP_WARMUP=1 → generate ne doit jamais être appelée."""
-    monkeypatch.setenv("LUCIE_SKIP_WARMUP", "1")
+    """BEAUME_SKIP_WARMUP=1 → generate ne doit jamais être appelée."""
+    monkeypatch.delenv("LUCIE_SKIP_WARMUP", raising=False)
+    monkeypatch.setenv("BEAUME_SKIP_WARMUP", "1")
     called = False
 
     async def fake_generate(**kwargs):
@@ -69,6 +71,7 @@ def test_warmup_skipped_when_env_set(monkeypatch):
 def test_warmup_swallows_exception(monkeypatch):
     """Une exception dans generate ne doit jamais remonter — l'UI doit
     démarrer même si Ollama est down."""
+    monkeypatch.delenv("BEAUME_SKIP_WARMUP", raising=False)
     monkeypatch.delenv("LUCIE_SKIP_WARMUP", raising=False)
 
     async def fake_generate(**kwargs):
@@ -94,6 +97,7 @@ def test_warmup_swallows_exception(monkeypatch):
 def test_warmup_main_thread_assertion(monkeypatch):
     """Sur le main thread, _warmup_blocking doit AssertionError (garde-fou
     anti AppKit/asyncio)."""
+    monkeypatch.delenv("BEAUME_SKIP_WARMUP", raising=False)
     monkeypatch.delenv("LUCIE_SKIP_WARMUP", raising=False)
     from main_hud import _warmup_blocking
 

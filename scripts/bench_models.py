@@ -94,7 +94,7 @@ async def run_one(query: str) -> dict:
 
 
 async def bench_model(model: str, queries: List[tuple]) -> dict:
-    os.environ["LUCIE_SPEED_MODEL"] = model
+    os.environ["BEAUME_SPEED_MODEL"] = model
     print(f"\n=== {model} ===", flush=True)
 
     # Warm-up : 1 appel pour charger le modèle (évite cold start biais)
@@ -199,8 +199,8 @@ async def main() -> int:
     )
     args = parser.parse_args()
 
-    os.environ["LUCIE_PROFILE"] = "1"
-    os.environ.setdefault("LUCIE_OLLAMA_KEEP_ALIVE", "24h")
+    os.environ["BEAUME_PROFILE"] = "1"
+    os.environ.setdefault("BEAUME_OLLAMA_KEEP_ALIVE", "24h")
     logging.basicConfig(level=logging.WARNING)
 
     models = [m.strip() for m in args.models.split(",") if m.strip()]

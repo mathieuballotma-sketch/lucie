@@ -3,8 +3,43 @@ Configuration centralisée pour le pipeline juridique V1 standalone.
 Aucune dépendance au reste du repo.
 """
 
+import logging
 import os
+import warnings
 from pathlib import Path
+
+_logger = logging.getLogger(__name__)
+_warned_legacy: set[str] = set()
+
+
+def env_legacy(key: str, default: str | None = None) -> str | None:
+    """Lit ``BEAUME_{key}`` avec fallback ``LUCIE_{key}`` (deprecated).
+
+    Si ``BEAUME_{key}`` est défini, sa valeur est renvoyée. Sinon, si
+    ``LUCIE_{key}`` est défini, on émet un ``DeprecationWarning`` + un log
+    WARNING (une seule fois par variable), puis on renvoie la valeur. Sinon
+    ``default``.
+
+    Mis en place au Sprint 1ter (rebrand 2026-05-02) pour préserver l'API
+    publique env tout en migrant vers le préfixe BEAUME_.
+    """
+    new_val = os.environ.get(f"BEAUME_{key}")
+    if new_val is not None:
+        return new_val
+    legacy_val = os.environ.get(f"LUCIE_{key}")
+    if legacy_val is not None:
+        if key not in _warned_legacy:
+            _logger.warning(
+                "LUCIE_%s is deprecated; use BEAUME_%s instead", key, key
+            )
+            warnings.warn(
+                f"LUCIE_{key} is deprecated; use BEAUME_{key} instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            _warned_legacy.add(key)
+        return legacy_val
+    return default
 
 # ─── Ollama ───────────────────────────────────────────────────────────────────
 OLLAMA_BASE_URL = "http://localhost:11434"
@@ -17,8 +52,9 @@ QUALITY_MODEL = "gemma4:26b"  # Pour plus tard (rédaction qualité)
 KNOWLEDGE_BASE_PATH = Path("knowledge/droit_social/licenciement_economique")
 
 # ─── Légifrance (base DILA live) ──────────────────────────────────────────────
-# Feature flag on par défaut (Bloquant #1 v1.0.0). Override avec LUCIE_LEGIFRANCE=0 pour désactiver.
-LEGIFRANCE_ENABLED: bool = os.environ.get("LUCIE_LEGIFRANCE", "1") == "1"
+# Feature flag on par défaut (Bloquant #1 v1.0.0). Override avec BEAUME_LEGIFRANCE=0 pour désactiver
+# (ancien `LUCIE_LEGIFRANCE` accepté en alias deprecated, voir env_legacy).
+LEGIFRANCE_ENABLED: bool = env_legacy("LEGIFRANCE", "1") == "1"
 LEGIFRANCE_SYNC_INTERVAL_HOURS: int = 48
 
 
@@ -26,11 +62,13 @@ def get_legifrance_db_path() -> Path:
     """
     Chemin de la base SQLite Légifrance.
 
-    Override via `LUCIE_LEGIFRANCE_DIR` (utile en dev / tests pour
+    Override via `BEAUME_LEGIFRANCE_DIR` (utile en dev / tests pour
     pointer vers un répertoire isolé). Par défaut :
     `~/Library/Application Support/Beaume/legifrance/legi.sqlite`.
+
+    Ancien `LUCIE_LEGIFRANCE_DIR` accepté en alias deprecated.
     """
-    override = os.environ.get("LUCIE_LEGIFRANCE_DIR")
+    override = env_legacy("LEGIFRANCE_DIR")
     if override:
         base = Path(override).expanduser()
     else:

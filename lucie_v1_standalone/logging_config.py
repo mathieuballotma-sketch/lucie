@@ -1,12 +1,13 @@
 """
-Configuration logging root pour Lucie.
+Configuration logging root pour Beaume.
 
 `setup_logging()` installe deux handlers sur le logger root :
   - StreamHandler(stderr) — visible dans le terminal live
   - RotatingFileHandler → ~/Library/Logs/Beaume/beaume.log (10 MB × 5)
 
-Niveau par défaut : INFO. Override via `LUCIE_LOG_LEVEL=DEBUG`.
-Bypass complet si `LUCIE_QUIET=1`.
+Niveau par défaut : INFO. Override via `BEAUME_LOG_LEVEL=DEBUG`
+(ancien `LUCIE_LOG_LEVEL` accepté en alias deprecated).
+Bypass complet si `BEAUME_QUIET=1` (ou `LUCIE_QUIET=1` deprecated).
 
 À appeler AU TOUT DÉBUT de `app/ui/hud_native.py` (avant les imports
 de `lucie_v1_standalone.*` qui instancient leurs loggers), pour que
@@ -17,10 +18,11 @@ soient visibles.
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+from lucie_v1_standalone.config import env_legacy
 
 _LOG_DIR = Path.home() / "Library" / "Logs" / "Beaume"
 _FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
@@ -31,14 +33,14 @@ _BACKUP_COUNT = 5
 
 
 def setup_logging() -> None:
-    """Configure le ROOT logger. Idempotent. No-op si LUCIE_QUIET=1."""
-    if os.environ.get("LUCIE_QUIET") == "1":
+    """Configure le ROOT logger. Idempotent. No-op si BEAUME_QUIET=1."""
+    if env_legacy("QUIET") == "1":
         return
     root = logging.getLogger()
     if getattr(root, _SENTINEL, False):
         return
 
-    level = os.environ.get("LUCIE_LOG_LEVEL", "INFO").upper()
+    level = (env_legacy("LOG_LEVEL", "INFO") or "INFO").upper()
     root.setLevel(level)
     fmt = logging.Formatter(_FORMAT, datefmt=_DATEFMT)
 

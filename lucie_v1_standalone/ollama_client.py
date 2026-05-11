@@ -16,7 +16,6 @@ d'abandonner, et le message d'erreur utilisateur est explicite.
 
 import json
 import logging
-import os
 import time
 from dataclasses import dataclass
 from typing import AsyncIterator, Optional
@@ -29,6 +28,7 @@ from .config import (
     OLLAMA_POOL_TIMEOUT,
     OLLAMA_READ_TIMEOUT,
     OLLAMA_WRITE_TIMEOUT,
+    env_legacy,
 )
 from .perf import current_bucket
 
@@ -56,9 +56,10 @@ OLLAMA_TIMEOUT_USER_MESSAGE = (
 def _keep_alive_value() -> str:
     """Durée keep-alive Ollama. P2 : défaut 24h pour éviter reload (-2-3s/call).
 
-    Override via `LUCIE_OLLAMA_KEEP_ALIVE` (ex: "10m", "2h", "86400").
+    Override via `BEAUME_OLLAMA_KEEP_ALIVE` (ex: "10m", "2h", "86400").
+    Ancien `LUCIE_OLLAMA_KEEP_ALIVE` accepté en alias deprecated.
     """
-    return os.environ.get("LUCIE_OLLAMA_KEEP_ALIVE", "24h")
+    return env_legacy("OLLAMA_KEEP_ALIVE", "24h") or "24h"
 
 
 def _record_ollama_stats(model: str, data: dict) -> None:
@@ -123,8 +124,11 @@ async def generate(
 
 
 def _streaming_enabled() -> bool:
-    """P1 : streaming activé par défaut, désactivable via `LUCIE_STREAM=0`."""
-    return os.environ.get("LUCIE_STREAM", "1") == "1"
+    """P1 : streaming activé par défaut, désactivable via `BEAUME_STREAM=0`.
+
+    Ancien `LUCIE_STREAM` accepté en alias deprecated.
+    """
+    return env_legacy("STREAM", "1") == "1"
 
 
 async def generate_stream(
