@@ -5,6 +5,42 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [1.0.1-cleanup] — 2026-05-08
+
+Grand nettoyage post-rebrand (trilogie Sprint 1 + 1bis + 1ter). Aucun breaking
+change utilisateur : les anciennes variables d'env `LUCIE_*` restent acceptées
+en alias deprecated.
+
+### Sprint 1ter — Cohérence rebrand finale
+
+- **launchd** : label `com.lucie.legifrance.sync` → `com.beaume.legifrance.sync`
+  (`scripts/install_launchd.sh`, `scripts/uninstall_launchd.sh`,
+  `scripts/legifrance_rollback.sh`).
+- **env vars** : préfixe `LUCIE_*` → `BEAUME_*` via helper centralisé
+  `lucie_v1_standalone.config.env_legacy()` qui émet un `DeprecationWarning`
+  + log WARNING (une seule fois par variable) si l'ancien nom est utilisé.
+  14 variables migrées (`LEGIFRANCE`, `LEGIFRANCE_DIR`, `LOG_LEVEL`, `QUIET`,
+  `STREAM`, `OLLAMA_KEEP_ALIVE`, `SPEED_MODEL`, `PROFILE`, `CACHE`,
+  `CACHE_DRY_RUN`, `CACHE_MAXSIZE`, `CACHE_TTL_SECONDS`, `SKIP_WARMUP`,
+  `DIAG_MODEL`).
+- **scripts** : ajout `scripts/migrate_launchd_lucie_to_beaume.sh` (idempotent,
+  à lancer une fois post-merge pour migrer le job déjà installé).
+- **docs** : README mis à jour (table env vars, exemples, paths logs/launchd).
+  Mentions historiques préservées.
+- **tests** : `tests/test_env_legacy_compat.py` couvre priorité BEAUME_*,
+  fallback LUCIE_*, warning unique, default.
+
+### Sprint 1bis — DB cleanup (mémo, déjà mergé)
+
+- Migration paths filesystem Lucie → Beaume (DB Légifrance, logs).
+- −6,7 Go libérés.
+
+### Sprint 1 — Grand nettoyage (mémo, déjà mergé)
+
+- Bannière traçabilité, suppressions fichiers obsolètes.
+
+---
+
 ## [1.0.0] — 2026-05-02
 
 Première version *production-ready* de Beaume (ex-Lucie). Trois P0 identifiés par les
