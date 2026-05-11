@@ -35,7 +35,7 @@ for arg in "$@"; do
 done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DATA_DIR="${LUCIE_LEGIFRANCE_DIR:-${HOME}/Library/Application Support/Lucie/legifrance}"
+DATA_DIR="${LUCIE_LEGIFRANCE_DIR:-${HOME}/Library/Application Support/Beaume/legifrance}"
 
 echo "Rollback Légifrance"
 echo "  data_dir  = ${DATA_DIR}"

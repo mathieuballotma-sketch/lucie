@@ -3,7 +3,7 @@ Configuration logging root pour Lucie.
 
 `setup_logging()` installe deux handlers sur le logger root :
   - StreamHandler(stderr) — visible dans le terminal live
-  - RotatingFileHandler → ~/Library/Logs/Lucie/lucie.log (10 MB × 5)
+  - RotatingFileHandler → ~/Library/Logs/Beaume/beaume.log (10 MB × 5)
 
 Niveau par défaut : INFO. Override via `LUCIE_LOG_LEVEL=DEBUG`.
 Bypass complet si `LUCIE_QUIET=1`.
@@ -22,7 +22,7 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-_LOG_DIR = Path.home() / "Library" / "Logs" / "Lucie"
+_LOG_DIR = Path.home() / "Library" / "Logs" / "Beaume"
 _FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 _DATEFMT = "%Y-%m-%d %H:%M:%S"
 _SENTINEL = "_lucie_root_configured"
@@ -44,7 +44,7 @@ def setup_logging() -> None:
 
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
     file_h = RotatingFileHandler(
-        _LOG_DIR / "lucie.log",
+        _LOG_DIR / "beaume.log",
         maxBytes=_MAX_BYTES,
         backupCount=_BACKUP_COUNT,
         encoding="utf-8",

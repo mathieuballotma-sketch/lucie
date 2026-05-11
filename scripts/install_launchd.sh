@@ -19,7 +19,7 @@ PYTHON_BIN="$(command -v python3 || echo /usr/bin/python3)"
 SCRIPT="${REPO_ROOT}/scripts/legifrance_sync.py"
 LAUNCH_AGENTS_DIR="${HOME}/Library/LaunchAgents"
 PLIST_PATH="${LAUNCH_AGENTS_DIR}/${LABEL}.plist"
-LOG_DIR="${HOME}/Library/Logs/Lucie"
+LOG_DIR="${HOME}/Library/Logs/Beaume"
 INTERVAL_SECONDS=172800
 
 if [[ ! -f "${SCRIPT}" ]]; then
