@@ -2,7 +2,7 @@
 # Rollback de l'intégration Légifrance.
 #
 # Actions (par défaut — confirmation demandée) :
-#   1. Désinstalle l'agent launchd com.lucie.legifrance.sync
+#   1. Désinstalle l'agent launchd com.beaume.legifrance.sync
 #   2. Supprime la base SQLite Légifrance
 #   3. Supprime le répertoire tarballs/
 #   4. Supprime last_sync.json

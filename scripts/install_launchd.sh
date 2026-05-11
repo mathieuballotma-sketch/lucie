@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installe ~/Library/LaunchAgents/com.lucie.legifrance.sync.plist
+# Installe ~/Library/LaunchAgents/com.beaume.legifrance.sync.plist
 # Sync Légifrance automatique toutes les 48h (172800s) via launchd.
 #
 # Usage :
@@ -13,7 +13,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   DRY_RUN=1
 fi
 
-LABEL="com.lucie.legifrance.sync"
+LABEL="com.beaume.legifrance.sync"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN="$(command -v python3 || echo /usr/bin/python3)"
 SCRIPT="${REPO_ROOT}/scripts/legifrance_sync.py"

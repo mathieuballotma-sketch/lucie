@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Désinstalle l'agent launchd `com.lucie.legifrance.sync`.
+# Désinstalle l'agent launchd `com.beaume.legifrance.sync`.
 # Utilisé par legifrance_rollback.sh mais peut être lancé seul.
 
 set -euo pipefail
 
-LABEL="com.lucie.legifrance.sync"
+LABEL="com.beaume.legifrance.sync"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 
 if [[ -f "${PLIST_PATH}" ]]; then
