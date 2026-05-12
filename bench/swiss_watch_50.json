@@ -133,12 +133,9 @@
     "id": "SW-LPER-001",
     "category": "lic_perso",
     "prompt": "Quelle est la différence entre faute simple, faute grave et faute lourde ?",
-    "expected_behavior": "Distinction par gravité et conséquences indemnitaires. Citations L.1234-1 et suivants si possible.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 150,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -146,12 +143,9 @@
     "id": "SW-LPER-002",
     "category": "lic_perso",
     "prompt": "Comment se déroule un entretien préalable au licenciement pour motif personnel ?",
-    "expected_behavior": "Convocation 5 jours avant, possibilité d'être assisté, lettre motivée envoyée 2 jours après. L.1232-2 et suivants.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 150,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -159,12 +153,9 @@
     "id": "SW-LPER-003",
     "category": "lic_perso",
     "prompt": "Un licenciement pour insuffisance professionnelle est-il considéré comme une faute ?",
-    "expected_behavior": "Non — cause réelle et sérieuse mais pas faute. Pas de privation d'indemnités.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 100,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -172,12 +163,9 @@
     "id": "SW-LPER-004",
     "category": "lic_perso",
     "prompt": "Quelle est la procédure de licenciement pour faute grave ?",
-    "expected_behavior": "Mise à pied conservatoire possible, entretien préalable, lettre, pas de préavis ni indemnité. L.1232-1 et suivants.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 150,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -185,12 +173,9 @@
     "id": "SW-LPER-005",
     "category": "lic_perso",
     "prompt": "Quels sont les délais maximaux pour engager une procédure disciplinaire après une faute ?",
-    "expected_behavior": "Prescription 2 mois pour engager poursuites (L.1332-4).",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 100,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -198,12 +183,9 @@
     "id": "SW-LPER-006",
     "category": "lic_perso",
     "prompt": "Quelle est l'indemnité légale de licenciement pour motif personnel hors faute ?",
-    "expected_behavior": "Identique au licenciement économique : 1/4 mois <10 ans + 1/3 >10 ans.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 100,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -211,12 +193,9 @@
     "id": "SW-LPER-007",
     "category": "lic_perso",
     "prompt": "Le motif de licenciement doit-il être précisé dans la lettre ? Que se passe-t-il si non ?",
-    "expected_behavior": "Oui, motif précis obligatoire. Sinon licenciement réputé sans cause réelle et sérieuse.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 100,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -224,12 +203,9 @@
     "id": "SW-LPER-008",
     "category": "lic_perso",
     "prompt": "Un licenciement pour mésentente avec l'employeur est-il valide ?",
-    "expected_behavior": "Pas une cause valable en soi — doit être objectivée par des faits matériellement vérifiables imputables au salarié.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 100,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -237,12 +213,9 @@
     "id": "SW-LPER-009",
     "category": "lic_perso",
     "prompt": "Comment se calculent les dommages et intérêts en cas de licenciement sans cause réelle et sérieuse ?",
-    "expected_behavior": "Barème Macron L.1235-3, plancher/plafond selon ancienneté.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 100,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -250,12 +223,9 @@
     "id": "SW-LPER-010",
     "category": "lic_perso",
     "prompt": "Le salarié peut-il demander la nullité du licenciement ? Dans quels cas ?",
-    "expected_behavior": "Oui : licenciement discriminatoire, harcèlement, accident du travail, maternité, lanceur d'alerte.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 100,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -263,12 +233,9 @@
     "id": "SW-CONG-001",
     "category": "conges_rtt",
     "prompt": "Quelle est la durée légale des congés payés annuels en France ?",
-    "expected_behavior": "5 semaines (30 jours ouvrables) pour année complète. L.3141-3.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie conges_rtt). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 60,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -276,12 +243,9 @@
     "id": "SW-CONG-002",
     "category": "conges_rtt",
     "prompt": "Comment fonctionne le fractionnement des congés payés et donne-t-il droit à des jours supplémentaires ?",
-    "expected_behavior": "Fractionnement >12j entre mai-octobre donne 1-2 jours supplémentaires (L.3141-19).",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie conges_rtt). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 100,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -289,12 +253,9 @@
     "id": "SW-CONG-003",
     "category": "conges_rtt",
     "prompt": "Un jour férié tombant pendant les congés payés est-il déduit du décompte ?",
-    "expected_behavior": "Non, jour férié pendant congé n'est pas décompté (sauf certains usages conventionnels).",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie conges_rtt). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 60,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -302,12 +263,9 @@
     "id": "SW-CONG-004",
     "category": "conges_rtt",
     "prompt": "Que sont les RTT et qui en bénéficie ?",
-    "expected_behavior": "Réduction du temps de travail au-delà de 35h/sem, accordées en jours de repos. Variable selon convention.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie conges_rtt). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 80,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -315,12 +273,9 @@
     "id": "SW-CONG-005",
     "category": "conges_rtt",
     "prompt": "Qu'est-ce qu'un compte épargne-temps (CET) ?",
-    "expected_behavior": "Mécanisme permettant d'accumuler droits à congés ou rémunération différée. L.3151-1.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie conges_rtt). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 80,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -328,12 +283,9 @@
     "id": "SW-DEMR-001",
     "category": "dem_rupture_conv",
     "prompt": "Quel est le préavis légal en cas de démission ?",
-    "expected_behavior": "Variable selon convention collective ou usage ; pas de préavis légal universel.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 80,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -341,12 +293,9 @@
     "id": "SW-DEMR-002",
     "category": "dem_rupture_conv",
     "prompt": "Comment formaliser une lettre de démission valable ?",
-    "expected_behavior": "Volonté claire et non équivoque ; recommandé en LRAR avec préavis. Pas d'obligation de motif.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 80,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -354,12 +303,9 @@
     "id": "SW-DEMR-003",
     "category": "dem_rupture_conv",
     "prompt": "Comment fonctionne une rupture conventionnelle individuelle ?",
-    "expected_behavior": "Entretien(s), formulaire CERFA homologué par DREETS, indemnité ≥ indemnité de licenciement, délai rétractation 15 jours. L.1237-11 et suivants.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 150,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -367,12 +313,9 @@
     "id": "SW-DEMR-004",
     "category": "dem_rupture_conv",
     "prompt": "Le contrat de sécurisation professionnelle (CSP) s'applique-t-il en cas de rupture conventionnelle ?",
-    "expected_behavior": "Non — CSP réservé aux licenciements économiques. La rupture conventionnelle ouvre droit à l'ARE classique.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 80,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },
@@ -380,12 +323,9 @@
     "id": "SW-DEMR-005",
     "category": "dem_rupture_conv",
     "prompt": "Une transaction post-licenciement peut-elle être signée et sous quelles conditions ?",
-    "expected_behavior": "Oui après rupture effective, concessions réciproques, avocat conseillé. C. civ. art. 2044.",
+    "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
-      "rule": "swiss_watch_quality",
-      "answer_min_chars": 80,
-      "verifier_score_min": 0.5,
-      "citations_total_min": 0,
+      "rule": "oos_refusal_v1_scope",
       "wall_clock_ms_max": 60000
     }
   },

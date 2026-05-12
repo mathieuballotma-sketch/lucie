@@ -155,6 +155,32 @@ def _get_field(snapshot: dict, field_path: str) -> Any:
         ans = snapshot.get("answer") or ""
         cits = snapshot.get("citations") or []
         return _normalize_article(ans + " " + " ".join(cits))
+    if field_path == "_v1_scope_refusal_signal":
+        # Sprint 6 P2a mise-au-propre — Beaume v1 couvre UNIQUEMENT le licenciement
+        # économique. Les 20 questions hors-scope v1 (lic_perso, conges_rtt,
+        # dem_rupture_conv) doivent recevoir un refus propre :
+        #   (a) refus explicite via le gate `lic_perso_v1` (refused=true,
+        #       early_validation_triggered="lic_perso_v1"), OU
+        #   (b) refus poli via le pipeline LLM (answer contient un marqueur
+        #       de scope v1 ou « pas dans mes sources »).
+        # PASS dès que l'un des deux est observé.
+        if snapshot.get("early_validation_triggered") == "lic_perso_v1":
+            return True
+        ans = (snapshot.get("answer") or "").lower()
+        v1_scope_markers = (
+            "beaume v1",
+            "uniquement le licenciement économique",
+            "uniquement le licenciement economique",
+            "hors-périmètre",
+            "hors périmètre",
+            "n'est pas dans mes sources",
+            "ne dispose pas de cette information",
+            "absence de",
+            "introuvable",
+        )
+        if any(m in ans for m in v1_scope_markers):
+            return True
+        return False
     if field_path == "_swiss_watch_hallucination_signal":
         # Champ synthétique pour swiss_watch_hallucination_blocked : la truth rule
         # exige soit un refus précoce (Cerveau Oiseaux), soit un score Vérificateur

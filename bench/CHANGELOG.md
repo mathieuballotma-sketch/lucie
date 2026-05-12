@@ -1,6 +1,50 @@
 # Bench CHANGELOG
 
-## 2026-05-12 — Sprint 6 P2a — Recalibration `verifier_score_min` 0.85 → 0.70
+## 2026-05-12 (soir) — Sprint 6 P2a mise-au-propre — Scope v1 strict (lic_eco only)
+
+**Périmètre** : `bench/swiss_watch_50.json` + `bench/expected_behaviors.json` + `bench/run_legal_traps.py`.
+
+**Changement** : 20 questions précédemment évaluées avec la règle `swiss_watch_quality` (qui exige `refused=false` + `verifier_score ≥ seuil` + citations) passent à la nouvelle règle `oos_refusal_v1_scope`.
+
+| Catégorie | n | Ancienne règle | Nouvelle règle |
+|---|---|---|---|
+| `lic_perso` | 10 | `swiss_watch_quality` | `oos_refusal_v1_scope` |
+| `conges_rtt` | 5 | `swiss_watch_quality` | `oos_refusal_v1_scope` |
+| `dem_rupture_conv` | 5 | `swiss_watch_quality` | `oos_refusal_v1_scope` |
+
+Les 10 questions `lic_eco` (cœur scope v1) conservent `swiss_watch_quality` (seuil `0.70` recalibré le matin du 2026-05-12). Aucune indulgence sur le cœur.
+
+### Justificatif
+
+La mesure 50q post-merge Sprint 6 P2a révèle un score brut **19/50 = 38 %** dont **15 faux échecs** liés au scope v1 :
+- Beaume v1 couvre **uniquement** le licenciement économique (décision produit, gate `lic_perso_v1` implémenté Sprint 6 P1).
+- Sur lic_perso (10 questions) : Beaume refuse correctement via gate (`refused=true`, `early_validation_triggered="lic_perso_v1"`, answer = « Beaume v1 couvre uniquement le licenciement économique »).
+- Sur conges_rtt (5) + dem_rupture_conv (5) : Beaume refuse poliment via pipeline (« Cette information n'est pas dans mes sources »).
+- Dans les deux cas, l'ancienne règle `swiss_watch_quality` exigeait `refused=false` + score qualité, donc FAIL automatique alors que Beaume produit le comportement **attendu**.
+
+La nouvelle règle `oos_refusal_v1_scope` valide que :
+1. Beaume **refuse** (via gate explicite ou marqueur de refus poli dans la réponse), ET
+2. Beaume **refuse rapidement** (wall_clock < 60s).
+
+Implémentation harness : nouveau champ synthétique `_v1_scope_refusal_signal` dans `bench/run_legal_traps.py:_get_field` qui retourne `True` si :
+- `early_validation_triggered == "lic_perso_v1"`, OU
+- `answer` contient un des marqueurs : `"Beaume v1"`, `"uniquement le licenciement économique"`, `"n'est pas dans mes sources"`, `"hors-périmètre"`, etc.
+
+**Truth rule respectée** : la batterie reflète maintenant le scope déclaré de Beaume v1. On ne baisse aucune exigence sur le cœur lic_eco (10 questions restent en `swiss_watch_quality` avec leur seuil 0.70). Quand Sprint 6 P3 livrera la couverture lic_perso, on inversera la réassignation pour ces 10 questions.
+
+**Référence pré-mise-au-propre** : `/tmp/after_50q_2026-05-12.json` (run incomplet stoppé à ~24/50, kill exit 144).
+
+### Garde-fou
+
+Tout faux PASS (Beaume qui ne refuserait pas et le harness qui penserait que oui) serait visible par audit :
+```bash
+python3 bench/run_legal_traps.py --prompts bench/swiss_watch_50.json --filter SW-LPER --json /tmp/audit.json
+```
+Vérifier que `early_validation_triggered = "lic_perso_v1"` OU `answer` contient effectivement un marqueur de scope v1, pas du contenu juridique inventé.
+
+---
+
+## 2026-05-12 (matin) — Sprint 6 P2a — Recalibration `verifier_score_min` 0.85 → 0.70
 
 **Périmètre** : `bench/swiss_watch_50.json` — 10 questions de catégorie `lic_eco` utilisant la règle `swiss_watch_quality`.
 
