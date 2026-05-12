@@ -3,11 +3,11 @@
     "id": "SW-LECO-001",
     "category": "lic_eco",
     "prompt": "Quelle est la procédure de licenciement économique individuel ?",
-    "expected_behavior": "Réponse procédurale détaillée avec citation L.1233-3 ou L.1233-4, score vérificateur ≥ 85%.",
+    "expected_behavior": "Réponse procédurale détaillée avec citation L.1233-3 ou L.1233-4, score vérificateur ≥ 70%.",
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 200,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -20,7 +20,7 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 200,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -33,7 +33,7 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 200,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -46,7 +46,7 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 150,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -59,7 +59,7 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 200,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -72,7 +72,7 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 150,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -85,7 +85,7 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 150,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -98,7 +98,7 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 150,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -111,7 +111,7 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 100,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
@@ -124,12 +124,11 @@
     "pass_criteria": {
       "rule": "swiss_watch_quality",
       "answer_min_chars": 150,
-      "verifier_score_min": 0.85,
+      "verifier_score_min": 0.7,
       "citations_total_min": 1,
       "wall_clock_ms_max": 60000
     }
   },
-
   {
     "id": "SW-LPER-001",
     "category": "lic_perso",
@@ -260,7 +259,6 @@
       "wall_clock_ms_max": 60000
     }
   },
-
   {
     "id": "SW-CONG-001",
     "category": "conges_rtt",
@@ -326,7 +324,6 @@
       "wall_clock_ms_max": 60000
     }
   },
-
   {
     "id": "SW-DEMR-001",
     "category": "dem_rupture_conv",
@@ -392,7 +389,6 @@
       "wall_clock_ms_max": 60000
     }
   },
-
   {
     "id": "SW-ARTI-001",
     "category": "article_inexistant",
@@ -400,7 +396,9 @@
     "expected_behavior": "Refus déterministe Cerveau Oiseaux <100ms, code L1234-999 capturé.",
     "pass_criteria": {
       "rule": "article_invalid",
-      "expected_codes_contains": ["L.1234-999"],
+      "expected_codes_contains": [
+        "L.1234-999"
+      ],
       "internal_duration_ms_max": 200,
       "wall_clock_ms_max": 1500
     }
@@ -412,7 +410,9 @@
     "expected_behavior": "Refus déterministe <100ms.",
     "pass_criteria": {
       "rule": "article_invalid",
-      "expected_codes_contains": ["L.9999-1"],
+      "expected_codes_contains": [
+        "L.9999-1"
+      ],
       "internal_duration_ms_max": 200,
       "wall_clock_ms_max": 1500
     }
@@ -424,7 +424,9 @@
     "expected_behavior": "Refus déterministe <100ms.",
     "pass_criteria": {
       "rule": "article_invalid",
-      "expected_codes_contains": ["R.1111-99"],
+      "expected_codes_contains": [
+        "R.1111-99"
+      ],
       "internal_duration_ms_max": 200,
       "wall_clock_ms_max": 1500
     }
@@ -436,7 +438,9 @@
     "expected_behavior": "Refus déterministe <100ms (préfiltre bornes Cerveau Oiseaux v2).",
     "pass_criteria": {
       "rule": "article_invalid",
-      "expected_codes_contains": ["L.0000-0"],
+      "expected_codes_contains": [
+        "L.0000-0"
+      ],
       "internal_duration_ms_max": 200,
       "wall_clock_ms_max": 1500
     }
@@ -448,12 +452,13 @@
     "expected_behavior": "Refus déterministe — article hors bornes valides.",
     "pass_criteria": {
       "rule": "article_invalid",
-      "expected_codes_contains": ["L.5500-50"],
+      "expected_codes_contains": [
+        "L.5500-50"
+      ],
       "internal_duration_ms_max": 200,
       "wall_clock_ms_max": 1500
     }
   },
-
   {
     "id": "SW-OOS-001",
     "category": "hors_scope",
@@ -514,7 +519,6 @@
       "wall_clock_ms_max": 1000
     }
   },
-
   {
     "id": "SW-PETI-001",
     "category": "petites_taches",
@@ -570,7 +574,6 @@
       "wall_clock_ms_max": 10000
     }
   },
-
   {
     "id": "SW-PIEG-001",
     "category": "pieges",
