@@ -144,6 +144,27 @@ README.zh.md
 # ===== ARCHIVES & TEMP =====
 _archive/
 
+# ===== RÉSERVE COMPÉTITIVE (Mathieu 2026-05-12) =====
+# Tout ce qui révélerait des choix de design internes, des causes
+# racines de bugs, des prompts détaillés, des seuils tunés ou des
+# règles déterministes spécifiques au domaine reste local.
+# Voir STASH_PRIVATE.md (lui-même ignoré) pour la doctrine.
+prompts_private/
+laws_logic_private.json
+laws_logic_private.yaml
+theme_mapping_private.yaml
+bench-results/diagnostic_*
+bench/results/diagnostic_*
+bench/results/_repro_*
+bench/results/_latest*
+Rapport_diagnostic_*.md
+docs/sprints_private/
+docs/CONTRIBUTING_INTERNAL.md
+STASH_PRIVATE.md
+# Note: les rapports détaillés (causes racines, métriques internes,
+# choix de design) restent sur ~/Desktop/. Le repo public n'expose
+# que des SUMMARY.md condensés.
+
 # ===== LÉGIFRANCE (base juridique locale, jamais committée) =====
 knowledge/legifrance/data/
 knowledge/legifrance/tarballs/

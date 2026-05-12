@@ -1,6 +1,6 @@
 # Contributing
 
-Beaume est développée en solo par Mathieu Ballotma. Le rythme de
+Beaume est développée en solo par Mathieu Bellot. Le rythme de
 sprint est court et le code change vite : les contributions externes
 sont **volontairement limitées** pendant la phase pilote (2026).
 

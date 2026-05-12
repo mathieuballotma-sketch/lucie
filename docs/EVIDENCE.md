@@ -15,8 +15,8 @@ doit être retirée du README. **Truth rule.**
 |---|---|---|
 | Pipeline 100 % local (Ollama localhost) | [`lucie_v1_standalone/ollama_client.py`](../lucie_v1_standalone/ollama_client.py) | `grep -r "localhost\|127.0.0.1" lucie_v1_standalone/` |
 | Cerveau Oiseaux — routeur déterministe (intent classifier + bornes) | [`lucie_v1_standalone/dialogue/intent_classifier.py`](../lucie_v1_standalone/dialogue/intent_classifier.py), [`lucie_v1_standalone/dialogue/`](../lucie_v1_standalone/dialogue/) | `pytest lucie_v1_standalone/tests/test_dialogue/test_intent_classifier.py -v` |
-| Cerveau Humain — formulation LLM | [`lucie_v1_standalone/ollama_client.py`](../lucie_v1_standalone/ollama_client.py), [`lucie_v1_standalone/prompts/`](../lucie_v1_standalone/prompts/) | `cat lucie_v1_standalone/prompts/redacteur_search_system.txt` |
-| Vérificateur déterministe (truth rule) — refuse les citations hors KB | [`lucie_v1_standalone/verificateur.py`](../lucie_v1_standalone/verificateur.py), [`lucie_v1_standalone/prompts/verificateur_system.txt`](../lucie_v1_standalone/prompts/verificateur_system.txt) | `pytest tests/test_truth_rule_pattern.py -v` |
+| Cerveau Humain — formulation LLM | [`lucie_v1_standalone/ollama_client.py`](../lucie_v1_standalone/ollama_client.py) | `grep -i "model\|prompt" lucie_v1_standalone/ollama_client.py \| head -10` |
+| Vérificateur déterministe (truth rule) — refuse les citations hors KB | [`lucie_v1_standalone/verificateur.py`](../lucie_v1_standalone/verificateur.py) | `pytest tests/test_truth_rule_pattern.py -v` |
 | Retriever KB Légifrance | [`lucie_v1_standalone/retriever.py`](../lucie_v1_standalone/retriever.py), [`lucie_v1_standalone/knowledge_legifrance/retriever.py`](../lucie_v1_standalone/knowledge_legifrance/retriever.py) | `pytest tests/test_legifrance/ -v` (nécessite l'index local) |
 | Mémoire adaptative par utilisateur | [`lucie_v1_standalone/memory/`](../lucie_v1_standalone/memory/) (`personal.py`, `abstract.py`, `store.py`, `sanitizer.py`) | `pytest tests/memory/test_memory_store.py -v` |
 
@@ -43,9 +43,8 @@ doit être retirée du README. **Truth rule.**
 
 | Affirmation README | Preuve | Vérification |
 |---|---|---|
-| Sprint 6 P1 — Cerveau intelligent | [`docs/sprints/2026-05-08_sprint_6_p1_cerveau_intelligent.md`](sprints/2026-05-08_sprint_6_p1_cerveau_intelligent.md) | Lecture + `git log --grep="P1"` |
-| Sprint 6 P1b — Refus contextuel `lic_perso` | [`docs/sprints/2026-05-08_sprint_6_p1b_refus_contextuel.md`](sprints/2026-05-08_sprint_6_p1b_refus_contextuel.md) | Lecture + `git log --grep="P1b"` |
-| Sprint 6 P2a — Retriever débridé + Vérificateur normalisé | [`docs/sprints/2026-05-12_sprint_6_p2a_retriever_verificateur.md`](sprints/2026-05-12_sprint_6_p2a_retriever_verificateur.md) | Lecture + `git log --grep="P2a"` |
+| Historique sprints (résumé public) | [`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md) | Lecture + `git log --oneline --grep="Sprint"` |
+| Détail diagnostic & causes racines | **Non publié** (réserve interne, cf [`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md) pour la doctrine) | NDA sur demande |
 
 ## Comment ajouter une affirmation au README
 

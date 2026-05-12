@@ -134,7 +134,7 @@ D'autres modules sont en réserve et ne sont pas listés ici — c'est volontair
 ## Statut du projet
 
 - **Solo bootstrap**, financé sur fonds propres (zéro VC, zéro pré-vente)
-- Mathieu Ballotma, 18 ans, candidature **YC Summer 2026** déposée
+- Mathieu Bellot, 18 ans, candidature **YC Summer 2026** déposée
 - Pas de team, pas de communication payante, pas de blog post auto-promo
 - Code publié sous **Business Source License 1.1** (change date 2030-04-17 → Apache 2.0) : lisible et étudiable publiquement, pas réutilisable en production commerciale sans licence
 
