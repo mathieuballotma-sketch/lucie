@@ -13,6 +13,8 @@ Aucune dépendance au reste du repo.
 """
 
 import json
+import logging
+import os
 from pathlib import Path
 from typing import AsyncIterator, Literal, Tuple
 
@@ -20,9 +22,48 @@ from . import ollama_client
 from .config import REDACTEUR_PARAMS
 from .perf.events import child_event_stage
 
+logger = logging.getLogger(__name__)
+
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _SYSTEM_DOCUMENT = _PROMPTS_DIR / "redacteur_system.txt"
 _SYSTEM_SEARCH = _PROMPTS_DIR / "redacteur_search_system.txt"
+
+# Sprint 6 P2c-1 — override privé optionnel du prompt système.
+# Le repo public ne contient PAS ce dossier (gitignored depuis commit a9869f5).
+# Si le dossier + le fichier existent ET le flag BEAUME_REDACTEUR_STRICT_CONTEXT
+# est actif (défaut), le prompt privé enrichi remplace le prompt public.
+# Justification : Gemma4:e4b applique littéralement la règle de refus du prompt
+# public même quand des sources pertinentes sont fournies (hallucination du
+# refus mesurée 8/10 sur le cœur lic_eco, batterie 50q post P2b).
+_PRIVATE_PROMPTS_DIR = Path(__file__).parent.parent / "prompts_private"
+_PRIVATE_PROMPT_FILES: dict[str, str] = {
+    "search": "redacteur_search_strict_context.txt",
+    "document": "redacteur_system_strict_context.txt",
+}
+_PUBLIC_PROMPT_FILES: dict[str, Path] = {
+    "search": _SYSTEM_SEARCH,
+    "document": _SYSTEM_DOCUMENT,
+}
+
+
+def _load_system_prompt(mode: Literal["document", "search"]) -> str:
+    """Charge le system prompt, avec override privé si flag actif + fichier présent.
+
+    POURQUOI cette indirection (vs lecture directe `_SYSTEM_*.read_text()`) :
+    le prompt public est mesuré comme insuffisant pour contraindre Gemma4:e4b
+    à utiliser son contexte (cf. cœur lic_eco 2/10 post P2b). La version
+    enrichie reconditionne la phrase de refus à « sources réellement vides »
+    et ajoute le « trust pipeline ». Elle reste hors repo public (asset moat
+    Beaume, discipline N2). Fallback gracieux indispensable : un cloneur du
+    repo OSS doit obtenir un pipeline fonctionnel sans le dossier privé.
+    """
+    public_path = _PUBLIC_PROMPT_FILES[mode]
+    if os.environ.get("BEAUME_REDACTEUR_STRICT_CONTEXT", "1") == "1":
+        private_path = _PRIVATE_PROMPTS_DIR / _PRIVATE_PROMPT_FILES[mode]
+        if private_path.is_file():
+            logger.debug("redacteur: prompt privé chargé (mode=%s)", mode)
+            return private_path.read_text(encoding="utf-8")
+    return public_path.read_text(encoding="utf-8")
 
 
 async def handle(
@@ -62,8 +103,7 @@ async def handle(
 
     # ── Choix du prompt selon le mode ─────────────────────────────────────────
     async with child_event_stage("structure_reponse", mode=mode):
-        system_path = _SYSTEM_SEARCH if mode == "search" else _SYSTEM_DOCUMENT
-        system = system_path.read_text(encoding="utf-8")
+        system = _load_system_prompt(mode)
 
         if mode == "search":
             # En mode search, on extrait la question originale du faits_json
@@ -116,8 +156,7 @@ def _build_prompt(
     except (json.JSONDecodeError, AttributeError):
         nb_sources = 0
 
-    system_path = _SYSTEM_SEARCH if mode == "search" else _SYSTEM_DOCUMENT
-    system = system_path.read_text(encoding="utf-8")
+    system = _load_system_prompt(mode)
 
     if mode == "search":
         try:
