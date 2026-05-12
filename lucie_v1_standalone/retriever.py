@@ -15,6 +15,7 @@ Le contrat JSON de sortie est inchangé (`sources`, `jurisprudences`,
 import json
 import logging
 import math
+import os
 import re
 from collections import Counter
 from typing import Any, Dict, List, Optional, Set
@@ -149,12 +150,26 @@ def _try_legifrance(faits_json: str, top_k: int) -> Optional[Dict[str, Any]]:
         return None
     try:
         from .knowledge_legifrance.retriever import LegifranceRetriever
-        from .dialogue.intent_classifier import detect_themes
+        from .dialogue.intent_classifier import detect_themes_with_scores
     except ImportError as exc:
         logger.warning("Légifrance importable mais pas installé : %s", exc)
         return None
     try:
-        themes = detect_themes(faits_json) or None
+        # Sprint 6 P2a — B-5 sol 1 : si la détection thématique est incertaine
+        # (0 thème OU max ≤ 1 keyword match), on débride le FTS5 — sinon le
+        # retriever rate des articles hors-thème (ex : ECO_03 « indemnité »
+        # restreint au thème licenciement_eco mais cible L.1234-9 hors-scope).
+        # Rollback : `BEAUME_RETRIEVER_DEBRIDE=0`.
+        scored = detect_themes_with_scores(faits_json)
+        max_hits = max((h for _, h in scored), default=0)
+        debride = (
+            os.environ.get("BEAUME_RETRIEVER_DEBRIDE", "1") == "1"
+            and (not scored or max_hits <= 1)
+        )
+        if debride:
+            themes = None
+        else:
+            themes = [t for t, _ in scored] or None
         with LegifranceRetriever(db_path) as retriever:
             payload = retriever.handle(faits_json, themes=themes, top_k=top_k)
         return json.loads(payload)
