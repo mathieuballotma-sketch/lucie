@@ -16,6 +16,7 @@ from typing import Iterator
 
 import httpx
 
+from .determinism import apply_deterministic_options
 from .provider import LLMProvider  # noqa: F401 — vérifie la conformité Protocol
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ class OllamaProvider:
         }
         if system:
             payload["system"] = system
+        options = apply_deterministic_options(options)
         if options:
             payload["options"] = options
 

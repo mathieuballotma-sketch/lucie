@@ -1,0 +1,247 @@
+[
+  {
+    "id": "SW-LECO-001",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quelle est la procédure de licenciement économique individuel ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 50838.06404200732,
+    "response": {
+      "answer": "Lorsqu'un employeur procède à un licenciement individuel pour motif économique, plusieurs étapes procédurales sont encadrées.\n\nConcernant le choix du salarié concerné, l'employeur doit prendre en compte les critères prévus à l'article L. 1233-5 [L1233-7].\n\nEn matière de notification, si le licenciement est individuel ou inclus dans un licenciement collectif de moins de dix salariés dans une même période de trente jours, l'employeur doit notifier le licenciement par lettre recommandée avec avis de réception [L1233-15].\n\nEnfin, toute contestation portant sur ce licenciement se prescrit par douze mois à compter de la dernière réunion du comité social et économique, ou, dans le cadre de l'exercice par le salarié de son droit individuel à contester le licenciement pour motif économique [L1235-7].\n\n## Points clés\n- Le choix du salarié doit intégrer les critères définis à l'article L. 1233-5 [L1233-7].\n- La notification doit être effectuée par lettre recommandée avec avis de réception [L1233-15].\n- Le délai de prescription pour contester le licenciement est de douze mois à compter de la dernière réunion du CSE ou de l'exercice du droit individuel à contester [L1235-7].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 75% — Verdict : CORRIGÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.75,
+      "citations_ok": 3,
+      "citations_invalid": 1,
+      "citations_total": 4,
+      "verdict": "CORRIGÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 50838.06404200732
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-002",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Comment fonctionne le licenciement économique collectif de moins de 10 salariés sur 30 jours ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 51770.60774998972,
+    "response": {
+      "answer": "L'article L1233-28 ne prévoit pas de disposition spécifique concernant un licenciement collectif inférieur à dix salariés sur une période de trente jours. Il dispose, en revanche, que l'employeur qui envisage de procéder à un licenciement collectif pour motif économique d'au moins dix salariés dans une même période de trente jours doit réunir et consulter le comité social et économique dans les conditions prévues par le même article [L1233-28].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 51770.60774998972
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-003",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quelles sont les conditions du motif économique selon l'article L.1233-3 ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 85415.9599999839,
+    "response": {
+      "answer": "Constitue un licenciement pour motif économique le licenciement effectué par un employeur pour un ou plusieurs motifs qui ne sont pas inhérents à la personne du salarié [L1233-3]. Ces motifs doivent résulter soit d'une suppression ou transformation d'emploi, soit d'une modification d'un élément essentiel du contrat de travail, et ce, lorsque cette modification est refusée par le salarié [L1233-3].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 85415.9599999839
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=85415.9599999839"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-004",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quels sont les critères d'ordre des licenciements économiques ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 61722.49695798382,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 61722.49695798382
+    },
+    "failed_assertions": [
+      "verifier_score gte 0.7 → actual=0.0",
+      "citations_total gte 1 → actual=0",
+      "_wall_clock_ms lte 60000 → actual=61722.49695798382"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-005",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quelle est l'obligation de reclassement de l'employeur en cas de licenciement économique ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 74897.35220800503,
+    "response": {
+      "answer": "L'obligation de reclassement est abordée dans les sources principalement sous l'angle des modalités de mise en œuvre du congé de reclassement. Lorsque l'employeur établit un plan de sauvegarde de l'emploi, les conditions de ce congé sont fixées dans ce plan ; à défaut, l'employeur doit adresser aux représentants du personnel un document précisant ces conditions [R1233-18].\n\nPar ailleurs, des obligations d'information et de consultation sont prévues selon le nombre de salariés concernés. Lors de l'entretien préalable, en cas de licenciement de moins de dix salariés sur une période de trente jours, l'employeur doit informer le salarié des conditions de mise en œuvre du congé de reclassement [R1233-19]. De même, l'employeur a l'obligation d'informer et de consulter le comité social et économique sur ces mêmes conditions lors des réunions prévues aux articles L. 1233-8 et L. 1233-28, dans le cas de licenciement de moins de dix salariés dans une même période de trente jours [R1233-17].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 3,
+      "citations_invalid": 0,
+      "citations_total": 3,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 74897.35220800503
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=74897.35220800503"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-006",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quel est le seuil de déclenchement d'un PSE (plan de sauvegarde de l'emploi) ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 54578.24283299851,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 54578.24283299851
+    },
+    "failed_assertions": [
+      "verifier_score gte 0.7 → actual=0.0",
+      "citations_total gte 1 → actual=0"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-007",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quelles mentions sont obligatoires dans une lettre de licenciement économique ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 74402.56729201064,
+    "response": {
+      "answer": "La lettre de licenciement économique doit impérativement comporter l'énoncé des motifs économiques invoqués par l'employeur [L1233-9]. En effet, l'énoncé précis et circonstancié de ce motif économique dans la lettre de licenciement constitue une exigence légale [L1233-9].\n\nPar ailleurs, avant toute décision de licenciement pour motif économique, l'employeur doit convoquer le salarié à un entretien préalable, cette convocation étant effectuée par lettre recommandée ou remise en main propre [L1233-6].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 2,
+      "citations_invalid": 0,
+      "citations_total": 2,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 74402.56729201064
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=74402.56729201064"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-008",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Comment se calcule l'indemnité de licenciement économique légale ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 47296.12758397707,
+    "response": {
+      "answer": "Le salaire pris en compte pour le calcul de l'indemnité de licenciement doit être déterminé selon la formule la plus avantageuse pour le salarié [R1234-4]. Cette base de calcul est soit la moyenne mensuelle des douze derniers mois précédant le licenciement, soit, lorsque la durée de service du salarié est inférieure à douze mois, une autre formule est appliquée [R1234-4].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 47296.12758397707
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-009",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quels sont les délais pour contester un licenciement économique aux prud'hommes ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 52204.93558299495,
+    "response": {
+      "answer": "Toute contestation relative à un licenciement pour motif économique se prescrit par douze mois à compter de la dernière réunion du comité social et économique [L1235-7]. Ce délai s'applique également dans le cadre de l'exercice par le salarié de son droit individuel à contester le licenciement pour motif économique [L1235-7].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 52204.93558299495
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-010",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Qu'est-ce que le contrat de sécurisation professionnelle (CSP) et qui peut en bénéficier ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 72117.66029201681,
+    "response": {
+      "answer": "L'adhésion au contrat de sécurisation professionnelle (CSP) entraîne la rupture du contrat de travail [L1233-67]. Les modalités de mise en œuvre de ce contrat sont définies par un accord qui doit être conclu et agréé dans les conditions prévues par la loi [L1233-68].\n\nConcernant les conséquences juridiques, toute contestation portant sur la rupture du contrat de travail ou son motif, suite à l'adhésion au CSP, se prescrit par douze mois à compter de cette adhésion [L1233-67].\n\nLes sources fournies décrivent le cadre légal et les conséquences de l'adhésion au CSP, mais ne précisent pas les critères d'éligibilité ou les catégories de salariés qui peuvent en bénéficier.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 2,
+      "citations_invalid": 0,
+      "citations_total": 2,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 72117.66029201681
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=72117.66029201681"
+    ],
+    "error": null
+  }
+]

@@ -30,6 +30,7 @@ from .config import (
     OLLAMA_WRITE_TIMEOUT,
     env_legacy,
 )
+from .llm.determinism import apply_deterministic_options
 from .perf import current_bucket
 
 logger = logging.getLogger(__name__)
@@ -110,6 +111,7 @@ async def generate(
     }
     if system:
         payload["system"] = system
+    options = apply_deterministic_options(options)
     if options:
         payload["options"] = options
 
@@ -151,6 +153,7 @@ async def generate_stream(
     }
     if system:
         payload["system"] = system
+    options = apply_deterministic_options(options)
     if options:
         payload["options"] = options
 
@@ -275,6 +278,7 @@ async def generate_stream_chat(
         "stream": True,
         "keep_alive": _keep_alive_value(),
     }
+    options = apply_deterministic_options(options)
     if options:
         payload["options"] = options
 
