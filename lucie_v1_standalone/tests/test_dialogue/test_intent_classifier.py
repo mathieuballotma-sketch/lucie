@@ -167,3 +167,66 @@ def test_phrase_longue_sans_mot_juridique() -> None:
 def test_peux_tu_me_dire_bonjour_reste_small_talk() -> None:
     """Forme polie sans mot-clé juridique → SMALL_TALK (non, on n'attrape pas peux-tu)."""
     assert classify("Peux-tu me dire bonjour ?") == Intent.SMALL_TALK
+
+
+# ── Sprint 6 P2b — B-5 enrichissement mots_cles + B-2 fuzzy fallback ─────────
+
+def test_p2b_b5_csp_detected_via_enriched_keywords(monkeypatch) -> None:
+    """B-5 : 'CSP' / 'contrat de sécurisation' doivent matcher droit_social
+    en exact substring (keywords ajoutés en Sprint 6 P2b)."""
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "0")  # isole l'exact match
+    clear_theme_cache()
+    scored = detect_themes_with_scores(
+        "Qu'est-ce que le contrat de sécurisation professionnelle (CSP) ?"
+    )
+    assert scored, "droit_social devait être détecté via les nouveaux keywords CSP"
+    top_theme = scored[0][0]
+    assert top_theme == "droit_social", (
+        f"top thème attendu droit_social, obtenu {top_theme} (full: {scored})"
+    )
+
+
+def test_p2b_b2_fuzzy_fallback_only_when_exact_empty(monkeypatch) -> None:
+    """B-2 : fuzzy ne se déclenche QUE si exact substring retourne []."""
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "1")
+    clear_theme_cache()
+    # « lcenciement » : typo → 0 exact match → fuzzy doit rattraper
+    scored = detect_themes_with_scores("Quelle est la procédure de lcenciement ?")
+    assert scored, "fuzzy fallback devait rattraper la typo 'lcenciement'"
+    assert any(t == "droit_social" for t, _ in scored)
+
+
+def test_p2b_b2_fuzzy_flag_off_disables_fallback(monkeypatch) -> None:
+    """B-2 : `BEAUME_FUZZY_LEGAL_BOOST=0` désactive le fallback."""
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "0")
+    clear_theme_cache()
+    scored = detect_themes_with_scores("Quelle est la procédure de lcenciement ?")
+    assert scored == [], (
+        f"avec flag=0, fuzzy doit être OFF → scored attendu vide, obtenu {scored}"
+    )
+
+
+def test_p2b_b2_fuzzy_does_not_match_pure_smalltalk(monkeypatch) -> None:
+    """B-2 : fuzzy ne doit pas générer de faux positifs sur small-talk."""
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "1")
+    clear_theme_cache()
+    for q in ["Bonjour Beaume", "J'ai mangé une pomme ce matin"]:
+        assert detect_themes_with_scores(q) == [], (
+            f"fuzzy ne doit pas matcher pour small-talk : {q!r}"
+        )

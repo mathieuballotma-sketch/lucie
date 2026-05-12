@@ -11,8 +11,10 @@ Quatre modes :
 from __future__ import annotations
 
 import logging
+import os
 import re
 import unicodedata
+from difflib import SequenceMatcher
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
@@ -387,13 +389,53 @@ def _load_theme_keywords() -> tuple[tuple[str, tuple[str, ...]], ...]:
     return tuple(themes_tuple)
 
 
+_FUZZY_THEME_TOKEN_RE = re.compile(r"\w{5,}", re.UNICODE)
+_FUZZY_THEME_THRESHOLD = 0.85
+
+
+def _fuzzy_theme_fallback(normalized: str) -> list[tuple[str, int]]:
+    """Sprint 6 P2b (B-2 sol 2) — fallback fuzzy quand le matching substring
+    exact retourne 0 thème. Rattrape les variantes lexicales / fautes du type
+    « csp » → « csp » (déjà OK avec B-5), « psp » → « pse »,
+    « lcenciement » → « licenciement ».
+
+    Pour chaque token ≥5 chars de la query normalisée, compare à chaque
+    keyword ≥5 chars du theme_mapping via SequenceMatcher.ratio() ≥ 0.85
+    (même seuil/filtre que fuzzy_legal.py). Filtre anti-faux-positif :
+    même lettre initiale. Un hit max par token (évite la sur-pondération).
+    """
+    tokens = _FUZZY_THEME_TOKEN_RE.findall(normalized)
+    scores: list[tuple[str, int]] = []
+    for theme_id, keywords in _load_theme_keywords():
+        hits = 0
+        for token in tokens:
+            for kw in keywords:
+                if not kw or len(kw) < 5:
+                    continue
+                if token[0] != kw[0]:
+                    continue
+                if SequenceMatcher(None, token, kw).ratio() >= _FUZZY_THEME_THRESHOLD:
+                    hits += 1
+                    break  # un hit max par token
+        if hits > 0:
+            scores.append((theme_id, hits))
+    scores.sort(key=lambda t: (-t[1], t[0]))
+    return scores
+
+
 def detect_themes_with_scores(
     query: str, max_themes: int = 3
 ) -> list[tuple[str, int]]:
     """Variante de `detect_themes` qui expose le nombre de keywords matchés
     par thème, requise par Sprint 6 P2a (B-5 sol 1) : le caller débride le
     Retriever Légifrance quand le score max est ≤ 1 (signal "détection
-    incertaine"). Liste de tuples `(theme_id, hits)` triée par hits décroissant."""
+    incertaine"). Liste de tuples `(theme_id, hits)` triée par hits décroissant.
+
+    Sprint 6 P2b (B-2 sol 2) : si le matching substring exact retourne 0
+    thème, fallback fuzzy `_fuzzy_theme_fallback()` activable via
+    `BEAUME_FUZZY_LEGAL_BOOST=1` (défaut=1). Permet de rattraper des
+    keywords mal orthographiés ou des variantes lexicales non couvertes
+    par les `mots_cles` du YAML."""
     if not query or not query.strip():
         return []
     normalized = _normalize_text(query)
@@ -402,8 +444,19 @@ def detect_themes_with_scores(
         hits = sum(1 for kw in keywords if kw and kw in normalized)
         if hits > 0:
             scores.append((theme_id, hits))
-    scores.sort(key=lambda t: (-t[1], t[0]))
-    return scores[:max_themes]
+    if scores:
+        scores.sort(key=lambda t: (-t[1], t[0]))
+        return scores[:max_themes]
+    if os.environ.get("BEAUME_FUZZY_LEGAL_BOOST", "1") == "1":
+        fuzzy_scores = _fuzzy_theme_fallback(normalized)
+        if fuzzy_scores:
+            logger.info(
+                "[FuzzyTheme] fallback déclenché — query=%r → themes=%s",
+                query[:60],
+                [t for t, _ in fuzzy_scores[:max_themes]],
+            )
+            return fuzzy_scores[:max_themes]
+    return []
 
 
 def detect_themes(query: str, max_themes: int = 3) -> list[str]:
