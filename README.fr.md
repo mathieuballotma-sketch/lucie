@@ -2,6 +2,8 @@
   <img src="assets/beaume-banner.svg" alt="Beaume — local AI for French lawyers — Swiss-watch grade" width="100%"/>
 </p>
 
+<p align="center"><sub><a href="README.md">Read in English</a></sub></p>
+
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-BSL_1.1-1a365d?style=flat-square"/></a>
   <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
