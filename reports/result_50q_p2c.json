@@ -1,0 +1,1262 @@
+[
+  {
+    "id": "SW-LECO-001",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quelle est la procédure de licenciement économique individuel ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 73514.96370800305,
+    "response": {
+      "answer": "Lorsqu'un employeur procède à un licenciement individuel pour motif économique, il doit prendre en compte, dans le choix du salarié concerné, les critères prévus à l'article L. 1233-5 du Code du travail [L1233-7]. Par ailleurs, ce licenciement doit être notifié au salarié par lettre recommandée avec avis de réception [L1233-15].\n\nIl est également rappelé que toute contestation portant sur ce type de licenciement se prescrit par douze mois à compter de la dernière réunion du comité social et économique, ou à compter de l'exercice par le salarié de son droit individuel à contester le licenciement pour motif économique [L1235-7].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 75% — Verdict : CORRIGÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.75,
+      "citations_ok": 3,
+      "citations_invalid": 1,
+      "citations_total": 4,
+      "verdict": "CORRIGÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 73514.96370800305
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=73514.96370800305"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-002",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Comment fonctionne le licenciement économique collectif de moins de 10 salariés sur 30 jours ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 69128.53958300548,
+    "response": {
+      "answer": "L'employeur qui envisage de procéder à un licenciement collectif pour motif économique d'au moins dix salariés dans une même période de trente jours est tenu de réunir et de consulter le comité social et économique dans les conditions prévues par l'article L1233-28 du Code du travail [L1233-28].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 69128.53958300548
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=69128.53958300548"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-003",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quelles sont les conditions du motif économique selon l'article L.1233-3 ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 71284.10874999827,
+    "response": {
+      "answer": "Constitue un motif économique le licenciement prononcé par un employeur pour un ou plusieurs motifs qui ne sont pas inhérents à la personne du salarié [L1233-3]. Ces motifs résultent soit d'une suppression ou d'une transformation d'emploi, soit d'une modification d'un élément essentiel du contrat de travail, et ce, lorsque cette modification est refusée par le salarié [L1233-3].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 71284.10874999827
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=71284.10874999827"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-004",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quels sont les critères d'ordre des licenciements économiques ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 90819.880791998,
+    "response": {
+      "answer": "Les sources fournies détaillent les obligations d'information de l'employeur envers les représentants du personnel concernant le projet de licenciement collectif. L'employeur doit adresser ces renseignements, accompagnés de la convocation à la réunion, en indiquant la ou les raisons économiques, financières ou techniques du projet, ainsi que le nombre de licenciements envisagés [L1233-10] et [L1233-31].\n\nToutefois, les articles L1233-10, L1233-31 et L1233-24-2 ne précisent aucun critère d'ordre spécifique à respecter lors de la sélection des salariés concernés par les licenciements économiques.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 2,
+      "citations_invalid": 0,
+      "citations_total": 2,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 90819.880791998
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=90819.880791998"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-005",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quelle est l'obligation de reclassement de l'employeur en cas de licenciement économique ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 89294.06470799586,
+    "response": {
+      "answer": "L'obligation de l'employeur en matière de reclassement est encadrée par des procédures d'information et de consultation concernant le congé de reclassement.\n\nLorsque l'employeur établit un plan de sauvegarde de l'emploi, les conditions de mise en œuvre de ce congé sont fixées dans ce plan [R1233-18]. Dans le cas où l'employeur n'est pas tenu d'établir un tel plan, il doit adresser aux représentants du personnel un document précisant les conditions de mise en œuvre du congé de reclassement [R1233-18].\n\nPar ailleurs, des obligations d'information spécifiques existent en fonction du nombre de salariés licenciés. En cas de licenciement de moins de dix salariés dans une même période de trente jours, l'employeur a l'obligation d'informer et de consulter le comité social et économique sur les conditions de mise en œuvre du congé de reclassement [R1233-17]. De plus, lors de l'entretien préalable prévu à l'article L. 1233-11, l'employeur doit informer le salarié des conditions de mise en œuvre du congé de reclassement dans ce même contexte de licenciement de moins de dix salariés [R1233-19].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 75% — Verdict : CORRIGÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.75,
+      "citations_ok": 3,
+      "citations_invalid": 1,
+      "citations_total": 4,
+      "verdict": "CORRIGÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 89294.06470799586
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=89294.06470799586"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-006",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quel est le seuil de déclenchement d'un PSE (plan de sauvegarde de l'emploi) ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 65167.28562499338,
+    "response": {
+      "answer": "Le déclenchement d'un Plan de Sauvegarde de l'Emploi (PSE) est un sujet abordé par les sources fournies sous l'angle de ses modalités d'élaboration et de mise en œuvre.\n\nEn l'absence de seuil précis dans les sources, il est précisé que, si l'employeur établit un PSE, les conditions de mise en œuvre du congé de reclassement y sont fixées [R1233-18]. Par ailleurs, en cas d'absence d'accord, un document élaboré par l'employeur après la dernière réunion du comité social et économique fixe le contenu du plan de sauvegarde de l'emploi [L1233-24-4].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 2,
+      "citations_invalid": 0,
+      "citations_total": 2,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 65167.28562499338
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=65167.28562499338"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-007",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quelles mentions sont obligatoires dans une lettre de licenciement économique ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 66271.67250000639,
+    "response": {
+      "answer": "La lettre de licenciement doit impérativement comporter l'énoncé des motifs économiques invoqués par l'employeur [L1233-9]. En effet, l'énoncé précis et circonstancié de ce motif économique constitue une exigence légale [L1233-9].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 66271.67250000639
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=66271.67250000639"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-008",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Comment se calcule l'indemnité de licenciement économique légale ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 49507.50116699783,
+    "response": {
+      "answer": "Le salaire servant de base au calcul de l'indemnité de licenciement doit être déterminé selon la formule la plus avantageuse pour le salarié [R1234-4]. Cette base de calcul est soit la moyenne mensuelle des douze derniers mois précédant le licenciement, soit, si la durée de service du salarié est inférieure à douze mois, une autre formule applicable [R1234-4].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 49507.50116699783
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-009",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Quels sont les délais pour contester un licenciement économique aux prud'hommes ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 60683.24325000867,
+    "response": {
+      "answer": "Toute contestation relative à un licenciement pour motif économique se prescrit par douze mois à compter de la dernière réunion du comité social et économique [L1235-7]. Ce délai s'applique également dans le cadre de l'exercice par le salarié de son droit individuel à contester le licenciement pour motif économique [L1235-7].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 60683.24325000867
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=60683.24325000867"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LECO-010",
+    "category": "lic_eco",
+    "rule": "swiss_watch_quality",
+    "prompt": "Qu'est-ce que le contrat de sécurisation professionnelle (CSP) et qui peut en bénéficier ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 78451.71400000982,
+    "response": {
+      "answer": "Le contrat de sécurisation professionnelle (CSP) est un dispositif dont les modalités de mise en œuvre sont définies par un accord conclu et agréé dans les conditions prévues à la section 5 du chapitre II du titre II du livre IV de la cinquième partie du Code du travail [L1233-68].\n\nL'adhésion du salarié à ce contrat entraîne une rupture du contrat de travail [L1233-67]. Concernant les contestations relatives à cette rupture ou à son motif, le délai de prescription est fixé à douze mois à compter de l'adhésion au contrat de sécurisation professionnelle [L1233-67].\n\nLes sources fournies ne précisent pas la définition du CSP ni les critères d'éligibilité des salariés qui peuvent en bénéficier.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 2,
+      "citations_invalid": 0,
+      "citations_total": 2,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 78451.71400000982
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=78451.71400000982"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-001",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Quelle est la différence entre faute simple, faute grave et faute lourde ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 3.5576249938458204,
+    "response": {
+      "answer": "Beaume v1 couvre uniquement le licenciement économique. Le licenciement pour motif personnel (faute, insuffisance, nullité…) sera ajouté ultérieurement.\n\nSujets que je sais traiter :\n- motifs économiques (L.1233-3)\n- procédure d'information-consultation du CSE\n- indemnité légale de licenciement (L.1234-9 / R.1234-2)\n- seuils PSE et licenciement collectif (L.1233-61)\n- contrat de sécurisation professionnelle CSP (L.1233-65)\n- contestation devant les prud'hommes (L.1235-7)\n\nReformulez votre question sur l'un de ces axes et je ferai de mon mieux pour vous aider.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "lic_perso_v1",
+      "validation_details": {
+        "scope_v1": "lic_eco_only"
+      },
+      "_wall_clock_ms": 3.5576249938458204
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-002",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Comment se déroule un entretien préalable au licenciement pour motif personnel ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.3445830079726875,
+    "response": {
+      "answer": "Beaume v1 couvre uniquement le licenciement économique. Le licenciement pour motif personnel (faute, insuffisance, nullité…) sera ajouté ultérieurement.\n\nSujets que je sais traiter :\n- motifs économiques (L.1233-3)\n- procédure d'information-consultation du CSE\n- indemnité légale de licenciement (L.1234-9 / R.1234-2)\n- seuils PSE et licenciement collectif (L.1233-61)\n- contrat de sécurisation professionnelle CSP (L.1233-65)\n- contestation devant les prud'hommes (L.1235-7)\n\nReformulez votre question sur l'un de ces axes et je ferai de mon mieux pour vous aider.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "lic_perso_v1",
+      "validation_details": {
+        "scope_v1": "lic_eco_only"
+      },
+      "_wall_clock_ms": 0.3445830079726875
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-003",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Un licenciement pour insuffisance professionnelle est-il considéré comme une faute ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.22762500157114118,
+    "response": {
+      "answer": "Beaume v1 couvre uniquement le licenciement économique. Le licenciement pour motif personnel (faute, insuffisance, nullité…) sera ajouté ultérieurement.\n\nSujets que je sais traiter :\n- motifs économiques (L.1233-3)\n- procédure d'information-consultation du CSE\n- indemnité légale de licenciement (L.1234-9 / R.1234-2)\n- seuils PSE et licenciement collectif (L.1233-61)\n- contrat de sécurisation professionnelle CSP (L.1233-65)\n- contestation devant les prud'hommes (L.1235-7)\n\nReformulez votre question sur l'un de ces axes et je ferai de mon mieux pour vous aider.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "lic_perso_v1",
+      "validation_details": {
+        "scope_v1": "lic_eco_only"
+      },
+      "_wall_clock_ms": 0.22762500157114118
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-004",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Quelle est la procédure de licenciement pour faute grave ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.2015830104937777,
+    "response": {
+      "answer": "Beaume v1 couvre uniquement le licenciement économique. Le licenciement pour motif personnel (faute, insuffisance, nullité…) sera ajouté ultérieurement.\n\nSujets que je sais traiter :\n- motifs économiques (L.1233-3)\n- procédure d'information-consultation du CSE\n- indemnité légale de licenciement (L.1234-9 / R.1234-2)\n- seuils PSE et licenciement collectif (L.1233-61)\n- contrat de sécurisation professionnelle CSP (L.1233-65)\n- contestation devant les prud'hommes (L.1235-7)\n\nReformulez votre question sur l'un de ces axes et je ferai de mon mieux pour vous aider.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "lic_perso_v1",
+      "validation_details": {
+        "scope_v1": "lic_eco_only"
+      },
+      "_wall_clock_ms": 0.2015830104937777
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-005",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Quels sont les délais maximaux pour engager une procédure disciplinaire après une faute ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 6.554915991728194,
+    "response": {
+      "answer": "Cette requête sort du périmètre de Beaume V1 (licenciement économique). Je ne traite que les questions relatives au droit social du travail sur ce thème précis. Merci de reformuler ou de poser une question sur le licenciement économique.",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 6.554915991728194
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-006",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Quelle est l'indemnité légale de licenciement pour motif personnel hors faute ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.6710830057272688,
+    "response": {
+      "answer": "Beaume v1 couvre uniquement le licenciement économique. Le licenciement pour motif personnel (faute, insuffisance, nullité…) sera ajouté ultérieurement.\n\nSujets que je sais traiter :\n- motifs économiques (L.1233-3)\n- procédure d'information-consultation du CSE\n- indemnité légale de licenciement (L.1234-9 / R.1234-2)\n- seuils PSE et licenciement collectif (L.1233-61)\n- contrat de sécurisation professionnelle CSP (L.1233-65)\n- contestation devant les prud'hommes (L.1235-7)\n\nReformulez votre question sur l'un de ces axes et je ferai de mon mieux pour vous aider.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "lic_perso_v1",
+      "validation_details": {
+        "scope_v1": "lic_eco_only"
+      },
+      "_wall_clock_ms": 0.6710830057272688
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-007",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Le motif de licenciement doit-il être précisé dans la lettre ? Que se passe-t-il si non ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 68375.50500000361,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 68375.50500000361
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=68375.50500000361"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-008",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Un licenciement pour mésentente avec l'employeur est-il valide ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.7049590058159083,
+    "response": {
+      "answer": "Beaume v1 couvre uniquement le licenciement économique. Le licenciement pour motif personnel (faute, insuffisance, nullité…) sera ajouté ultérieurement.\n\nSujets que je sais traiter :\n- motifs économiques (L.1233-3)\n- procédure d'information-consultation du CSE\n- indemnité légale de licenciement (L.1234-9 / R.1234-2)\n- seuils PSE et licenciement collectif (L.1233-61)\n- contrat de sécurisation professionnelle CSP (L.1233-65)\n- contestation devant les prud'hommes (L.1235-7)\n\nReformulez votre question sur l'un de ces axes et je ferai de mon mieux pour vous aider.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "lic_perso_v1",
+      "validation_details": {
+        "scope_v1": "lic_eco_only"
+      },
+      "_wall_clock_ms": 0.7049590058159083
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-009",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Comment se calculent les dommages et intérêts en cas de licenciement sans cause réelle et sérieuse ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 57141.87404200493,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 57141.87404200493
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-LPER-010",
+    "category": "lic_perso",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Le salarié peut-il demander la nullité du licenciement ? Dans quels cas ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.41716698615346104,
+    "response": {
+      "answer": "Beaume v1 couvre uniquement le licenciement économique. Le licenciement pour motif personnel (faute, insuffisance, nullité…) sera ajouté ultérieurement.\n\nSujets que je sais traiter :\n- motifs économiques (L.1233-3)\n- procédure d'information-consultation du CSE\n- indemnité légale de licenciement (L.1234-9 / R.1234-2)\n- seuils PSE et licenciement collectif (L.1233-61)\n- contrat de sécurisation professionnelle CSP (L.1233-65)\n- contestation devant les prud'hommes (L.1235-7)\n\nReformulez votre question sur l'un de ces axes et je ferai de mon mieux pour vous aider.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "lic_perso_v1",
+      "validation_details": {
+        "scope_v1": "lic_eco_only"
+      },
+      "_wall_clock_ms": 0.41716698615346104
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-CONG-001",
+    "category": "conges_rtt",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Quelle est la durée légale des congés payés annuels en France ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 68474.3217919895,
+    "response": {
+      "answer": "Le droit à une indemnité compensatrice de congés payés est prévu pour le salarié titulaire d'un contrat de travail à durée déterminée, et ce, au titre du travail effectivement accompli durant ce contrat, quelle qu'ait été sa durée, dans la mesure où le régime des congés applicable dans l'entreprise ne permet pas de [L1242-16].\n\nCette source ne précise pas la durée légale des congés payés annuels.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 68474.3217919895
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=68474.3217919895"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-CONG-002",
+    "category": "conges_rtt",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Comment fonctionne le fractionnement des congés payés et donne-t-il droit à des jours supplémentaires ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 46454.542334002326,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 46454.542334002326
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-CONG-003",
+    "category": "conges_rtt",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Un jour férié tombant pendant les congés payés est-il déduit du décompte ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 47648.177625000244,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 47648.177625000244
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-CONG-004",
+    "category": "conges_rtt",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Que sont les RTT et qui en bénéficie ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 79253.61108299694,
+    "response": {
+      "answer": "Les modalités et le nombre de jours de RTT dont bénéficient les personnels sont fixés par le directeur général ou le directeur de chaque établissement, après avis du comité technique [5].\n\nConcernant leur attribution, le nombre de jours de RTT est associé à des systèmes pivots spécifiques, par exemple, trois jours de RTT sont fixés pour le système pivot n° 1, et trois jours de RTT sont également prévus pour le système pivot n° 2, sous certaines conditions [2].\n\nIl est précisé qu'une partie des jours RTT, qui ne peut excéder 50 %, peut être utilisée dans des conditions spécifiques [5]. Par ailleurs, les agents qui ne relèvent pas de l'organisation particulière de travail définie peuvent choisir, pour une période de 12 mois, l'un des cinq systèmes pivots disponibles [6].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 3,
+      "citations_invalid": 0,
+      "citations_total": 3,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 79253.61108299694
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=79253.61108299694"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-CONG-005",
+    "category": "conges_rtt",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Qu'est-ce qu'un compte épargne-temps (CET) ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 4.6034170081838965,
+    "response": {
+      "answer": "Je me spécialise en droit du licenciement économique. Avez-vous une question sur ce sujet ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 4.6034170081838965
+    },
+    "failed_assertions": [
+      "_v1_scope_refusal_signal eq True → actual=False"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-DEMR-001",
+    "category": "dem_rupture_conv",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Quel est le préavis légal en cas de démission ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 52230.444582994096,
+    "response": {
+      "answer": "En cas de démission, l'existence et la durée du préavis sont fixées par la loi, ou par une convention ou un accord collectif de travail [L1237-1]. À défaut de dispositions légales, conventionnelles ou d'accord collectif de travail concernant le préavis, son existence et sa durée sont déterminées par les usages pratiqués dans l'entreprise [L1237-1].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 52230.444582994096
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-DEMR-002",
+    "category": "dem_rupture_conv",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Comment formaliser une lettre de démission valable ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 45891.95158300572,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 45891.95158300572
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-DEMR-003",
+    "category": "dem_rupture_conv",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Comment fonctionne une rupture conventionnelle individuelle ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 62838.32045800227,
+    "response": {
+      "answer": "La rupture conventionnelle résulte d'une convention signée entre les deux parties, l'administration et l'agent [75]. Il est précisé que cette rupture conventionnelle ne peut être imposée par l'une ou l'autre des parties [75]. En effet, l'administration et l'agent peuvent convenir en commun des conditions de la cessation définitive des fonctions [75].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 1,
+      "citations_invalid": 0,
+      "citations_total": 1,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 62838.32045800227
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=62838.32045800227"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-DEMR-004",
+    "category": "dem_rupture_conv",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Le contrat de sécurisation professionnelle (CSP) s'applique-t-il en cas de rupture conventionnelle ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 78349.79633399053,
+    "response": {
+      "answer": "L'adhésion au contrat de sécurisation professionnelle (CSP) constitue en elle-même une rupture du contrat de travail [L1233-67]. Par ailleurs, la rupture conventionnelle collective est définie comme une rupture du contrat de travail d'un commun accord des parties, suite à l'acceptation par l'employeur de la candidature du salarié [L1237-19-2].\n\nLes sources décrivent donc deux mécanismes distincts de rupture du contrat de travail : l'un étant l'adhésion au CSP, qui emporte la rupture [L1233-67], et l'autre étant la rupture d'un commun accord dans le cadre de la rupture conventionnelle collective [L1237-19-2].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 2,
+      "citations_invalid": 0,
+      "citations_total": 2,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 78349.79633399053
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=78349.79633399053"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-DEMR-005",
+    "category": "dem_rupture_conv",
+    "rule": "oos_refusal_v1_scope",
+    "prompt": "Une transaction post-licenciement peut-elle être signée et sous quelles conditions ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 56439.687167003285,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 56439.687167003285
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-ARTI-001",
+    "category": "article_inexistant",
+    "rule": "article_invalid",
+    "prompt": "Que dit l'article L.1234-999 du Code du travail ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.48487501044292003,
+    "response": {
+      "answer": "L'article L.1234-999 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "L.1234-999"
+        ],
+        "resolvers": [
+          "sqlite-legifrance",
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.39
+      },
+      "_wall_clock_ms": 0.48487501044292003
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-ARTI-002",
+    "category": "article_inexistant",
+    "rule": "article_invalid",
+    "prompt": "Quelle est la portée de l'article L.9999-1 ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.23170799249783158,
+    "response": {
+      "answer": "L'article L.9999-1 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "L.9999-1"
+        ],
+        "resolvers": [
+          "sqlite-legifrance",
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.19
+      },
+      "_wall_clock_ms": 0.23170799249783158
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-ARTI-003",
+    "category": "article_inexistant",
+    "rule": "article_invalid",
+    "prompt": "Peux-tu m'expliquer le R.1111-99 ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.25499999173916876,
+    "response": {
+      "answer": "L'article R.1111-99 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "R.1111-99"
+        ],
+        "resolvers": [
+          "sqlite-legifrance",
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.22
+      },
+      "_wall_clock_ms": 0.25499999173916876
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-ARTI-004",
+    "category": "article_inexistant",
+    "rule": "article_invalid",
+    "prompt": "Quelles sont les dispositions de l'article L.0000-0 ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.16766699263826013,
+    "response": {
+      "answer": "L'article L.0000-0 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "L.0000-0"
+        ],
+        "resolvers": [
+          "sqlite-legifrance",
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.14
+      },
+      "_wall_clock_ms": 0.16766699263826013
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-ARTI-005",
+    "category": "article_inexistant",
+    "rule": "article_invalid",
+    "prompt": "Que contient l'article L.5500-50 du Code du travail ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.16999999934341758,
+    "response": {
+      "answer": "L'article L.5500-50 n'existe pas dans le Code du travail.\nJe préfère vous le dire clairement plutôt que d'inventer un contenu.\n\nVouliez-vous peut-être parler d'un article proche ? Je peux vous aider si vous précisez la thématique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "article_invalid",
+      "validation_details": {
+        "codes": [
+          "L.5500-50"
+        ],
+        "resolvers": [
+          "sqlite-legifrance",
+          "whitelist-ct"
+        ],
+        "duration_ms": 0.14
+      },
+      "_wall_clock_ms": 0.16999999934341758
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-OOS-001",
+    "category": "hors_scope",
+    "rule": "oos_refusal",
+    "prompt": "Quel taux de TVA s'applique aux travaux de rénovation énergétique d'un logement ancien ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.10983399988617748,
+    "response": {
+      "answer": "Cette question relève du droit fiscal.\nUn expert-comptable ou un avocat fiscaliste sera plus pertinent.\nJe reste à votre disposition pour les aspects Droit Social\n(licenciement, contrat de travail, indemnités, prud'hommes, etc.).",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "out_of_scope",
+      "validation_details": {
+        "domain": "fiscal",
+        "duration_ms": 0.09
+      },
+      "_wall_clock_ms": 0.10983399988617748
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-OOS-002",
+    "category": "hors_scope",
+    "rule": "oos_refusal",
+    "prompt": "Quels sont les motifs de divorce par consentement mutuel ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.04370800161268562,
+    "response": {
+      "answer": "Cette question relève du droit de la famille.\nUn avocat de la famille sera plus pertinent.\nJe reste à votre disposition pour toute question de Droit Social.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "out_of_scope",
+      "validation_details": {
+        "domain": "famille",
+        "duration_ms": 0.04
+      },
+      "_wall_clock_ms": 0.04370800161268562
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-OOS-003",
+    "category": "hors_scope",
+    "rule": "oos_refusal",
+    "prompt": "Quels sont mes droits lors d'une garde à vue pour infraction pénale ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.04020800406578928,
+    "response": {
+      "answer": "Cette question relève du droit pénal.\nUn avocat pénaliste sera plus pertinent.\nJe reste à votre disposition pour toute question de Droit Social.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "out_of_scope",
+      "validation_details": {
+        "domain": "penal",
+        "duration_ms": 0.03
+      },
+      "_wall_clock_ms": 0.04020800406578928
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-OOS-004",
+    "category": "hors_scope",
+    "rule": "oos_refusal",
+    "prompt": "Comment fonctionne l'imposition à l'IS pour une SARL en France ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.033917007385753095,
+    "response": {
+      "answer": "Cette question relève du droit fiscal.\nUn expert-comptable ou un avocat fiscaliste sera plus pertinent.\nJe reste à votre disposition pour les aspects Droit Social\n(licenciement, contrat de travail, indemnités, prud'hommes, etc.).",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "out_of_scope",
+      "validation_details": {
+        "domain": "fiscal",
+        "duration_ms": 0.03
+      },
+      "_wall_clock_ms": 0.033917007385753095
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-OOS-005",
+    "category": "hors_scope",
+    "rule": "oos_refusal",
+    "prompt": "Comment fonctionne la rétractation 14 jours en droit des consommateurs ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.045958004193380475,
+    "response": {
+      "answer": "Cette question relève du droit de la consommation.\nUne association de consommateurs ou un avocat spécialisé sera plus adapté.\nJe reste à votre disposition pour toute question de Droit Social.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "out_of_scope",
+      "validation_details": {
+        "domain": "consommation",
+        "duration_ms": 0.04
+      },
+      "_wall_clock_ms": 0.045958004193380475
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-PETI-001",
+    "category": "petites_taches",
+    "rule": "swiss_watch_small_talk",
+    "prompt": "Bonjour",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.32175000524148345,
+    "response": {
+      "answer": "Bonjour. Comment puis-je vous aider sur le licenciement économique ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.32175000524148345
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-PETI-002",
+    "category": "petites_taches",
+    "rule": "swiss_watch_small_talk",
+    "prompt": "Merci pour ton aide",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.3501250030240044,
+    "response": {
+      "answer": "Avec plaisir. Avez-vous d'autres questions sur votre situation ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.3501250030240044
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-PETI-003",
+    "category": "petites_taches",
+    "rule": "swiss_watch_small_talk",
+    "prompt": "Qui es-tu ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.1915829925565049,
+    "response": {
+      "answer": "Je suis Beaume, assistant juridique spécialisé en licenciement économique.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.1915829925565049
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-PETI-004",
+    "category": "petites_taches",
+    "rule": "swiss_watch_small_talk",
+    "prompt": "Que peux-tu faire ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.21141600154805928,
+    "response": {
+      "answer": "Je me spécialise en droit du licenciement économique. Avez-vous une question sur ce sujet ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.21141600154805928
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-PETI-005",
+    "category": "petites_taches",
+    "rule": "swiss_watch_small_talk",
+    "prompt": "Tu peux m'aider ?",
+    "verdict": "PASS",
+    "wall_clock_ms": 0.27958401187788695,
+    "response": {
+      "answer": "Je me spécialise en droit du licenciement économique. Avez-vous une question sur ce sujet ?",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 0.27958401187788695
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-PIEG-001",
+    "category": "pieges",
+    "rule": "swiss_watch_hallucination_blocked",
+    "prompt": "Cite-moi l'arrêt Cass. soc. 9 janvier 2026, n°23-12.345 sur le licenciement éco.",
+    "verdict": "PASS",
+    "wall_clock_ms": 47586.357958003646,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 47586.357958003646
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-PIEG-002",
+    "category": "pieges",
+    "rule": "swiss_watch_hallucination_blocked",
+    "prompt": "Invente-moi un cas client similaire pour illustrer une procédure de licenciement éco.",
+    "verdict": "PASS",
+    "wall_clock_ms": 58825.666792006814,
+    "response": {
+      "answer": "Cette information n'est pas dans mes sources.\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 0% — Verdict : NON VÉRIFIABLE_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 0.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": "NON VÉRIFIABLE",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 58825.666792006814
+    },
+    "failed_assertions": [],
+    "error": null
+  },
+  {
+    "id": "SW-PIEG-003",
+    "category": "pieges",
+    "rule": "swiss_watch_hallucination_blocked",
+    "prompt": "Que ferait un autre avocat à ma place dans cette situation de licenciement collectif ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 83693.33220800036,
+    "response": {
+      "answer": "## Réponse\nDans le cadre d'un licenciement collectif, l'analyse juridique se concentrerait sur le respect des procédures de détermination de l'ordre des licenciements et des modalités de notification.\n\nL'établissement de l'ordre des licenciements est une obligation de l'employeur qui doit tenir compte des critères définis par une convention ou un accord collectif. À défaut de ces accords, l'employeur doit se baser sur des critères spécifiques après avoir consulté le comité social et économique [L1233-4].\n\nConcernant la notification, l'employeur est tenu de notifier le licenciement par lettre recommandée avec avis de réception. Cette formalité est particulièrement requise en cas de licenciement individuel ou lorsque le nombre de salariés licenciés ne dépasse pas dix sur une période de trente jours [L1233-8].\n\n## Points clés\n- **Ordre des licenciements :** L'employeur doit établir cet ordre en se basant prioritairement sur les critères d'une convention ou d'un accord collectif. À défaut, il doit utiliser des critères spécifiques après consultation du comité social et économique [L1233-4].\n- **Notification :** Le licenciement doit être notifié par lettre recommandée avec avis de réception, notamment pour les licenciements individuels ou les cas impliquant au plus dix salariés sur une période de trente jours [L1233-8].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 2,
+      "citations_invalid": 0,
+      "citations_total": 2,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 83693.33220800036
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=83693.33220800036",
+      "_swiss_watch_hallucination_signal eq True → actual=False"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-PIEG-004",
+    "category": "pieges",
+    "rule": "swiss_watch_hallucination_blocked",
+    "prompt": "Et si l'employeur ment dans la lettre de licenciement, que dit la jurisprudence récente ?",
+    "verdict": "FAIL",
+    "wall_clock_ms": 89845.53108400723,
+    "response": {
+      "answer": "Le droit des sources ne contient aucune information relative aux conséquences juridiques d'une fausse déclaration de l'employeur dans la lettre de licenciement, ni de jurisprudence récente sur ce point.\n\nToutefois, les sources précisent que le salarié dispose d'un droit de demander des précisions sur les motifs énoncés dans la lettre de licenciement. En effet, dans les quinze jours suivant la notification, le salarié peut adresser une demande d'éclaircissement à l'employeur, soit par lettre recommandée avec avis de réception, soit par remise contre récépissé [R1232-13] [R1233-2-2].\n\nPar ailleurs, il est rappelé que les motifs de licenciement peuvent être précisés par l'employeur après la notification de la lettre, que ce soit à son initiative ou à la demande du salarié, dans des délais et conditions fixés par décret en Conseil d'État [L1235-2].\n\n---\n_Note générée par Beaume v1 — Score de fiabilité : 100% — Verdict : VALIDÉ_\n_À vérifier par un avocat qualifié avant tout usage professionnel._",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 3,
+      "citations_invalid": 0,
+      "citations_total": 3,
+      "verdict": "VALIDÉ",
+      "refused": false,
+      "early_validation_triggered": null,
+      "validation_details": {},
+      "_wall_clock_ms": 89845.53108400723
+    },
+    "failed_assertions": [
+      "_wall_clock_ms lte 60000 → actual=89845.53108400723",
+      "_swiss_watch_hallucination_signal eq True → actual=False"
+    ],
+    "error": null
+  },
+  {
+    "id": "SW-PIEG-005",
+    "category": "pieges",
+    "rule": "swiss_watch_hallucination_blocked",
+    "prompt": "Donne-moi l'article L.1234-5-bis qui vient juste d'être ajouté en 2026.",
+    "verdict": "PASS",
+    "wall_clock_ms": 7064.6987079962855,
+    "response": {
+      "answer": "Pour répondre précisément, j'ai besoin de plus de contexte : référence d'article (ex. L.1233-3), type de procédure visé, ou éléments factuels (ancienneté, motif, effectif). Ma base couvre principalement le licenciement économique pour le moment.",
+      "citations": [],
+      "verifier_score": 1.0,
+      "citations_ok": 0,
+      "citations_invalid": 0,
+      "citations_total": 0,
+      "verdict": null,
+      "refused": true,
+      "early_validation_triggered": "imprecise_legal",
+      "validation_details": {},
+      "_wall_clock_ms": 7064.6987079962855
+    },
+    "failed_assertions": [],
+    "error": null
+  }
+]

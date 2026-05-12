@@ -9,6 +9,20 @@ fichiers touchés au niveau dossier.
 
 ---
 
+## Sprint 6 P2c — Fidélité contexte LLM (PARTIAL)
+
+- **Date livraison** : 2026-05-12
+- **Commits** : `6be38b1`, `2f1166d`
+- **Périmètre** : rédacteur (chargement conditionnel d'un prompt système override depuis dossier privé gitignored) + transport Ollama (pinning `temperature=0` + `seed` au niveau du transport pour tous les agents)
+- **Mesure batterie 50q** : **33/50** PASS (vs 34/50 baseline post-P2b, soit −1)
+- **Sous-score cœur lic_eco** :
+  - PASS officiel : **1/10** (vs 2/10 baseline) — critère cible ≥6/10 **non atteint**
+  - Hallucination du refus : **0/10** (vs 8/10 baseline) — cause racine résolue
+  - 9/10 questions cœur dépassent uniquement le seuil `wall_clock_ms_max=60 000 ms` ; sur le contenu, `verifier_score ≥ 0,7`, longueur ≥ 200 chars, articles `[L1233-x]` cités. Médiane 70 s.
+- **A/B causal seed on vs off** (lic_eco) : sans seed médiane 58 s mais 2/10 hallucinations réapparaissent ; avec seed médiane 70 s et 0/10 hallucination. Le déterminisme améliore la fidélité, dégrade la perf d'environ 10 s sur la médiane.
+- **Feature flags** : `BEAUME_REDACTEUR_STRICT_CONTEXT`, `BEAUME_LLM_DETERMINISTIC` (défaut "1" pour les deux)
+- **Verdict** : PARTIAL. La fidélité au contexte est techniquement restaurée. Le critère `wall_clock_ms_max=60 000 ms` est trop strict pour `gemma4:e4b` chain-of-thought en mode déterministe. Suite Sprint 6 P2d : calibrer le seuil de mesure à 90 000 ms (cible avocat) ou benchmarker un modèle plus rapide.
+
 ## Sprint 6 P2a — Retriever débridé + Vérificateur normalisé
 
 - **Date livraison** : 2026-05-12
