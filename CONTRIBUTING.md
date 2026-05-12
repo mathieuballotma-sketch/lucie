@@ -1,23 +1,37 @@
 # Contributing
 
-This repository is a public showcase of the Lucie project. The core
-implementation is kept in private repositories under a proprietary licence.
+Beaume est développée en solo par Mathieu Bellot. Le rythme de
+sprint est court et le code change vite : les contributions externes
+sont **volontairement limitées** pendant la phase pilote (2026).
 
-## Reporting issues
+## Signaler un problème
 
-If you notice a factual error in the documentation, annconsistency in the
-public example (`examples/truth_rule_proof.py`), or a broken link, please
-open an issue on GitHub.
+- Erreur factuelle dans le README, dans la documentation ou dans
+  `examples/truth_rule_proof.py` → ouvrir une issue GitHub.
+- Lien cassé, citation incorrecte d'un article du Code du travail
+  dans une démo publique → ouvrir une issue GitHub.
+- Bug fonctionnel sur l'app → décrire le contexte (modèle, OS,
+  question posée). Pas de capture de dossier client réel — Beaume
+  est pensée pour rester locale.
 
-## Private contributions
+## Pull requests
 
-For serious collaborators (investors, potential pilot lawyers, mentors),
-access to specific private modules can be granted under NDA.
+Les PR sur le code sont possibles mais filtrées : un solo founder
+ne peut pas absorber des refactos non sollicités sans casser sa
+trajectoire produit. Avant d'investir du temps sur une PR
+non triviale, ouvrir d'abord une issue pour discuter de l'approche.
 
-Contact: mathieu.ballotma@gmail.com
+## Pilote avocat / partenariats
+
+Pour les avocats français intéressés par le pilote, les mentors,
+ou les collaborateurs sérieux : contact direct par email avec
+contexte (cabinet, contentieux, besoin précis).
+
+Contact : mathieu.ballotma@gmail.com
 
 ## Code of conduct
 
-Respect, precision, and the truth rule. If you contribute anything that
-misrepresents the state of Lucie, it will be reverted and the contribution
-withdrawn.
+Respect, précision, et truth rule. Toute contribution qui
+représente faussement l'état réel de Beaume sera refusée. Pas
+d'embellissement, pas de chiffres marketing — on dit ce qu'on
+mesure.

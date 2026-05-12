@@ -8,8 +8,9 @@ version = "0.5.0"
 description = "Local-first AI assistant for lawyers. 100% on-device. Truth rule absolute."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{name = "Mathieu Ballotma", email = "mathieu.ballotma@gmail.com"}]
-license = {text = "Proprietary"}
+authors = [{name = "Mathieu Bellot", email = "mathieu.ballotma@gmail.com"}]
+license = {text = "BUSL-1.1"}
+license-files = ["LICENSE"]
 keywords = ["ai", "local-first", "legal-tech", "macos", "truth-rule", "eu-ai-act"]
 classifiers = [
     "Development Status :: 4 - Beta",

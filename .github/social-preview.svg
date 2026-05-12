@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GitHub social preview — 1280x640.
+  Upload via Settings -> Social preview (Mathieu, action manuelle).
+  Source SVG kept for re-export if branding changes.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="Beaume — local AI assistant for French lawyers">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f1d33"/>
+      <stop offset="100%" stop-color="#1a365d"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- Three-brain marks, subtle, top-left -->
+  <g transform="translate(80,80)" fill="#b8860b" opacity="0.55">
+    <circle cx="0" cy="0" r="8"/>
+    <circle cx="32" cy="0" r="8"/>
+    <circle cx="64" cy="0" r="8"/>
+  </g>
+
+  <!-- Name -->
+  <text x="640" y="312" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="140" font-weight="400" fill="#f5f1e8"
+        letter-spacing="8">
+    Beaume
+  </text>
+
+  <!-- Single-line tagline -->
+  <text x="640" y="392" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif"
+        font-size="26" font-weight="300" fill="#c8d3e4"
+        letter-spacing="4">
+    Assistant juridique 100 % local · droit social français
+  </text>
+
+  <!-- Bottom band -->
+  <rect x="0" y="540" width="1280" height="1" fill="#b8860b" opacity="0.4"/>
+
+  <text x="640" y="585" text-anchor="middle"
+        font-family="Georgia, serif"
+        font-size="16" font-style="italic" fill="#b8860b"
+        letter-spacing="2">
+    Swiss-watch grade · BSL 1.1 · github.com/mathieuballotma-sketch/lucie
+  </text>
+</svg>

@@ -1,379 +1,262 @@
-<div align="center">
+<p align="center">
+  <img src="assets/beaume-banner.svg" alt="Beaume — local AI for French lawyers — Swiss-watch grade" width="100%"/>
+</p>
 
-# 🧠 Beaume
-
-**L'IA locale qui respecte vos données.**
-
-Assistant multi-agents pour macOS — conçu pour les experts-comptables et professions réglementées.
-
-[![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)](https://github.com/mathieuballotma-sketch/Agent-Lucie/releases)
-[![Tests](https://img.shields.io/badge/tests-512_passed-brightgreen?style=flat-square)]()
-[![Python](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![macOS](https://img.shields.io/badge/macOS-Apple_Silicon-black?style=flat-square&logo=apple)](https://apple.com)
-[![License](https://img.shields.io/badge/license-BSL_1.1-orange?style=flat-square)](LICENSE)
-
-<br/>
-
-[Pourquoi Beaume ?](#-pourquoi-beaume) · [Architecture](#-architecture) · [Installation](#-installation) · [Fonctionnalités](#-fonctionnalités) · [Sécurité](#-sécurité) · [Roadmap](#-roadmap)
-
-</div>
+<p align="center">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-BSL_1.1-1a365d?style=flat-square"/></a>
+  <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-lightgrey?style=flat-square&logo=apple"/>
+  <img alt="LLM" src="https://img.shields.io/badge/LLM-Gemma_4_e4b-1a365d?style=flat-square"/>
+  <a href="https://python.org"><img alt="Python" src="https://img.shields.io/badge/python-3.11+-green?style=flat-square&logo=python&logoColor=white"/></a>
+  <img alt="100% local" src="https://img.shields.io/badge/100%25-local-success?style=flat-square"/>
+  <a href="bench/results/2026-05-12_battery_16q_post_p2a.md"><img alt="Battery 16q" src="https://img.shields.io/badge/battery_16q-62.5%25-b8860b?style=flat-square"/></a>
+</p>
 
 ---
 
-## 🔥 Pourquoi Beaume ?
+## Mission
 
-Chaque assistant IA envoie vos données sur un serveur que vous ne contrôlez pas.
-Pour un expert-comptable, un avocat ou un médecin, c'est un problème réglementaire. Pour tout le monde, c'est un problème de confiance.
-
-Beaume est différente :
-
-🔒 **100% local** — vos données ne quittent jamais votre Mac. Zéro cloud, zéro API externe.
-
-🧠 **30 agents spécialisés** — comptabilité, sécurité, planning, mail, code, crypto, recherche web, et plus.
-
-📊 **Export FEC conforme DGFiP** — traitement de factures, catégorisation, rapprochement bancaire automatisé.
-
-⚡ **Fonctionne avec Ollama** — 7 modèles locaux, chacun optimisé pour sa tâche. Aucun abonnement requis.
-
-🛡️ **Local-first par design** — vos données ne quittent jamais votre machine. Chiffrement AES-256 au repos, sandbox macOS natif, filtrage de données sensibles.
+Beaume est un assistant juridique 100 % local pour avocats français.
+Tout reste sur le Mac de l'avocat — pas de cloud, pas de logs sortants,
+pas de fuite. Architecture en trois cerveaux complémentaires
+(déterministe rapide + LLM créatif + multi-agents distribués) sur une
+seule machine, conçue pour la qualité montre suisse en droit social.
 
 ---
 
-## 📸 Démo
+## Sommaire
 
-> *Capture d'écran / GIF à venir — le HUD natif macOS est en cours de polish.*
+- [Aperçu](#aperçu)
+- [Statut transparent](#statut-transparent)
+- [Pourquoi 100 % local](#pourquoi-100--local)
+- [Comment ça marche](#comment-ça-marche)
+- [Métriques vérifiables](#métriques-vérifiables)
+- [Installation](#installation)
+- [Roadmap publique](#roadmap-publique)
+- [Statut du projet](#statut-du-projet)
+- [License & Open Source Status](#license--open-source-status)
+- [Liens](#liens)
 
 ---
 
-## 🏗 Architecture
+## Aperçu
 
+<p align="center">
+  <img src="assets/lucie-hud-1.png" alt="HUD Beaume répondant à une question de licenciement économique" width="80%"/>
+</p>
+
+*Le HUD natif Beaume répond à une question de licenciement
+économique avec citations Légifrance cliquables.*
+
+<p align="center">
+  <img src="assets/lucie-hud-2.png" alt="HUD Beaume — citation Légifrance vérifiée par le Vérificateur déterministe" width="80%"/>
+</p>
+
+*Chaque citation est vérifiée déterministiquement contre la base
+locale Légifrance avant d'apparaître à l'utilisateur — truth rule.*
+
+<p align="center">
+  <img src="assets/lucie-hud-3.png" alt="HUD Beaume — verdict structuré avec badge verifier_score" width="80%"/>
+</p>
+
+*Le badge `verifier_score` indique le taux de citations validées.
+Vert ≥ 90 %, ambre 70-89 %, rouge < 70 %.*
+
+---
+
+## Statut transparent
+
+| Champ | Valeur |
+|-------|--------|
+| Version actuelle | `v1.0` alpha (commit [`f393f53`](https://github.com/mathieuballotma-sketch/lucie/commit/f393f53) et au-delà) |
+| Fiabilité batterie 16q multi-angles | **62,5 %** ([preuve](bench/results/2026-05-12_battery_16q_post_p2a.md)) |
+| Fiabilité batterie 50q cœur lic éco | **en recalibrage** ([statut](bench/results/2026-05-12_battery_50q_post_p2a.md)) |
+| Architecture trois cerveaux | Oiseaux ✓ · Humain ✓ · Pieuvre en cours (Sprint 9-10) |
+| Prochain milestone | Sprint 7 — lecture dossier client PDF/docx |
+| Financement | Bootstrap solo, fonds propres, zéro VC |
+| Candidature | Y Combinator Summer 2026 |
+| Auteur | Mathieu Bellot, 18 ans |
+
+**Beaume n'est pas production-ready.** Le pilote avocat
+(semaine 12-18 mai 2026) sert exactement à mesurer cet écart en
+conditions réelles.
+
+---
+
+## Pourquoi 100 % local
+
+Un avocat ne peut pas faire transiter un dossier client par un LLM
+cloud sans entrer en conflit avec :
+
+- **Le secret professionnel** (art. 226-13 du Code pénal, art. 66-5
+  de la loi de 1971)
+- **Le RGPD** — minimisation, finalité, transferts hors UE pour les
+  modèles US
+- **L'audit interne** des cabinets et des compagnies d'assurance
+  professionnelle
+- **Le fonctionnement offline** (audience, train, déplacement client)
+
+Beaume tourne entièrement sur le Mac de l'avocat. Aucun appel sortant
+en runtime hors `127.0.0.1:11434` (Ollama local). Aucune télémétrie.
+La KB Légifrance est générée localement à partir des archives DILA
+publiques.
+
+Détail des surfaces d'attaque et mitigations :
+[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
+
+---
+
+## Comment ça marche
+
+```mermaid
+flowchart TB
+    Q[Question avocat<br/>HUD natif macOS] --> EB[Event Bus interne]
+
+    EB --> O[Cerveau Oiseaux<br/>routeur déterministe]
+    EB --> P[Cerveau Pieuvre<br/>multi-agents en cours]
+    EB --> H[Cerveau Humain<br/>LLM Gemma 4 e4b local]
+
+    O --> R[Retriever KB Légifrance<br/>SQLite FTS5 local]
+    H --> R
+
+    R --> V[Vérificateur déterministe<br/>truth rule]
+    P --> V
+
+    V --> RP[Réponse + verifier_score<br/>+ citations cliquables<br/>+ audit PAF exportable]
 ```
-                        ┌─────────────────────┐
-                        │     Utilisateur      │
-                        └──────────┬──────────┘
-                                   │
-                        ┌──────────▼──────────┐
-                        │    HUD (AppKit)      │
-                        │  Interface native    │
-                        └──────────┬──────────┘
-                                   │
-              ┌────────────────────▼────────────────────┐
-              │            FrontalCortex                 │
-              │                                          │
-              │  QuantumRouter ─── Classifier             │
-              │  Thalamus ─────── EventBus               │
-              │  ContextWave ──── MemoryGraph             │
-              └──────────┬───────────────────┬───────────┘
-                         │                   │
-            ┌────────────▼──┐          ┌─────▼────────────┐
-            │  30 Agents    │          │  Security Layer   │
-            │               │          │                   │
-            │ Accounting    │          │ Sandbox Manager   │
-            │ SmartMail     │          │ Encryption (AES)  │
-            │ Calendar      │          │ Memory Protection │
-            │ CryptoInvest  │          │ Exfiltration Det. │
-            │ CodeDebug     │          │ Integrity Monitor │
-            │ ...           │          │ Threat Intel      │
-            └───────┬───────┘          └──────────────────┘
-                    │
-         ┌──────────▼──────────┐
-         │  Ollama · FAISS ·   │
-         │  SQLite · Whisper   │
-         │  (tout local)       │
-         └─────────────────────┘
-```
 
-### Les 30 agents
+Les composants sont cliquables vers le code dans
+[`docs/architecture.md`](docs/architecture.md) — chaque box du
+diagramme pointe vers son implémentation Python.
 
-| Catégorie | Agents | Description |
-|-----------|--------|-------------|
-| **Productivité** | SmartMail, Calendar, Reminder, File, Document, Workspace | Intégration native macOS — Mail, Calendrier, Rappels, Finder |
-| **Comptabilité** | Accounting, FEC Export | Extraction factures, catégorisation, export FEC conforme DGFiP |
-| **Intelligence** | Knowledge, Safari Research, Creator, Planner, Strategist | Recherche sémantique FAISS, recherche web, création de contenu |
-| **Développement** | CodeDebug, Fixer, Analyzer | Diagnostic d'erreurs, correction automatique, analyse de logs |
-| **Finance** | CryptoInvestor, MiningMonitor, RiskGuard, TaxReporter | Suivi crypto, analyse de risque, reporting fiscal |
-| **Sécurité** | Cyber, Deception, Watch | Monitoring temps réel, honeypots, surveillance |
-| **Système** | ComputerControl, Wake, Apple Ecosystem, Clipboard, Notification | Contrôle macOS via Accessibility, commande vocale, notifications |
-| **Meta** | Healer, Profile, Feedback, Soul, TeamLeader, Consolidator | Auto-réparation, profil utilisateur, coordination inter-agents |
+Trois cerveaux complémentaires :
+
+- **Cerveau Oiseaux** — routeur déterministe, latence < 50 ms, zéro
+  appel LLM. Rejette en amont les questions hors périmètre et les
+  références d'article invalides.
+- **Cerveau Humain** — LLM local Gemma 4 e4b qui formule la réponse à
+  partir de matériel déjà validé.
+- **Cerveau Pieuvre** — orchestration multi-agents pour requêtes
+  composites (en cours, livraison Sprint 9-10).
+
+Le **Vérificateur** rejette toute citation qui n'est pas dans
+l'index Légifrance local. C'est la truth rule architecturale :
+on préfère refuser que halluciner.
 
 ---
 
-## 🚀 Installation
+## Métriques vérifiables
 
-### Prérequis
+Toutes les métriques affichées dans ce README sont reproductibles.
 
-- macOS avec Apple Silicon (M1/M2/M3/M4)
-- Python 3.11+
-- [Ollama](https://ollama.com) installé
+- **Mapping claim → preuve → commande** :
+  [`docs/EVIDENCE.md`](docs/EVIDENCE.md)
+- **Recette de reproduction depuis un clone neuf** :
+  [`docs/REPRODUCE.md`](docs/REPRODUCE.md)
+- **Résultats batterie historiques** :
+  [`bench/results/`](bench/results/)
+- **Historique des sprints (résumé public)** :
+  [`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md)
+- **Issues connues** : [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md)
 
-### Démarrage rapide
+Discipline : si une affirmation de ce README n'a pas de ligne dans
+`docs/EVIDENCE.md`, elle est retirée. Pas d'affirmation sans preuve.
+
+---
+
+## Installation
+
+**Prérequis** : macOS Apple Silicon (M1 / M2 / M3 / M4), Python 3.11+,
+[Ollama](https://ollama.com).
 
 ```bash
-# 1. Installer Ollama et tirer un modèle
 brew install ollama
-ollama pull qwen2.5:3b
-
-# 2. Cloner et installer
-git clone https://github.com/mathieuballotma-sketch/Agent-Lucie.git
-cd Agent-Lucie
+ollama pull gemma2:9b
+git clone https://github.com/mathieuballotma-sketch/lucie.git beaume
+cd beaume
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-
-# 3. Lancer Beaume
 PYTHONPATH=. python3 main_hud.py
 ```
 
-> Beaume crée son stockage local dans `~/.lucie/` au premier lancement (chemin runtime préservé pour compat). Aucune configuration requise.
+Recette complète de reproduction (KB Légifrance, batteries, tests) :
+[`docs/REPRODUCE.md`](docs/REPRODUCE.md).
 
-### Configuration matérielle
+Un build `.dmg` signé Developer ID est en cours de préparation.
 
-| Config | RAM | Expérience |
-|--------|-----|------------|
-| Minimum | 8 Go | Agents de base, 2-3 modèles actifs |
-| Recommandé | 16 Go | Multi-agents complet |
-| Optimal | 24 Go+ | 7 modèles simultanés, tous les agents |
-
----
-
-## ⚡ Performance
-
-Beaume v1 optimise la latence des réponses juridiques via plusieurs leviers activables par variables d'environnement.
-
-### Variables d'environnement
-
-> **Sprint 1ter (2026-05-08)** : les variables d'env sont préfixées `BEAUME_*`.
-> Les anciennes `LUCIE_*` restent acceptées en alias deprecated (un `DeprecationWarning`
-> et un log WARNING sont émis au premier usage). Migration recommandée — pas de
-> breaking change pour les configs existantes.
-
-| Flag | Défaut | Effet |
-|------|--------|-------|
-| `BEAUME_STREAM` | `1` | Streaming des tokens Ollama → HUD en temps réel (premier token <3s) |
-| `BEAUME_PROFILE` | `0` | Active le profilage par étape (logs `lucie.profiling`) |
-| `BEAUME_OLLAMA_KEEP_ALIVE` | `24h` | Durée avant déchargement du modèle Ollama (évite le reload ~2-3s entre calls) |
-| `BEAUME_SPEED_MODEL` | `gemma4:e4b` | Modèle « rapide » utilisé pour les niveaux 1 et 2 |
-
-### `OLLAMA_KEEP_ALIVE=24h` (défaut)
-
-Par défaut, Ollama décharge chaque modèle ~5 minutes après le dernier appel. Sur un pipeline multi-LLM comme Beaume, ce comportement provoque un reload de ~2-3s par appel (soit ~6-9s cumulés sur un niveau 3).
-
-Beaume force `keep_alive=24h` sur chaque requête `/api/generate` pour garder le modèle en RAM toute la journée.
-
-**Impact mémoire** : `gemma4:e4b` mobilise ~4-5 Go de RAM en continu. Recommandé : M-series 16 Go+. Si RAM limitée, abaisser le flag :
-
-```bash
-# Décharger le modèle après 5 minutes d'inactivité
-export BEAUME_OLLAMA_KEEP_ALIVE=5m
-
-# Décharger immédiatement après chaque call (comportement historique)
-export BEAUME_OLLAMA_KEEP_ALIVE=0s
-```
-
-Valeur passée telle quelle à Ollama — supporte tous les formats documentés (`30m`, `2h`, `-1` pour persistant illimité).
+> Note historique : l'URL du dépôt est `mathieuballotma-sketch/lucie`
+> (le produit s'appelait Lucie avant le pivot droit social du 2 mai
+> 2026). Le rebrand côté code est complet ; seul le slug GitHub reste,
+> pour préserver l'historique des commits.
 
 ---
 
-## ✨ Fonctionnalités
+## Roadmap publique
 
-| Fonctionnalité | Statut | Description |
-|----------------|--------|-------------|
-| **AccountingAgent + FEC** | ✅ | Traitement de factures en lot, export FEC conforme DGFiP |
-| **SmartMailAgent** | ✅ | Classification intelligente des mails (4 niveaux d'urgence) via LLM |
-| **QuantumRouter** | ✅ | Routage adaptatif avec fusion et superposition quantique |
-| **CryptoInvestorAgent** | ✅ | Suivi de portefeuille crypto, analyse de risque, reporting fiscal |
-| **Sandboxing agents** | ✅ | Sous-processus isolés via `sandbox-exec` macOS + IPC chiffré AES-256-GCM |
-| **Chiffrement au repos** | ✅ | AES-256 pour toutes les données persistées |
-| **Commande vocale** | ✅ | Wake word local ("Hey Jarvis") + Whisper |
-| **RAG local** | ✅ | FAISS + embeddings Ollama, 100% offline |
-| **EventBus authentifié** | ✅ | Communication inter-agents sécurisée |
-| **CircuitBreaker** | ✅ | Résilience automatique avec fallback gracieux |
-| **Contrôle macOS natif** | ✅ | Clic, frappe, lecture d'UI via Accessibility APIs |
-| **Export FacturX** | 🚧 | Factures électroniques au format FacturX |
-| **LegalResearchAgent** | ✅ | Base juridique Légifrance live, sync auto 48h ([détails](#-base-juridique-légifrance)) |
-| **Installeur .dmg** | 🚧 | Distribution native macOS |
+| Étape | Contenu | Cible |
+|-------|---------|-------|
+| Sprint 6 P2a | Retriever débridé + Vérificateur normalisé | livré 2026-05-12 |
+| Sprint 7 | Lecture dossier client PDF/docx | 2026-05 |
+| Sprint 8 | Cerveau Déterministe — logique math des lois (calcul indemnités, délais, plafonds) | 2026-06 |
+| Sprint 9-10 | Architecture trois cerveaux complète (Cerveau Pieuvre opérationnel) | 2026-07 |
+| Alpha élargie | Test alpha avocats français | Q3 2026 |
+| Multi-pays | Sélection langue / droit au premier lancement, KB Belgique + Suisse | Q1 2027 |
+
+D'autres modules sont en réserve interne et ne sont pas listés ici —
+c'est volontaire.
 
 ---
 
-## 📚 Base juridique Légifrance
+## Statut du projet
 
-Beaume embarque une **base Légifrance locale** alimentée par le dump officiel DILA (`echanges.dila.gouv.fr/OPENDATA/LEGI/`, Licence Ouverte Etalab). Zéro API externe, zéro clé, 100% local — cohérent avec la promesse du projet : **sources vérifiables, jamais d'hallucination.**
+- **Solo bootstrap**, fonds propres (zéro VC, zéro pré-vente)
+- Mathieu Bellot, 18 ans, candidature **Y Combinator Summer 2026**
+- Mac M4 24 Go, budget cumulé ≈ €500 sur 5 mois
+- Pas de team, pas de communication payante, pas de blog post
+  auto-promotionnel
 
-### Ce que ça couvre
-
-6 éditions juridiques mappées dans `lucie_v1_standalone/knowledge_legifrance/theme_mapping.yaml` :
-
-| Édition | Code(s) source | Filtres |
-|---------|---------------|---------|
-| Droit Social | Code du travail | L1000–L1999, R1000–R1999 |
-| Baux Commerciaux | Code de commerce | L145-*, R145-* |
-| Divorce & Famille | Code civil | 212-515-7 |
-| Sociétés | Code de commerce | L210-*, L225-*, L227-* |
-| Prud'hommes | Code du travail + CPC | R/L 1411-*, + référé |
-| Expert-Comptable | CGI | * |
-
-Ajouter une édition = éditer le YAML, relancer `legifrance_sync.py --force`. Pas de re-sync complet.
-
-### Installation (première fois, full dump ≈ 1,1 Go)
-
-```bash
-# Activer la base Légifrance (off par défaut)
-export BEAUME_LEGIFRANCE=1
-
-# Optionnel : override du répertoire (défaut : ~/Library/Application Support/Beaume/legifrance/)
-export BEAUME_LEGIFRANCE_DIR=/chemin/custom
-
-# Premier sync (full + incrémentaux depuis la publication initiale, 20-40 min)
-python scripts/legifrance_sync.py --first-run
-
-# Mode rapide dev/CI avec tarball fixture (≤10 KB, 6 articles canoniques)
-python scripts/legifrance_sync.py --first-run --sample tests/fixtures/sample.tar.gz
-
-# Status
-python scripts/legifrance_sync.py --status
-```
-
-### Sync automatique toutes les 48h (macOS)
-
-```bash
-# Installer l'agent launchd (écrit ~/Library/LaunchAgents/com.beaume.legifrance.sync.plist)
-bash scripts/install_launchd.sh
-
-# Vérifier
-launchctl list | grep com.beaume.legifrance
-
-# Désinstaller
-bash scripts/uninstall_launchd.sh
-
-# Migration depuis un ancien job com.lucie.legifrance.sync (Sprint 1ter, à lancer une fois) :
-bash scripts/migrate_launchd_lucie_to_beaume.sh
-```
-
-L'agent `launchd` réveille `legifrance_sync.py --incremental` toutes les 172 800 s (48 h). `RunAtLoad=false` pour ne jamais bloquer le démarrage. Logs : `~/Library/Logs/Beaume/legifrance_sync.{out,err}.log`.
-
-### Audit & traçabilité
-
-Chaque sync écrit une entrée `legifrance_sync` signée HMAC-SHA256 dans l'`AuditTrail` (`~/.lucie/audit.db`) : liste des archives appliquées, SHA256 de la DB finale, diff human-readable (articles ajoutés / modifiés / abrogés, max 50 lignes).
-
-### Coût disque
-
-| Élément | Taille typique |
-|---------|----------------|
-| DB SQLite (`legi.sqlite`) | ~3 Go (full LEGI) |
-| Tarballs (conservés 7 jours) | ~50 Mo / semaine incrémental |
-| Total steady-state | ~3,1 Go |
-
-### Rollback
-
-```bash
-# Dry-run
-bash scripts/legifrance_rollback.sh --dry-run
-
-# Exécution (retire DB, tarballs, agent launchd)
-bash scripts/legifrance_rollback.sh --yes
-```
-
-En cas de rollback, Beaume retombe automatiquement sur la base curatée `knowledge/droit_social/licenciement_economique/` (feature flag OFF). Zéro régression pipeline.
+Pour les avocats partenaires intéressés par le pilote, mentors,
+investisseurs : [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
 
 ---
 
-## 🛡 Sécurité
+## License & Open Source Status
 
-### Le vrai argument sécurité : local-first
+Beaume est **source-available** sous
+[Business Source License 1.1](LICENSE) — la même licence que
+MariaDB, Sentry et CockroachDB.
 
-La garantie principale de Beaume est architecturale : **vos données ne quittent jamais votre machine.** Aucun cloud, aucune API externe, aucune possibilité d'exfiltration vers des serveurs tiers. Pour un professionnel réglementé, c'est la seule garantie qui vaille vraiment.
+L'architecture, les tests et le pipeline cœur sont publics. Certains
+composants restent propriétaires : prompts de domaine tunés finement,
+règles déterministes spécifiques, et données diagnostic de batterie
+détaillées. Licence commerciale disponible pour usage production.
 
-### Ce qui est sécurisé au niveau système
+**Change date** : 2030-04-17 → bascule automatique en Apache 2.0
+sans intervention requise.
 
-| Module | Code | Ce que ça fait réellement |
-|--------|------|--------------------------|
-| **Agent Sandboxing** | SEC-01 | `sandbox-exec` macOS — chaque agent tourne dans un sous-processus isolé avec profil `.sb` restrictif (filesystem, réseau, syscalls limités). IPC via socket Unix + AES-256-GCM. |
-| **Chiffrement au repos** | SEC-02 | AES-256 via `cryptography` (backed by OpenSSL/C) — toutes les données de `~/.lucie/` sont chiffrées au repos. |
-| **Protection mémoire clés** | SEC-03 | Clés cryptographiques dans des buffers `ctypes` verrouillés en RAM via `mlock` (prévient le swap sur disque). Secrets scannés et redactés avant tout traitement LLM. |
-| **Intégrité des agents** | SEC-04 | Hachage SHA-256 des fichiers agents au démarrage — détecte toute modification non autorisée. |
-
-### Garde-fous applicatifs (Python, pas OS-level)
-
-Ces modules apportent une valeur réelle, mais sont implémentés en Python : un attaquant avec accès système peut les contourner. Ce sont des **garde-fous applicatifs**, pas des protections système :
-
-| Module | Code | Ce que ça fait |
-|--------|------|----------------|
-| **Security Response** | SEC-05 | Réponse automatisée aux événements internes — termine les agents anormaux, publie des alertes via EventBus. |
-| **Content Filter** | SEC-06 | Heuristiques réseau (psutil) sur les connexions sortantes + filtrage regex de données sensibles (NIR, IBAN, CB, clés API). Alerte — ne bloque pas au niveau OS. |
-
-> **Sur `sandbox-exec`** : utilisé par Beaume pour l'isolation inter-processus, `sandbox-exec` est officiellement déprécié depuis macOS 13 mais continue de fonctionner. Il sera remplacé par le vrai **macOS App Sandbox** lors de la distribution en `.dmg` — c'est là que résidera l'isolation système certifiée Apple.
-
-**Pipeline de sanitisation** : chaque entrée (mail, document, prompt) passe par `TextSanitizer` (HTML, base64, unicode) puis `PromptInjectionDetector` (scoring + analyse LLM). Verdicts : `SAFE`, `SUSPICIOUS`, `MALICIOUS`.
-
-**Audit** : toutes les actions suspectes sont logées dans SQLite (`~/.lucie/sandbox_memory.db`), consultable pour audit.
+Doctrine de séparation public / réserve compétitive :
+[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) et
+[`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md).
 
 ---
 
-## 🔧 Stack technique
+## Liens
 
-| Composant | Technologie |
-|-----------|-------------|
-| Langage | Python 3.11+ |
-| LLM | Ollama (7 modèles locaux) |
-| Embeddings | FAISS + Ollama embeddings |
-| Interface | PyObjC / AppKit (HUD natif macOS) |
-| Validation | Pydantic |
-| Async | asyncio |
-| Chiffrement | `cryptography` (AES-256, Fernet) |
-| Audio | faster-whisper (STT local) |
-| Base de données | SQLite |
-| Recherche web | DuckDuckGo (via duckduckgo_search) |
+- [`PRINCIPLES.md`](PRINCIPLES.md) — six principes Beaume
+- [`docs/architecture.md`](docs/architecture.md) — architecture
+  détaillée avec liens code
+- [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — table claim → preuve
+- [`docs/REPRODUCE.md`](docs/REPRODUCE.md) — recette reproduction
+- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — modèle de menace
+- [`CHANGELOG.md`](CHANGELOG.md) — historique des versions
+- [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) — bugs connus
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — comment contribuer
+  (volontairement limité)
+- [`SECURITY.md`](SECURITY.md) — signaler une vulnérabilité
 
-**Patterns d'architecture** : EventBus authentifié, CircuitBreaker, AuditTrail, Saga, Resilience Policy, QuantumRouter (routage adaptatif multi-critères).
-
----
-
-## 🧪 Validation
-
-```bash
-# Tests
-PYTHONPATH=. python -m pytest tests/ -x -q          # 642 passed
-
-# Analyse statique
-ruff check app/ --fix                                # 0 errors
-python -m mypy app/ --ignore-missing-imports         # strict mode
-```
+Site : [lucie-site.vercel.app](https://lucie-site.vercel.app)
+(sera renommé après pilote).
 
 ---
 
-## 🗺 Roadmap
-
-- [x] 30 agents opérationnels (productivité, comptabilité, finance, sécurité, système)
-- [x] Architecture multi-modèles (7 modèles spécialisés Ollama)
-- [x] AccountingAgent + export FEC conforme DGFiP
-- [x] QuantumRouter v2 avec fusion et superposition
-- [x] 6 modules de sécurité (SEC-01 à SEC-06)
-- [x] 642 tests, ruff clean, mypy strict
-- [ ] LegalResearchAgent — intégration Légifrance
-- [ ] Installeur .dmg natif macOS
-- [ ] Vidéo de démonstration
-- [ ] Mode multi-utilisateurs (cabinet comptable)
-- [ ] Plugin Notion / Obsidian
-
----
-
-## 📄 Licence
-
-[Business Source License 1.1](LICENSE) — usage personnel et recherche autorisés. Usage commercial sur accord.
-
----
-
-## 👤 Contact
-
-**Mathieu Bellot** — développeur, 18 ans, France.
-
-> *« J'ai créé Beaume parce que l'IA devrait tourner là où vivent vos données — sur votre machine. »*
-
----
-
-<div align="center">
-
-⭐ **Star ce repo si vous croyez en l'IA locale.**
-
-*Beaume v0.2.0-beta — données 100% locales, chiffrées, souveraines.*
-
-</div>
+<sub>Mathieu Bellot · solo bootstrap · mai 2026 · BSL 1.1</sub>
