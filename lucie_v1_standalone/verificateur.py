@@ -85,7 +85,15 @@ def _build_source_ids(sources_json: str) -> Dict[str, str]:
                 key = _canonicalize(sid) if _NORMALISE else sid.upper()
                 result[key] = s.get("extrait", "")
         return result
-    except Exception:
+    except json.JSONDecodeError as exc:
+        # Audit 2026-05-12 P0 #1 : avant ce log, un sources_json malformé
+        # produisait silencieusement source_ids={}, rendant TOUTES les citations
+        # INVALIDES sans trace. Retour {} reste pour ne pas casser la pipeline,
+        # mais l'erreur est désormais tracée pour diagnostic.
+        logger.error(
+            "Vérificateur : sources_json malformé, source_ids vide (%s)",
+            exc,
+        )
         return {}
 
 
