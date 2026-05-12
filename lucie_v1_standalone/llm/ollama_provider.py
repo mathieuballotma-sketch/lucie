@@ -100,7 +100,17 @@ class OllamaProvider:
                 resp.raise_for_status()
                 data = resp.json()
                 return [m["name"] for m in data.get("models", [])]
-        except Exception:
+        except (httpx.HTTPError, ValueError) as exc:
+            # Audit 2026-05-12 P0 #3 : avant ce log, timeout/404/JSON cassé
+            # se présentait comme "0 modèle installé" — diagnostic impossible.
+            # On garde [] (contrat de retour) mais on trace l'erreur pour
+            # distinguer "vraiment 0 modèle" de "Ollama injoignable".
+            logger.error(
+                "Ollama available_models : récupération impossible (%s) — la liste"
+                " sera vide, vérifier qu'Ollama tourne sur %s",
+                exc,
+                self._base_url,
+            )
             return []
 
     def load_model(self, name: str) -> None:
@@ -111,8 +121,15 @@ class OllamaProvider:
                     f"{self._base_url}/api/generate",
                     json={"model": name, "prompt": "", "stream": False, "keep_alive": "10m"},
                 )
-        except Exception:
-            pass
+        except (httpx.HTTPError, OSError) as exc:
+            # Pré-warm best-effort : un échec ici n'est pas fatal (le premier
+            # appel réel paiera la latence de chargement). Mais on trace pour
+            # ne pas confondre "Ollama down" et "premier appel lent".
+            logger.warning(
+                "Ollama load_model('%s') a échoué (best-effort, pré-warm ignoré) : %s",
+                name,
+                exc,
+            )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -145,8 +162,8 @@ class OllamaProvider:
             raise RuntimeError(
                 f"Ollama HTTP {e.response.status_code}: {e.response.text[:200]}"
             )
-        except Exception as e:
-            raise RuntimeError(f"Ollama erreur: {e}")
+        except Exception as e:  # noqa: BLE001 — re-raised wrapped; preserves __cause__ for caller
+            raise RuntimeError(f"Ollama erreur: {e}") from e
 
     def _stream(self, payload: dict) -> Iterator[str]:
         with httpx.Client(timeout=_build_timeout(self._timeout)) as client:

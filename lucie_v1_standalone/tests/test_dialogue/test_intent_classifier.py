@@ -167,3 +167,106 @@ def test_phrase_longue_sans_mot_juridique() -> None:
 def test_peux_tu_me_dire_bonjour_reste_small_talk() -> None:
     """Forme polie sans mot-clé juridique → SMALL_TALK (non, on n'attrape pas peux-tu)."""
     assert classify("Peux-tu me dire bonjour ?") == Intent.SMALL_TALK
+
+
+# ── Sprint 6 P2b — B-5 enrichissement mots_cles + B-2 fuzzy fallback ─────────
+
+def test_p2b_b5_csp_detected_via_enriched_keywords(monkeypatch) -> None:
+    """B-5 : 'CSP' / 'contrat de sécurisation' doivent matcher droit_social
+    en exact substring (keywords ajoutés en Sprint 6 P2b)."""
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "0")  # isole l'exact match
+    clear_theme_cache()
+    scored = detect_themes_with_scores(
+        "Qu'est-ce que le contrat de sécurisation professionnelle (CSP) ?"
+    )
+    assert scored, "droit_social devait être détecté via les nouveaux keywords CSP"
+    top_theme = scored[0][0]
+    assert top_theme == "droit_social", (
+        f"top thème attendu droit_social, obtenu {top_theme} (full: {scored})"
+    )
+
+
+def test_p2b_b2_fuzzy_fallback_only_when_exact_empty(monkeypatch) -> None:
+    """B-2 : fuzzy ne se déclenche QUE si exact substring retourne []."""
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "1")
+    clear_theme_cache()
+    # « lcenciement » : typo → 0 exact match → fuzzy doit rattraper
+    scored = detect_themes_with_scores("Quelle est la procédure de lcenciement ?")
+    assert scored, "fuzzy fallback devait rattraper la typo 'lcenciement'"
+    assert any(t == "droit_social" for t, _ in scored)
+
+
+def test_p2b_b2_fuzzy_flag_off_disables_fallback(monkeypatch) -> None:
+    """B-2 : `BEAUME_FUZZY_LEGAL_BOOST=0` désactive le fallback."""
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "0")
+    clear_theme_cache()
+    scored = detect_themes_with_scores("Quelle est la procédure de lcenciement ?")
+    assert scored == [], (
+        f"avec flag=0, fuzzy doit être OFF → scored attendu vide, obtenu {scored}"
+    )
+
+
+def test_p2b_b2_fuzzy_does_not_match_pure_smalltalk(monkeypatch) -> None:
+    """B-2 : fuzzy ne doit pas générer de faux positifs sur small-talk."""
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "1")
+    clear_theme_cache()
+    for q in ["Bonjour Beaume", "J'ai mangé une pomme ce matin"]:
+        assert detect_themes_with_scores(q) == [], (
+            f"fuzzy ne doit pas matcher pour small-talk : {q!r}"
+        )
+
+
+# ── Tests de régression — bug_id format `<batterie>-<id>` ────────────────────
+
+def test_regression_sw_leco_010_csp_thematic_detection(monkeypatch) -> None:
+    """Régression SW-LECO-010 (batterie swiss_watch_50 — cas CSP).
+
+    Avant Sprint 6 P2b : `detect_themes_with_scores` sur la query
+    « contrat de sécurisation professionnelle (CSP) » retournait
+    `[('fiscal_comptable', 1), ('societes', 1)]` (faux positifs via
+    « bénéficier » → « bénéfice », et matching substring sur mots
+    courts « sa »/« is ») et JAMAIS `droit_social`.
+
+    Conséquence pipeline : retriever filtré sur Code des Impôts /
+    Code de Commerce → 0 article CSP du Code du travail (L.1233-65 sqq)
+    → rédacteur retournait « RÉDACTION IMPOSSIBLE ».
+
+    Post-B-5 : la query DOIT retourner `droit_social` comme thème
+    top-1 grâce à l'ajout des keywords CSP-related.
+    """
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "0")  # B-5 seul
+    clear_theme_cache()
+    scored = detect_themes_with_scores(
+        "Qu'est-ce que le contrat de sécurisation professionnelle (CSP) "
+        "et qui peut en bénéficier ?"
+    )
+    assert scored, "SW-LECO-010 : detect_themes ne doit plus retourner []"
+    top_theme, top_hits = scored[0]
+    assert top_theme == "droit_social", (
+        f"SW-LECO-010 régression : top thème attendu droit_social, "
+        f"obtenu {top_theme} (full: {scored})"
+    )
+    assert top_hits >= 3, (
+        f"SW-LECO-010 : score droit_social attendu ≥3 (signal fort, "
+        f"évite debride=True de Sprint 6 P2a). Obtenu : {top_hits}"
+    )

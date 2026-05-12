@@ -45,6 +45,35 @@ themes:
       - licenciement économique
       - pse
       - plan de sauvegarde
+      # Sprint 6 P2b — enrichissement lic_eco (B-5 sol 2 keywords-only)
+      # CSP — cible SW-LECO-010 (thème droit_social non détecté en P2a)
+      - csp
+      - contrat de sécurisation professionnelle
+      - contrat de securisation professionnelle
+      - sécurisation professionnelle
+      - securisation professionnelle
+      - accompagnement licenciement
+      # Ordre des licenciements — renforce SW-LECO-004
+      - ordre des licenciements
+      - critères d'ordre
+      - criteres d'ordre
+      - charges familiales
+      - ancienneté licenciement
+      - anciennete licenciement
+      - critères de licenciement
+      # Lic collectif petit (<10 sur 30j) — renforce SW-LECO-002
+      - licenciement collectif
+      - moins de 10 salariés
+      - moins de 10 salaries
+      - 30 jours licenciement
+      - petit licenciement collectif
+      # PSE étendu — renforce SW-LECO-006
+      - seuil pse
+      - déclenchement pse
+      - declenchement pse
+      - plan sauvegarde emploi
+      - 10 salariés 30 jours
+      - 10 salaries 30 jours
 
   baux_commerciaux:
     libelle: "Baux Commerciaux"

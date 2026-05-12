@@ -29,3 +29,17 @@ jobs:
 
       - name: Ruff format check
         run: ruff format --check .
+
+      - name: Ruff blind-except check (scope = audit-2026-05-12 P0 files)
+        # Scope étroit volontaire : 33 violations BLE résiduelles existent
+        # ailleurs dans lucie_v1_standalone/ (pipeline.py, dossier_analyzer.py,
+        # tests adversariaux, vendor legi). Cette étape protège exactement les
+        # 3 fichiers audités le 2026-05-12 (verificateur, retriever,
+        # ollama_provider) pour empêcher toute régression où l'on a payé le fix.
+        # Le scope sera élargi progressivement à mesure que la dette BLE est
+        # remboursée fichier par fichier.
+        run: |
+          ruff check --select BLE \
+            lucie_v1_standalone/verificateur.py \
+            lucie_v1_standalone/retriever.py \
+            lucie_v1_standalone/llm/ollama_provider.py
