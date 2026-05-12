@@ -1,153 +1,294 @@
-# Architecture Beaume
+# Beaume Architecture
 
-Document public. High-level. Pas de détails internes sensibles
-(prompts tunés, seuils empiriques, causes racines de bugs — voir
-[`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md) pour la doctrine).
+*[Lire en français](architecture.fr.md)*
+
+Public document. High-level. No sensitive internals (tuned prompts,
+empirical thresholds, root causes — see
+[`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md) for the doctrine).
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Beaume répond à une question d'avocat en passant par trois cerveaux
-complémentaires + un vérificateur déterministe en aval.
+Beaume answers a lawyer's question via three complementary brains
+plus a deterministic verifier downstream.
 
 ```mermaid
 flowchart TB
-    Q[Question avocat<br/>HUD natif macOS] --> EB[Event Bus interne]
+    Q[Lawyer question<br/>Native macOS HUD] --> EB[Internal event bus]
 
-    EB --> O[Cerveau Oiseaux<br/>routeur déterministe<br/>+ préfiltre bornes]
-    EB --> P[Cerveau Pieuvre<br/>multi-agents<br/>en cours]
-    EB --> H[Cerveau Humain<br/>LLM Gemma 4 e4b<br/>via Ollama local]
+    EB --> O[Oiseaux Brain<br/>deterministic router<br/>+ bounds prefilter]
+    EB --> P[Pieuvre Brain<br/>multi-agent<br/>in progress]
+    EB --> H[Humain Brain<br/>LLM Gemma 4 e4b<br/>via local Ollama]
 
-    O --> R[Retriever KB Légifrance<br/>SQLite FTS5 local]
+    O --> R[Légifrance KB Retriever<br/>local SQLite FTS5]
     H --> R
 
-    R --> V[Vérificateur déterministe<br/>truth rule]
+    R --> V[Deterministic verifier<br/>truth rule]
     P --> V
 
-    V --> RP[Réponse + verifier_score<br/>+ citations cliquables<br/>+ audit PAF exportable]
+    V --> RP[Response + verifier_score<br/>+ clickable citations<br/>+ exportable PAF audit]
 ```
 
-Composants cliquables :
+Clickable components:
 
-- **HUD natif macOS** → [`app/ui/hud_native.py`](../app/ui/hud_native.py)
-- **Event Bus** → [`lucie_v1_standalone/pipeline.py`](../lucie_v1_standalone/pipeline.py)
-- **Cerveau Oiseaux (routeur)** → [`lucie_v1_standalone/dialogue/intent_classifier.py`](../lucie_v1_standalone/dialogue/intent_classifier.py)
-- **Cerveau Humain (LLM local)** → [`lucie_v1_standalone/ollama_client.py`](../lucie_v1_standalone/ollama_client.py)
-- **Retriever KB Légifrance** → [`lucie_v1_standalone/retriever.py`](../lucie_v1_standalone/retriever.py) + [`lucie_v1_standalone/knowledge_legifrance/retriever.py`](../lucie_v1_standalone/knowledge_legifrance/retriever.py)
-- **Vérificateur** → [`lucie_v1_standalone/verificateur.py`](../lucie_v1_standalone/verificateur.py)
-- **Mémoire adaptative** → [`lucie_v1_standalone/memory/`](../lucie_v1_standalone/memory/)
-
----
-
-## Les trois cerveaux
-
-### Cerveau Oiseaux — déterministe rapide
-
-Routeur d'intention + préfiltre numérique. Latence cible : < 50 ms,
-zéro appel LLM. Rejette en amont les questions hors périmètre, les
-références d'article invalides (bornes numériques) et les
-ambiguïtés `lic_eco` vs `lic_perso`.
-
-Pourquoi déterministe d'abord : c'est la garantie architecturale
-que la truth rule (principe 2 de [`PRINCIPLES.md`](../PRINCIPLES.md))
-est appliquée *avant* qu'un LLM n'ait eu l'occasion d'halluciner.
-
-### Cerveau Humain — LLM local
-
-Formule la réponse en langage naturel à partir de matériel déjà
-validé (chunks Légifrance retournés par le retriever).
-
-Modèle : Gemma 4 e4b via Ollama, `keep_alive=24h` pour éviter le
-reload entre appels. Le modèle est interchangeable (Llama, Mistral,
-Qwen) au prix d'une recalibration des seuils Vérificateur — pas
-breaking architecturalement.
-
-### Cerveau Pieuvre — multi-agents (en cours)
-
-Orchestre les requêtes composites qui nécessitent de combiner
-plusieurs sources (jurisprudence + Code + dossier client). Livraison
-Sprint 9-10 (été 2026).
-
-Tant que Pieuvre n'est pas livré, le pipeline reste sur 2 cerveaux
-opérationnels (Oiseaux + Humain). Honnêteté : on ne dit pas « 3
-cerveaux fonctionnels » avant qu'ils ne le soient.
+- **Native macOS HUD** → [`app/ui/hud_native.py`](../app/ui/hud_native.py)
+- **Event bus** → [`lucie_v1_standalone/pipeline.py`](../lucie_v1_standalone/pipeline.py)
+- **Oiseaux Brain (router)** → [`lucie_v1_standalone/dialogue/intent_classifier.py`](../lucie_v1_standalone/dialogue/intent_classifier.py)
+- **Humain Brain (local LLM)** → [`lucie_v1_standalone/ollama_client.py`](../lucie_v1_standalone/ollama_client.py)
+- **Légifrance KB Retriever** → [`lucie_v1_standalone/retriever.py`](../lucie_v1_standalone/retriever.py) + [`lucie_v1_standalone/knowledge_legifrance/retriever.py`](../lucie_v1_standalone/knowledge_legifrance/retriever.py)
+- **Verifier** → [`lucie_v1_standalone/verificateur.py`](../lucie_v1_standalone/verificateur.py)
+- **Adaptive memory** → [`lucie_v1_standalone/memory/`](../lucie_v1_standalone/memory/)
 
 ---
 
-## Vérificateur déterministe en aval
+## The three brains
 
-Trois points d'application de la truth rule :
+### Oiseaux Brain — fast deterministic
 
-1. **Refus déterministe avant LLM** — si la question est hors
-   périmètre ou si la référence d'article cité dans la question est
-   invalide, refus immédiat (Cerveau Oiseaux).
-2. **Vérification des citations post-génération** — chaque citation
-   produite par le Cerveau Humain est canonicalisée et matchée
-   contre l'index Légifrance local. Les citations dupliquées sont
-   dédoublonnées (Sprint 6 P2a). Le score `verifier_score` est
-   calculé sur les citations uniques, pas sur les occurrences
-   brutes.
-3. **Audit trail exposé à l'utilisateur** — chaque réponse expose
-   `verifier_score` (vert/ambre/rouge), les citations validées, le
-   tooltip avec verdict détaillé. Bouton « Exporter audit PAF »
-   dans le menubar.
+Intent router plus numeric prefilter. Target latency: < 50 ms, zero
+LLM call. Rejects out-of-scope questions, invalid article references
+(numeric bounds), and `lic_eco` vs `lic_perso` ambiguities upstream.
 
-Justification du seuil `verifier_score ≥ 0.70` : voir
+Why deterministic first: this is the architectural guarantee that
+the truth rule (principle 2 of [`PRINCIPLES.md`](../PRINCIPLES.md))
+is applied *before* an LLM has any chance to hallucinate.
+
+### Humain Brain — local LLM
+
+Phrases the answer in natural language from material that has
+already been validated (Légifrance chunks returned by the retriever).
+
+Model: Gemma 4 e4b via Ollama, `keep_alive=24h` to avoid reloads
+between calls. The model is interchangeable (Llama, Mistral, Qwen)
+at the cost of recalibrating the verifier thresholds — not
+architecturally breaking.
+
+### Pieuvre Brain — multi-agent (in progress)
+
+Orchestrates composite queries that require combining several
+sources (case law + Code + client file). Sprint 9–10 delivery
+(summer 2026).
+
+As long as Pieuvre is not delivered, the pipeline runs on two
+operational brains (Oiseaux + Humain). Honesty: we do not claim
+"3 functional brains" before they actually are.
+
+---
+
+## Deterministic verifier downstream
+
+Three points where the truth rule is applied:
+
+1. **Deterministic refusal before LLM** — if the question is
+   out-of-scope or if the article reference cited in the question is
+   invalid, immediate refusal (Oiseaux Brain).
+2. **Post-generation citation verification** — every citation
+   produced by the Humain Brain is canonicalized and matched
+   against the local Légifrance index. Duplicate citations are
+   deduplicated (Sprint 6 P2a). The `verifier_score` is computed
+   on unique citations, not raw occurrences.
+3. **Audit trail exposed to the user** — every answer exposes
+   `verifier_score` (green/amber/red), the validated citations,
+   the tooltip with detailed verdict. "Export PAF audit" button
+   in the menubar.
+
+Rationale for the `verifier_score ≥ 0.70` threshold: see
 [`bench/CHANGELOG.md`](../bench/CHANGELOG.md).
 
 ---
 
-## Knowledge base Légifrance
+## Légifrance knowledge base
 
-Index local SQLite avec FTS5, généré à partir des archives DILA
-publiques (`legifrance` du site officiel).
+Local SQLite index with FTS5, generated from public DILA archives
+(`legifrance` from the official site).
 
-- Taille typique : ~4,6 Go compactés
-- **Non inclus dans le repo public** : trop volumineux, ignoré
-  explicitement par [`.gitignore`](../.gitignore)
-  (`knowledge/legifrance/data/`, `tarballs/`).
-- Génération : voir [`lucie_v1_standalone/knowledge_legifrance/`](../lucie_v1_standalone/knowledge_legifrance/) (parser DILA + indexer)
+- Typical size: ~4.6 GB compacted
+- **Not included in the public repo**: too large, explicitly ignored
+  by [`.gitignore`](../.gitignore) (`knowledge/legifrance/data/`,
+  `tarballs/`).
+- Generation: see
+  [`lucie_v1_standalone/knowledge_legifrance/`](../lucie_v1_standalone/knowledge_legifrance/)
+  (DILA parser + indexer)
 
-Conséquence pratique : un utilisateur qui clone le repo public doit
-générer son propre index localement avant que Beaume soit
-opérationnelle. C'est intentionnel — la KB Légifrance n'est pas un
-secret, mais elle est dérivable publiquement par chacun.
-
----
-
-## Mémoire adaptative
-
-Stockage local par utilisateur dans
-`~/Library/Application Support/Beaume/`. La page « Ce que Beaume
-sait de vous » du HUD expose toute la mémoire et permet un reset
-complet en un clic.
-
-Composants :
-
-- [`lucie_v1_standalone/memory/personal.py`](../lucie_v1_standalone/memory/personal.py) — préférences explicites
-- [`lucie_v1_standalone/memory/abstract.py`](../lucie_v1_standalone/memory/abstract.py) — patterns d'usage
-- [`lucie_v1_standalone/memory/store.py`](../lucie_v1_standalone/memory/store.py) — persistance JSON locale
-- [`lucie_v1_standalone/memory/sanitizer.py`](../lucie_v1_standalone/memory/sanitizer.py) — détection PII avant écriture
-
-Conséquence du principe 5 ([`PRINCIPLES.md`](../PRINCIPLES.md)) :
-deux instances Beaume sur deux Mac différents divergent après quelques
-semaines d'usage. Aucune mémoire partagée cloud.
+Practical consequence: a user who clones the public repo must
+generate their own index locally before Beaume is operational.
+This is intentional — the Légifrance KB is not a secret, but it is
+publicly derivable by anyone.
 
 ---
 
-## Ce qui n'est pas dans ce document
+## Adaptive memory
 
-Les **détails d'implémentation** sensibles restent en réserve :
+Local per-user storage in
+`~/Library/Application Support/Beaume/`. The "What Beaume knows
+about you" page in the HUD exposes the entire memory and allows
+a full reset in one click.
 
-- Le tuning fin des prompts système (8 fichiers
-  `lucie_v1_standalone/prompts/*.txt` sont versionnés mais leur
-  évolution future passera par `prompts_private/`, voir
+Components:
+
+- [`lucie_v1_standalone/memory/personal.py`](../lucie_v1_standalone/memory/personal.py) — explicit preferences
+- [`lucie_v1_standalone/memory/abstract.py`](../lucie_v1_standalone/memory/abstract.py) — usage patterns
+- [`lucie_v1_standalone/memory/store.py`](../lucie_v1_standalone/memory/store.py) — local JSON persistence
+- [`lucie_v1_standalone/memory/sanitizer.py`](../lucie_v1_standalone/memory/sanitizer.py) — PII detection before writing
+
+Consequence of principle 5 ([`PRINCIPLES.md`](../PRINCIPLES.md)):
+two Beaume instances on two different Macs diverge after a few
+weeks of usage. No shared cloud memory.
+
+---
+
+## Formal Architecture Specification
+
+> *This specification describes Beaume's **target architecture as
+> of May 2026**. Some components — notably the inference engine's
+> `backward` chaining and `solve` constraint solver — are partially
+> implemented in v1 and will be completed in Sprint 8 (Deterministic
+> Brain). See [`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md) for
+> current progress.*
+
+### Scientific definition
+
+> Beaume is a **deterministic legal expert system** with a structured
+> inference pipeline, using an LLM solely as a linguistic surface
+> layer with no involvement in the decision-making process.
+
+### Pipeline — 7 stages
+
+```
+USER INPUT
+    ↓
+ORCHESTRATOR (Pieuvre)         — flow control + memory + planning
+    ↓
+INFERENCE ENGINE (Oiseaux)     — legal rules + chaining + constraints
+    ↓
+DATA ENGINE                    — statutes + case law + local base
+    ↓
+DETERMINISTIC VALIDATION       — article existence + rule coherence
+    ↓
+LLM (Humain Brain)             — drafting only, no decision-making
+    ↓
+USER RESPONSE
+```
+
+### Module decomposition (signature-only)
+
+**Orchestrator (Pieuvre)** — flow control, no legal logic:
+
+```python
+class Orchestrator:
+    def process(self, query: str) -> dict:
+        state = self.load_memory(query)
+        plan = self.plan(query, state)
+        result = self.execute_plan(plan)
+        self.save_memory(query, result)
+        return result
+```
+
+**Inference engine (Oiseaux)** — three operations:
+
+- `forward(facts)` — forward chaining: facts → activated rules → new facts → loop
+- `backward(goal)` — backward chaining: goal → rules → subgoals → facts
+- `solve(constraints)` — constraint solving: legal constraints → coherent set
+
+**Knowledge layer** — minimal v1 format:
+
+```json
+{
+  "L.1234-9": {
+    "conditions": ["seniority >= 8 months"],
+    "result": "mandatory indemnity"
+  }
+}
+```
+
+**Retrieval module** — `find_article(query) -> article | None`.
+
+**Deterministic validation** — `validate(article) -> bool`: the
+article exists, the rule set is coherent, otherwise STOP or
+fallback.
+
+**LLM (Humain Brain)** — UNIQUE role: transform structure → lawyer
+language. Zero decisions, zero invented references.
+
+### Per-query memory model
+
+```json
+{
+  "query": "...",
+  "facts": [],
+  "applied_rules": [],
+  "decisions": [],
+  "questions_missing": []
+}
+```
+
+### Formal properties
+
+1. **Global determinism** — `output(X) = constant` (conditional, see
+   refinement 1).
+2. **Strict role separation** — orchestrator = flow, inference engine
+   = logic, KB = truth, LLM = language.
+3. **Full traceability** — question → rules → facts → decision → text.
+4. **No legal hallucination** — the LLM cannot introduce new articles.
+5. **No cloud dependency** — 100% local.
+
+### What Beaume IS
+
+> A **deterministic legal expert system augmented with a linguistic
+> generation module**.
+
+### What Beaume IS NOT
+
+- Not an autonomous LLM agent
+- Not a probabilistic system
+- Not a generative decision model
+- Not a stochastic reasoning system
+
+### Refinements (validated 2026-05-12)
+
+1. **Global determinism is conditional on LLM configuration.**
+   `output(X) = constant` only holds if `temperature=0` AND a fixed
+   `seed` AND a strictly identical prompt. Otherwise two LLM runs
+   may produce two phrasings (same facts, variable syntax). Pinned
+   explicitly in the Ollama config.
+2. **The LLM can still hallucinate phrasing** — not legal content
+   (locked), but tone nuances, reformulations, invented hedging
+   ("it should be noted that..."). `validate(article)` covers legal
+   references but not free text. Mitigation: an additional
+   `linguistic_validator` layer checks that LLM output contains no
+   L./R./Cass. citation absent from the authorized fact set.
+3. **The `{conditions, result}` KB structure is simplified.** Real
+   legal reasoning has four dimensions not captured here: source
+   hierarchy (Constitution > Convention > Statute > Decree >
+   collective agreement), exceptions, interpretive case law,
+   temporal articulation (historical versions of an article).
+   Acceptable for v1 (economic dismissal), to be enriched before
+   the Sprint 8 full Deterministic Brain.
+4. **Two-level memory** — the schema above shows per-query memory.
+   The architecture also includes **long-term memory** (archived
+   lawyer corrections, added rules, user preferences) that feeds
+   the knowledge base over time. This is the permanent cognitive
+   loop of the system.
+5. **Naming consistency** — the deterministic brain is spelled
+   "Cerveau" (French for *brain*) throughout. A historical misspelling
+   in early presentations has been corrected in all current public
+   documents.
+
+---
+
+## Not in this document
+
+Sensitive **implementation details** remain in reserve:
+
+- The fine tuning of the system prompts (8
+  `lucie_v1_standalone/prompts/*.txt` files are versioned, but
+  future evolution will move through `prompts_private/`, see
   [`docs/THREAT_MODEL.md`](THREAT_MODEL.md)).
-- Les seuils empiriques calibrés par run de batterie répétés.
-- Les choix d'implémentation rejetés.
-- Les modules en stash compétitif (vocal, vidéo, OCR, multi-modal,
-  calendar/CRM, dictée procès, analyse émotion).
+- Empirical thresholds calibrated through repeated battery runs.
+- Rejected implementation choices.
+- Modules in competitive stash (voice, video, OCR, multi-modal,
+  calendar/CRM, dictation, emotion analysis).
 
-Accès sous NDA possible pour investisseurs, mentors et avocats
-partenaires : mathieu.ballotma@gmail.com.
+NDA access possible for investors, mentors, and partner lawyers:
+mathieu.ballotma@gmail.com.
