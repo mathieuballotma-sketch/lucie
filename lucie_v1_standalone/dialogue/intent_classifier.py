@@ -389,20 +389,34 @@ def _load_theme_keywords() -> tuple[tuple[str, tuple[str, ...]], ...]:
     return tuple(themes_tuple)
 
 
+# Tokens ≥5 chars : seuil empirique repris de fuzzy_legal.py (Sprint 6 P1).
+# Tokens plus courts génèrent trop de faux positifs (« est », « par », etc.).
 _FUZZY_THEME_TOKEN_RE = re.compile(r"\w{5,}", re.UNICODE)
+
+# Seuil de ratio Levenshtein. Calibré 0.85 (vs 0.80 dans fuzzy_legal.py qui
+# fait un boost binaire « est-ce juridique ? »). Le matching thème ↔ keyword
+# doit être PLUS strict parce qu'un faux positif route la query vers un
+# mauvais code Légifrance → 0 source pertinente. Validé empiriquement :
+# « lcenciement » → « licenciement » = 0.92 (PASS), « psp » trop court pour
+# tokeniser donc bloqué amont, « bénéficier » → « bénéfice » = 0.83 (rejeté,
+# évite le faux positif fiscal_comptable observé en Phase 0 du sprint).
 _FUZZY_THEME_THRESHOLD = 0.85
 
 
 def _fuzzy_theme_fallback(normalized: str) -> list[tuple[str, int]]:
     """Sprint 6 P2b (B-2 sol 2) — fallback fuzzy quand le matching substring
     exact retourne 0 thème. Rattrape les variantes lexicales / fautes du type
-    « csp » → « csp » (déjà OK avec B-5), « psp » → « pse »,
-    « lcenciement » → « licenciement ».
+    « lcenciement » → « licenciement », « preavi » → « préavis ».
 
     Pour chaque token ≥5 chars de la query normalisée, compare à chaque
-    keyword ≥5 chars du theme_mapping via SequenceMatcher.ratio() ≥ 0.85
-    (même seuil/filtre que fuzzy_legal.py). Filtre anti-faux-positif :
-    même lettre initiale. Un hit max par token (évite la sur-pondération).
+    keyword ≥5 chars du theme_mapping via SequenceMatcher.ratio() ≥
+    `_FUZZY_THEME_THRESHOLD`. Filtre anti-faux-positif : même lettre initiale.
+    Un hit max par token (évite la sur-pondération sur tokens polysémiques).
+
+    Perf mesurée (règle Beaume #9 ≤100 ms) :
+      - worst case (137 chars, ~13 tokens) : ~0.93 ms / appel
+      - realistic  (34 chars,   ~3 tokens) : ~0.14 ms / appel
+    Bien sous budget — pas de risque de hot path bottleneck.
     """
     tokens = _FUZZY_THEME_TOKEN_RE.findall(normalized)
     scores: list[tuple[str, int]] = []

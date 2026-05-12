@@ -230,3 +230,43 @@ def test_p2b_b2_fuzzy_does_not_match_pure_smalltalk(monkeypatch) -> None:
         assert detect_themes_with_scores(q) == [], (
             f"fuzzy ne doit pas matcher pour small-talk : {q!r}"
         )
+
+
+# ── Tests de régression — bug_id format `<batterie>-<id>` ────────────────────
+
+def test_regression_sw_leco_010_csp_thematic_detection(monkeypatch) -> None:
+    """Régression SW-LECO-010 (batterie swiss_watch_50 — cas CSP).
+
+    Avant Sprint 6 P2b : `detect_themes_with_scores` sur la query
+    « contrat de sécurisation professionnelle (CSP) » retournait
+    `[('fiscal_comptable', 1), ('societes', 1)]` (faux positifs via
+    « bénéficier » → « bénéfice », et matching substring sur mots
+    courts « sa »/« is ») et JAMAIS `droit_social`.
+
+    Conséquence pipeline : retriever filtré sur Code des Impôts /
+    Code de Commerce → 0 article CSP du Code du travail (L.1233-65 sqq)
+    → rédacteur retournait « RÉDACTION IMPOSSIBLE ».
+
+    Post-B-5 : la query DOIT retourner `droit_social` comme thème
+    top-1 grâce à l'ajout des keywords CSP-related.
+    """
+    from lucie_v1_standalone.dialogue.intent_classifier import (
+        clear_theme_cache,
+        detect_themes_with_scores,
+    )
+    monkeypatch.setenv("BEAUME_FUZZY_LEGAL_BOOST", "0")  # B-5 seul
+    clear_theme_cache()
+    scored = detect_themes_with_scores(
+        "Qu'est-ce que le contrat de sécurisation professionnelle (CSP) "
+        "et qui peut en bénéficier ?"
+    )
+    assert scored, "SW-LECO-010 : detect_themes ne doit plus retourner []"
+    top_theme, top_hits = scored[0]
+    assert top_theme == "droit_social", (
+        f"SW-LECO-010 régression : top thème attendu droit_social, "
+        f"obtenu {top_theme} (full: {scored})"
+    )
+    assert top_hits >= 3, (
+        f"SW-LECO-010 : score droit_social attendu ≥3 (signal fort, "
+        f"évite debride=True de Sprint 6 P2a). Obtenu : {top_hits}"
+    )
