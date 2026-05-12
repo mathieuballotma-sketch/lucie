@@ -2,6 +2,8 @@
   <img src="assets/beaume-banner.svg" alt="Beaume — local AI for French lawyers — Swiss-watch grade" width="100%"/>
 </p>
 
+<p align="center"><sub><a href="README.fr.md">Lire en français</a></sub></p>
+
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-BSL_1.1-1a365d?style=flat-square"/></a>
   <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
@@ -16,158 +18,157 @@
 
 ## Mission
 
-Beaume est un assistant juridique 100 % local pour avocats français.
-Tout reste sur le Mac de l'avocat — pas de cloud, pas de logs sortants,
-pas de fuite. Architecture en trois cerveaux complémentaires
-(déterministe rapide + LLM créatif + multi-agents distribués) sur une
-seule machine, conçue pour la qualité montre suisse en droit social.
+Beaume is a 100% on-device legal assistant for French lawyers
+practicing employment law. Everything stays on the lawyer's Mac — no
+cloud, no outbound logs, no leakage. A three-brain architecture
+(fast deterministic + creative LLM + distributed multi-agent) on a
+single machine, designed for Swiss-watch quality in French
+employment law.
 
 ---
 
-## Sommaire
+## Table of contents
 
-- [Aperçu](#aperçu)
-- [Statut transparent](#statut-transparent)
-- [Pourquoi 100 % local](#pourquoi-100--local)
-- [Comment ça marche](#comment-ça-marche)
-- [Métriques vérifiables](#métriques-vérifiables)
+- [Overview](#overview)
+- [Transparent status](#transparent-status)
+- [Why 100% on-device](#why-100-on-device)
+- [How it works](#how-it-works)
+- [Verifiable metrics](#verifiable-metrics)
 - [Installation](#installation)
-- [Roadmap publique](#roadmap-publique)
-- [Statut du projet](#statut-du-projet)
+- [Public roadmap](#public-roadmap)
+- [Project status](#project-status)
 - [License & Open Source Status](#license--open-source-status)
-- [Liens](#liens)
+- [Links](#links)
 
 ---
 
-## Aperçu
+## Overview
 
 <p align="center">
-  <img src="assets/lucie-hud-1.png" alt="HUD Beaume répondant à une question de licenciement économique" width="80%"/>
+  <img src="assets/lucie-hud-1.png" alt="Beaume HUD answering an economic dismissal question" width="80%"/>
 </p>
 
-*Le HUD natif Beaume répond à une question de licenciement
-économique avec citations Légifrance cliquables.*
+*The native Beaume HUD answers a question about economic dismissal
+(licenciement économique — France) with clickable Légifrance
+citations.*
 
 <p align="center">
-  <img src="assets/lucie-hud-2.png" alt="HUD Beaume — citation Légifrance vérifiée par le Vérificateur déterministe" width="80%"/>
+  <img src="assets/lucie-hud-2.png" alt="Beaume HUD — Légifrance citation verified by the deterministic Verifier" width="80%"/>
 </p>
 
-*Chaque citation est vérifiée déterministiquement contre la base
-locale Légifrance avant d'apparaître à l'utilisateur — truth rule.*
+*Every citation is deterministically verified against the local
+Légifrance index before reaching the user — the truth rule.*
 
 <p align="center">
-  <img src="assets/lucie-hud-3.png" alt="HUD Beaume — verdict structuré avec badge verifier_score" width="80%"/>
+  <img src="assets/lucie-hud-3.png" alt="Beaume HUD — structured verdict with verifier_score badge" width="80%"/>
 </p>
 
-*Le badge `verifier_score` indique le taux de citations validées.
-Vert ≥ 90 %, ambre 70-89 %, rouge < 70 %.*
+*The `verifier_score` badge reports the share of validated citations.
+Green ≥ 90%, amber 70-89%, red < 70%.*
 
 ---
 
-## Statut transparent
+## Transparent status
 
-| Champ | Valeur |
-|-------|--------|
-| Version actuelle | `v1.0` alpha (commit [`f393f53`](https://github.com/mathieuballotma-sketch/lucie/commit/f393f53) et au-delà) |
-| Fiabilité batterie 16q multi-angles | **62,5 %** ([preuve](bench/results/2026-05-12_battery_16q_post_p2a.md)) |
-| Fiabilité batterie 50q cœur lic éco | **en recalibrage** ([statut](bench/results/2026-05-12_battery_50q_post_p2a.md)) |
-| Architecture trois cerveaux | Oiseaux ✓ · Humain ✓ · Pieuvre en cours (Sprint 9-10) |
-| Prochain milestone | Sprint 7 — lecture dossier client PDF/docx |
-| Financement | Bootstrap solo, fonds propres, zéro VC |
-| Candidature | Y Combinator Summer 2026 |
-| Auteur | Mathieu Bellot, 18 ans |
+| Field | Value |
+|-------|-------|
+| Current version | `v1.0` alpha (commit [`f393f53`](https://github.com/mathieuballotma-sketch/lucie/commit/f393f53) and beyond) |
+| Reliability — 16q multi-angle battery | **62.5%** ([evidence](bench/results/2026-05-12_battery_16q_post_p2a.md)) |
+| Reliability — 50q economic-dismissal core battery | **recalibrating** ([status](bench/results/2026-05-12_battery_50q_post_p2a.md)) |
+| Three-brain architecture | Oiseaux ✓ · Humain ✓ · Pieuvre in progress (Sprint 9-10) |
+| Next milestone | Sprint 7 — client-file ingestion (PDF/docx) |
+| Funding | Solo bootstrap, self-funded, zero VC |
+| Application | Y Combinator Summer 2026 |
+| Author | Mathieu Bellot, 18 |
 
-**Beaume n'est pas production-ready.** Le pilote avocat
-(semaine 12-18 mai 2026) sert exactement à mesurer cet écart en
-conditions réelles.
+**Beaume is not production-ready.** The lawyer pilot (week of
+May 12-18, 2026) exists precisely to measure that gap under real
+conditions.
 
 ---
 
-## Pourquoi 100 % local
+## Why 100% on-device
 
-Un avocat ne peut pas faire transiter un dossier client par un LLM
-cloud sans entrer en conflit avec :
+A lawyer cannot route a client file through a cloud LLM without
+conflicting with:
 
-- **Le secret professionnel** (art. 226-13 du Code pénal, art. 66-5
-  de la loi de 1971)
-- **Le RGPD** — minimisation, finalité, transferts hors UE pour les
-  modèles US
-- **L'audit interne** des cabinets et des compagnies d'assurance
-  professionnelle
-- **Le fonctionnement offline** (audience, train, déplacement client)
+- **Attorney-client privilege** (French *secret professionnel* —
+  art. 226-13 of the Code pénal, art. 66-5 of the 1971 statute)
+- **GDPR** — minimization, purpose limitation, non-EU transfers for
+  US-hosted models
+- **Internal audit** of law firms and professional liability insurers
+- **Offline operation** (court hearings, trains, client visits)
 
-Beaume tourne entièrement sur le Mac de l'avocat. Aucun appel sortant
-en runtime hors `127.0.0.1:11434` (Ollama local). Aucune télémétrie.
-La KB Légifrance est générée localement à partir des archives DILA
-publiques.
+Beaume runs entirely on the lawyer's Mac. No outbound calls at
+runtime apart from `127.0.0.1:11434` (local Ollama). No telemetry.
+The Légifrance KB is generated locally from public DILA archives.
 
-Détail des surfaces d'attaque et mitigations :
+Attack surfaces and mitigations are detailed in
 [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 
 ---
 
-## Comment ça marche
+## How it works
 
 ```mermaid
 flowchart TB
-    Q[Question avocat<br/>HUD natif macOS] --> EB[Event Bus interne]
+    Q[Lawyer's question<br/>Native macOS HUD] --> EB[Internal Event Bus]
 
-    EB --> O[Cerveau Oiseaux<br/>routeur déterministe]
-    EB --> P[Cerveau Pieuvre<br/>multi-agents en cours]
-    EB --> H[Cerveau Humain<br/>LLM Gemma 4 e4b local]
+    EB --> O[Cerveau Oiseaux<br/>deterministic router]
+    EB --> P[Cerveau Pieuvre<br/>multi-agent, in progress]
+    EB --> H[Cerveau Humain<br/>local Gemma 4 e4b LLM]
 
-    O --> R[Retriever KB Légifrance<br/>SQLite FTS5 local]
+    O --> R[Légifrance KB retriever<br/>local SQLite FTS5]
     H --> R
 
-    R --> V[Vérificateur déterministe<br/>truth rule]
+    R --> V[Deterministic verifier<br/>truth rule]
     P --> V
 
-    V --> RP[Réponse + verifier_score<br/>+ citations cliquables<br/>+ audit PAF exportable]
+    V --> RP[Answer + verifier_score<br/>+ clickable citations<br/>+ exportable PAF audit]
 ```
 
-Les composants sont cliquables vers le code dans
-[`docs/architecture.md`](docs/architecture.md) — chaque box du
-diagramme pointe vers son implémentation Python.
+Each box in the diagram is clickable to its Python implementation
+from [`docs/architecture.md`](docs/architecture.md).
 
-Trois cerveaux complémentaires :
+Three complementary brains:
 
-- **Cerveau Oiseaux** — routeur déterministe, latence < 50 ms, zéro
-  appel LLM. Rejette en amont les questions hors périmètre et les
-  références d'article invalides.
-- **Cerveau Humain** — LLM local Gemma 4 e4b qui formule la réponse à
-  partir de matériel déjà validé.
-- **Cerveau Pieuvre** — orchestration multi-agents pour requêtes
-  composites (en cours, livraison Sprint 9-10).
+- **Cerveau Oiseaux** (Birds Brain) — deterministic router, < 50 ms
+  latency, zero LLM calls. Rejects out-of-scope questions and
+  invalid article references at the entry point.
+- **Cerveau Humain** (Human Brain) — local Gemma 4 e4b LLM that
+  formulates the answer from already-validated material.
+- **Cerveau Pieuvre** (Octopus Brain) — multi-agent orchestration
+  for compound queries (in progress, shipping Sprint 9-10).
 
-Le **Vérificateur** rejette toute citation qui n'est pas dans
-l'index Légifrance local. C'est la truth rule architecturale :
-on préfère refuser que halluciner.
+The **Verifier** rejects any citation absent from the local
+Légifrance index. This is the architectural truth rule: refuse
+rather than hallucinate.
 
 ---
 
-## Métriques vérifiables
+## Verifiable metrics
 
-Toutes les métriques affichées dans ce README sont reproductibles.
+Every metric shown in this README is reproducible.
 
-- **Mapping claim → preuve → commande** :
+- **Claim → evidence → command mapping**:
   [`docs/EVIDENCE.md`](docs/EVIDENCE.md)
-- **Recette de reproduction depuis un clone neuf** :
+- **Reproduction recipe from a fresh clone**:
   [`docs/REPRODUCE.md`](docs/REPRODUCE.md)
-- **Résultats batterie historiques** :
+- **Historical battery results**:
   [`bench/results/`](bench/results/)
-- **Historique des sprints (résumé public)** :
+- **Sprint history (public summary)**:
   [`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md)
-- **Issues connues** : [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md)
+- **Known issues**: [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md)
 
-Discipline : si une affirmation de ce README n'a pas de ligne dans
-`docs/EVIDENCE.md`, elle est retirée. Pas d'affirmation sans preuve.
+Discipline: any claim in this README without a corresponding line in
+`docs/EVIDENCE.md` is removed. No claim without evidence.
 
 ---
 
 ## Installation
 
-**Prérequis** : macOS Apple Silicon (M1 / M2 / M3 / M4), Python 3.11+,
-[Ollama](https://ollama.com).
+**Prerequisites**: macOS Apple Silicon (M1 / M2 / M3 / M4),
+Python 3.11+, [Ollama](https://ollama.com).
 
 ```bash
 brew install ollama
@@ -179,84 +180,83 @@ pip install -r requirements.txt
 PYTHONPATH=. python3 main_hud.py
 ```
 
-Recette complète de reproduction (KB Légifrance, batteries, tests) :
+Full reproduction recipe (Légifrance KB, batteries, tests):
 [`docs/REPRODUCE.md`](docs/REPRODUCE.md).
 
-Un build `.dmg` signé Developer ID est en cours de préparation.
+A Developer ID-signed `.dmg` build is in preparation.
 
-> Note historique : l'URL du dépôt est `mathieuballotma-sketch/lucie`
-> (le produit s'appelait Lucie avant le pivot droit social du 2 mai
-> 2026). Le rebrand côté code est complet ; seul le slug GitHub reste,
-> pour préserver l'historique des commits.
-
----
-
-## Roadmap publique
-
-| Étape | Contenu | Cible |
-|-------|---------|-------|
-| Sprint 6 P2a | Retriever débridé + Vérificateur normalisé | livré 2026-05-12 |
-| Sprint 7 | Lecture dossier client PDF/docx | 2026-05 |
-| Sprint 8 | Cerveau Déterministe — logique math des lois (calcul indemnités, délais, plafonds) | 2026-06 |
-| Sprint 9-10 | Architecture trois cerveaux complète (Cerveau Pieuvre opérationnel) | 2026-07 |
-| Alpha élargie | Test alpha avocats français | Q3 2026 |
-| Multi-pays | Sélection langue / droit au premier lancement, KB Belgique + Suisse | Q1 2027 |
-
-D'autres modules sont en réserve interne et ne sont pas listés ici —
-c'est volontaire.
+> Historical note: the repository slug is
+> `mathieuballotma-sketch/lucie` (the product was called Lucie before
+> the employment-law pivot on May 2, 2026). The code-side rebrand is
+> complete; only the GitHub slug remains, to preserve commit history.
 
 ---
 
-## Statut du projet
+## Public roadmap
 
-- **Solo bootstrap**, fonds propres (zéro VC, zéro pré-vente)
-- Mathieu Bellot, 18 ans, candidature **Y Combinator Summer 2026**
-- Mac M4 24 Go, budget cumulé ≈ €500 sur 5 mois
-- Pas de team, pas de communication payante, pas de blog post
-  auto-promotionnel
+| Stage | Content | Target |
+|-------|---------|--------|
+| Sprint 6 P2a | Retriever unbounded + Verifier normalized | shipped 2026-05-12 |
+| Sprint 7 | Client-file ingestion (PDF/docx) | 2026-05 |
+| Sprint 8 | Cerveau Déterministe — mathematical logic of statutes (severance computation, deadlines, ceilings) | 2026-06 |
+| Sprint 9-10 | Full three-brain architecture (Cerveau Pieuvre operational) | 2026-07 |
+| Extended alpha | Alpha test with French lawyers | Q3 2026 |
+| Multi-country | Language / jurisdiction selection on first launch, KB Belgium + Switzerland | Q1 2027 |
 
-Pour les avocats partenaires intéressés par le pilote, mentors,
-investisseurs : [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
+Other modules are held in internal reserve and not listed here —
+this is deliberate.
+
+---
+
+## Project status
+
+- **Solo bootstrap**, self-funded (zero VC, zero pre-sales)
+- Mathieu Bellot, 18, applying to **Y Combinator Summer 2026**
+- Mac M4 24 GB, cumulative budget ≈ €500 over 5 months
+- No team, no paid marketing, no self-promotional blog posts
+
+For partner lawyers interested in the pilot, mentors, or investors:
+[mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
 
 ---
 
 ## License & Open Source Status
 
-Beaume est **source-available** sous
-[Business Source License 1.1](LICENSE) — la même licence que
-MariaDB, Sentry et CockroachDB.
+Beaume is **source-available** under
+[Business Source License 1.1](LICENSE) — the same license used by
+MariaDB, Sentry and CockroachDB.
 
-L'architecture, les tests et le pipeline cœur sont publics. Certains
-composants restent propriétaires : prompts de domaine tunés finement,
-règles déterministes spécifiques, et données diagnostic de batterie
-détaillées. Licence commerciale disponible pour usage production.
+The architecture, tests and core pipeline are public. Some
+components remain proprietary: finely tuned domain prompts,
+specific deterministic rules, and detailed battery diagnostic data.
+Commercial licenses are available for production use.
 
-**Change date** : 2030-04-17 → bascule automatique en Apache 2.0
-sans intervention requise.
+**Change date**: 2030-04-17 → automatic conversion to Apache 2.0,
+no action required.
 
-Doctrine de séparation public / réserve compétitive :
-[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) et
+Public / competitive-reserve separation doctrine:
+[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) and
 [`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md).
 
 ---
 
-## Liens
+## Links
 
-- [`PRINCIPLES.md`](PRINCIPLES.md) — six principes Beaume
-- [`docs/architecture.md`](docs/architecture.md) — architecture
-  détaillée avec liens code
-- [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — table claim → preuve
-- [`docs/REPRODUCE.md`](docs/REPRODUCE.md) — recette reproduction
-- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — modèle de menace
-- [`CHANGELOG.md`](CHANGELOG.md) — historique des versions
-- [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) — bugs connus
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — comment contribuer
-  (volontairement limité)
-- [`SECURITY.md`](SECURITY.md) — signaler une vulnérabilité
+- [`PRINCIPLES.md`](PRINCIPLES.md) — the six Beaume principles
+- [`docs/architecture.md`](docs/architecture.md) — detailed
+  architecture with code links
+- [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — claim → evidence table
+- [`docs/REPRODUCE.md`](docs/REPRODUCE.md) — reproduction recipe
+- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — threat model
+- [`CHANGELOG.md`](CHANGELOG.md) — version history
+- [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) — known bugs
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to contribute
+  (deliberately limited)
+- [`SECURITY.md`](SECURITY.md) — report a vulnerability
 
-Site : [lucie-site.vercel.app](https://lucie-site.vercel.app)
-(sera renommé après pilote).
+Website: [lucie-site.vercel.app](https://lucie-site.vercel.app)
+(to be renamed after pilot).
 
 ---
 
-<sub>Mathieu Bellot · solo bootstrap · mai 2026 · BSL 1.1</sub>
+<sub>Mathieu Bellot · solo bootstrap · May 2026 · BSL 1.1</sub>
