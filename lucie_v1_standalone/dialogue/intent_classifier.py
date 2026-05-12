@@ -387,6 +387,25 @@ def _load_theme_keywords() -> tuple[tuple[str, tuple[str, ...]], ...]:
     return tuple(themes_tuple)
 
 
+def detect_themes_with_scores(
+    query: str, max_themes: int = 3
+) -> list[tuple[str, int]]:
+    """Variante de `detect_themes` qui expose le nombre de keywords matchés
+    par thème, requise par Sprint 6 P2a (B-5 sol 1) : le caller débride le
+    Retriever Légifrance quand le score max est ≤ 1 (signal "détection
+    incertaine"). Liste de tuples `(theme_id, hits)` triée par hits décroissant."""
+    if not query or not query.strip():
+        return []
+    normalized = _normalize_text(query)
+    scores: list[tuple[str, int]] = []
+    for theme_id, keywords in _load_theme_keywords():
+        hits = sum(1 for kw in keywords if kw and kw in normalized)
+        if hits > 0:
+            scores.append((theme_id, hits))
+    scores.sort(key=lambda t: (-t[1], t[0]))
+    return scores[:max_themes]
+
+
 def detect_themes(query: str, max_themes: int = 3) -> list[str]:
     """
     Détecte les thèmes Légifrance pertinents pour `query`.
@@ -398,16 +417,7 @@ def detect_themes(query: str, max_themes: int = 3) -> list[str]:
     - Liste vide si Légifrance n'est pas installé (le retriever fera un
       fallback sur la base curatée).
     """
-    if not query or not query.strip():
-        return []
-    normalized = _normalize_text(query)
-    scores: list[tuple[str, int]] = []
-    for theme_id, keywords in _load_theme_keywords():
-        hits = sum(1 for kw in keywords if kw and kw in normalized)
-        if hits > 0:
-            scores.append((theme_id, hits))
-    scores.sort(key=lambda t: (-t[1], t[0]))
-    return [theme_id for theme_id, _ in scores[:max_themes]]
+    return [theme_id for theme_id, _ in detect_themes_with_scores(query, max_themes)]
 
 
 def clear_theme_cache() -> None:

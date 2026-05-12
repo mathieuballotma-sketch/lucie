@@ -15,6 +15,7 @@ c'est sur le cas *hallucinations détectées* qui appelait auparavant gemma4:e4b
 
 import json
 import logging
+import os
 import re
 import time
 from typing import Any, Dict, List
@@ -24,21 +25,65 @@ from .perf.events import emit
 logger = logging.getLogger(__name__)
 
 
+# Sprint 6 P2a — B-6 sol 1 : feature flag de normalisation des citations.
+# - flag=1 : regex étendue (4 formats : [REF: xxx] / [xxx] / (xxx) / "article xxx")
+#   + canonicalisation strip/dots/upper sur citations ET ids sources pour le
+#   matching, tout en préservant la forme originale dans le JSON de retour.
+# - flag=0 : comportement legacy strict (regex pré-P2a, matching `upper()` seul).
+_NORMALISE = os.environ.get("BEAUME_VERIFICATEUR_NORMALISE", "1") == "1"
+
+_CITATION_RE = re.compile(
+    r"\[REF:\s*([^\]]+)\]"                                                # [REF: xxx]
+    r"|\[([A-Za-z0-9_\-\.\s]+?)\]"                                         # [xxx] avec espaces tolérés
+    r"|\(([LRDA]\.?\s*\d{3,4}-\d+(?:-\d+)?)\)"                            # (L.1233-3)
+    r"|(?<![A-Za-z0-9])article\s+([LRDA]\.?\s*\d{3,4}-\d+(?:-\d+)?)",     # « article L.1234-9 » (prose)
+    re.IGNORECASE,
+)
+
+_LEGACY_CITATION_RE = re.compile(r"\[REF:\s*([^\]]+)\]|\[([A-Za-z0-9_\-\.]+)\]")
+
+
+def _canonicalize(s: str) -> str:
+    """Strip + remove dots/spaces + upper — clé de matching commune entre
+    citations Rédacteur (« L.1233-3 », « L. 1233-3 ») et IDs Légifrance
+    (« L1233-3 »). Préserve les chiffres et lettres pour les jurisprudences."""
+    return re.sub(r"\s+", "", s).replace(".", "").upper()
+
+
 def _extract_citations(note: str) -> List[str]:
-    """Extrait toutes les références [REF: xxx] et [xxx] présentes dans la note."""
-    matches = re.findall(r'\[REF:\s*([^\]]+)\]|\[([A-Za-z0-9_\-\.]+)\]', note)
+    """Extrait toutes les références citations de la note.
+
+    flag=1 (normalise) : 4 formats acceptés (cf. `_CITATION_RE`), dédupliqué
+    sur la forme canonique en conservant la première forme rencontrée.
+    flag=0 (legacy) : regex pré-P2a, matching `[REF: xxx]` et `[xxx]` stricts.
+    """
+    if _NORMALISE:
+        seen: Dict[str, str] = {}
+        for groups in _CITATION_RE.findall(note):
+            cit = next((g for g in groups if g), "").strip()
+            if not cit:
+                continue
+            key = _canonicalize(cit)
+            if key and key not in seen:
+                seen[key] = cit
+        return list(seen.values())
+    matches = _LEGACY_CITATION_RE.findall(note)
     return [m[0].strip() or m[1] for m in matches if m[0] or m[1]]
 
 
 def _build_source_ids(sources_json: str) -> Dict[str, str]:
-    """Construit un dict {ID_UPPER: extrait} depuis le JSON des sources."""
+    """Construit un dict {clé_normalisée: extrait} depuis le JSON des sources.
+
+    flag=1 : clé canonicalisée (strip/dots/upper) → tolère « L.1233-3 » vs
+    « L1233-3 » entre Rédacteur et Légifrance. flag=0 : clé `upper()` seule."""
     try:
         data = json.loads(sources_json)
         result: Dict[str, str] = {}
         for s in data.get("sources", []) + data.get("jurisprudences", []):
             sid = s.get("id", "")
             if sid:
-                result[sid.upper()] = s.get("extrait", "")
+                key = _canonicalize(sid) if _NORMALISE else sid.upper()
+                result[key] = s.get("extrait", "")
         return result
     except Exception:
         return {}
@@ -109,7 +154,8 @@ async def handle(note_markdown: str, sources_json: str) -> str:
     verifiees: List[Dict[str, Any]] = []
     invalides: List[Dict[str, Any]] = []
     for cit in citations:
-        if cit.upper() in source_ids:
+        key = _canonicalize(cit) if _NORMALISE else cit.upper()
+        if key in source_ids:
             verifiees.append({
                 "reference": cit,
                 "statut": "OK",

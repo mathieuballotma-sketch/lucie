@@ -86,6 +86,15 @@ def _extract_snippet(text: str, max_len: int = 300) -> str:
     return cut.strip() + "…"
 
 
+def _canonicalize_num(s: str) -> str:
+    """Canonicalise un numéro d'article pour comparaison robuste.
+
+    « L. 1234-1 », « l.1234-1 », « L1234-1 » → « L1234-1 ». Utilisé par le
+    re-rank Sprint 6 P2a (B-5 sol 1) : on compare la query au `num` SQLite
+    qui est lui-même sans point (cf. schéma articles)."""
+    return re.sub(r"[\s\.]", "", s).upper()
+
+
 def _normalize_ref(raw: str) -> tuple[str, str]:
     """
     Normalise une référence ex. "L. 1234-1" → ("L", "1234-1").
@@ -358,26 +367,44 @@ class LegifranceRetriever:
         refs = extract_legal_refs(query)
         exact = self._search_by_ref(refs, theme_ids, themes)
 
+        # Sprint 6 P2a — B-5 sol 1 : re-rank par num article. Si la query
+        # mentionne `L.\d{3,4}-\d+`, les articles dont le num matche reçoivent
+        # un bonus +5 de pertinence. Purement additif : si la query ne contient
+        # pas de référence chiffrée, `query_nums` est vide → no-op.
+        query_nums = {
+            _canonicalize_num(m)
+            for m in re.findall(r"[LRDA]\.?\s*\d{3,4}-\d+", query, re.IGNORECASE)
+        }
+        # On élargit le pool fulltext pour absorber le boost (top_k * 2) puis
+        # on tronque après tri.
+        fulltext_pool = top_k * 2 if query_nums else top_k - len(exact)
+        fulltext = self._search_fulltext(
+            query, theme_ids, themes, fulltext_pool
+        )
+
         results: list[LegalArticle] = []
         seen: set[str] = set()
         for art in exact:
             if art.id not in seen:
                 results.append(art)
                 seen.add(art.id)
-            if len(results) >= top_k:
-                return results
-
-        fulltext = self._search_fulltext(
-            query, theme_ids, themes, top_k - len(results)
-        )
         for art in fulltext:
             if art.id not in seen:
                 results.append(art)
                 seen.add(art.id)
-            if len(results) >= top_k:
-                break
 
-        return results
+        if query_nums:
+            # Score de tri INTERNE — ne mute pas `pertinence` (contrat public
+            # stable, cf. test_exact_ref_returns_article). Le boost +5 sert
+            # uniquement au tri ; la pertinence retournée reste celle calculée
+            # par BM25 / match exact.
+            def _boost_key(a: LegalArticle) -> float:
+                bonus = 5.0 if _canonicalize_num(a.num) in query_nums else 0.0
+                return a.pertinence + bonus
+
+            results.sort(key=_boost_key, reverse=True)
+
+        return results[:top_k]
 
     def handle(
         self,
