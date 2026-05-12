@@ -54,7 +54,12 @@ def _build_index() -> List[Dict[str, Any]]:
                 "tokens": tokens,
                 "tokens_set": set(tokens),
             })
-        except Exception:
+        except (UnicodeDecodeError, OSError) as exc:
+            # Audit 2026-05-12 P0 #2 : un .md corrompu de la KB disparaissait
+            # sans trace de l'index. Skip volontaire (continue) — un fichier
+            # illisible ne doit pas bloquer toute la KB. Le log warning permet
+            # au curateur KB de savoir qu'une curation manuelle est due.
+            logger.warning("KB file unreadable: %s (%s)", path, exc)
             continue
     return index
 
