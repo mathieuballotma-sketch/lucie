@@ -65,7 +65,59 @@ def build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Supprime les messages de progression, affiche uniquement le résultat final.",
     )
+    parser.add_argument(
+        "--corpus",
+        default=None,
+        metavar="CODE",
+        help=(
+            "BRANCHE ADDITIVE (Sprint G-1 étape 1) — exécute la requête sur un "
+            "corpus alternatif (ex: 'fr_pharma_ansm') au lieu du pipeline droit "
+            "social par défaut. Le chemin droit social n'est jamais modifié ; "
+            "ce flag emprunte une route parallèle pour prouver la généricité."
+        ),
+    )
+    parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        default=False,
+        help=(
+            "(uniquement avec --corpus) Forcer le mode déterministe sans appel "
+            "LLM (utile pour CI / démonstration sans Ollama)."
+        ),
+    )
     return parser
+
+
+def _run_corpus_branch(code: str, query: str, *, use_llm: bool, quiet: bool) -> int:
+    """Exécute la branche additive --corpus. Retourne le code de sortie."""
+    from .corpus import load_corpus, run_corpus_query
+    from .corpus.corpus_loader import CorpusLoadError
+
+    try:
+        corpus = load_corpus(code)
+    except CorpusLoadError as exc:
+        print(f"Erreur chargement corpus '{code}': {exc}", file=sys.stderr)
+        return 2
+
+    if not quiet:
+        print(
+            f"[corpus] {corpus.manifest.identity.code} — "
+            f"{corpus.manifest.identity.name} "
+            f"({len(corpus.articles)} articles)",
+            file=sys.stderr,
+        )
+
+    response = run_corpus_query(corpus, query, use_llm=use_llm)
+    print("\n" + "=" * 70)
+    print(response.text)
+    print("=" * 70)
+    if not quiet:
+        print(
+            f"[corpus] scope={response.scope} matched={len(response.matched_articles)} "
+            f"llm={response.used_llm}",
+            file=sys.stderr,
+        )
+    return 0
 
 
 async def main() -> None:
@@ -75,6 +127,15 @@ async def main() -> None:
     if args.query is None:
         parser.print_help()
         sys.exit(0)
+
+    if args.corpus:
+        rc = _run_corpus_branch(
+            code=args.corpus,
+            query=args.query,
+            use_llm=not args.no_llm,
+            quiet=args.quiet,
+        )
+        sys.exit(rc)
 
     # Import ici pour ne pas payer le coût au --help
     from .pipeline import run
