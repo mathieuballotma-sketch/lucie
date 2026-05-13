@@ -1,56 +1,58 @@
 # Security
 
-## Modèle de menace en 3 lignes
+*[Lire en français](SECURITY.fr.md)*
 
-Beaume tourne sur le Mac d'un avocat. Les données d'un dossier client
-n'en sortent jamais — aucun appel HTTP sortant en runtime hors
-`127.0.0.1:11434` (Ollama local). Le détail des surfaces d'attaque
-considérées est dans [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
+## Threat model in three lines
 
-## Signaler une vulnérabilité
+Beaume runs on a lawyer's Mac. Client-file data never leaves it —
+no outbound HTTP at runtime apart from `127.0.0.1:11434` (local
+Ollama). The detailed list of attack surfaces considered is in
+[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 
-**Ne pas ouvrir d'issue publique.** Contacter directement :
+## Reporting a vulnerability
+
+**Do not open a public issue.** Contact directly:
 
 > Mathieu Bellot — mathieu.ballotma@gmail.com
-> Sujet : `[SECURITY] Beaume — <titre court>`
+> Subject: `[SECURITY] Beaume — <short title>`
 
-Réponse sous 48 h ouvrées. Si la vulnérabilité concerne une donnée
-client réelle, joindre le contexte d'usage (modèle, version) mais
-**aucun extrait de dossier client réel** — Beaume étant locale, vous
-disposez vous-même de la reproduction sur votre propre machine.
+Reply within 48 business hours. If the vulnerability involves real
+client data, attach the usage context (model, version) but
+**no extract of a real client file** — since Beaume is local, you
+already have the reproduction on your own machine.
 
-## Périmètre de la divulgation responsable
+## Responsible disclosure scope
 
-| Catégorie | Action |
-|-----------|--------|
-| Vulnérabilité critique (exfiltration de données) | divulgation après fix, crédit dans `CHANGELOG.md` |
-| Vulnérabilité élevée (élévation de privilèges, lecture fichiers hors sandbox) | idem, sous 30 jours |
-| Vulnérabilité modérée (DoS local) | sous 90 jours |
-| Vulnérabilité faible (info disclosure non sensible) | fix au prochain sprint, mention dans `CHANGELOG.md` |
+| Category | Action |
+|----------|--------|
+| Critical (data exfiltration) | disclosure after fix, credit in `CHANGELOG.md` |
+| High (privilege escalation, file read outside sandbox) | same, within 30 days |
+| Moderate (local DoS) | within 90 days |
+| Low (non-sensitive info disclosure) | fix in next sprint, mention in `CHANGELOG.md` |
 
-## Ce qui n'est pas une vulnérabilité
+## What is not a vulnerability
 
-- Une hallucination LLM passée à travers le Vérificateur : c'est un
-  bug de fiabilité, pas une vulnérabilité de sécurité. Ouvrir une
-  issue GitHub normale avec le prompt qui déclenche.
-- Un fichier dossier client lu par Beaume après que l'utilisateur l'a
-  lui-même glissé-déposé : c'est le comportement attendu.
-- Le code public lu et étudié : c'est intentionnel (BSL 1.1). La
-  copie commerciale n'est pas autorisée pendant 4 ans, c'est une
-  question juridique, pas de sécurité.
+- An LLM hallucination that slipped past the Verifier: this is a
+  reliability bug, not a security vulnerability. Open a normal
+  GitHub issue with the triggering prompt.
+- A client-file document Beaume read after the user dragged-and-
+  dropped it themselves: that's the expected behavior.
+- Public code being read and studied: this is intentional (BSL 1.1).
+  Commercial copying is not authorized for 4 years — that's a legal
+  matter, not a security one.
 
-## Versions supportées
+## Supported versions
 
-| Version | Support sécurité |
+| Version | Security support |
 |---------|------------------|
-| `main` (HEAD) | oui |
-| Releases tagged (à venir, post-pilote) | oui pour la dernière mineure |
-| Pre-Sprint 6 (avant 2026-04-23) | non, pre-pivot |
+| `main` (HEAD) | yes |
+| Tagged releases (forthcoming, post-pilot) | yes for the latest minor |
+| Pre-Sprint 6 (before 2026-04-23) | no, pre-pivot |
 
-## Référence
+## References
 
-- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — modèle de menace
-  détaillé par surface d'attaque
+- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — detailed threat
+  model per attack surface
 - [`LICENSE`](LICENSE) — Business Source License 1.1
-- [`PRINCIPLES.md`](PRINCIPLES.md) — principe 1 (100 % local) et
-  principe 4 (transparence radicale)
+- [`PRINCIPLES.md`](PRINCIPLES.md) — principle 1 (100% on-device) and
+  principle 4 (radical transparency)

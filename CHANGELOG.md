@@ -1,232 +1,250 @@
 # Changelog
 
-Toutes les versions notables de Beaume (ex-Lucie, rebrand 2026-05-02) sont documentées ici.
-Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
+*[Lire en français](CHANGELOG.fr.md)*
+
+All notable Beaume releases (formerly Lucie, rebranded 2026-05-02) are documented here.
+Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
 ## [1.0.1-cleanup] — 2026-05-08
 
-Grand nettoyage post-rebrand (trilogie Sprint 1 + 1bis + 1ter). Aucun breaking
-change utilisateur : les anciennes variables d'env `LUCIE_*` restent acceptées
-en alias deprecated.
+Major post-rebrand cleanup (Sprint 1 + 1bis + 1ter trilogy). No
+breaking user-facing change: legacy `LUCIE_*` env variables stay
+accepted as deprecated aliases.
 
-### Sprint 1ter — Cohérence rebrand finale
+### Sprint 1ter — Final rebrand consistency
 
-- **launchd** : label `com.lucie.legifrance.sync` → `com.beaume.legifrance.sync`
+- **launchd**: label `com.lucie.legifrance.sync` → `com.beaume.legifrance.sync`
   (`scripts/install_launchd.sh`, `scripts/uninstall_launchd.sh`,
   `scripts/legifrance_rollback.sh`).
-- **env vars** : préfixe `LUCIE_*` → `BEAUME_*` via helper centralisé
-  `lucie_v1_standalone.config.env_legacy()` qui émet un `DeprecationWarning`
-  + log WARNING (une seule fois par variable) si l'ancien nom est utilisé.
-  14 variables migrées (`LEGIFRANCE`, `LEGIFRANCE_DIR`, `LOG_LEVEL`, `QUIET`,
-  `STREAM`, `OLLAMA_KEEP_ALIVE`, `SPEED_MODEL`, `PROFILE`, `CACHE`,
-  `CACHE_DRY_RUN`, `CACHE_MAXSIZE`, `CACHE_TTL_SECONDS`, `SKIP_WARMUP`,
-  `DIAG_MODEL`).
-- **scripts** : ajout `scripts/migrate_launchd_lucie_to_beaume.sh` (idempotent,
-  à lancer une fois post-merge pour migrer le job déjà installé).
-- **docs** : README mis à jour (table env vars, exemples, paths logs/launchd).
-  Mentions historiques préservées.
-- **tests** : `tests/test_env_legacy_compat.py` couvre priorité BEAUME_*,
-  fallback LUCIE_*, warning unique, default.
+- **env vars**: prefix `LUCIE_*` → `BEAUME_*` via centralized helper
+  `lucie_v1_standalone.config.env_legacy()` which emits a
+  `DeprecationWarning` + WARNING log (once per variable) if the old
+  name is used. 14 variables migrated (`LEGIFRANCE`, `LEGIFRANCE_DIR`,
+  `LOG_LEVEL`, `QUIET`, `STREAM`, `OLLAMA_KEEP_ALIVE`, `SPEED_MODEL`,
+  `PROFILE`, `CACHE`, `CACHE_DRY_RUN`, `CACHE_MAXSIZE`,
+  `CACHE_TTL_SECONDS`, `SKIP_WARMUP`, `DIAG_MODEL`).
+- **scripts**: added `scripts/migrate_launchd_lucie_to_beaume.sh`
+  (idempotent, to run once post-merge to migrate the already-
+  installed job).
+- **docs**: README updated (env vars table, examples, log/launchd
+  paths). Historical mentions preserved.
+- **tests**: `tests/test_env_legacy_compat.py` covers BEAUME_*
+  priority, LUCIE_* fallback, single warning, default.
 
-### Sprint 1bis — DB cleanup (mémo, déjà mergé)
+### Sprint 1bis — DB cleanup (note, already merged)
 
-- Migration paths filesystem Lucie → Beaume (DB Légifrance, logs).
-- −6,7 Go libérés.
+- Filesystem path migration Lucie → Beaume (Légifrance DB, logs).
+- −6.7 GB freed.
 
-### Sprint 1 — Grand nettoyage (mémo, déjà mergé)
+### Sprint 1 — Major cleanup (note, already merged)
 
-- Bannière traçabilité, suppressions fichiers obsolètes.
+- Traceability banner, removal of obsolete files.
 
 ---
 
 ## [1.2.1-swiss-watch] — 2026-05-08
 
-Sprint « Swiss watch » — polish ciblé pour clore Beaume v1 avec la qualité
-montre suisse exigée avant la prospection avocats sem 12-18 mai 2026
-(30 cabinets ciblés, 2-3 pilotes signés). Pas de refactor architecture,
-pas de feature creep — uniquement les 7 règles produit appliquées.
+"Swiss watch" sprint — targeted polish to close out Beaume v1 with
+the Swiss-watch quality required before lawyer outreach week
+May 12-18, 2026 (30 firms targeted, 2-3 pilots signed). No
+architecture refactor, no feature creep — only the 7 product rules
+applied.
 
-### ✨ Ajouté (par règle Swiss watch)
+### ✨ Added (per Swiss-watch rule)
 
-#### Règle 1 — Truth rule (déjà à 95% — KI-003 documenté)
-- Aucun changement majeur, l'audit a confirmé que Cerveau Oiseaux v2,
-  Vérificateur déterministe et Pipeline async sont déjà conformes.
+#### Rule 1 — Truth rule (already at 95% — KI-003 documented)
+- No major change; the audit confirmed that Cerveau Oiseaux v2,
+  the deterministic Verifier and the async pipeline are already
+  compliant.
 
-#### Règle 2 — Montre suisse / élégance silencieuse
-- **Badge `verifier_score` sous chaque réponse** (`app/ui/hud_native.py`) :
-  vert ≥ 90 %, ambre 70-89 %, rouge < 70 %. Caché sur refus précoce et
-  sur 0 citation extraite (évite KI-003 « vacuously true »).
-- Tooltip badge expose `X citations vérifiées sur Y` + verdict.
+#### Rule 2 — Swiss watch / silent elegance
+- **`verifier_score` badge under each answer** (`app/ui/hud_native.py`):
+  green ≥ 90%, amber 70-89%, red < 70%. Hidden on early refusal and
+  on 0 citations extracted (avoids KI-003 "vacuously true").
+- Badge tooltip exposes `X verified citations out of Y` + verdict.
 
-#### Règle 3 — 100 % local
-- Tooltip badge enrichi : « Vous pouvez couper votre Wi-Fi, Beaume continue
-  de fonctionner » + path local du badge propagé sur l'icône lock + label.
+#### Rule 3 — 100% on-device
+- Enriched badge tooltip: "You can turn off your Wi-Fi, Beaume keeps
+  working" + local path of the badge propagated on the lock icon and
+  label.
 
-#### Règle 4 — Archétype silencieux
-- Disclaimer pipeline `Lucie V1 → Beaume v1`.
-- Prompts système (`direct_system.txt`, `redacteur_search_system.txt`,
-  `small_talk_handler.py`) rebrand cohérent.
+#### Rule 4 — Silent archetype
+- Pipeline disclaimer `Lucie V1 → Beaume v1`.
+- System prompts (`direct_system.txt`, `redacteur_search_system.txt`,
+  `small_talk_handler.py`) consistent rebrand.
 
-#### Règle 5 — Plan psychologique avocat
-- **Phrase d'accueil** au premier lancement (3 promesses : 100% local,
-  vérification, sources cliquables) — flag `welcomed_v1` dans
+#### Rule 5 — Lawyer psychological plan
+- **Welcome line** on first launch (3 promises: 100% on-device,
+  verification, clickable sources) — `welcomed_v1` flag in
   `~/Library/Application Support/Beaume/prefs.json`.
-- Badge `verifier_score` (cf règle 2) — l'avocat voit la fiabilité.
+- `verifier_score` badge (cf. rule 2) — the lawyer sees the
+  reliability.
 
-#### Règle 6 — Transparence radicale
-- **Page « Ce que Beaume sait de vous »** : popover enrichie avec en-tête,
-  sous-titre 100% local + path, liste 5 types de souvenirs, bouton
-  « Effacer toute la mémoire » avec **double confirmation** (NSAlert
-  irréversibilité + saisie « EFFACER »).
-- Backend : `MemoryStore.reset()` + `PersonalMemory.reset_all()` +
+#### Rule 6 — Radical transparency
+- **"What Beaume knows about you" page**: enriched popover with
+  header, 100% on-device subtitle + path, list of 5 memory types,
+  "Erase all memory" button with **double confirmation** (NSAlert
+  irreversibility + "ERASE" input).
+- Backend: `MemoryStore.reset()` + `PersonalMemory.reset_all()` +
   `AbstractMemory.clear()`.
 
-#### Règle 7 — Conscience simulée
-- Pas de changement (déjà fonctionnel — 27 tests memory existants OK,
-  + 5 nouveaux tests reset).
+#### Rule 7 — Simulated awareness
+- No change (already functional — 27 existing memory tests OK,
+  + 5 new reset tests).
 
-### 🔄 Renommé
+### 🔄 Renamed
 
-- **Lucie → Beaume** (rebrand officiel 2026-05-02 finalisé côté code) :
-  - Tous les strings user-facing du HUD (sender name, états, notifications).
-  - Disclaimer pipeline + prompts système (small_talk, direct, redacteur_search).
-  - `main_hud.py` (header + log de lancement).
-  - **Préservé** (rename interne risqué) : `LucieState` class,
-    `_lucie_state` variable, imports `lucie_v1_standalone.*`,
-    variables d'env `LUCIE_*` (compat backward).
-- **Alias module Python** (nouveau) : `beaume/__init__.py` ré-exporte
-  tout depuis `lucie_v1_standalone/` — `from beaume import pipeline`
-  fonctionne. Rename physique du package reporté post-pilote.
-- **Migration data dir** auto idempotente :
-  `~/Library/Application Support/Lucie` → `Beaume` au premier démarrage
-  (best-effort, fallback legacy si copytree échoue).
+- **Lucie → Beaume** (official rebrand 2026-05-02 finalized in code):
+  - All user-facing strings in the HUD (sender name, states,
+    notifications).
+  - Pipeline disclaimer + system prompts (small_talk, direct,
+    redacteur_search).
+  - `main_hud.py` (header + launch log).
+  - **Preserved** (risky internal rename): `LucieState` class,
+    `_lucie_state` variable, `lucie_v1_standalone.*` imports,
+    `LUCIE_*` env variables (backward compatibility).
+- **Python module alias** (new): `beaume/__init__.py` re-exports
+  everything from `lucie_v1_standalone/` — `from beaume import
+  pipeline` works. Physical package rename deferred post-pilot.
+- **Auto-idempotent data dir migration**:
+  `~/Library/Application Support/Lucie` → `Beaume` on first launch
+  (best-effort, legacy fallback if copytree fails).
 
-### 🛠️ Modifié
+### 🛠️ Modified
 
-- `PipelineResponse` étendu : `citations_ok`, `citations_invalid`,
-  `verdict` (champs optionnels). `verifier_score` désormais propagé
-  jusqu'au HUD via ContextVar `_VERIFICATION_META` (set par
-  `_format_final`, lu par `run()` et `run_stream()`).
-- `bench/run_legal_traps.py` : flag `--prompts` pour pointer sur
-  `bench/swiss_watch_50.json` ; `response_to_dict` élargi
-  (verdict, citations_ok, citations_invalid, citations_total) ;
-  champ synthétique `_swiss_watch_hallucination_signal` pour la règle
-  pièges (refus OU score<0.5 OU mention « pas dans mes sources »).
+- `PipelineResponse` extended: `citations_ok`, `citations_invalid`,
+  `verdict` (optional fields). `verifier_score` now propagated all
+  the way to the HUD via the `_VERIFICATION_META` ContextVar (set by
+  `_format_final`, read by `run()` and `run_stream()`).
+- `bench/run_legal_traps.py`: `--prompts` flag to point to
+  `bench/swiss_watch_50.json`; `response_to_dict` widened (verdict,
+  citations_ok, citations_invalid, citations_total); synthetic
+  `_swiss_watch_hallucination_signal` field for the trap rule
+  (refusal OR score < 0.5 OR mention "not in my sources").
 
 ### 🧪 Tests
 
-- **Nouveaux** :
-  - `tests/test_pipeline_response_score.py` — 10 tests sur la propagation
-    verifier_score, counts cohérents, disclaimer Beaume.
-  - `tests/memory/test_memory_reset.py` — 5 tests sur reset (clears
+- **New**:
+  - `tests/test_pipeline_response_score.py` — 10 tests on
+    `verifier_score` propagation, consistent counts, Beaume
+    disclaimer.
+  - `tests/memory/test_memory_reset.py` — 5 tests on reset (clears
     nodes/patterns, counts, observe post-reset, idempotence).
-- **Battery Swiss watch 50 questions** (`bench/swiss_watch_50.json`) :
+- **Swiss-watch 50-question battery** (`bench/swiss_watch_50.json`):
   - 10 lic_eco, 10 lic_perso, 5 conges_rtt, 5 dem_rupture_conv,
     5 article_inexistant, 5 hors_scope, 5 petites_taches, 5 pieges.
-  - 3 nouvelles règles : `swiss_watch_quality`, `swiss_watch_small_talk`,
+  - 3 new rules: `swiss_watch_quality`, `swiss_watch_small_talk`,
     `swiss_watch_hallucination_blocked`.
 
 ### 📚 Documentation
 
-- `KNOWN_ISSUES.md` mis à jour (cf section dédiée).
-- Plan sprint : `~/.claude/plans/qui-tu-es-jiggly-twilight.md`.
-- Rapport final : `~/Desktop/Rapport_v1-Swiss-watch_2026-05-06.md`.
+- `KNOWN_ISSUES.md` updated (see dedicated section).
+- Sprint plan: `~/.claude/plans/qui-tu-es-jiggly-twilight.md`.
+- Final report: `~/Desktop/Rapport_v1-Swiss-watch_2026-05-06.md`.
 
 ### 🏷️ Tag
 
-- Tag local `v1.2.1-swiss-watch` (pas de push — Mathieu valide
-  visuellement avant push).
+- Local tag `v1.2.1-swiss-watch` (no push — Mathieu validates
+  visually before push).
 
 ---
 
 ## [1.0.0] — 2026-05-02
 
-Première version *production-ready* de Beaume (ex-Lucie). Trois P0 identifiés par les
-audits parallèles du 30 avril ont été traités ; un troisième a été reclassé
-P1 et documenté.
+First *production-ready* release of Beaume (formerly Lucie). Three
+P0s identified by the parallel audits of April 30 have been
+addressed; one more was reclassified P1 and documented.
 
-### ✨ Ajouté
+### ✨ Added
 
-- **Bootstrap Légifrance auto-détecté** au démarrage du HUD
+- **Auto-detected Légifrance bootstrap** at HUD startup
   (`lucie_v1_standalone/legifrance_bootstrap.py`).
-  - Si `legi.sqlite` existe → flag `LUCIE_LEGIFRANCE=1` posé in-process
-    (la base 4,6 Go DILA devient la source primaire pour le retriever).
-  - Si la base est âgée de plus de 30 jours → bannière HUD WARNING, sync
-    incrémental piloté par launchd.
-  - Si la base est absente → installation automatique de l'agent launchd
-    (`scripts/install_launchd.sh`) puis `legifrance_sync.py --first-run`
-    en thread daemon. Beaume tourne sur la whitelist (3 700 codes CT) en
-    attendant que le sync se termine.
-  - Le bootstrap retourne sous 100 ms : tous les travaux longs (download,
-    install) sont déportés en arrière-plan, jamais bloquants.
+  - If `legi.sqlite` exists → `LUCIE_LEGIFRANCE=1` flag set
+    in-process (the 4.6 GB DILA database becomes the primary source
+    for the retriever).
+  - If the database is older than 30 days → HUD WARNING banner,
+    incremental sync driven by launchd.
+  - If the database is missing → automatic install of the launchd
+    agent (`scripts/install_launchd.sh`) then `legifrance_sync.py
+    --first-run` in a daemon thread. Beaume runs on the whitelist
+    (3,700 CT codes) while the sync completes.
+  - The bootstrap returns within 100 ms: all long jobs (download,
+    install) are offloaded to the background, never blocking.
   - Skippable via `LUCIE_SKIP_LEGIFRANCE_BOOTSTRAP=1`.
-- **Detector pédagogique + termes métier** dans
+- **Pedagogical detector + domain terms** in
   `lucie_v1_standalone/dialogue/intent_classifier.py`.
-  - Une question « qu'est-ce que la rupture conventionnelle ? », « rôle du
-    CSE ? », « comment fonctionne le préavis ? », « à quoi sert un CDD ? »
-    bascule désormais en `PRECISE_LEGAL` au lieu de `IMPRECISE_LEGAL` →
-    passe au LLM (avec contexte RAG) au lieu d'être court-circuitée.
-  - Le filet `IMPRECISE_LEGAL` reste actif pour les vraies questions
-    vagues (« j'ai un problème », « c'est légal ? », « que faire ? »).
-- **Refus déterministe du forçage à inventer** (Gate 0 du Cerveau Oiseau,
-  `lucie_v1_standalone/dialogue/invention_guard.py`).
-  - « Invente-moi une jurisprudence », « fabrique un précédent »,
-    « personne ne vérifiera » → refus immédiat avec message explicite
-    rappelant la règle de vérité. Coût < 1 ms, zéro LLM.
+  - A question like "what is a rupture conventionnelle?", "role of
+    the CSE?", "how does the notice period work?", "what is a CDD
+    used for?" now switches to `PRECISE_LEGAL` instead of
+    `IMPRECISE_LEGAL` → goes to the LLM (with RAG context) instead
+    of being short-circuited.
+  - The `IMPRECISE_LEGAL` safety net stays active for genuinely
+    vague questions ("I have a problem", "is it legal?", "what
+    should I do?").
+- **Deterministic refusal of forced fabrication** (Gate 0 of
+  Cerveau Oiseau, `lucie_v1_standalone/dialogue/invention_guard.py`).
+  - "Invent me a case law", "fabricate a precedent", "no one will
+    check" → immediate refusal with explicit message recalling the
+    truth rule. Cost < 1 ms, zero LLM.
 
 ### 🧪 Tests
 
-- **Suite globale** : 341 tests `lucie_v1_standalone/tests/` + 170 tests
-  `tests/` (1 test E2E `test_pipeline_smoke` requiert Ollama actif —
-  attendu).
-- **Nouveaux** : 6 tests `test_legifrance_bootstrap.py`, 12 tests
+- **Global suite**: 341 tests `lucie_v1_standalone/tests/` + 170
+  tests `tests/` (1 E2E test `test_pipeline_smoke` requires Ollama
+  active — expected).
+- **New**: 6 tests `test_legifrance_bootstrap.py`, 12 tests
   `test_intent_classifier_pedagogical.py`, 17 tests
-  `test_invention_guard.py` — soit **35 tests** ajoutés.
-- **Battery adversaire** (`test_adversarial_pre_v1.py`, 101 tests) :
-  les fixes B1/B5/H1 sont attendus en gain net après activation
-  Légifrance — à relancer chez Mathieu avec Ollama et la DB DILA active.
+  `test_invention_guard.py` — i.e. **35 tests** added.
+- **Adversarial battery** (`test_adversarial_pre_v1.py`, 101 tests):
+  the B1/B5/H1 fixes are expected as net gain after Légifrance is
+  active — to be re-run on Mathieu's machine with Ollama and the
+  DILA DB active.
 
 ### 📚 Documentation
 
-- `KNOWN_ISSUES.md` : ajout du TTFT content ~18 s sur Gemma4
-  chain-of-thought (le HUD affiche le « thinking » à TTFT 1,25 s pour
-  pallier la perception utilisateur — cible <5 s reportée post-v1, requiert
-  migration runtime).
+- `KNOWN_ISSUES.md`: added the TTFT content ~18 s on Gemma4
+  chain-of-thought (the HUD displays "thinking" at TTFT 1.25 s to
+  paper over the user perception — target < 5 s deferred post-v1,
+  requires runtime migration).
 
-### ⚠️ Connu et accepté pour v1
+### ⚠️ Known and accepted for v1
 
-- **TTFT content ~18 s sur Gemma4 chain-of-thought** — la cause est le
-  buffering thinking→content côté serveur Ollama, hors-portée d'un fix
-  client. Le HUD affiche le « thinking » à **TTFT 1,25 s** : l'utilisateur
-  perçoit immédiatement que Beaume travaille. Migration vers `llama-cpp`
-  ou compression du system prompt rédacteur prévue post-v1 (sprint dédié,
-  cf. `PERF_OPTIM_PROGRESS.md`).
-- **Synchro JudiLibre / Cour de cassation** non câblée. Le manifeste
-  promet la vérification d'arrêts ; aucune source amont implémentée à ce
-  jour (cf. `Rapport_Synchro_Lois_Lucie_2026-04-30.md` §1.2 et §5
-  Action 3). Sprint dédié post-v1.
+- **TTFT content ~18 s on Gemma4 chain-of-thought** — the cause is
+  the thinking→content buffering on the Ollama server side, out of
+  scope for a client fix. The HUD displays "thinking" at
+  **TTFT 1.25 s**: the user immediately perceives Beaume working.
+  Migration to `llama-cpp` or compression of the redacteur system
+  prompt planned post-v1 (dedicated sprint, see
+  `PERF_OPTIM_PROGRESS.md`).
+- **JudiLibre / Cour de cassation sync** not wired. The manifesto
+  promises judgment verification; no upstream source implemented to
+  date (cf. `Rapport_Synchro_Lois_Lucie_2026-04-30.md` §1.2 and §5
+  Action 3). Dedicated sprint post-v1.
 
-### 🚫 Reporté post-v1
+### 🚫 Deferred post-v1
 
-- Migration `llama-cpp` (résout le TTFT content)
-- Synchro JudiLibre / Cour de cassation
-- Cache LRU intent répété (R5 sprint Speed-Optimizer)
-- Compression `redacteur_system.txt` (1 180 → < 400 tokens)
-- Multi-segments (au-delà droit social)
-- Voice (entrée/sortie audio)
-- P2P (`export_for_p2p()` existe sans canal X25519)
-- Orchestrateur hardware
+- `llama-cpp` migration (resolves TTFT content)
+- JudiLibre / Cour de cassation sync
+- Repeated-intent LRU cache (R5 Speed-Optimizer sprint)
+- Compression of `redacteur_system.txt` (1,180 → < 400 tokens)
+- Multi-segments (beyond employment law)
+- Voice (audio I/O)
+- P2P (`export_for_p2p()` exists without an X25519 channel)
+- Hardware orchestrator
 
 ---
 
 ## [0.5.6-fix-regression] — 2026-04-30
 
-- `pipeline.run_stream()` appelait pas `_run_cerveau_oiseau_gates()` —
-  l'article inexistant `L.1234-999` parcourait tout le pipeline (~26 s)
-  au lieu d'être refusé sous 100 ms.
-- Handler `IMPRECISE_LEGAL` ajouté dans `run_stream()` (parité avec `run()`).
-- `verificateur` : log discriminant 0 citation (refus KB vs hallucination).
+- `pipeline.run_stream()` was not calling
+  `_run_cerveau_oiseau_gates()` — the non-existent article
+  `L.1234-999` traversed the entire pipeline (~26 s) instead of
+  being refused under 100 ms.
+- `IMPRECISE_LEGAL` handler added in `run_stream()` (parity with
+  `run()`).
+- `verificateur`: discriminating log on 0 citation (KB refusal vs
+  hallucination).
 
-(Pour les versions antérieures, voir `git log --tags`.)
+(For earlier versions, see `git log --tags`.)
