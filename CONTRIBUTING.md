@@ -1,37 +1,38 @@
 # Contributing
 
-Beaume est développée en solo par Mathieu Bellot. Le rythme de
-sprint est court et le code change vite : les contributions externes
-sont **volontairement limitées** pendant la phase pilote (2026).
+*[Lire en français](CONTRIBUTING.fr.md)*
 
-## Signaler un problème
+Beaume is developed solo by Mathieu Bellot. The sprint cadence is
+short and the code changes fast: external contributions are
+**deliberately limited** during the pilot phase (2026).
 
-- Erreur factuelle dans le README, dans la documentation ou dans
-  `examples/truth_rule_proof.py` → ouvrir une issue GitHub.
-- Lien cassé, citation incorrecte d'un article du Code du travail
-  dans une démo publique → ouvrir une issue GitHub.
-- Bug fonctionnel sur l'app → décrire le contexte (modèle, OS,
-  question posée). Pas de capture de dossier client réel — Beaume
-  est pensée pour rester locale.
+## Reporting a problem
+
+- Factual error in the README, in the documentation, or in
+  `examples/truth_rule_proof.py` → open a GitHub issue.
+- Broken link, incorrect citation of a Code du travail article in a
+  public demo → open a GitHub issue.
+- Functional bug in the app → describe the context (model, OS,
+  question asked). No screenshot of a real client file — Beaume is
+  designed to stay local.
 
 ## Pull requests
 
-Les PR sur le code sont possibles mais filtrées : un solo founder
-ne peut pas absorber des refactos non sollicités sans casser sa
-trajectoire produit. Avant d'investir du temps sur une PR
-non triviale, ouvrir d'abord une issue pour discuter de l'approche.
+Code PRs are possible but filtered: a solo founder cannot absorb
+unsolicited refactors without breaking their product trajectory.
+Before investing time on a non-trivial PR, open an issue first to
+discuss the approach.
 
-## Pilote avocat / partenariats
+## Lawyer pilot / partnerships
 
-Pour les avocats français intéressés par le pilote, les mentors,
-ou les collaborateurs sérieux : contact direct par email avec
-contexte (cabinet, contentieux, besoin précis).
+For French lawyers interested in the pilot, mentors, or serious
+collaborators: direct email contact with context (firm, area of
+litigation, precise need).
 
-Contact : mathieu.ballotma@gmail.com
+Contact: mathieu.ballotma@gmail.com
 
 ## Code of conduct
 
-Respect, précision, et truth rule. Toute contribution qui
-représente faussement l'état réel de Beaume sera refusée. Pas
-d'embellissement, pas de chiffres marketing — on dit ce qu'on
-mesure.
+Respect, precision, and the truth rule. Any contribution that
+misrepresents Beaume's actual state will be refused. No
+embellishment, no marketing numbers — we say what we measure.

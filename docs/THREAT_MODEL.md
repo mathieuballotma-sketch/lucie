@@ -1,97 +1,99 @@
-# Modèle de menace — Beaume
+# Threat model — Beaume
 
-Document public. Décrit ce qui menace les utilisateurs de Beaume et
-ce que l'architecture protège.
+*[Lire en français](THREAT_MODEL.fr.md)*
 
----
-
-## Modèle d'utilisation
-
-Beaume tourne sur le Mac d'un avocat. L'avocat tape une question de
-droit social ou colle un extrait de dossier client. Beaume retourne
-une réponse avec citations Légifrance vérifiées.
-
-**Périmètre de confidentialité** : tout ce qui entre dans Beaume reste
-sur la machine de l'avocat. Aucune donnée client ne sort.
+Public document. Describes what threatens Beaume's users and what
+the architecture protects against.
 
 ---
 
-## Surfaces d'attaque considérées
+## Usage model
 
-### Surface 1 — Exfiltration réseau
+Beaume runs on a lawyer's Mac. The lawyer types a French
+employment-law question or pastes an excerpt from a client file.
+Beaume returns an answer with verified Légifrance citations.
 
-**Menace** : un attaquant ou un défaut de conception fait sortir une
-donnée client de la machine.
+**Confidentiality scope**: anything that enters Beaume stays on the
+lawyer's machine. No client data leaves it.
 
-**Mitigations** :
-- Aucun appel HTTP sortant en runtime, hors `127.0.0.1:11434` (Ollama
-  local). Vérifiable : `grep -rE "https?://" lucie_v1_standalone/ --include='*.py' | grep -v localhost | grep -v 127.0.0.1`.
-- Modèle LLM (Gemma 4 e4b) téléchargé une fois via Ollama puis exécuté
-  100 % localement. Pas d'API key, pas de compte utilisateur LLM.
-- KB Légifrance générée localement à partir des archives DILA publiques.
+---
 
-### Surface 2 — Lecture des fichiers utilisateurs
+## Attack surfaces considered
 
-**Menace** : Beaume lit un fichier utilisateur qu'elle ne devrait pas.
+### Surface 1 — Network exfiltration
 
-**Mitigations** :
-- Le module de lecture dossier (Sprint 7, en cours) lit uniquement les
-  fichiers explicitement glissés-déposés dans le HUD.
-- Pas de scan automatique du Finder ou des dossiers Documents/.
-- Sandbox macOS natif appliqué par la signature Developer ID prévue
-  pour le build `.dmg`.
+**Threat**: an attacker or a design flaw causes client data to
+leave the machine.
+
+**Mitigations**:
+- No outbound HTTP at runtime apart from `127.0.0.1:11434` (local
+  Ollama). Verifiable: `grep -rE "https?://" lucie_v1_standalone/ --include='*.py' | grep -v localhost | grep -v 127.0.0.1`.
+- LLM model (Gemma 4 e4b) downloaded once via Ollama then executed
+  100% locally. No API key, no LLM user account.
+- Légifrance KB generated locally from public DILA archives.
+
+### Surface 2 — Reading user files
+
+**Threat**: Beaume reads a user file it should not.
+
+**Mitigations**:
+- The client-file reading module (Sprint 7, in progress) only reads
+  files explicitly drag-and-dropped into the HUD.
+- No automatic scan of Finder or of the Documents/ folders.
+- Native macOS sandbox applied via the Developer ID signature
+  planned for the `.dmg` build.
 
 ### Surface 3 — Audit trail
 
-**Menace** : un avocat ne peut pas prouver après coup ce que Beaume
-lui a dit (et avec quelles sources).
+**Threat**: a lawyer cannot prove after the fact what Beaume told
+them (and with which sources).
 
-**Mitigations** :
-- Chaque réponse expose explicitement les citations Légifrance utilisées
-  + le `verifier_score`.
-- Les conversations sont stockées localement dans
-  `~/Library/Application Support/Beaume/` et peuvent être exportées au
-  format PAF (preuve audit format).
-- Cf bouton « Exporter audit PAF » dans le menubar HUD.
+**Mitigations**:
+- Every answer explicitly exposes the Légifrance citations used +
+  the `verifier_score`.
+- Conversations are stored locally in
+  `~/Library/Application Support/Beaume/` and can be exported as
+  PAF (Preuve Audit Format).
+- Cf. "Export PAF audit" button in the menubar HUD.
 
-### Surface 4 — Mémoire adaptative
+### Surface 4 — Adaptive memory
 
-**Menace** : la mémoire utilisateur accumule des données sensibles
-client et les redivulgue.
+**Threat**: user memory accumulates sensitive client data and
+re-discloses it.
 
-**Mitigations** :
-- Sanitizer PII applique des règles de détection (numéros SS, IBAN,
-  noms propres) avant écriture mémoire — voir
+**Mitigations**:
+- The PII sanitizer applies detection rules (SSN-equivalent, IBAN,
+  proper nouns) before memory write — see
   [`lucie_v1_standalone/memory/sanitizer.py`](../lucie_v1_standalone/memory/sanitizer.py).
-- La page « Ce que Beaume sait de vous » du HUD expose explicitement
-  toute la mémoire et permet un reset complet en un clic.
+- The "What Beaume knows about you" page in the HUD explicitly
+  exposes the entire memory and allows a full reset in one click.
 
 ---
 
-## Modèle de menace côté code
+## Threat model on the code side
 
-### Le code est public, c'est intentionnel
+### The code is public, this is intentional
 
-Beaume est sous Business Source License 1.1. Le code peut être lu et
-étudié. La copie commerciale en production n'est pas autorisée
-pendant 4 ans.
+Beaume is under the Business Source License 1.1. The code can be
+read and studied. Commercial copying in production is not
+authorized for 4 years.
 
-Ce qui n'est **pas** dans le repo public :
-- L'index Légifrance compacté (4,6 Go SQLite) — généré localement à
-  partir des archives DILA publiques.
-- Les prompts de tuning fin et les seuils détaillés calibrés
-  empiriquement — réserve interne.
-- Les rapports diagnostic complets (causes racines, métriques internes)
-  — voir [`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md) pour la doctrine.
+What is **not** in the public repo:
+- The compacted Légifrance index (4.6 GB SQLite) — generated
+  locally from public DILA archives.
+- Fine-tuning prompts and detailed thresholds calibrated
+  empirically — internal reserve.
+- Full diagnostic reports (root causes, internal metrics) — see
+  [`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md) for the doctrine.
 
-### Si vous trouvez une vulnérabilité
+### If you find a vulnerability
 
-**Ne pas ouvrir d'issue publique.** Contacter directement par email :
+**Do not open a public issue.** Contact directly by email:
 
-> mathieu.bellot via mathieu.ballotma@gmail.com (sujet : `[SECURITY]
-> Beaume — votre titre court`)
+> mathieu.bellot via mathieu.ballotma@gmail.com (subject:
+> `[SECURITY] Beaume — your short title`)
 
-Réponse sous 48h ouvrées. Si la vulnérabilité concerne une donnée
-client réelle, joindre le contexte d'usage (modèle, version) mais
-**aucun extrait de dossier client réel** — Beaume étant locale, vous
-disposez vous-même de la reproduction.
+Reply within 48 business hours. If the vulnerability concerns real
+client data, attach the usage context (model, version) but
+**no extract from a real client file** — since Beaume is local, you
+already have the reproduction yourself.

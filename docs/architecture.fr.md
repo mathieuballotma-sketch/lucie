@@ -4,7 +4,7 @@
 
 Document public. High-level. Pas de détails internes sensibles
 (prompts tunés, seuils empiriques, causes racines de bugs — voir
-[`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md) pour la doctrine).
+[`docs/sprints/SUMMARY.fr.md`](sprints/SUMMARY.fr.md) pour la doctrine).
 
 ---
 
@@ -52,7 +52,7 @@ références d'article invalides (bornes numériques) et les
 ambiguïtés `lic_eco` vs `lic_perso`.
 
 Pourquoi déterministe d'abord : c'est la garantie architecturale
-que la truth rule (principe 2 de [`PRINCIPLES.md`](../PRINCIPLES.md))
+que la truth rule (principe 2 de [`PRINCIPLES.fr.md`](../PRINCIPLES.fr.md))
 est appliquée *avant* qu'un LLM n'ait eu l'occasion d'halluciner.
 
 ### Cerveau Humain — LLM local
@@ -96,7 +96,7 @@ Trois points d'application de la truth rule :
    dans le menubar.
 
 Justification du seuil `verifier_score ≥ 0.70` : voir
-[`bench/CHANGELOG.md`](../bench/CHANGELOG.md).
+[`bench/CHANGELOG.fr.md`](../bench/CHANGELOG.fr.md).
 
 ---
 
@@ -132,7 +132,7 @@ Composants :
 - [`lucie_v1_standalone/memory/store.py`](../lucie_v1_standalone/memory/store.py) — persistance JSON locale
 - [`lucie_v1_standalone/memory/sanitizer.py`](../lucie_v1_standalone/memory/sanitizer.py) — détection PII avant écriture
 
-Conséquence du principe 5 ([`PRINCIPLES.md`](../PRINCIPLES.md)) :
+Conséquence du principe 5 ([`PRINCIPLES.fr.md`](../PRINCIPLES.fr.md)) :
 deux instances Beaume sur deux Mac différents divergent après quelques
 semaines d'usage. Aucune mémoire partagée cloud.
 
@@ -144,7 +144,7 @@ semaines d'usage. Aucune mémoire partagée cloud.
 > 12 mai 2026. Certains composants — notamment le backward chaining
 > et le constraint solver du moteur d'inférence — sont partiellement
 > implémentés en v1 et seront livrés au Sprint 8 (Cerveau
-> Déterministe). Voir [`docs/sprints/SUMMARY.md`](sprints/SUMMARY.md)
+> Déterministe). Voir [`docs/sprints/SUMMARY.fr.md`](sprints/SUMMARY.fr.md)
 > pour l'état d'avancement.*
 
 ### Définition scientifique
@@ -290,7 +290,7 @@ Les **détails d'implémentation** sensibles restent en réserve :
 - Le tuning fin des prompts système (8 fichiers
   `lucie_v1_standalone/prompts/*.txt` sont versionnés mais leur
   évolution future passera par `prompts_private/`, voir
-  [`docs/THREAT_MODEL.md`](THREAT_MODEL.md)).
+  [`docs/THREAT_MODEL.fr.md`](THREAT_MODEL.fr.md)).
 - Les seuils empiriques calibrés par run de batterie répétés.
 - Les choix d'implémentation rejetés.
 - Les modules en stash compétitif (vocal, vidéo, OCR, multi-modal,

@@ -1,91 +1,91 @@
-# Principes Beaume
+# Beaume Principles
 
-Six principes orientent toutes les décisions techniques et produit
-de Beaume. Quand un arbitrage est ambigu, on revient à cette liste.
+*[Lire en français](PRINCIPLES.fr.md)*
+
+Six principles drive every technical and product decision at Beaume.
+When a trade-off is unclear, we come back to this list.
 
 ---
 
-## 1. 100 % local
+## 1. 100% on-device
 
-Les données d'un avocat ne quittent jamais sa machine. Aucun appel
-sortant en runtime hors `127.0.0.1:11434` (Ollama local). Aucune
-télémétrie. Pas de compte. Pas d'API key utilisateur.
+A lawyer's data never leaves their machine. No outbound calls at
+runtime apart from `127.0.0.1:11434` (local Ollama). No telemetry.
+No account. No user-side API key.
 
-Critère de violation : un seul appel `requests.post()` vers un
-domaine externe en code production. Vérifiable par grep.
+Violation criterion: a single `requests.post()` to an external domain
+in production code. Verifiable by grep.
 
-## 2. Truth rule absolue
+## 2. Absolute truth rule
 
-Beaume préfère refuser que halluciner. Toute citation Légifrance qui
-ne figure pas dans l'index local est rejetée *avant* d'arriver à
-l'utilisateur. Toute métrique communiquée publiquement (README,
-batterie, sprint) doit être reproductible — voir
-[`docs/EVIDENCE.md`](docs/EVIDENCE.md) et
+Beaume prefers to refuse rather than hallucinate. Any Légifrance
+citation absent from the local index is rejected *before* it reaches
+the user. Any metric communicated publicly (README, batteries,
+sprints) must be reproducible — see
+[`docs/EVIDENCE.md`](docs/EVIDENCE.md) and
 [`docs/REPRODUCE.md`](docs/REPRODUCE.md).
 
-Critère de violation : une affirmation publique sans preuve cliquable
-dans le code ou les rapports.
+Violation criterion: a public claim without clickable evidence in the
+code or in the reports.
 
-## 3. Architecte silencieux
+## 3. Silent architect
 
-Pas de marketing. Pas de superlatifs. Pas de pitch "révolutionnaire",
-"AI-powered", "next-gen". Les chiffres parlent ; le code parle. La
-voix de Beaume est factuelle, mesurable, sobre. Le HUD est silencieux
-sauf quand il répond.
+No marketing. No superlatives. No "revolutionary", "AI-powered",
+"next-gen" pitch. Numbers speak; code speaks. Beaume's voice is
+factual, measurable, sober. The HUD is silent except when it answers.
 
-Critère de violation : un mot marketing dans un commit message, un
-README, un prompt système.
+Violation criterion: a marketing word in a commit message, a README,
+a system prompt.
 
-## 4. Transparence radicale
+## 4. Radical transparency
 
-Ce qui est cassé est documenté ([`KNOWN_ISSUES.md`](KNOWN_ISSUES.md)).
-Ce qui a changé est daté ([`CHANGELOG.md`](CHANGELOG.md)). Ce qui a
-été livré dans un sprint est résumé publiquement
+What is broken is documented ([`KNOWN_ISSUES.md`](KNOWN_ISSUES.md)).
+What changed is dated ([`CHANGELOG.md`](CHANGELOG.md)). What shipped
+in a sprint is summarized publicly
 ([`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md)).
 
-Ce qui reste **non public** (réserve compétitive) : les détails
-diagnostic, les seuils empiriques, les prompts tunés finement, les
-modules en stash. Voir [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
+What stays **non-public** (competitive reserve): diagnostic details,
+empirical thresholds, finely tuned prompts, modules in stash. See
+[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 
-Critère de violation : un bug connu non documenté ; une métrique
-publique sans méthode de vérification.
+Violation criterion: a known bug undocumented; a public metric
+without a verification method.
 
-## 5. Mémoire adaptative par utilisateur
+## 5. Per-user adaptive memory
 
-Aucune Beaume n'est identique. La mémoire (préférences, raccourcis,
-contexte cabinet) s'enracine localement, sur la machine de
-l'utilisateur. Deux Mac M2 voisins divergent après quelques
-semaines d'usage.
+No two Beaume instances are identical. Memory (preferences,
+shortcuts, firm context) takes root locally, on the user's machine.
+Two neighboring M2 Macs diverge after a few weeks of use.
 
-Critère de violation : une mémoire partagée cloud, ou un fingerprint
-exporté.
+Violation criterion: a shared cloud memory, or an exported
+fingerprint.
 
-## 6. Qualité montre suisse
+## 6. Swiss-watch quality
 
-Précision déterministe **avant** créativité LLM. Le routeur
-d'intention, le retriever Légifrance et le Vérificateur sont
-déterministes. Le LLM intervient uniquement pour formuler une
-réponse à partir de matériel déjà validé.
+Deterministic precision **before** LLM creativity. The intent
+router, the Légifrance retriever and the Verifier are deterministic.
+The LLM only steps in to phrase an answer from material that has
+already been validated.
 
-Le passage par le LLM est traçable : `verifier_score` exposé dans
-le HUD, citations cliquables vers l'article exact, audit PAF
-exportable.
+Every LLM step is traceable: `verifier_score` shown in the HUD,
+clickable citations linking to the exact article, exportable PAF
+audit.
 
-Critère de violation : un LLM appelé sans gate déterministe en amont,
-ou une réponse exposée sans `verifier_score`.
+Violation criterion: an LLM called without a deterministic gate
+upstream, or an answer exposed without a `verifier_score`.
 
 ---
 
-## Application au code
+## Mapping to code
 
-| Principe | Composant qui l'applique |
-|----------|--------------------------|
-| 100 % local | [`lucie_v1_standalone/ollama_client.py`](lucie_v1_standalone/ollama_client.py) — base URL = `127.0.0.1:11434` |
+| Principle | Component that enforces it |
+|-----------|----------------------------|
+| 100% on-device | [`lucie_v1_standalone/ollama_client.py`](lucie_v1_standalone/ollama_client.py) — base URL = `127.0.0.1:11434` |
 | Truth rule | [`lucie_v1_standalone/verificateur.py`](lucie_v1_standalone/verificateur.py) + [`tests/test_truth_rule_pattern.py`](tests/test_truth_rule_pattern.py) |
-| Architecte silencieux | Code review humain, ce fichier comme garde-fou |
-| Transparence radicale | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md), [`docs/EVIDENCE.md`](docs/EVIDENCE.md), [`docs/REPRODUCE.md`](docs/REPRODUCE.md) |
-| Mémoire adaptative | [`lucie_v1_standalone/memory/`](lucie_v1_standalone/memory/) (`personal.py`, `abstract.py`, `store.py`, `sanitizer.py`) |
-| Qualité montre suisse | [`lucie_v1_standalone/dialogue/intent_classifier.py`](lucie_v1_standalone/dialogue/intent_classifier.py), [`lucie_v1_standalone/retriever.py`](lucie_v1_standalone/retriever.py), [`lucie_v1_standalone/verificateur.py`](lucie_v1_standalone/verificateur.py) |
+| Silent architect | Human code review, this file as the guardrail |
+| Radical transparency | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md), [`docs/EVIDENCE.md`](docs/EVIDENCE.md), [`docs/REPRODUCE.md`](docs/REPRODUCE.md) |
+| Adaptive memory | [`lucie_v1_standalone/memory/`](lucie_v1_standalone/memory/) (`personal.py`, `abstract.py`, `store.py`, `sanitizer.py`) |
+| Swiss-watch quality | [`lucie_v1_standalone/dialogue/intent_classifier.py`](lucie_v1_standalone/dialogue/intent_classifier.py), [`lucie_v1_standalone/retriever.py`](lucie_v1_standalone/retriever.py), [`lucie_v1_standalone/verificateur.py`](lucie_v1_standalone/verificateur.py) |
 
 ---
 

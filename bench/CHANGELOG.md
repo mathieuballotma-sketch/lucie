@@ -1,78 +1,80 @@
 # Bench CHANGELOG
 
-## 2026-05-12 (soir) — Sprint 6 P2a mise-au-propre — Scope v1 strict (lic_eco only)
+*[Lire en français](CHANGELOG.fr.md)*
 
-**Périmètre** : `bench/swiss_watch_50.json` + `bench/expected_behaviors.json` + `bench/run_legal_traps.py`.
+## 2026-05-12 (evening) — Sprint 6 P2a cleanup — Strict v1 scope (lic_eco only)
 
-**Changement** : 20 questions précédemment évaluées avec la règle `swiss_watch_quality` (qui exige `refused=false` + `verifier_score ≥ seuil` + citations) passent à la nouvelle règle `oos_refusal_v1_scope`.
+**Scope**: `bench/swiss_watch_50.json` + `bench/expected_behaviors.json` + `bench/run_legal_traps.py`.
 
-| Catégorie | n | Ancienne règle | Nouvelle règle |
+**Change**: 20 questions previously evaluated under the `swiss_watch_quality` rule (which requires `refused=false` + `verifier_score ≥ threshold` + citations) move to the new `oos_refusal_v1_scope` rule.
+
+| Category | n | Old rule | New rule |
 |---|---|---|---|
 | `lic_perso` | 10 | `swiss_watch_quality` | `oos_refusal_v1_scope` |
 | `conges_rtt` | 5 | `swiss_watch_quality` | `oos_refusal_v1_scope` |
 | `dem_rupture_conv` | 5 | `swiss_watch_quality` | `oos_refusal_v1_scope` |
 
-Les 10 questions `lic_eco` (cœur scope v1) conservent `swiss_watch_quality` (seuil `0.70` recalibré le matin du 2026-05-12). Aucune indulgence sur le cœur.
+The 10 `lic_eco` questions (v1 core scope) keep `swiss_watch_quality` (threshold `0.70` recalibrated on the morning of 2026-05-12). No leniency on the core.
 
-### Justificatif
+### Rationale
 
-La mesure 50q post-merge Sprint 6 P2a révèle un score brut **19/50 = 38 %** dont **15 faux échecs** liés au scope v1 :
-- Beaume v1 couvre **uniquement** le licenciement économique (décision produit, gate `lic_perso_v1` implémenté Sprint 6 P1).
-- Sur lic_perso (10 questions) : Beaume refuse correctement via gate (`refused=true`, `early_validation_triggered="lic_perso_v1"`, answer = « Beaume v1 couvre uniquement le licenciement économique »).
-- Sur conges_rtt (5) + dem_rupture_conv (5) : Beaume refuse poliment via pipeline (« Cette information n'est pas dans mes sources »).
-- Dans les deux cas, l'ancienne règle `swiss_watch_quality` exigeait `refused=false` + score qualité, donc FAIL automatique alors que Beaume produit le comportement **attendu**.
+The post-merge 50q measurement after Sprint 6 P2a shows a raw score of **19/50 = 38%**, of which **15 false failures** are tied to v1 scope:
+- Beaume v1 covers **only** economic dismissal (product decision, `lic_perso_v1` gate implemented Sprint 6 P1).
+- On lic_perso (10 questions): Beaume correctly refuses via the gate (`refused=true`, `early_validation_triggered="lic_perso_v1"`, answer = "Beaume v1 only covers economic dismissal").
+- On conges_rtt (5) + dem_rupture_conv (5): Beaume politely refuses via the pipeline ("This information is not in my sources").
+- In both cases, the old `swiss_watch_quality` rule required `refused=false` + a quality score, hence an automatic FAIL even though Beaume produces the **expected** behavior.
 
-La nouvelle règle `oos_refusal_v1_scope` valide que :
-1. Beaume **refuse** (via gate explicite ou marqueur de refus poli dans la réponse), ET
-2. Beaume **refuse rapidement** (wall_clock < 60s).
+The new `oos_refusal_v1_scope` rule validates that:
+1. Beaume **refuses** (via explicit gate or polite-refusal marker in the answer), AND
+2. Beaume **refuses quickly** (wall_clock < 60s).
 
-Implémentation harness : nouveau champ synthétique `_v1_scope_refusal_signal` dans `bench/run_legal_traps.py:_get_field` qui retourne `True` si :
-- `early_validation_triggered == "lic_perso_v1"`, OU
-- `answer` contient un des marqueurs : `"Beaume v1"`, `"uniquement le licenciement économique"`, `"n'est pas dans mes sources"`, `"hors-périmètre"`, etc.
+Harness implementation: new synthetic `_v1_scope_refusal_signal` field in `bench/run_legal_traps.py:_get_field` returning `True` if:
+- `early_validation_triggered == "lic_perso_v1"`, OR
+- `answer` contains one of the markers: `"Beaume v1"`, `"uniquement le licenciement économique"`, `"n'est pas dans mes sources"`, `"hors-périmètre"`, etc.
 
-**Truth rule respectée** : la batterie reflète maintenant le scope déclaré de Beaume v1. On ne baisse aucune exigence sur le cœur lic_eco (10 questions restent en `swiss_watch_quality` avec leur seuil 0.70). Quand Sprint 6 P3 livrera la couverture lic_perso, on inversera la réassignation pour ces 10 questions.
+**Truth rule respected**: the battery now reflects Beaume v1's declared scope. We lower no requirement on the lic_eco core (10 questions stay in `swiss_watch_quality` with their 0.70 threshold). When Sprint 6 P3 ships lic_perso coverage, we will reverse the reassignment for these 10 questions.
 
-**Référence pré-mise-au-propre** : `/tmp/after_50q_2026-05-12.json` (run incomplet stoppé à ~24/50, kill exit 144).
+**Pre-cleanup reference**: `/tmp/after_50q_2026-05-12.json` (incomplete run stopped at ~24/50, kill exit 144).
 
-### Garde-fou
+### Safeguard
 
-Tout faux PASS (Beaume qui ne refuserait pas et le harness qui penserait que oui) serait visible par audit :
+Any false PASS (Beaume not refusing while the harness believes it does) would be visible by audit:
 ```bash
 python3 bench/run_legal_traps.py --prompts bench/swiss_watch_50.json --filter SW-LPER --json /tmp/audit.json
 ```
-Vérifier que `early_validation_triggered = "lic_perso_v1"` OU `answer` contient effectivement un marqueur de scope v1, pas du contenu juridique inventé.
+Verify that `early_validation_triggered = "lic_perso_v1"` OR `answer` actually contains a v1-scope marker, not invented legal content.
 
 ---
 
-## 2026-05-12 (matin) — Sprint 6 P2a — Recalibration `verifier_score_min` 0.85 → 0.70
+## 2026-05-12 (morning) — Sprint 6 P2a — Recalibration `verifier_score_min` 0.85 → 0.70
 
-**Périmètre** : `bench/swiss_watch_50.json` — 10 questions de catégorie `lic_eco` utilisant la règle `swiss_watch_quality`.
+**Scope**: `bench/swiss_watch_50.json` — 10 `lic_eco`-category questions using the `swiss_watch_quality` rule.
 
-**Changement** : `pass_criteria.verifier_score_min` passe de `0.85` à `0.70` pour ces 10 questions. Le seuil `0.5` des 20 autres questions (rules `swiss_watch_small_talk`, `swiss_watch_hallucination_blocked`, etc.) reste inchangé.
+**Change**: `pass_criteria.verifier_score_min` moves from `0.85` to `0.70` for these 10 questions. The `0.5` threshold of the other 20 questions (rules `swiss_watch_small_talk`, `swiss_watch_hallucination_blocked`, etc.) is unchanged.
 
-### Justificatif
+### Rationale
 
-L'ancien seuil **0.85** reposait sur une métrique Vérificateur biaisée par double-comptage des duplicats. Exemple SW-LECO-001 :
-- Note Rédacteur contenant `[L1233-X]` × 6 occurrences → l'ancienne regex `\[([A-Za-z0-9_\-\.]+)\]` les comptait 6 fois → score `6 OK / 6 total = 1.00` (artificiel).
-- Le score 0.85 paraissait atteignable parce qu'il suffisait de 6 brackets valides (incluant duplicats) pour saturer.
+The old **0.85** threshold relied on a Verifier metric biased by duplicate double-counting. Example SW-LECO-001:
+- Redacteur note containing `[L1233-X]` × 6 occurrences → the old regex `\[([A-Za-z0-9_\-\.]+)\]` counted them 6 times → score `6 OK / 6 total = 1.00` (artificial).
+- The 0.85 score looked attainable because it sufficed to have 6 valid brackets (including duplicates) to saturate.
 
-La regex étendue Sprint 6 P2a B-6 sol 1 (`_CITATION_RE`, `_canonicalize`) :
-1. **Déduplique sur clé canonique** (`L1233-3` ≡ `L.1233-3` ≡ `L. 1233-3`) — chaque article unique compte 1×.
-2. **Capture les citations en prose** (`article L. 1233-5` hors crochets) — rend visibles les références jusque-là silencieuses.
-3. Conséquence sur SW-LECO-001 : 3 IDs uniques validés + 1 prose hors-sources rejetée → score `3 OK / 4 total = 0.75`.
+The extended Sprint 6 P2a B-6 sol 1 regex (`_CITATION_RE`, `_canonicalize`):
+1. **Deduplicates on canonical key** (`L1233-3` ≡ `L.1233-3` ≡ `L. 1233-3`) — each unique article counts 1×.
+2. **Captures prose citations** (`article L. 1233-5` outside brackets) — surfaces references that were previously silent.
+3. Consequence on SW-LECO-001: 3 unique IDs validated + 1 out-of-sources prose rejected → score `3 OK / 4 total = 0.75`.
 
-Ce **0.75 est une mesure plus honnête** que l'ancien 1.00. Le seuil **0.70** est calibré sur cette précision réelle : il accepte ≥ 3 citations valides sur 4 détectées (incluant prose), ce qui correspond à la qualité réelle attendue d'une note juridique procédurale en droit du licenciement économique.
+This **0.75 is a more honest measurement** than the old 1.00. The **0.70** threshold is calibrated on this real precision: it accepts ≥ 3 valid citations out of 4 detected (including prose), which matches the actual quality expected of a procedural legal note in economic-dismissal law.
 
-### Référence
+### Reference
 
-- Rapport Sprint 6 P2a : `~/Desktop/Rapport_sprint_6_p2a_retriever_verificateur_2026-05-08.md`
-- Commits : `8dbfd95` (B-5 retriever débridé), `a1c36c4` (B-6 vérificateur normalisé)
-- Probe : SW-LECO-001 sous `BEAUME_VERIFICATEUR_NORMALISE=0` repasse à score 1.00 (ancien biais), sous `=1` donne 0.75 (mesure honnête).
+- Sprint 6 P2a report: `~/Desktop/Rapport_sprint_6_p2a_retriever_verificateur_2026-05-08.md`
+- Commits: `8dbfd95` (B-5 unbounded retriever), `a1c36c4` (B-6 normalized verifier)
+- Probe: SW-LECO-001 under `BEAUME_VERIFICATEUR_NORMALISE=0` returns to score 1.00 (old bias), under `=1` gives 0.75 (honest measurement).
 
-### Garde-fou
+### Safeguard
 
-Si une régression suspecte est observée sur le seuil 0.70, audit en exécutant :
+If a suspicious regression is observed on the 0.70 threshold, audit by running:
 ```bash
 python3 bench/run_legal_traps.py --prompts bench/swiss_watch_50.json --filter SW-LECO --json /tmp/audit.json
 ```
-Vérifier que `citations_invalid` reste proche de zéro sur les questions PASS. Une explosion de `citations_invalid` indiquerait un LLM qui invente des références.
+Verify that `citations_invalid` stays close to zero on PASS questions. An explosion of `citations_invalid` would indicate an LLM inventing references.
