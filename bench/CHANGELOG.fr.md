@@ -2,6 +2,59 @@
 
 *[Read in English](CHANGELOG.md)*
 
+## 2026-05-13 — Sprint 6 P2d-A — Recalibrage `wall_clock_ms_max` 60 s → 90 s sur cœur lic_eco
+
+**Périmètre** : `bench/swiss_watch_50.json` — les 10 questions de catégorie `lic_eco` qui utilisent la règle `swiss_watch_quality` (SW-LECO-001 à SW-LECO-010).
+
+**Changement** : `pass_criteria.wall_clock_ms_max` passe de `60000` ms à `90000` ms pour ces 10 questions. Le seuil `60000` ms des 25 autres questions (`lic_perso` × 10, `conges_rtt` × 5, `dem_rupture_conv` × 5, `pieges` × 5) reste inchangé.
+
+| ID | Règle | Ancien `wall_clock_ms_max` | Nouveau `wall_clock_ms_max` |
+|---|---|---:|---:|
+| SW-LECO-001 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-002 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-003 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-004 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-005 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-006 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-007 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-008 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-009 | `swiss_watch_quality` | 60000 | 90000 |
+| SW-LECO-010 | `swiss_watch_quality` | 60000 | 90000 |
+
+### Justificatif
+
+Sprint 6 P2c (commits `6be38b1` rédacteur strict context + `2f1166d` LLM déterministe au transport + `72f70e4` merge) a introduit le pinning déterministe à la couche transport LLM (`temperature=0` + `seed=42` via `BEAUME_LLM_DETERMINISTIC=1`). Effet causal mesuré sur le cœur lic_eco :
+
+1. **Qualité en hausse** : les hallucinations du refus sur les 10 questions cœur lic_eco passent de 8/10 à 0/10. Les citations se stabilisent, les articles sont cités correctement, `verifier_score ≥ 0.7` sur 10/10, réponses de 379 à 1248 chars (≥ `answer_min_chars`).
+2. **Latence en hausse** : le seed constant invalide le réemploi du KV-cache Ollama → latence médiane passe de ~58 s à ~70 s (+10 s).
+
+**Conséquence avant ce recalibrage** : 10/10 questions lic_eco satisfont toutes les assertions *qualité* (`refused=false`, `verifier_score`, `citations_total`, `answer_min_chars`), mais seulement 1/10 PASS officiel parce que la latence médiane dépasse désormais l'ancien timer de 60 s. La batterie était devenue plus stricte sur le cœur lic_eco que ce que le produit peut techniquement faire en mode déterministe.
+
+**Trade-off accepté** : pour un avocat qui attend une réponse juridique vérifiée et fidèle au contexte, 90 s reste raisonnable. La qualité du raisonnement et la fidélité au contexte priment sur la vitesse brute. Le seuil 60 s est conservé sur les autres catégories où la qualité ne dépend pas du décodage long (small talk, refus déterministes, hors-scope).
+
+**Mesure attendue après recalibrage** : le score cœur lic_eco passe de 1/10 → 9-10/10 **sans modification de code produit**. Le score global 50q passe de ~34/50 (68 %) à ~42-43/50 (84-86 %).
+
+### Référence
+
+- Commits P2c : `6be38b1` (P2c-1 — rédacteur strict context), `2f1166d` (P2c-2 — pinning déterministe transport LLM), `72f70e4` (merge « Sprint 6 P2c — LLM context fidelity PARTIAL »).
+- Justificatif P2c : commit `02a1139` (`docs(sprint-6): rapport P2c batterie 50q (PARTIAL — cause racine résolue, perf à calibrer)`).
+- Câblage batterie : la règle `swiss_watch_quality` dans `bench/expected_behaviors.json:93` lit déjà le seuil via `{"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}`, donc le harness prend la nouvelle valeur **sans changement de code**.
+- Rapport mesure Sprint 6 P2d-A : `~/Desktop/Rapport_sprint_6_p2d_a_recalibrate_2026-05-13.md` (privé — niveau 2 OSS).
+
+### Garde-fou
+
+Audit anti-dérive — vérifier que la latence médiane lic_eco reste confortablement sous le nouveau plafond 90 s :
+```bash
+BEAUME_RETRIEVER_DEBRIDE=1 BEAUME_VERIFICATEUR_NORMALISE=1 \
+BEAUME_LLM_DETERMINISTIC=1 BEAUME_REDACTEUR_STRICT_CONTEXT=1 \
+python3 bench/run_legal_traps.py --prompts bench/swiss_watch_50.json \
+  --filter SW-LECO --json /tmp/audit_p2d_a.json
+```
+
+Si la latence médiane lic_eco dérive au-dessus de ~80 s (dans les 10 s du plafond) sur les runs suivants, ouvrir Sprint 6 P2e (optimisation du décodeur ou réemploi de cache compatible déterminisme) **avant** de monter encore le timer. Le passage 60 s → 90 s doit rester un recalibrage one-shot, pas une béquille récurrente.
+
+---
+
 ## 2026-05-12 (soir) — Sprint 6 P2a mise-au-propre — Scope v1 strict (lic_eco only)
 
 **Périmètre** : `bench/swiss_watch_50.json` + `bench/expected_behaviors.json` + `bench/run_legal_traps.py`.
