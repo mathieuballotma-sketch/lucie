@@ -1,0 +1,65 @@
+# Manifest pharma ANSM — mock-up Sprint G-1 étape 1.
+# Conforme à corpus/_schema/manifest_schema.py v1.0.
+# Démonstrateur de généricité : prouve que le pattern Manifest-Driven Engine
+# permet d'instancier un 2e corpus (pharma / publicité médicaments) sans
+# toucher au moteur central encore couplé au droit social.
+
+schema_version: "1.0"
+
+identity:
+  code: fr_pharma_ansm
+  name: "Pharma — Publicité médicaments (ANSM)"
+  juridiction: fr
+  langue: fr
+  autorite: "Agence nationale de sécurité du médicament (ANSM)"
+
+citation_patterns:
+  - regex: '\b([LRD])\.?\s*5\d{3}-\d+(?:-\d+)?\b'
+    kind: article-code
+    exemple: "L.5122-1"
+    case_insensitive: true
+    description: "Articles L./R./D. du Code de la santé publique (livre V — médicament)."
+
+  - regex: '\b[Aa]rt(?:icle)?\.?\s+R\.?\s*5\d{3}-\d+\b'
+    kind: reglement
+    exemple: "Article R.5122-8"
+    case_insensitive: true
+    description: "Forme prose 'Article R.5xxx-y' (partie réglementaire CSP)."
+
+sources:
+  - name: legifrance_csp_article
+    url_template: "https://www.legifrance.gouv.fr/codes/article_lc/{cid}"
+    autorite_emettrice: "Légifrance / DILA"
+    type: code
+    placeholders: [cid]
+
+  - name: ansm_recommandation
+    # SOURCE_TO_VERIFY — pattern URL ANSM réel à confirmer par Mathieu
+    # avant Sprint G-1 étape 2 (peut être ansm.sante.fr/dossiers-thematiques/
+    # ou /etat-de-l-art/ — structure réelle non vérifiable offline).
+    url_template: "https://ansm.sante.fr/dossiers-thematiques/publicite/{slug}"
+    autorite_emettrice: "ANSM"
+    type: recommandation-autorite
+    placeholders: [slug]
+
+validation:
+  verifier_score_min: 0.75
+  citations_min: 1
+  refuse_si_pas_de_source: true
+  max_citations_invalides_pct: 0.0
+
+paths:
+  articles: articles/
+  themes: themes.yaml
+  refusals: refusals.yaml
+  prompts: prompts/
+
+metadata:
+  owner: "Beaume Sprint G-1"
+  created: "2026-05-13"
+  status: "mock-up / proof-of-genericity"
+  notes: |
+    Ce corpus est un mock-up pour Sprint G-1 étape 1. Les articles markdown
+    contiennent des résumés opérationnels rédigés (vérifiables doctrinalement)
+    mais les textes officiels et `cid` Légifrance sont marqués SOURCE_TO_VERIFY
+    (truth-rule absolue Beaume : pas d'invention de texte légal).

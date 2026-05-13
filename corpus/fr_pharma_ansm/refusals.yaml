@@ -1,0 +1,94 @@
+# Out-of-scope pharma ANSM — refus localisés.
+# Format identique à lucie_v1_standalone/dialogue/out_of_scope_config.yaml.
+# Consommé (Sprint G-1 étape 2) via manifest.paths.refusals.
+#
+# `priority_override.patterns` : si une regex matche la query, on désactive
+# la détection hors-scope (la question est traitée normalement). Rationnel :
+# une query qui cite le CSP livre V ou évoque l'ANSM est par nature dans le
+# périmètre Pharma, même si elle contient un mot comme « fiscal » en contexte.
+
+scope_refusal: |
+  Cette requête sort du périmètre Beaume Pharma (publicité des médicaments
+  sous contrôle ANSM). Je ne traite que les questions relatives au droit
+  pharmaceutique français — publicité, AMM, pharmacovigilance, mentions
+  obligatoires, compétence ANSM, sanctions.
+  Merci de reformuler ou de poser une question sur l'un de ces thèmes.
+
+domains:
+  droit_social:
+    keywords:
+      - licenciement
+      - prud'hommes
+      - prudhommes
+      - salarié
+      - salarie
+      - cse
+      - convention collective
+      - contrat de travail
+      - rupture conventionnelle
+    redirection: |
+      Cette question relève du droit social. Beaume Pharma se concentre sur
+      la réglementation pharmaceutique (publicité, AMM, ANSM). Pour le droit
+      social, consultez le corpus Beaume Droit Travail.
+
+  fiscal:
+    keywords:
+      - tva
+      - impôt sociétés
+      - impot societes
+      - cgi
+      - niche fiscale
+      - credit impot recherche
+      - cir
+    redirection: |
+      Cette question relève du droit fiscal. Un expert-comptable ou un avocat
+      fiscaliste sera plus pertinent. Je reste disponible pour les questions
+      ANSM (publicité, AMM, pharmacovigilance).
+
+  penal_general:
+    keywords:
+      - garde à vue
+      - garde a vue
+      - correctionnel
+      - tribunal correctionnel
+      - crime
+      - homicide
+    redirection: |
+      Cette question relève du droit pénal général. Les sanctions spécifiques
+      au médicament (publicité illicite, exercice illégal de la pharmacie,
+      contrefaçon) restent dans mon périmètre — reformulez si c'est le cas.
+
+  consommation:
+    keywords:
+      - vice caché
+      - vice cache
+      - garantie légale conformité
+      - garantie legale conformite
+      - clause abusive
+      - démarchage abusif
+    redirection: |
+      Cette question relève du droit de la consommation général. Pour la
+      publicité trompeuse spécifique au médicament (L.5122 CSP), je peux
+      répondre.
+
+  ip_brevets:
+    keywords:
+      - brevet
+      - propriété intellectuelle
+      - propriete intellectuelle
+      - inpi
+      - marque déposée
+      - marque deposee
+      - ccp
+      - certificat complémentaire protection
+    redirection: |
+      Les brevets pharmaceutiques (CCP, exclusivité commerciale, données
+      pré-cliniques) relèvent du droit de la propriété industrielle. Mon
+      périmètre est la mise sur le marché et la publicité (CSP livre V).
+
+priority_override:
+  patterns:
+    - "\\b[LRD]\\.?\\s?5\\d{3}(?:-\\d+)?\\b"
+    - "\\bcode de la sant[ée] publique\\b"
+    - "\\b(ansm|amm|pharmacovigilance|publicit[ée] m[ée]dicament)\\b"
+    - "\\b(rcp|visa publicit[ée]|mentions obligatoires)\\b"

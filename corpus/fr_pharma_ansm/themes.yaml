@@ -1,0 +1,122 @@
+# Thèmes pharma ANSM — format identique à
+# lucie_v1_standalone/knowledge_legifrance/theme_mapping.yaml.
+#
+# Consommé (en Sprint G-1 étape 2) par :
+#   - intent_classifier::detect_themes()  (via manifest.paths.themes)
+#   - indexer / retriever Légifrance
+#
+# 6 thèmes couvrant le cœur métier ANSM : publicité médicaments, AMM,
+# pharmacovigilance, compétence ANSM, sanctions, mentions obligatoires.
+
+version: "1.0"
+
+themes:
+  publicite_medicaments:
+    libelle: "Publicité des médicaments"
+    codes:
+      # SOURCE_TO_VERIFY — id LEGITEXT du Code de la santé publique à confirmer.
+      - id: LEGITEXT000006072665
+        filtres_articles:
+          - prefix: "L"
+            range: [5122, 5122]
+          - prefix: "R"
+            range: [5122, 5122]
+    mots_cles:
+      - publicité médicament
+      - publicite medicament
+      - publicité pharmaceutique
+      - publicite pharmaceutique
+      - visa publicité
+      - visa pub
+      - mentions obligatoires médicament
+      - promotion médicament
+      - publicité grand public
+      - publicité professionnels santé
+
+  amm_autorisation:
+    libelle: "Autorisation de mise sur le marché (AMM)"
+    codes:
+      - id: LEGITEXT000006072665
+        filtres_articles:
+          - prefix: "L"
+            range: [5121, 5121]
+          - prefix: "R"
+            range: [5121, 5121]
+    mots_cles:
+      - amm
+      - autorisation de mise sur le marché
+      - autorisation mise sur le marche
+      - autorisation pharmaceutique
+      - dossier amm
+      - dossier d'enregistrement
+      - rcp
+      - résumé caractéristiques produit
+      - notice médicament
+
+  pharmacovigilance:
+    libelle: "Pharmacovigilance"
+    codes:
+      - id: LEGITEXT000006072665
+        filtres_articles:
+          - prefix: "L"
+            range: [5121, 5121]
+          - prefix: "R"
+            range: [5121, 5121]
+    mots_cles:
+      - pharmacovigilance
+      - effet indésirable
+      - effet indesirable
+      - déclaration ansm
+      - declaration ansm
+      - surveillance post-amm
+      - signalement effet
+      - retrait du marché
+
+  autorite_ansm:
+    libelle: "Compétence ANSM (police sanitaire)"
+    codes:
+      - id: LEGITEXT000006072665
+        filtres_articles:
+          - prefix: "L"
+            range: [5311, 5325]
+    mots_cles:
+      - ansm
+      - agence nationale sécurité médicament
+      - agence nationale securite medicament
+      - police sanitaire
+      - décision ansm
+      - decision ansm
+      - injonction ansm
+      - directeur général ansm
+
+  sanctions_publicite:
+    libelle: "Sanctions publicité illicite"
+    codes:
+      - id: LEGITEXT000006072665
+        filtres_articles:
+          - prefix: "L"
+            range: [5421, 5424]
+    mots_cles:
+      - sanction publicité
+      - sanction publicite
+      - publicité illicite
+      - publicite illicite
+      - amende ansm
+      - retrait publicité
+      - interdiction publicité
+      - sanction pénale médicament
+
+  mentions_obligatoires:
+    libelle: "Mentions obligatoires publicité médicament"
+    codes:
+      - id: LEGITEXT000006072665
+        filtres_articles:
+          - prefix: "R"
+            range: [5122, 5122]
+    mots_cles:
+      - mentions légales médicament
+      - mentions obligatoires
+      - notice obligatoire
+      - posologie publicité
+      - rcp publicité
+      - contre-indications publicité
