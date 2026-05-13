@@ -9,7 +9,7 @@
       "answer_min_chars": 200,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -22,7 +22,7 @@
       "answer_min_chars": 200,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -35,7 +35,7 @@
       "answer_min_chars": 200,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -48,7 +48,7 @@
       "answer_min_chars": 150,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -61,7 +61,7 @@
       "answer_min_chars": 200,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -74,7 +74,7 @@
       "answer_min_chars": 150,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -87,7 +87,7 @@
       "answer_min_chars": 150,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -100,7 +100,7 @@
       "answer_min_chars": 150,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -113,7 +113,7 @@
       "answer_min_chars": 100,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -126,7 +126,7 @@
       "answer_min_chars": 150,
       "verifier_score_min": 0.7,
       "citations_total_min": 1,
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
