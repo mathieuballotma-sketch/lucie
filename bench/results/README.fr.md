@@ -1,8 +1,8 @@
-# bench/results — résultats batterie historiques
+# bench/results — résultats batterie Beaume historiques
 
 *[Read in English](README.md)*
 
-Archive des résultats de batterie au format Markdown lisible. Le JSON
+Archive des résultats de batterie Beaume au format Markdown lisible. Le JSON
 brut détaillé (avec stack traces, prompts complets, payloads LLM) reste
 en réserve interne ([`docs/sprints/SUMMARY.fr.md`](../../docs/sprints/SUMMARY.fr.md)
 explique la doctrine).

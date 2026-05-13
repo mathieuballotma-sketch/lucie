@@ -1,8 +1,8 @@
-# bench/results — historical battery results
+# bench/results — historical Beaume battery results
 
 *[Lire en français](README.fr.md)*
 
-Archive of battery results in human-readable Markdown. The detailed
+Archive of Beaume battery results in human-readable Markdown. The detailed
 raw JSON (with stack traces, full prompts, LLM payloads) stays in
 internal reserve ([`docs/sprints/SUMMARY.md`](../../docs/sprints/SUMMARY.md)
 explains the doctrine).

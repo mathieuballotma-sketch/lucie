@@ -104,7 +104,7 @@ La KB Légifrance est générée localement à partir des archives DILA
 publiques.
 
 Détail des surfaces d'attaque et mitigations :
-[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
+[`docs/THREAT_MODEL.fr.md`](docs/THREAT_MODEL.fr.md).
 
 ---
 
@@ -128,7 +128,7 @@ flowchart TB
 ```
 
 Les composants sont cliquables vers le code dans
-[`docs/architecture.md`](docs/architecture.md) — chaque box du
+[`docs/architecture.fr.md`](docs/architecture.fr.md) — chaque box du
 diagramme pointe vers son implémentation Python.
 
 Trois cerveaux complémentaires :
@@ -152,17 +152,17 @@ on préfère refuser que halluciner.
 Toutes les métriques affichées dans ce README sont reproductibles.
 
 - **Mapping claim → preuve → commande** :
-  [`docs/EVIDENCE.md`](docs/EVIDENCE.md)
+  [`docs/EVIDENCE.fr.md`](docs/EVIDENCE.fr.md)
 - **Recette de reproduction depuis un clone neuf** :
-  [`docs/REPRODUCE.md`](docs/REPRODUCE.md)
+  [`docs/REPRODUCE.fr.md`](docs/REPRODUCE.fr.md)
 - **Résultats batterie historiques** :
   [`bench/results/`](bench/results/)
 - **Historique des sprints (résumé public)** :
-  [`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md)
-- **Issues connues** : [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md)
+  [`docs/sprints/SUMMARY.fr.md`](docs/sprints/SUMMARY.fr.md)
+- **Issues connues** : [`KNOWN_ISSUES.fr.md`](KNOWN_ISSUES.fr.md)
 
 Discipline : si une affirmation de ce README n'a pas de ligne dans
-`docs/EVIDENCE.md`, elle est retirée. Pas d'affirmation sans preuve.
+`docs/EVIDENCE.fr.md`, elle est retirée. Pas d'affirmation sans preuve.
 
 ---
 
@@ -182,7 +182,7 @@ PYTHONPATH=. python3 main_hud.py
 ```
 
 Recette complète de reproduction (KB Légifrance, batteries, tests) :
-[`docs/REPRODUCE.md`](docs/REPRODUCE.md).
+[`docs/REPRODUCE.fr.md`](docs/REPRODUCE.fr.md).
 
 Un build `.dmg` signé Developer ID est en cours de préparation.
 
@@ -237,24 +237,24 @@ détaillées. Licence commerciale disponible pour usage production.
 sans intervention requise.
 
 Doctrine de séparation public / réserve compétitive :
-[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) et
-[`docs/sprints/SUMMARY.md`](docs/sprints/SUMMARY.md).
+[`docs/THREAT_MODEL.fr.md`](docs/THREAT_MODEL.fr.md) et
+[`docs/sprints/SUMMARY.fr.md`](docs/sprints/SUMMARY.fr.md).
 
 ---
 
 ## Liens
 
-- [`PRINCIPLES.md`](PRINCIPLES.md) — six principes Beaume
-- [`docs/architecture.md`](docs/architecture.md) — architecture
+- [`PRINCIPLES.fr.md`](PRINCIPLES.fr.md) — six principes Beaume
+- [`docs/architecture.fr.md`](docs/architecture.fr.md) — architecture
   détaillée avec liens code
-- [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — table claim → preuve
-- [`docs/REPRODUCE.md`](docs/REPRODUCE.md) — recette reproduction
-- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — modèle de menace
-- [`CHANGELOG.md`](CHANGELOG.md) — historique des versions
-- [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) — bugs connus
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — comment contribuer
+- [`docs/EVIDENCE.fr.md`](docs/EVIDENCE.fr.md) — table claim → preuve
+- [`docs/REPRODUCE.fr.md`](docs/REPRODUCE.fr.md) — recette reproduction
+- [`docs/THREAT_MODEL.fr.md`](docs/THREAT_MODEL.fr.md) — modèle de menace
+- [`CHANGELOG.fr.md`](CHANGELOG.fr.md) — historique des versions
+- [`KNOWN_ISSUES.fr.md`](KNOWN_ISSUES.fr.md) — bugs connus
+- [`CONTRIBUTING.fr.md`](CONTRIBUTING.fr.md) — comment contribuer
   (volontairement limité)
-- [`SECURITY.md`](SECURITY.md) — signaler une vulnérabilité
+- [`SECURITY.fr.md`](SECURITY.fr.md) — signaler une vulnérabilité
 
 Site : [lucie-site.vercel.app](https://lucie-site.vercel.app)
 (sera renommé après pilote).
