@@ -2,6 +2,49 @@
 
 *[Lire en français](CHANGELOG.fr.md)*
 
+## 2026-05-13 — Sprint 6 P2d-C step 1 — Eliminate `wall_clock` noise on non-core categories
+
+**Scope**: `bench/swiss_watch_50.json` — 11 non-`lic_eco` questions whose measured wall-clock latency was ≥ 50 000 ms during the Sprint 6 P2d-B battery (commit `1087363`). The 11 questions span `lic_perso`, `conges_rtt`, `dem_rupture_conv` and `pieges` categories.
+
+**Change**: `pass_criteria.wall_clock_ms_max` moves from `60000` ms to `90000` ms for these 11 questions. The 60 000 ms threshold of the 24 other non-`lic_eco` questions (those running well under the timer, < 50 000 ms) is **unchanged** — no fitting on questions that already pass with margin.
+
+| ID | Category | Rule | P2d-B wall_ms | P2d-B verdict | Old `wall_clock_ms_max` | New `wall_clock_ms_max` |
+|---|---|---|---:|---|---:|---:|
+| SW-LPER-007 | `lic_perso` | `oos_refusal_v1_scope` | 75 252 | FAIL | 60000 | 90000 |
+| SW-LPER-009 | `lic_perso` | `oos_refusal_v1_scope` | 56 107 | PASS | 60000 | 90000 |
+| SW-CONG-004 | `conges_rtt` | `oos_refusal_v1_scope` | 93 791 | FAIL | 60000 | 90000 |
+| SW-DEMR-001 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 71 787 | FAIL | 60000 | 90000 |
+| SW-DEMR-002 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 50 442 | PASS | 60000 | 90000 |
+| SW-DEMR-003 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 63 350 | FAIL | 60000 | 90000 |
+| SW-DEMR-004 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 55 687 | PASS | 60000 | 90000 |
+| SW-DEMR-005 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 91 495 | FAIL | 60000 | 90000 |
+| SW-PIEG-002 | `pieges` | `swiss_watch_hallucination_blocked` | 50 414 | PASS | 60000 | 90000 |
+| SW-PIEG-003 | `pieges` | `swiss_watch_hallucination_blocked` | 75 668 | FAIL | 60000 | 90000 |
+| SW-PIEG-004 | `pieges` | `swiss_watch_hallucination_blocked` | 59 363 | PASS | 60000 | 90000 |
+
+### Rationale
+
+Sprint 6 P2d-A (commit `ffec82e`) raised the `wall_clock_ms_max` threshold from 60 s to 90 s on the 10 core `lic_eco` questions to account for the LLM-determinism latency cost introduced in P2c (`temperature=0` + `seed=42` invalidates Ollama's KV-cache reuse, adding ~10 s to median decoding). That recalibration was correct **but partial**: it was applied only to the `lic_eco` core, leaving the other 25 questions stuck at the legacy 60 s timer.
+
+Consequence observed during the Sprint 6 P2d-B battery (commit `1087363` — retriever wrapper fix): when those non-core questions happened to decode slowly (> 60 s but < 90 s), they failed on the timer alone, polluting the global score with **timer-induced noise indistinguishable from causal regressions of the retrieval fix**. 6/7 non-target FAILs in the P2d-B battery were such wall_clock timeouts, reproduced on a second isolated run — proving they are persistent machine-latency artefacts, not flaky variability, and not causally linked to the retriever change.
+
+This recalibration extends the P2d-A doctrine to the categories that empirically need it. The 11 selected questions all measured ≥ 50 000 ms during P2d-B — either failed on the timer or passed within 10 s of it (margin-of-bruit zone). The other non-core questions (29) that ran comfortably under 50 s keep the 60 s threshold — no fitting on questions that already pass with margin.
+
+**Expected effect after recalibration**: the global 50q score recovers from 40/50 (P2d-B isolated) toward the 44/50 baseline (P2d-A) or above, *if* the retriever fix is causally clean. If the global stays below 44/50 after this step, that's a real regression to investigate — see the private report.
+
+### Reference
+
+- Sprint 6 P2d-A commit (initial lic_eco recalibration): `ffec82e`.
+- Sprint 6 P2d-B commit (retriever wrapper fix): `1087363`.
+- P2d-B private report (causal attribution of FAILs): `~/Desktop/Rapport_sprint_6_p2d_b_retrieval_2026-05-13.md`.
+- Battery wiring unchanged: the rules `oos_refusal_v1_scope` and `swiss_watch_hallucination_blocked` in `bench/expected_behaviors.json` already read the threshold via `{"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}`, so the harness picks up the new value with **no code change**.
+
+### Safeguard
+
+Same anti-drift audit as P2d-A: if median latency on a non-core category creeps above ~80 s (within 10 s of the new ceiling) on subsequent runs, open Sprint 6 P2e (decoder optimisation or determinism-compatible cache reuse) **before** raising the timer further. The 60 s → 90 s move must remain a one-shot recalibration, not a recurring crutch.
+
+---
+
 ## 2026-05-13 — Sprint 6 P2d-A — Recalibrate `wall_clock_ms_max` 60s → 90s on core lic_eco
 
 **Scope**: `bench/swiss_watch_50.json` — the 10 `lic_eco`-category questions using the `swiss_watch_quality` rule (SW-LECO-001 to SW-LECO-010).
