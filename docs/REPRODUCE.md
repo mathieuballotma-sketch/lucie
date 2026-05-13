@@ -1,86 +1,88 @@
-# Reproduire les chiffres du README
+# Reproducing the README numbers
 
-Cette recette explique comment lancer Beaume en local et reproduire
-les métriques de fiabilité affichées dans le README (notamment la
-batterie 16 questions multi-angles à 62,5 %, mesurée 2026-05-12).
+*[Lire en français](REPRODUCE.fr.md)*
+
+This recipe explains how to run Beaume locally and reproduce the
+reliability metrics shown in the README (in particular the 16-
+question multi-angle battery at 62.5%, measured 2026-05-12).
 
 ---
 
-## Prérequis matériel & logiciel
+## Hardware & software prerequisites
 
-| Composant | Version / spec |
+| Component | Version / spec |
 |-----------|----------------|
-| Mac Apple Silicon (M1 / M2 / M3 / M4) | minimum M1, recommandé M2+ |
-| RAM | 16 Go minimum, 24 Go recommandé pour `gemma2:9b` |
-| Disque libre | ~10 Go (modèle Ollama + KB Légifrance compactée) |
-| macOS | 13 Ventura ou supérieur |
-| Python | 3.11 ou supérieur |
-| Ollama | dernière version stable (`brew install ollama`) |
+| Apple Silicon Mac (M1 / M2 / M3 / M4) | minimum M1, recommended M2+ |
+| RAM | 16 GB minimum, 24 GB recommended for `gemma2:9b` |
+| Free disk | ~10 GB (Ollama model + compacted Légifrance KB) |
+| macOS | 13 Ventura or higher |
+| Python | 3.11 or higher |
+| Ollama | latest stable release (`brew install ollama`) |
 
 ---
 
 ## Installation
 
 ```bash
-# 1. Récupérer le code
+# 1. Get the code
 git clone https://github.com/mathieuballotma-sketch/lucie.git beaume
 cd beaume
 
-# 2. Lancer Ollama et tirer le modèle
+# 2. Start Ollama and pull the model
 ollama serve &
 ollama pull gemma2:9b
 
-# 3. Environnement Python
+# 3. Python environment
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# 4. (Optionnel) installer la KB Légifrance locale
-# Le fichier SQLite 4,6 Go n'est PAS dans le repo (ignoré par .gitignore).
-# Voir lucie_v1_standalone/knowledge_legifrance/README pour la procédure
-# de génération à partir des archives DILA publiques.
+# 4. (Optional) install the local Légifrance KB
+# The 4.6 GB SQLite file is NOT in the repo (ignored by .gitignore).
+# See lucie_v1_standalone/knowledge_legifrance/README for the
+# generation procedure from public DILA archives.
 ```
 
 ---
 
-## Lancer le HUD
+## Launch the HUD
 
 ```bash
 PYTHONPATH=. python3 main_hud.py
 ```
 
-Une fenêtre native macOS s'ouvre. Tapez une question de droit social
-français — par exemple : *« Quel est le délai d'envoi de la lettre de
-licenciement économique après l'entretien préalable ? »*.
+A native macOS window opens. Type a French employment-law question
+— for example: *"What is the deadline to send the dismissal letter
+after the preliminary interview in an economic dismissal?"*.
 
 ---
 
-## Reproduire la batterie 16q (62,5 %)
+## Reproduce the 16q battery (62.5%)
 
 ```bash
-# Flags Sprint 6 P2a activés
+# Sprint 6 P2a flags enabled
 export BEAUME_RETRIEVER_DEBRIDE=1
 export BEAUME_VERIFICATEUR_NORMALISE=1
 
-# Batterie ciblée (10 questions de catégorie lic_eco)
+# Targeted battery (10 lic_eco-category questions)
 python3 bench/run_legal_traps.py \
   --prompts bench/swiss_watch_50.json \
   --filter SW-LECO \
   --json bench/results/_repro_16q.json
 ```
 
-Le script imprime un récapitulatif PASS/FAIL et écrit un JSON détaillé
-(`verifier_score`, citations validées, citations invalidées, refus
-déterministes).
+The script prints a PASS/FAIL summary and writes a detailed JSON
+(`verifier_score`, validated citations, invalidated citations,
+deterministic refusals).
 
-Comparer avec [`bench/results/2026-05-12_battery_16q_post_p2a.md`](../bench/results/2026-05-12_battery_16q_post_p2a.md).
-Un écart de quelques % par run est normal — le LLM Gemma 4 e4b n'est
-pas déterministe (température > 0). Sur 5 runs successifs, la
-fiabilité reste typiquement dans une plage de ±5 %.
+Compare with [`bench/results/2026-05-12_battery_16q_post_p2a.md`](../bench/results/2026-05-12_battery_16q_post_p2a.md).
+A few-percent gap per run is normal — the Gemma 4 e4b LLM is not
+deterministic (temperature > 0). Across 5 successive runs,
+reliability typically stays within ±5%.
 
 ---
 
-## Reproduire la batterie 50q
+## Reproduce the 50q battery
 
 ```bash
 export BEAUME_RETRIEVER_DEBRIDE=1
@@ -91,31 +93,32 @@ python3 bench/run_legal_traps.py \
   --json bench/results/_repro_50q.json
 ```
 
-Note : la mesure 50q clean est en cours de stabilisation au moment où
-ce fichier est écrit. Voir
+Note: the clean 50q measurement is being stabilized at the time
+this file is written. See
 [`bench/results/2026-05-12_battery_50q_post_p2a.md`](../bench/results/2026-05-12_battery_50q_post_p2a.md)
-pour le statut courant.
+for the current status.
 
 ---
 
-## Lancer les tests unitaires
+## Run the unit tests
 
 ```bash
 pytest tests/ -v --ignore=tests/integration --ignore=tests/llm
 ```
 
-Voir [`tests/README.md`](../tests/README.md) pour la couverture par
-dossier et les options de filtrage.
+See [`tests/README.md`](../tests/README.md) for coverage by folder
+and filtering options.
 
 ---
 
-## Si quelque chose ne reproduit pas
+## If something does not reproduce
 
-1. Vérifier que `ollama serve` tourne bien (`curl http://127.0.0.1:11434/api/tags`).
-2. Vérifier la version du modèle (`ollama list`) — un Gemma plus
-   ancien ou un autre quant donnera des chiffres différents.
-3. Vérifier les flags d'environnement (`env | grep BEAUME_`).
-4. Ouvrir une issue GitHub avec le contenu de `bench/results/_repro_*.json`.
+1. Verify that `ollama serve` is running (`curl http://127.0.0.1:11434/api/tags`).
+2. Verify the model version (`ollama list`) — an older Gemma or a
+   different quant gives different numbers.
+3. Verify the environment flags (`env | grep BEAUME_`).
+4. Open a GitHub issue with the contents of
+   `bench/results/_repro_*.json`.
 
-La transparence radicale impose qu'un écart non explicable soit
-documenté plutôt qu'ignoré.
+Radical transparency requires that an unexplained gap be
+documented rather than ignored.
