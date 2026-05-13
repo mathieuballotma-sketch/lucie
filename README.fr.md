@@ -168,8 +168,8 @@ Discipline : si une affirmation de ce README n'a pas de ligne dans
 
 ## Installation
 
-**Prérequis** : macOS Apple Silicon (M1 / M2 / M3 / M4), Python 3.11+,
-[Ollama](https://ollama.com).
+**Prérequis** : macOS Apple Silicon — M2 avec 16 Go ou plus, tous les
+M3, tous les M4, tous les M5. Python 3.11+, [Ollama](https://ollama.com).
 
 ```bash
 brew install ollama

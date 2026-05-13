@@ -12,7 +12,7 @@ batterie 16 questions multi-angles à 62,5 %, mesurée 2026-05-12).
 
 | Composant | Version / spec |
 |-----------|----------------|
-| Mac Apple Silicon (M1 / M2 / M3 / M4) | minimum M1, recommandé M2+ |
+| Mac Apple Silicon | M2 avec 16 Go ou plus, tous les M3, tous les M4, tous les M5 |
 | RAM | 16 Go minimum, 24 Go recommandé pour `gemma2:9b` |
 | Disque libre | ~10 Go (modèle Ollama + KB Légifrance compactée) |
 | macOS | 13 Ventura ou supérieur |

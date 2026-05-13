@@ -12,7 +12,7 @@ question multi-angle battery at 62.5%, measured 2026-05-12).
 
 | Component | Version / spec |
 |-----------|----------------|
-| Apple Silicon Mac (M1 / M2 / M3 / M4) | minimum M1, recommended M2+ |
+| Apple Silicon Mac | M2 with 16 GB or more, all M3, all M4, all M5 |
 | RAM | 16 GB minimum, 24 GB recommended for `gemma2:9b` |
 | Free disk | ~10 GB (Ollama model + compacted Légifrance KB) |
 | macOS | 13 Ventura or higher |
