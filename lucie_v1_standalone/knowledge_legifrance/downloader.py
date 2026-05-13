@@ -32,7 +32,16 @@ logger = logging.getLogger(__name__)
 
 
 DILA_BASE_URL = "https://echanges.dila.gouv.fr/OPENDATA/LEGI/"
-USER_AGENT = "Lucie-Legifrance-Sync/1.0 (+local-lawyer-assistant)"
+# Truth-rule: user-agent neutre pour ne pas trahir Beaume côté DILA.
+# Indistinguable d'un Safari macOS normal — toute valeur custom (incl.
+# "Beaume-*") nous identifierait dans les logs DILA et violerait la
+# promesse "100% local sans identification".
+# Voir mémoire project_privacy_sync_kb (2026-05-13).
+BEAUME_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+    "Version/17.4 Safari/605.1.15"
+)
 DEFAULT_TIMEOUT_SEC = 60
 CHUNK_SIZE = 1 << 20  # 1 MiB
 
@@ -111,7 +120,7 @@ def list_remote_archives(
     Retourne une liste triée par timestamp croissant (plus ancien d'abord).
     Les archives au nom non conforme sont ignorées silencieusement.
     """
-    req = urllib.request.Request(base_url, headers={"User-Agent": USER_AGENT})
+    req = urllib.request.Request(base_url, headers={"User-Agent": BEAUME_USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             if resp.status != 200:
@@ -189,7 +198,7 @@ def download(
             return dest
 
     tmp = dest.with_suffix(dest.suffix + ".part")
-    req = urllib.request.Request(archive.url, headers={"User-Agent": USER_AGENT})
+    req = urllib.request.Request(archive.url, headers={"User-Agent": BEAUME_USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp, tmp.open("wb") as out:
             if resp.status != 200:
