@@ -136,6 +136,40 @@ def _extract_snippet(content: str, keyword: str, max_len: int = 300) -> str:
     return snippet
 
 
+def _extract_query_or_raw(faits_json: str) -> str:
+    """Extrait le champ ``query`` du JSON wrapper produit par ``pipeline.py``.
+
+    POURQUOI : le pipeline niveau 2 (search) emballe la query utilisateur dans
+    ``{"type_document": "requete", "query": "..."}`` (cf. ``pipeline.py:692-695``)
+    avant d'appeler ``retriever.handle``. Le retriever (curaté + Légifrance)
+    tokenise alors sur le JSON entier — les tokens parasites ``type_document``,
+    ``requete``, ``query`` polluent BM25/FTS5 et écrasent la pertinence des
+    vrais termes (mesuré empiriquement Sprint 6 P2d-B : SW-LECO-006 ramène
+    L.1233-24-4/R.1233-18 AVEC wrapper, mais L.1233-61/L.1233-63 SANS wrapper).
+
+    Cette fonction est défensive : si ``faits_json`` n'est pas un dict JSON ou
+    n'a pas de clé ``query`` non vide, on renvoie l'entrée inchangée → aucune
+    régression sur les chemins qui passent déjà du texte brut (lecteur en mode
+    document, tests unitaires, etc.).
+
+    Args:
+        faits_json: chaîne JSON ou texte brut.
+
+    Returns:
+        Le champ ``query`` si dict avec ``query`` (str non vide) ; sinon
+        ``faits_json`` inchangé.
+    """
+    try:
+        parsed = json.loads(faits_json)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return faits_json
+    if isinstance(parsed, dict):
+        q = parsed.get("query")
+        if isinstance(q, str) and q.strip():
+            return q
+    return faits_json
+
+
 def _try_legifrance(faits_json: str, top_k: int) -> Optional[Dict[str, Any]]:
     """
     Tente une recherche Légifrance. Renvoie le dict JSON parsé ou None si
@@ -160,12 +194,20 @@ def _try_legifrance(faits_json: str, top_k: int) -> Optional[Dict[str, Any]]:
         logger.warning("Légifrance importable mais pas installé : %s", exc)
         return None
     try:
+        # Sprint 6 P2d-B — extraction de la query nue avant tokenisation BM25/FTS5.
+        # Le pipeline (level 2 = search) emballe la query dans un JSON wrapper
+        # ``{"type_document": "requete", "query": "..."}`` ; passer ce JSON
+        # entier à `LegifranceRetriever.handle` pollue le FTS5 avec les tokens
+        # parasites ``type_document/requete/query`` (mesuré : rate L.1233-61
+        # sur SW-LECO-006). Fallback gracieux si le format n'est pas le wrapper.
+        query = _extract_query_or_raw(faits_json)
+
         # Sprint 6 P2a — B-5 sol 1 : si la détection thématique est incertaine
         # (0 thème OU max ≤ 1 keyword match), on débride le FTS5 — sinon le
         # retriever rate des articles hors-thème (ex : ECO_03 « indemnité »
         # restreint au thème licenciement_eco mais cible L.1234-9 hors-scope).
         # Rollback : `BEAUME_RETRIEVER_DEBRIDE=0`.
-        scored = detect_themes_with_scores(faits_json)
+        scored = detect_themes_with_scores(query)
         max_hits = max((h for _, h in scored), default=0)
         debride = (
             os.environ.get("BEAUME_RETRIEVER_DEBRIDE", "1") == "1"
@@ -176,7 +218,7 @@ def _try_legifrance(faits_json: str, top_k: int) -> Optional[Dict[str, Any]]:
         else:
             themes = [t for t, _ in scored] or None
         with LegifranceRetriever(db_path) as retriever:
-            payload = retriever.handle(faits_json, themes=themes, top_k=top_k)
+            payload = retriever.handle(query, themes=themes, top_k=top_k)
         return json.loads(payload)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Légifrance retriever a échoué (%s), fallback curaté", exc)
@@ -200,8 +242,12 @@ async def handle(faits_json: str) -> str:
 
     index = get_index()
 
-    legal_refs = _extract_legal_refs(faits_json)
-    query_tokens = [t for t in re.findall(r'\w+', faits_json.lower()) if len(t) > 3]
+    # Sprint 6 P2d-B — même rationale que `_try_legifrance` : si on a un JSON
+    # wrapper avec une clé `query`, on tokenise/extrait les refs depuis la
+    # query nue plutôt que depuis le JSON entier (sinon tokens parasites).
+    query_text = _extract_query_or_raw(faits_json)
+    legal_refs = _extract_legal_refs(query_text)
+    query_tokens = [t for t in re.findall(r'\w+', query_text.lower()) if len(t) > 3]
 
     if not index:
         result = {
