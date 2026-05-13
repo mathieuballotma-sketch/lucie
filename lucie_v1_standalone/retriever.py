@@ -225,91 +225,110 @@ def _try_legifrance(faits_json: str, top_k: int) -> Optional[Dict[str, Any]]:
         return None
 
 
-async def handle(faits_json: str) -> str:
-    """
-    Recherche des sources pertinentes pour les faits extraits.
+# Seuil empirique de "match fort" pour la KB curatée. Mesuré sur SW-LECO-004
+# (query "Quels sont les critères d'ordre…") où L.1233-4 obtient un score BM25
+# normalisé ≥ 0.6 alors que les articles Légifrance hors-cible (L.1233-10/31/24-2)
+# plafonnent à 0.95 mais sur des termes génériques ("licenciement économique").
+# Sous ce seuil, la curatée est traitée comme "complément" (rang après Légifrance) ;
+# au-dessus, elle est "prioritaire" (passe devant Légifrance).
+CURATED_STRONG_MATCH_THRESHOLD = 0.6
+
+# Bonus de pertinence par token de la query trouvé dans le titre d'un article
+# curaté. POURQUOI : BM25 pur défavorise les articles courts (ex : L.1233-9
+# "La lettre de licenciement comporte l'énoncé des motifs économiques" — 1
+# phrase) face à des articles longs hors-cible (ex : L.1233-12 "grands
+# licenciements" qui répète "licenciement" sur 200 mots). Or pour SW-LECO-007
+# (« Quelles mentions sont obligatoires dans une lettre de licenciement
+# économique ? »), les tokens "mention" et "lettre" matchent exactement le
+# titre "Mention du motif économique dans la lettre" — un signal très fort
+# qu'on perdait sans ce bonus. Mesuré : 0.15/token rétablit L.1233-9 en tête
+# (3 matches → +0.45) sans bouger les articles déjà bien classés.
+CURATED_TITLE_TOKEN_BONUS = 0.15
+CURATED_TITLE_BONUS_MAX = 0.6
+
+
+def _title_match_bonus(query_tokens: List[str], doc_title: str) -> float:
+    """Calcule un bonus de pertinence basé sur les tokens query trouvés dans le titre.
+
+    Le titre d'un article curaté reflète son sujet central — un match titre est
+    un signal de pertinence plus fort que la fréquence des tokens dans le corps.
 
     Args:
-        faits_json: JSON string produit par lecteur.handle().
+        query_tokens: tokens de la query déjà filtrés (len > 3, lowercase).
+        doc_title: titre brut de l'article (ex : "Article L.1233-9 — Mention…").
 
     Returns:
-        JSON string : {"sources": [...], "jurisprudences": [...], "non_trouve": [...]}
+        Bonus ∈ [0, CURATED_TITLE_BONUS_MAX], proportionnel au nombre de
+        tokens query distincts trouvés dans les tokens du titre.
     """
-    # 0. Tenter Légifrance en premier si activé et base présente
-    legi_result = _try_legifrance(faits_json, top_k=MAX_SOURCES)
-    if legi_result is not None and legi_result.get("sources"):
-        return json.dumps(legi_result, ensure_ascii=False, indent=2)
+    title_tokens = set(re.findall(r'\w+', doc_title.lower()))
+    matches = sum(1 for qt in set(query_tokens) if qt in title_tokens)
+    return min(CURATED_TITLE_BONUS_MAX, matches * CURATED_TITLE_TOKEN_BONUS)
 
+
+def _normalize_article_id(article_id: str) -> str:
+    """Normalise un identifiant d'article pour la dédup cross-sources.
+
+    POURQUOI : la KB curatée utilise ``L1233-4`` (stem du .md), Légifrance peut
+    renvoyer ``L1233-4``, ``L.1233-4`` ou ``L1233-04``. La dédup naïve par
+    chaîne brute laisse passer des doublons et fait perdre des slots dans
+    ``MAX_SOURCES``. On normalise en supprimant ponctuation et leading zeros.
+
+    Args:
+        article_id: identifiant brut (curatée ou Légifrance).
+
+    Returns:
+        Forme canonique en lowercase sans ponctuation ni zéros initiaux.
+    """
+    base = re.sub(r'[.\-_\s]', '', article_id.lower())
+    # Supprime les leading zeros entre 'l' et le premier non-zéro (l01233 → l1233)
+    return re.sub(r'^(l|r)0+', r'\1', base)
+
+
+def _retrieve_curated(
+    query_text: str,
+    legal_refs: List[str],
+    query_tokens: List[str],
+) -> List[Dict[str, Any]]:
+    """Recherche dans la base curatée locale (matching exact + BM25).
+
+    POURQUOI séparé de ``handle()`` : Sprint 6 P3 a transformé l'early-return
+    Légifrance en merge curatée+Légifrance. Le retrieval curatée doit être
+    appelable indépendamment pour permettre cette fusion. Le code BM25 +
+    matching exact extrait de l'ancien ``handle()`` reste inchangé pour ne
+    pas casser le scoring déjà validé Sprint 6 P2.
+
+    Returns:
+        Liste de sources curatées triées (matching exact d'abord, puis BM25
+        décroissant), avec ``pertinence`` normalisée 0..1.
+    """
     index = get_index()
-
-    # Sprint 6 P2d-B — même rationale que `_try_legifrance` : si on a un JSON
-    # wrapper avec une clé `query`, on tokenise/extrait les refs depuis la
-    # query nue plutôt que depuis le JSON entier (sinon tokens parasites).
-    query_text = _extract_query_or_raw(faits_json)
-    legal_refs = _extract_legal_refs(query_text)
-    query_tokens = [t for t in re.findall(r'\w+', query_text.lower()) if len(t) > 3]
-
     if not index:
-        result = {
-            "sources": [],
-            "jurisprudences": [],
-            "non_trouve": legal_refs,
-            "avertissement": (
-                "Base curatée vide. "
-                "Enrichir knowledge/droit_social/licenciement_economique/ avant de relancer."
-            ),
-        }
-        return json.dumps(result, ensure_ascii=False, indent=2)
+        return []
 
     sources: List[Dict[str, Any]] = []
-    refs_not_found: List[str] = list(legal_refs)
     already_ids: Set[str] = set()
 
-    # ── 1. Matching exact sur les références légales ──────────────────────────
+    # ── Matching strict par ID normalisé (Sprint 6 P3 fix bug substring) ─────
+    # AVANT P3 : ``if ref in content_upper`` matchait par sous-chaîne dans le
+    # contenu — un article qui MENTIONNAIT ``L.1233-3`` dans sa section
+    # "Articles liés" (ex : L.1233-1) ou un changelog faisait un faux positif.
+    # Pire, ``L.1233-3`` matchait ``L.1233-30`` (pas de word boundary).
+    # Mesuré SW-LECO-003 (2026-05-13) : CHANGELOG/L1233-1/L1233-12 saturent
+    # les 3 slots MAX_SOURCES avant que L1233-3 (le vrai article) ne soit
+    # atteint dans l'index trié alphabétiquement.
+    # FIX P3 : on compare l'ID normalisé du doc à l'ID normalisé de la ref —
+    # seul l'article qui EST réellement la référence est ajouté.
+    legal_refs_normalized = {_normalize_article_id(r) for r in legal_refs}
     for doc in index:
-        content_upper = doc["content"].upper()
-        for ref in legal_refs:
-            if ref in content_upper and doc["id"] not in already_ids:
-                already_ids.add(doc["id"])
-                sources.append({
-                    "id": doc["id"],
-                    "titre": _extract_title(doc["content"], doc["id"]),
-                    "extrait": _extract_snippet(doc["content"], ref),
-                    "pertinence": 1.0,
-                    "fichier_source": doc["path"],
-                })
-                emit(
-                    "retriever",
-                    "completed",
-                    hook_name="lit_article",
-                    article=ref,
-                )
-                if ref in refs_not_found:
-                    refs_not_found.remove(ref)
-                break  # un seul hit par doc
-
-    # ── 2. BM25 sur le reste ──────────────────────────────────────────────────
-    if len(sources) < MAX_SOURCES and query_tokens:
-        avg_dl = sum(len(d["tokens"]) for d in index) / len(index)
-        N = len(index)
-        scored = []
-        for doc in index:
-            if doc["id"] in already_ids:
-                continue
-            score = _bm25_score(
-                query_tokens, doc["tokens"], avg_dl, N, index
-            )
-            if score > 0:
-                scored.append((score, doc))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        anchor = query_tokens[0] if query_tokens else ""
-        for score, doc in scored[: MAX_SOURCES - len(sources)]:
+        doc_normalized = _normalize_article_id(doc["id"])
+        if doc_normalized in legal_refs_normalized and doc["id"] not in already_ids:
             already_ids.add(doc["id"])
             sources.append({
                 "id": doc["id"],
                 "titre": _extract_title(doc["content"], doc["id"]),
-                "extrait": _extract_snippet(doc["content"], anchor),
-                "pertinence": round(min(score / 10.0, 0.99), 2),
+                "extrait": _extract_snippet(doc["content"], doc["id"]),
+                "pertinence": 1.0,
                 "fichier_source": doc["path"],
             })
             emit(
@@ -319,17 +338,152 @@ async def handle(faits_json: str) -> str:
                 article=doc["id"],
             )
 
-    # ── Séparer loi et jurisprudence ──────────────────────────────────────────
+    if len(sources) < MAX_SOURCES and query_tokens:
+        avg_dl = sum(len(d["tokens"]) for d in index) / len(index)
+        N = len(index)
+        scored = []
+        for doc in index:
+            if doc["id"] in already_ids:
+                continue
+            bm25 = _bm25_score(query_tokens, doc["tokens"], avg_dl, N, index)
+            if bm25 <= 0:
+                continue
+            # Pertinence finale = BM25 normalisé + bonus titre (cf. constantes ci-dessus)
+            doc_title = _extract_title(doc["content"], doc["id"])
+            base = min(bm25 / 10.0, 0.99)
+            relevance = min(0.99, base + _title_match_bonus(query_tokens, doc_title))
+            scored.append((relevance, doc, doc_title))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        anchor = query_tokens[0] if query_tokens else ""
+        for relevance, doc, doc_title in scored[: MAX_SOURCES - len(sources)]:
+            already_ids.add(doc["id"])
+            sources.append({
+                "id": doc["id"],
+                "titre": doc_title,
+                "extrait": _extract_snippet(doc["content"], anchor),
+                "pertinence": round(relevance, 2),
+                "fichier_source": doc["path"],
+            })
+            emit(
+                "retriever",
+                "completed",
+                hook_name="lit_article",
+                article=doc["id"],
+            )
+
+    return sources
+
+
+def _merge_curated_legifrance(
+    curated: List[Dict[str, Any]],
+    legifrance: List[Dict[str, Any]],
+    max_total: int,
+) -> List[Dict[str, Any]]:
+    """Merge dédupliqué curatée + Légifrance avec priorité curatée si match fort.
+
+    POURQUOI : Sprint 6 P2d-B avait identifié que l'early-return Légifrance
+    court-circuitait la KB curatée même quand elle avait des articles plus
+    pertinents (mesuré SW-LECO-007 : L.1233-9 curatée parfait pour
+    « mentions lettre licenciement » mais Légifrance renvoyait L.1233-11/15
+    et l'early-return bloquait la curatée). Cette fonction fusionne les deux
+    listes :
+      - Si la 1ère source curatée a une pertinence ≥ ``CURATED_STRONG_MATCH_THRESHOLD``,
+        on place toute la curatée en tête (priorité curatée), puis Légifrance
+        en complément.
+      - Sinon on place Légifrance en tête (Légifrance est plus large) puis
+        la curatée en complément.
+    La dédup utilise ``_normalize_article_id`` pour éviter qu'un même article
+    apparaisse en double avec des numérotations différentes.
+
+    Args:
+        curated: sources de la base curatée (triées par pertinence interne).
+        legifrance: sources Légifrance (triées par FTS5).
+        max_total: nombre maximum de sources retournées (MAX_SOURCES).
+
+    Returns:
+        Liste fusionnée, dédupliquée, tronquée à ``max_total``.
+    """
+    if curated and curated[0].get("pertinence", 0.0) >= CURATED_STRONG_MATCH_THRESHOLD:
+        primary, secondary = curated, legifrance
+    else:
+        primary, secondary = legifrance, curated
+
+    merged: List[Dict[str, Any]] = []
+    seen: Set[str] = set()
+    for s in primary + secondary:
+        nid = _normalize_article_id(str(s.get("id", "")))
+        if nid and nid not in seen:
+            merged.append(s)
+            seen.add(nid)
+        if len(merged) >= max_total:
+            break
+    return merged
+
+
+async def handle(faits_json: str) -> str:
+    """
+    Recherche des sources pertinentes pour les faits extraits.
+
+    Sprint 6 P3 : la stratégie n'est plus "early-return Légifrance, fallback
+    curatée" mais "retrieval parallèle curatée+Légifrance, merge prioritisé"
+    (cf. ``_merge_curated_legifrance``). Cela permet à la KB curatée de
+    surclasser Légifrance quand elle a un match fort (SW-LECO-007 : L.1233-9
+    curatée prioritaire sur L.1233-11/15 Légifrance off-cible).
+
+    Args:
+        faits_json: JSON string produit par lecteur.handle().
+
+    Returns:
+        JSON string : {"sources": [...], "jurisprudences": [...], "non_trouve": [...]}
+    """
+    query_text = _extract_query_or_raw(faits_json)
+    legal_refs = _extract_legal_refs(query_text)
+    query_tokens = [t for t in re.findall(r'\w+', query_text.lower()) if len(t) > 3]
+
+    legi_result = _try_legifrance(faits_json, top_k=MAX_SOURCES)
+    legi_sources: List[Dict[str, Any]] = (
+        legi_result.get("sources", []) if legi_result is not None else []
+    )
+    legi_juris: List[Dict[str, Any]] = (
+        legi_result.get("jurisprudences", []) if legi_result is not None else []
+    )
+
+    curated_sources = _retrieve_curated(query_text, legal_refs, query_tokens)
+
+    index = get_index()
+    if not index and not legi_sources:
+        return json.dumps(
+            {
+                "sources": [],
+                "jurisprudences": [],
+                "non_trouve": legal_refs,
+                "avertissement": (
+                    "Base curatée vide. "
+                    "Enrichir knowledge/droit_social/licenciement_economique/ avant de relancer."
+                ),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    merged = _merge_curated_legifrance(curated_sources, legi_sources, MAX_SOURCES)
+
     juris_keywords = {"arret", "cass", "decision", "soc"}
-    jurisprudences = [
-        s for s in sources
-        if any(kw in s["id"].lower() for kw in juris_keywords)
+    curated_juris = [
+        s for s in merged if any(kw in s["id"].lower() for kw in juris_keywords)
     ]
-    loi_sources = [s for s in sources if s not in jurisprudences]
+    loi_sources = [s for s in merged if s not in curated_juris]
+
+    refs_not_found: List[str] = list(legal_refs)
+    for s in merged:
+        normalized = _normalize_article_id(str(s.get("id", "")))
+        refs_not_found = [
+            r for r in refs_not_found if _normalize_article_id(r) != normalized
+        ]
 
     result = {
         "sources": loi_sources[:MAX_SOURCES],
-        "jurisprudences": jurisprudences,
+        "jurisprudences": curated_juris + legi_juris,
         "non_trouve": refs_not_found,
     }
     return json.dumps(result, ensure_ascii=False, indent=2)
