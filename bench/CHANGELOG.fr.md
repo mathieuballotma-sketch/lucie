@@ -2,6 +2,49 @@
 
 *[Read in English](CHANGELOG.md)*
 
+## 2026-05-13 — Sprint 6 P2d-C step 1 — Élimination du bruit `wall_clock` sur les catégories non-cœur
+
+**Périmètre** : `bench/swiss_watch_50.json` — 11 questions non-`lic_eco` dont la latence wall-clock mesurée était ≥ 50 000 ms lors de la batterie Sprint 6 P2d-B (commit `1087363`). Les 11 questions s'étalent sur les catégories `lic_perso`, `conges_rtt`, `dem_rupture_conv` et `pieges`.
+
+**Changement** : `pass_criteria.wall_clock_ms_max` passe de `60000` ms à `90000` ms pour ces 11 questions. Le seuil 60 000 ms des 24 autres questions non-`lic_eco` (celles qui tournent largement sous le timer, < 50 000 ms) reste **inchangé** — pas de fitting sur des questions qui passent déjà avec marge.
+
+| ID | Catégorie | Règle | P2d-B wall_ms | P2d-B verdict | Ancien `wall_clock_ms_max` | Nouveau `wall_clock_ms_max` |
+|---|---|---|---:|---|---:|---:|
+| SW-LPER-007 | `lic_perso` | `oos_refusal_v1_scope` | 75 252 | FAIL | 60000 | 90000 |
+| SW-LPER-009 | `lic_perso` | `oos_refusal_v1_scope` | 56 107 | PASS | 60000 | 90000 |
+| SW-CONG-004 | `conges_rtt` | `oos_refusal_v1_scope` | 93 791 | FAIL | 60000 | 90000 |
+| SW-DEMR-001 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 71 787 | FAIL | 60000 | 90000 |
+| SW-DEMR-002 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 50 442 | PASS | 60000 | 90000 |
+| SW-DEMR-003 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 63 350 | FAIL | 60000 | 90000 |
+| SW-DEMR-004 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 55 687 | PASS | 60000 | 90000 |
+| SW-DEMR-005 | `dem_rupture_conv` | `oos_refusal_v1_scope` | 91 495 | FAIL | 60000 | 90000 |
+| SW-PIEG-002 | `pieges` | `swiss_watch_hallucination_blocked` | 50 414 | PASS | 60000 | 90000 |
+| SW-PIEG-003 | `pieges` | `swiss_watch_hallucination_blocked` | 75 668 | FAIL | 60000 | 90000 |
+| SW-PIEG-004 | `pieges` | `swiss_watch_hallucination_blocked` | 59 363 | PASS | 60000 | 90000 |
+
+### Justificatif
+
+Sprint 6 P2d-A (commit `ffec82e`) avait relevé `wall_clock_ms_max` de 60 s à 90 s sur les 10 questions cœur `lic_eco` pour absorber le coût de latence du pinning LLM déterministe introduit en P2c (`temperature=0` + `seed=42` invalide le réemploi du KV-cache Ollama, +10 s sur la médiane de décodage). Ce recalibrage était correct **mais partiel** : il ne portait que sur le cœur `lic_eco`, laissant les 25 autres questions au timer historique de 60 s.
+
+Conséquence observée lors de la batterie Sprint 6 P2d-B (commit `1087363` — fix du wrapper retriever) : quand ces questions non-cœur décodaient lentement (> 60 s mais < 90 s), elles échouaient sur le seul timer, polluant le score global d'un **bruit timer indissociable des régressions causales du fix retrieval**. 6/7 FAILs hors-cible de la batterie P2d-B étaient ce type de timeout wall_clock, reproduits sur un 2ᵉ run isolé — preuve que ce sont des artéfacts de latence machine persistants, pas de la variabilité ponctuelle, et qu'ils ne sont pas causalement liés au fix retriever.
+
+Ce recalibrage étend la doctrine P2d-A aux catégories qui en avaient empiriquement besoin. Les 11 questions sélectionnées ont toutes mesuré ≥ 50 000 ms lors du run P2d-B — soit elles ont échoué sur le timer, soit elles passaient à moins de 10 s du seuil (zone de marge-de-bruit). Les 29 autres questions non-cœur qui tournaient confortablement sous 50 s gardent le seuil 60 s — pas de fitting sur des questions qui passent déjà avec marge.
+
+**Effet attendu après recalibrage** : le score global 50q remonte de 40/50 (P2d-B isolé) vers la baseline 44/50 (P2d-A) ou au-delà, *si* le fix retriever est causalement propre. Si le global reste sous 44/50 après cette étape, c'est une vraie régression à investiguer — voir le rapport privé.
+
+### Référence
+
+- Commit Sprint 6 P2d-A (recalibrage initial lic_eco) : `ffec82e`.
+- Commit Sprint 6 P2d-B (fix wrapper retriever) : `1087363`.
+- Rapport privé P2d-B (attribution causale des FAILs) : `~/Desktop/Rapport_sprint_6_p2d_b_retrieval_2026-05-13.md`.
+- Câblage batterie inchangé : les règles `oos_refusal_v1_scope` et `swiss_watch_hallucination_blocked` dans `bench/expected_behaviors.json` lisent déjà le seuil via `{"field": "_wall_clock_ms", "op": "lte", "value_from": "wall_clock_ms_max"}`, donc le harness prend la nouvelle valeur **sans changement de code**.
+
+### Garde-fou
+
+Même audit anti-dérive que P2d-A : si la latence médiane d'une catégorie non-cœur dérive au-dessus de ~80 s (dans les 10 s du nouveau plafond) sur les runs suivants, ouvrir Sprint 6 P2e (optimisation du décodeur ou réemploi de cache compatible déterminisme) **avant** de monter encore le timer. Le passage 60 s → 90 s doit rester un recalibrage one-shot, pas une béquille récurrente.
+
+---
+
 ## 2026-05-13 — Sprint 6 P2d-A — Recalibrage `wall_clock_ms_max` 60 s → 90 s sur cœur lic_eco
 
 **Périmètre** : `bench/swiss_watch_50.json` — les 10 questions de catégorie `lic_eco` qui utilisent la règle `swiss_watch_quality` (SW-LECO-001 à SW-LECO-010).

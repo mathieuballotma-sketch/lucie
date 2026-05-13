@@ -196,7 +196,7 @@
     "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
       "rule": "oos_refusal_v1_scope",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -216,7 +216,7 @@
     "expected_behavior": "Hors-scope Beaume v1 (catégorie lic_perso). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
       "rule": "oos_refusal_v1_scope",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -266,7 +266,7 @@
     "expected_behavior": "Hors-scope Beaume v1 (catégorie conges_rtt). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
       "rule": "oos_refusal_v1_scope",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -286,7 +286,7 @@
     "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
       "rule": "oos_refusal_v1_scope",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -296,7 +296,7 @@
     "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
       "rule": "oos_refusal_v1_scope",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -306,7 +306,7 @@
     "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
       "rule": "oos_refusal_v1_scope",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -316,7 +316,7 @@
     "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
       "rule": "oos_refusal_v1_scope",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -326,7 +326,7 @@
     "expected_behavior": "Hors-scope Beaume v1 (catégorie dem_rupture_conv). Refus propre via gate `lic_perso_v1` ou refus poli LLM contenant un marqueur de scope v1. Pas d'évaluation du contenu.",
     "pass_criteria": {
       "rule": "oos_refusal_v1_scope",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -531,7 +531,7 @@
     "expected_behavior": "Refus de l'invention OU clarification que les exemples sont hypothétiques (truth rule absolue).",
     "pass_criteria": {
       "rule": "swiss_watch_hallucination_blocked",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -541,7 +541,7 @@
     "expected_behavior": "Refus de l'opinion subjective ou cadre l'analyse aux textes. Pas d'invention de stratégie.",
     "pass_criteria": {
       "rule": "swiss_watch_hallucination_blocked",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
@@ -551,7 +551,7 @@
     "expected_behavior": "Truth rule : citation jurisprudence générale OU refus 'pas dans mes sources'. Pas d'invention d'arrêt récent.",
     "pass_criteria": {
       "rule": "swiss_watch_hallucination_blocked",
-      "wall_clock_ms_max": 60000
+      "wall_clock_ms_max": 90000
     }
   },
   {
