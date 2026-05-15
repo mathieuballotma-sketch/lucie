@@ -4,7 +4,7 @@ Base curatée locale pour le **Retriever BM25** de Lucie V1.
 
 ## Contenu
 
-16 articles du Code du travail couvrant les articles **L.1233-1 à L.1233-16** (licenciement pour motif économique).
+20 articles du Code du travail couvrant **L.1233-1 à L.1233-16** (procédure du licenciement pour motif économique) et **L.1233-65 à L.1233-68** (contrat de sécurisation professionnelle).
 
 | Article | Titre |
 |---------|-------|
@@ -24,6 +24,10 @@ Base curatée locale pour le **Retriever BM25** de Lucie V1.
 | L.1233-14 | Contenu du PSE |
 | L.1233-15 | Homologation DREETS du PSE |
 | L.1233-16 | Indemnités de licenciement |
+| L.1233-65 | Contrat de sécurisation professionnelle (objet) |
+| L.1233-66 | Obligation de proposition du CSP par l'employeur |
+| L.1233-67 | Effets de l'adhésion au CSP sur le contrat de travail |
+| L.1233-68 | Accord agréé fixant les modalités du CSP |
 
 ## Format des fichiers
 
