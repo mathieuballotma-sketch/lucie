@@ -25,6 +25,29 @@ reserve until the BSL change date (2030-04-17 → Apache 2.0).
 
 ---
 
+## The kind of person I'm looking for
+
+Before technical skill, what matters to me:
+
+- **A very open critical mind.** You can disagree with a technical
+  or product decision — say it. We talk it through. No need to
+  beat around the bush.
+- **A taste for exchange and sharing.** We talk code, product,
+  strategy. Nothing off-limits, no posturing.
+- **No need to hide to have a conversation.** If something bothers
+  or excites you, say it plainly. Polite silence helps nobody, and
+  pretending wastes everyone's time.
+- **Knowing why we're here.** Beaume is a long, demanding project
+  with hard moments. Both of us need to know what we want from
+  this collaboration — and to say so honestly when it shifts.
+
+On the personal side: if we click outside of work and become
+friends, great. But that is not a requirement. If we work well on
+Beaume without clicking on the personal side, we keep things
+separate — the goal is to push Beaume forward, full stop.
+
+---
+
 ## 🦉 Swift / macOS native developer
 
 **You'd help with:** native HUD, signed `.dmg` (Apple Developer ID),

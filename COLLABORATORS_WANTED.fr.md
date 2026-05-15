@@ -27,6 +27,33 @@ Apache 2.0).
 
 ---
 
+## Sur quel type de personne je cherche
+
+Avant la compétence technique, ce qui compte pour moi :
+
+- **Esprit critique très ouvert.** Tu peux ne pas être d'accord
+  avec une décision technique ou produit — tu le dis. On en
+  discute. Pas besoin de tourner autour du pot.
+- **Goût de l'échange et du partage.** On parle code, on parle
+  produit, on parle stratégie. Pas de chasse gardée, pas de
+  posture.
+- **Pas besoin de se cacher pour discuter.** Si quelque chose te
+  dérange ou t'enthousiasme, dis-le franchement. Le silence poli
+  n'aide personne, et faire semblant fait perdre du temps à tout
+  le monde.
+- **Savoir pourquoi on est là.** Beaume est un projet long,
+  exigeant, avec des moments durs. Il faut que toi et moi on sache
+  ce qu'on cherche dans cette collaboration — et qu'on le redise
+  honnêtement quand ça évolue.
+
+Côté relationnel : si on s'entend bien sur le perso et qu'on
+devient amis, c'est parfait. Mais ce n'est pas une condition.
+Si on bosse bien ensemble sur Beaume sans accrocher en dehors, on
+fait la part des choses — le but, c'est de faire avancer Beaume,
+point.
+
+---
+
 ## 🦉 Développeur·euse Swift / macOS natif
 
 **Tu contribuerais à :** HUD natif, signature `.dmg` (Apple
