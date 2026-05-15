@@ -172,11 +172,11 @@ M3, all M4, all M5. Python 3.11+, [Ollama](https://ollama.com).
 
 ```bash
 brew install ollama
-ollama pull gemma2:9b
+ollama pull gemma4:e4b
 git clone https://github.com/mathieuballotma-sketch/lucie.git beaume
 cd beaume
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+python3.11 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt --no-deps  # see REPRODUCE.md for why --no-deps
 PYTHONPATH=. python3 main_hud.py
 ```
 

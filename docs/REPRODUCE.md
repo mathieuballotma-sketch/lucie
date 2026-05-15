@@ -13,7 +13,7 @@ question multi-angle battery at 62.5%, measured 2026-05-12).
 | Component | Version / spec |
 |-----------|----------------|
 | Apple Silicon Mac | M2 with 16 GB or more, all M3, all M4, all M5 |
-| RAM | 16 GB minimum, 24 GB recommended for `gemma2:9b` |
+| RAM | 16 GB minimum, 24 GB recommended for `gemma4:e4b` |
 | Free disk | ~10 GB (Ollama model + compacted Légifrance KB) |
 | macOS | 13 Ventura or higher |
 | Python | 3.11 or higher |
@@ -28,19 +28,30 @@ question multi-angle battery at 62.5%, measured 2026-05-12).
 git clone https://github.com/mathieuballotma-sketch/lucie.git beaume
 cd beaume
 
-# 2. Start Ollama and pull the model
+# 2. Start Ollama and pull the model used by Beaume
 ollama serve &
-ollama pull gemma2:9b
+ollama pull gemma4:e4b
 
-# 3. Python environment
-python3 -m venv venv
+# 3. Python environment — use Python 3.11 explicitly
+#    (system python3 on macOS is 3.9 by default and will fail)
+python3.11 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
 
-# 4. (Optional) install the local Légifrance KB
+# 4. Install dependencies with --no-deps
+#    Reason: requirements.txt pins are over-constrained
+#    (transformers==5.2.0 conflicts with sentence-transformers 3.3.1
+#    which requires transformers<5.0.0). Using --no-deps installs
+#    each pinned version verbatim, bypassing pip's resolver. This is
+#    a known temporary workaround; a clean repin is on the backlog.
+pip install -r requirements.txt --no-deps
+
+# 5. (Optional) install the local Légifrance KB
 # The 4.6 GB SQLite file is NOT in the repo (ignored by .gitignore).
 # See lucie_v1_standalone/knowledge_legifrance/README for the
 # generation procedure from public DILA archives.
+# Beaume runs without it: it falls back to the curated 80 KB local KB
+# (lucie_v1_standalone/knowledge/droit_social/), and the corpus mode
+# (`--corpus fr_pharma_ansm --no-llm`) is fully offline-deterministic.
 ```
 
 ---
