@@ -13,7 +13,7 @@ batterie 16 questions multi-angles à 62,5 %, mesurée 2026-05-12).
 | Composant | Version / spec |
 |-----------|----------------|
 | Mac Apple Silicon | M2 avec 16 Go ou plus, tous les M3, tous les M4, tous les M5 |
-| RAM | 16 Go minimum, 24 Go recommandé pour `gemma2:9b` |
+| RAM | 16 Go minimum, 24 Go recommandé pour `gemma4:e4b` |
 | Disque libre | ~10 Go (modèle Ollama + KB Légifrance compactée) |
 | macOS | 13 Ventura ou supérieur |
 | Python | 3.11 ou supérieur |
@@ -30,17 +30,28 @@ cd beaume
 
 # 2. Lancer Ollama et tirer le modèle
 ollama serve &
-ollama pull gemma2:9b
+ollama pull gemma4:e4b
 
-# 3. Environnement Python
-python3 -m venv venv
+# 3. Environnement Python — Python 3.11 explicite obligatoire
+#    (le python3 système macOS est en 3.9 par défaut et échouera)
+python3.11 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
 
-# 4. (Optionnel) installer la KB Légifrance locale
+# 4. Installer les dépendances avec --no-deps
+#    Raison : requirements.txt a des pins trop contraints
+#    (transformers==5.2.0 entre en conflit avec sentence-transformers 3.3.1
+#    qui exige transformers<5.0.0). --no-deps installe chaque version pinnée
+#    telle quelle en bypassant le resolver pip. Workaround temporaire connu ;
+#    un repin propre est dans le backlog.
+pip install -r requirements.txt --no-deps
+
+# 5. (Optionnel) installer la KB Légifrance locale
 # Le fichier SQLite 4,6 Go n'est PAS dans le repo (ignoré par .gitignore).
 # Voir lucie_v1_standalone/knowledge_legifrance/README pour la procédure
 # de génération à partir des archives DILA publiques.
+# Beaume tourne sans : fallback sur la KB curatée locale 80 Ko
+# (lucie_v1_standalone/knowledge/droit_social/), et le mode corpus
+# (`--corpus fr_pharma_ansm --no-llm`) est 100% offline déterministe.
 ```
 
 ---

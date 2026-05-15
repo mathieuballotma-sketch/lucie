@@ -173,11 +173,11 @@ M3, tous les M4, tous les M5. Python 3.11+, [Ollama](https://ollama.com).
 
 ```bash
 brew install ollama
-ollama pull gemma2:9b
+ollama pull gemma4:e4b
 git clone https://github.com/mathieuballotma-sketch/lucie.git beaume
 cd beaume
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+python3.11 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt --no-deps  # voir REPRODUCE.fr.md pour le pourquoi de --no-deps
 PYTHONPATH=. python3 main_hud.py
 ```
 
@@ -217,8 +217,8 @@ c'est volontaire.
 - Pas de team, pas de communication payante, pas de blog post
   auto-promotionnel
 
-Pour les avocats partenaires intéressés par le pilote, mentors,
-investisseurs : [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
+Pour les avocats partenaires intéressés par le pilote ou les
+collaborateurs sérieux : [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
 
 ---
 

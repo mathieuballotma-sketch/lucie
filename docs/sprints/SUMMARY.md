@@ -119,5 +119,5 @@ All of this represents 5 months of solo R&D work and stays in
 competitive reserve. The public repo gives the **effect**
 (reproducible metrics), not the **recipe**.
 
-If you are an investor, mentor, or partner lawyer and want to see
+If you are a serious collaborator or partner lawyer and want to see
 the details under NDA: mathieu.ballotma@gmail.com.

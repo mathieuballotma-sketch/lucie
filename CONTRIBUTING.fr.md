@@ -25,8 +25,8 @@ non triviale, ouvrir d'abord une issue pour discuter de l'approche.
 
 ## Pilote avocat / partenariats
 
-Pour les avocats français intéressés par le pilote, les mentors,
-ou les collaborateurs sérieux : contact direct par email avec
+Pour les avocats français intéressés par le pilote ou les
+collaborateurs sérieux : contact direct par email avec
 contexte (cabinet, contentieux, besoin précis).
 
 Contact : mathieu.ballotma@gmail.com

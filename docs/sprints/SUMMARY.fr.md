@@ -74,5 +74,5 @@ Tout cela représente le travail de R&D solo des 5 derniers mois et
 reste en réserve compétitive. Le repo public donne l'**effet**
 (métriques reproductibles), pas la **recette**.
 
-Si vous êtes investisseur, mentor, ou avocat partenaire et que vous
+Si vous êtes un collaborateur sérieux ou avocat partenaire et que vous
 voulez voir les détails sous NDA : mathieu.ballotma@gmail.com.
