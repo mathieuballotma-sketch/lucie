@@ -217,8 +217,8 @@ c'est volontaire.
 - Pas de team, pas de communication payante, pas de blog post
   auto-promotionnel
 
-Pour les avocats partenaires intéressés par le pilote, mentors,
-investisseurs : [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
+Pour les avocats partenaires intéressés par le pilote ou les
+collaborateurs sérieux : [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
 
 ---
 

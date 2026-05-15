@@ -296,5 +296,5 @@ Les **détails d'implémentation** sensibles restent en réserve :
 - Les modules en stash compétitif (vocal, vidéo, OCR, multi-modal,
   calendar/CRM, dictée procès, analyse émotion).
 
-Accès sous NDA possible pour investisseurs, mentors et avocats
-partenaires : mathieu.ballotma@gmail.com.
+Accès sous NDA possible pour avocats partenaires et collaborateurs
+sérieux : mathieu.ballotma@gmail.com.

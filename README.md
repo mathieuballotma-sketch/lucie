@@ -215,7 +215,7 @@ this is deliberate.
 - Mac M4 24 GB, cumulative budget ≈ €500 over 5 months
 - No team, no paid marketing, no self-promotional blog posts
 
-For partner lawyers interested in the pilot, mentors, or investors:
+For partner lawyers interested in the pilot or serious collaborators:
 [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
 
 ---

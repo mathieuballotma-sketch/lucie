@@ -290,5 +290,5 @@ Sensitive **implementation details** remain in reserve:
 - Modules in competitive stash (voice, video, OCR, multi-modal,
   calendar/CRM, dictation, emotion analysis).
 
-NDA access possible for investors, mentors, and partner lawyers:
+NDA access possible for partner lawyers and serious collaborators:
 mathieu.ballotma@gmail.com.

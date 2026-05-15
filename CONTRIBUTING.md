@@ -25,7 +25,7 @@ discuss the approach.
 
 ## Lawyer pilot / partnerships
 
-For French lawyers interested in the pilot, mentors, or serious
+For French lawyers interested in the pilot or serious
 collaborators: direct email contact with context (firm, area of
 litigation, precise need).
 
