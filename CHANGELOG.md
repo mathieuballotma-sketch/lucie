@@ -7,6 +7,67 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.0-horloger-sprints] — 2026-05-15
+
+Five sprints landed together on `main` between 2026-05-13 and 2026-05-15.
+All are additive (no breaking changes) and ship with their own tests.
+
+### ✨ Added
+
+#### Sprint 6 P3 — KB `lic_eco` gaps (commits [`317c0c5`](https://github.com/mathieuballotma-sketch/lucie/commit/317c0c5), merge [`1e2c6d4`](https://github.com/mathieuballotma-sketch/lucie/commit/1e2c6d4))
+
+- `knowledge/droit_social/licenciement_economique/L1233-65.md`, `L1233-66.md`, `L1233-67.md`, `L1233-68.md` (CSP follow-up bonus).
+- `index.json` bumped to **1.1.0**, total 20 articles indexed.
+- Curated KB test: `lucie_v1_standalone/tests/test_kb_curatee_csp.py`.
+- Internal verdict per commit message: core 7→10/10, global 45→48/50 (not re-measured in the horloger audit).
+
+#### Sprint G-1 — Beaume Engine + corpus pack (commits [`bd5a2d2`](https://github.com/mathieuballotma-sketch/lucie/commit/bd5a2d2), [`7402f0e`](https://github.com/mathieuballotma-sketch/lucie/commit/7402f0e))
+
+- `corpus/_schema/manifest_schema.py` — Pydantic v2 strict (`extra="forbid"`, `frozen=True`), `SUPPORTED_SCHEMA_VERSIONS = {"1.0"}`.
+- `corpus/fr_pharma_ansm/` — pharma ANSM demo manifest + 5 markdown articles + `themes.yaml` + `refusals.yaml`.
+- CLI flag: `--corpus CODE` and `--no-llm` in `lucie_v1_standalone/__main__.py`. Default `droit_social` path unaffected when `--corpus` is omitted. **Strictly additive.**
+- Demo script: `scripts/demo_pharma_ansm.sh` (3 scenarios: in-scope, fiscal out-of-scope, hardcoding probe).
+- Tests: `tests/test_corpus/test_manifest_schema.py`, `test_corpus_loader.py`, `test_corpus_runner.py`, `test_corpus_cli.py`.
+
+#### Sprint 7 — client-file ingestion PDF/docx (commits [`624d997`](https://github.com/mathieuballotma-sketch/lucie/commit/624d997), merge [`f3b395b`](https://github.com/mathieuballotma-sketch/lucie/commit/f3b395b))
+
+- New module `lucie_v1_standalone/document_analyzer/` (7 files, 622 lines): `__init__.py`, `document_processor.py` (orchestrator, zero LLM), `pdf_parser.py`, `docx_parser.py`, `subject_detector.py`, `types.py`, `exceptions.py`.
+- Pipeline `parse → oos gate → theme detect → retriever → result`. **100% deterministic** (no LLM in-module).
+- Named constants instead of magic numbers: `MIN_CONFIDENCE=0.20`, `MAX_RETRIEVER_INPUT=8000`, `OOS_SCAN_HEAD_CHARS=5000`, `PARTIAL_OOS_MIN_HITS=3`, `PARTIAL_OOS_RELATIVE_THRESHOLD=0.30`.
+- 5 explicit exception classes, no bare `except`.
+- Tests: 28 tests in `lucie_v1_standalone/tests/test_document_analyzer/` (5 files). Per commit message: 28/28 green, 370/370 non-LLM tests green.
+
+#### Sprint K-1 — KB binary signatures + reference graph + PageRank (commits [`946daeb`](https://github.com/mathieuballotma-sketch/lucie/commit/946daeb), merge [`64cc5e9`](https://github.com/mathieuballotma-sketch/lucie/commit/64cc5e9))
+
+- New module `lucie_v1_standalone/knowledge_legifrance/kb_compact/` (7 files): `constants.py`, `embedder.py`, `graph_writer.py`, `pagerank.py`, `sig_reader.py`, `sig_writer.py`, `__init__.py`.
+- Plus `lucie_v1_standalone/knowledge_legifrance/refs_extractor.py` (DAG cross-reference extractor).
+- Versioned binary format: `MAGIC_SIGS = b"BEAUMEK1"`, `MAGIC_GRAPH = b"BEAUMEK1G"`.
+- New dependencies: `cbor2==5.6.5`, `hnswlib==0.8.0`, `zstandard==0.23.0`.
+- Scripts: `scripts/build_kb_artifacts.py`, `scripts/bench_recall_at_10.py`.
+- Public doc: `docs/kb_compact_pipeline.md` (+ `.fr.md`).
+- Tests: 49 tests in `tests/test_kb_compact/` (6 files). Smoke 5k articles per commit message: ratio ~10 000×. **Full-corpus BGE-M3 recall@10 benchmark pending.**
+
+### 🛠️ Changed
+
+- Sprint 6 P3 also refactored `lucie_v1_standalone/retriever.py` (+280/−67 lines): early-return replaced by curated-then-Légifrance merge, fixing the substring-match bug where `L.1233-3` matched `L.1233-30` text.
+
+### 🐛 Fixed
+
+#### Fix UA — neutral user-agent on DILA fetches (commits [`40ed5acd`](https://github.com/mathieuballotma-sketch/lucie/commit/40ed5acd), [`718f509`](https://github.com/mathieuballotma-sketch/lucie/commit/718f509), [`4bcc4d1`](https://github.com/mathieuballotma-sketch/lucie/commit/4bcc4d1))
+
+- Replaced the identifying user-agent `Lucie-Legifrance-Sync` with a neutral Safari UA on DILA opendata fetches.
+- New constant `BEAUME_USER_AGENT` in `lucie_v1_standalone/knowledge_legifrance/downloader.py:40`, applied at both call sites (`list_remote_archives`, `download`).
+- Regression test: `tests/test_legifrance/test_user_agent_neutre.py::test_regression_user_agent_neutre_2026_05_13` (asserts the old `USER_AGENT` constant is absent and `BEAUME_USER_AGENT` is referenced at least 3 times).
+- Repo-wide grep guard: any future re-introduction of `Lucie-Legifrance-Sync` fails the test suite.
+
+### 📚 Documentation
+
+- This CHANGELOG entry, `docs/sprints/SUMMARY.md` updated, `docs/EVIDENCE.md` re-counted (72 test files / 762 tests collected at 2026-05-15).
+- README "Next milestones" updated (Sprint 7 was incorrectly marked as upcoming; replaced with K-1 BGE-M3 bench / W-1 wizard / Packaging .dmg / Sprint 8).
+- Sprint K-1 has its own design doc: `docs/kb_compact_pipeline.md`.
+
+---
+
 ## [1.0.1-cleanup] — 2026-05-08
 
 Major post-rebrand cleanup (Sprint 1 + 1bis + 1ter trilogy). No
