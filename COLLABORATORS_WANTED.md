@@ -1,22 +1,29 @@
-# Beaume is looking for collaborators (not investors)
+# Beaume is looking for a business co-founder (not investors)
 
 *[Lire en français](COLLABORATORS_WANTED.fr.md)*
 
 Beaume is a **100% local legal AI assistant for French lawyers**.
 Monthly subscription, no cloud, no telemetry, no per-token billing.
-Mathieu Bellot solo-bootstraps the project and is applying to
-Y Combinator Summer 2026. This page is an invitation to
-**collaborate** — not to invest.
+I'm Mathieu Bellot — 18, solo bootstrapping Beaume from my room,
+Y Combinator Summer 2026 candidate. I handle the technical side
+alone (with Cowork orchestrating agents). What I'm missing is the
+**business half**: someone who sells Beaume to lawyers, prospects
+firms, owns the pitch, handles communication, and can do all of
+this in fluent English when Beaume goes international.
+
+This page is an invitation to **co-build** — not to invest.
 
 ---
 
-## How collaboration works (truth rule)
+## How co-founding works (truth rule)
 
-Beaume is bootstrap solo with zero VC, zero pre-sales, zero salary
-guarantee. There is no fixed comp at this stage. Compensation tier
-— equity, revenue share, contracted fee — is discussed case by case
-once we have actually worked together on something concrete. If
-you want a salary up front, we are not the right fit yet.
+Beaume is bootstrap solo, zero VC, zero pre-sales, zero salary
+guarantee. The preferred tier of relationship is **co-founding
+with equity**. Other tiers (revenue share, sales commission,
+contracted consulting fee) stay on the table and we discuss case
+by case — once we have actually worked together on something
+concrete. If you want a fixed salary up front, we are not the
+right fit yet.
 
 The repo is source-available under
 [Business Source License 1.1](LICENSE). The architecture, tests,
@@ -27,13 +34,13 @@ reserve until the BSL change date (2030-04-17 → Apache 2.0).
 
 ## The kind of person I'm looking for
 
-Before technical skill, what matters to me:
+Before titles or résumés, what matters to me:
 
-- **A very open critical mind.** You can disagree with a technical
-  or product decision — say it. We talk it through. No need to
-  beat around the bush.
-- **A taste for exchange and sharing.** We talk code, product,
-  strategy. Nothing off-limits, no posturing.
+- **A very open critical mind.** You can disagree with a
+  commercial or product decision — say it. We talk it through. No
+  need to beat around the bush.
+- **A taste for exchange and sharing.** We talk product, strategy,
+  pricing, customers. Nothing off-limits, no posturing.
 - **No need to hide to have a conversation.** If something bothers
   or excites you, say it plainly. Polite silence helps nobody, and
   pretending wastes everyone's time.
@@ -48,130 +55,101 @@ separate — the goal is to push Beaume forward, full stop.
 
 ---
 
-## 🦉 Swift / macOS native developer
+## What you would bring
 
-**You'd help with:** native HUD, signed `.dmg` (Apple Developer ID),
-wizard bounce animation, EventKit / AppleScript hooks (Sprint 9+
-*Pieuvre*, when activated).
+- **Selling Beaume to French employment-law firms** (cabinets droit
+  social) first — then progressively to other regulated-sector
+  practices, then to EU markets.
+- **Prospecting** (cold + warm): legal events, LinkedIn, bar
+  associations, lawyer-to-lawyer word of mouth.
+- **Demos to prospects** — I will train you on the product end to
+  end so you can run them solo.
+- **Commercial pricing and packaging**: pilot offers, monthly
+  subscription tiers, future Pro Proxy tier (planned, not shipped).
+- **Pitch ownership for YC Summer 2026** and future investor
+  conversations.
+- **Communication and public image**: relations with the
+  specialised legal press (Village de la Justice, Légifrance
+  ecosystem, etc.) — without breaking our transparency rules: no
+  paid press, no faked interviews, no growth-hacking.
+- **International strategy at the right moment** (US, UK, BE, CH)
+  — Beaume's design is French-law first, but the privacy moat is
+  universal.
+- **Fluent English** is required: YC, future EU/US markets, Anglo
+  investor conversations.
+- **Business strategy literacy**: pricing, GTM, partnerships, how
+  to scale a niche regulated-vertical product without diluting it.
 
-**Profile:** 2-5 years Swift / SwiftUI / AppKit, Mac packaging
-experience, taste for Apple-level UX polish.
+## What you don't need
 
-**Why it's interesting:** clean code inside a product that defends
-privacy by architecture — Beaume will not become a SaaS.
+- **No code skills required.** The technical side is already
+  handled — I code Beaume solo with Cowork. You don't write
+  Python, Swift, or anything else for this role.
+- **No big-corp pedigree required.** What matters is attitude,
+  network among French lawyers, and the ability to pitch without
+  bullshit. BD, sales, ops, marketing, founder associate — the job
+  title doesn't matter, the way you operate does.
 
----
-
-## ⚖️ French employment-law lawyer (droit social)
-
-**You'd help with:** legal KB validation, designing the test battery,
-quality feedback on real-world responses, building realistic edge-case
-scenarios.
-
-**Profile:** 2-10 years employment-law practice, interest in AI
-tooling, comfortable reasoning about limit cases (procédure de
-licenciement éco, calcul d'indemnités, jurisprudence Chambre
-sociale).
-
-**Why it's interesting:** shape the tool of tomorrow for your
-profession before a cloud actor imposes one from the outside.
-
----
-
-## ⚖️ Non-social regulated-sector lawyer
-
-**You'd help with:** extending Beaume Engine corpora (pharma ANSM,
-tax, IFRS, criminal, IP…). Sprint G-1 (May 2026) proved that adding
-a new corpus takes hours, not weeks, once the manifest pattern is
-in place.
-
-**Profile:** 3-10 years in one specific regulated sector, interest
-in structuring a manifest-driven corpus (articles + citation
-patterns + scope refusals).
-
-**Why it's interesting:** you build the first reference corpus in
-your field. Direct authorship, no committee.
+But you do need to **understand that Beaume is a technical product
+with specific constraints**: 100% local, no cloud, no telemetry.
+Selling Beaume the wrong way ("cloud-first AI revolution",
+"growth-hacked pipeline", "we'll just add telemetry to learn from
+users") is worse than not selling at all. The product positioning
+is the moat.
 
 ---
 
-## 🧠 ML engineer (Python, local LLMs)
+## What we share (the values part)
 
-**You'd help with:** distilled *BeaumeLM* (Sprint 11, planned),
-MLX / candle runtime, LoRA fine-tuning, optimizing Gemma 4 e4b
-specifically for Apple Silicon (M2+).
+Non-negotiable. If any of these sound outdated, naive, or
+inconvenient to you, this is not the right project.
 
-**Profile:** Hugging Face stack, MLX / Metal, quantization,
-distillation — able to reason cold-start vs. RAM trade-offs.
-
-**Why it's interesting:** the project optimizes for Mac M-series,
-not for cloud clusters. You ship to a laptop, not a fleet.
-
----
-
-## 🎨 Product / motion designer
-
-**You'd help with:** 9-card wizard, HUD animations, visual identity
-coherence, macOS Sequoia vibrancy / SF Symbols integration.
-
-**Profile:** Figma + SwiftUI fluency + Apple motion-design taste.
-
-**Why it's interesting:** the "Swiss watch" perception of the
-product depends entirely on UX polish. Motion is half the trust.
-
----
-
-## 🔒 Privacy / network engineer
-
-**You'd help with:** Sprint K-8 (privacy-preserving KB sync for
-Master DB + P2P fan-out), OHTTP, libp2p, Merkle proofs.
-
-**Profile:** experience with anonymizing proxies, applied
-cryptography, P2P protocols.
-
-**Why it's interesting:** structural lever to differentiate Beaume
-from cloud SaaS competitors — privacy is the moat, not a feature.
-
----
-
-## 📣 Growth / community among lawyers (lower priority for now)
-
-**You'd help with:** getting Beaume in front of the first alpha
-lawyers (2 contacted so far, 9 on the waiting list). Most useful
-once the pilot phase (May 12-18, 2026) wraps up.
-
-**Profile:** knows the French legal world, can present without
-bullshit, no marketing-speak.
-
-**Why it's interesting:** we look for lawyers who are ready to
-experiment, not for press coverage.
-
----
-
-## Not the right profile but still want to help?
-
-Open a GitHub issue describing what you'd bring, or email — mention
-the profile fit you see (or invent one).
+- **Radical transparency.** Revenue will be published. No ads, no
+  cookies, no telemetry, no dark patterns.
+- **Truth rule.** We never oversell. If a feature is planned, we
+  say "planned". If a test is failing, we say it. If a prospect
+  asks for something Beaume cannot do, we say so before the demo.
+- **100% local, privacy-first.** Beaume is **not** Harvey. The
+  competitive moat is structural privacy, not a marketing feature.
+- **Patience over speed.** A long timeline is a moat, not a bug.
+  We are not racing a SaaS — we are outlasting them.
+- **Lawyers are clients we respect**, not leads to growth-hack.
 
 ---
 
 ## How to reach out
 
-- Email: **mathieu.ballotma@gmail.com**
-- GitHub: open an issue on this repo, or DM via profile
+Email **mathieu.ballotma@gmail.com** with:
 
-**Don't pitch.** Tell us the smallest concrete thing you'd want to
-contribute this month, and we go from there. One paragraph beats a
-deck.
+1. **3 firms or legal segments** where you see Beaume sellable —
+   one short line on "why" for each.
+2. **1 non-bullshit reason** you'd rather co-build Beaume than join
+   a standard funded startup.
+3. **Your background**: BD, sales, ops, marketing, founder
+   associate — whatever the title was, describe how you actually
+   operated.
+4. **Concrete proof of fluent English** — a link works (EN
+   LinkedIn profile, a video, a written piece you authored).
+
+Don't send a deck. One honest email beats one polished PDF.
+
+Reminder of the stage you're stepping into: **I'm 18, solo
+bootstrapping Beaume from my room, Y Combinator Summer 2026
+candidate.** If you want corporate comfort, this isn't it. If you
+want to co-build a product that lasts ten years, let's talk.
 
 ---
 
 ## Truth rule applied to this page
 
-Beaume is **bootstrap solo, no salary guarantee** at this stage.
-Profiles marked "Sprint 9+", "Sprint 11", or "planned" are future
-work, not present-day deliverables. We do not sell hypothetical
-equity as a guaranteed salary, and we do not promise scope that has
-not shipped yet.
+- No fixed salary guaranteed today. Co-founding equity is the
+  preferred tier; other tiers exist but no tier is a promise.
+- YC Summer 2026 outcome is unknown at the time of writing.
+- The first lawyer pilot (May 12-18, 2026) is the first real
+  customer signal — anything before that is hypothesis, not
+  validation.
+- A Pro Proxy tier is planned, not shipped. Other future scope is
+  marked as such.
 
 If anything on this page reads as overselling, open an issue — we
 will fix it.
