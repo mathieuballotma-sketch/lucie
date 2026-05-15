@@ -3,11 +3,11 @@
 Infrastructure de packaging pour produire `Beaume.app` signée Developer ID et
 notarizée Apple, distribuable aux avocats pilotes sans friction Gatekeeper.
 
-> **Rebrand 2026-05-02** : `CFBundleName/DisplayName/Executable` passent à
-> `Beaume`. Les noms de fichiers internes au répertoire `packaging/`
-> (`Lucie.entitlements` etc.) sont conservés tels quels tant que les scripts
-> n'ont pas été renommés — voir `KNOWN_ISSUES_REBRAND` dans le rapport
-> 2026-05-07. Le bundle produit s'appellera `dist/Beaume.app` après rebuild.
+> **Rebrand finalisé 2026-05-15** : `CFBundleIdentifier` passe à
+> `com.mon-agence-ia.beaume`. Tous les fichiers packaging (`Beaume.icns`,
+> `Beaume.entitlements`, `Beaume.iconset/`) sont renommés. Le bundle produit
+> s'appelle `dist/Beaume.app` (depuis `name="Beaume"` dans
+> `setup_py2app.py`).
 
 ---
 
@@ -27,9 +27,9 @@ prérequis manquent, avec un message explicite.
 ```
 packaging/
 ├── Info.plist              # metadata bundle + usage strings TCC
-├── Lucie.entitlements      # hardened runtime (JIT, network, AppleEvents…)
+├── Beaume.entitlements      # hardened runtime (JIT, network, AppleEvents…)
 ├── setup_py2app.py         # config py2app (entry, data_files, excludes)
-├── build.sh                # py2app → dist/Lucie.app
+├── build.sh                # py2app → dist/Beaume.app
 ├── sign.sh                 # codesign --deep --options runtime
 ├── notarize.sh             # notarytool submit + stapler staple
 ├── make_dmg.sh             # hdiutil + signature + notarization du DMG
@@ -53,7 +53,7 @@ Carnet de progression : `PACKAGING_PROGRESS.md` (racine repo).
   /opt/homebrew/bin/python3.13 -m pip install -r requirements.txt
   ```
 
-C'est tout. `bash packaging/build.sh` produit `dist/Lucie.app` utilisable en
+C'est tout. `bash packaging/build.sh` produit `dist/Beaume.app` utilisable en
 local (non signée — Gatekeeper refuse de l'ouvrir sur un autre Mac).
 
 ### Pour signer + notarizer (distribution aux avocats)
@@ -68,7 +68,7 @@ local (non signée — Gatekeeper refuse de l'ouvrir sur un autre Mac).
 3. **Récupérer le Team ID** : developer.apple.com/account → Membership.
    Format à 10 caractères (ex. `ABCDE12345`).
 4. **Générer un app-specific password** : appleid.apple.com → Sign-In and
-   Security → App-Specific Passwords → `+`. Nommer `lucie-notarize`.
+   Security → App-Specific Passwords → `+`. Nommer `beaume-notarize`.
    Format : `xxxx-xxxx-xxxx-xxxx`.
 5. **Exporter les variables d'env** (ou les stocker dans `~/.zshrc` —
    **jamais** dans le repo) :
@@ -86,10 +86,10 @@ local (non signée — Gatekeeper refuse de l'ouvrir sur un autre Mac).
 
 | Script | Entrée | Sortie | Idempotent |
 |---|---|---|---|
-| `build.sh` | — | `dist/Lucie.app` | Oui (clean avant build) |
-| `sign.sh` | `DEVELOPER_ID` | `dist/Lucie.app` signée | Oui (resign propre) |
-| `notarize.sh` | `APPLE_ID` + `APPLE_TEAM_ID` + `APPLE_APP_PWD` | `Lucie.app` staplée | Oui |
-| `make_dmg.sh` | tous les creds | `dist/Lucie.dmg` signé + notarizé | Oui (écrase) |
+| `build.sh` | — | `dist/Beaume.app` | Oui (clean avant build) |
+| `sign.sh` | `DEVELOPER_ID` | `dist/Beaume.app` signée | Oui (resign propre) |
+| `notarize.sh` | `APPLE_ID` + `APPLE_TEAM_ID` + `APPLE_APP_PWD` | `Beaume.app` staplée | Oui |
+| `make_dmg.sh` | tous les creds | `dist/Beaume.dmg` signé + notarizé | Oui (écrase) |
 | `release.sh` | tout ce qui est dispo | fait toutes les étapes dispo | Oui |
 
 Mode **développement** (build rapide qui pointe vers les sources, sans
@@ -153,7 +153,7 @@ contient bien la liste `excludes`, et que les deps exclues ne sont pas
 importées dans le chemin d'entrée. Commande de vérification :
 
 ```bash
-du -sh dist/Lucie.app/Contents/Resources/lib/python3.13/ | sort -h
+du -sh dist/Beaume.app/Contents/Resources/lib/python3.13/ | sort -h
 # regarder les plus gros sous-dossiers
 ```
 
@@ -182,15 +182,15 @@ vérifier la ligne `codesign --options runtime` dedans.
 
 L'entitlement `com.apple.security.cs.disable-library-validation` est
 indispensable pour les deps Python natives (PyObjC, lxml, cryptography).
-Vérifier `packaging/Lucie.entitlements`.
+Vérifier `packaging/Beaume.entitlements`.
 
 ### `spctl refuses` après stapler OK
 
 Attendre quelques minutes (propagation CDN Apple). Tester sur un autre Mac
 avec :
 ```bash
-xcrun stapler validate dist/Lucie.app
-spctl --assess --type execute --verbose dist/Lucie.app
+xcrun stapler validate dist/Beaume.app
+spctl --assess --type execute --verbose dist/Beaume.app
 ```
 
 ### Premier lancement : Gatekeeper dit "app endommagée"
@@ -199,7 +199,7 @@ spctl --assess --type execute --verbose dist/Lucie.app
 - Ou : l'utilisateur a téléchargé le DMG → quarantine attribute → staple
   indispensable (l'avocat n'a pas accès à Apple CDN forcément). Vérifier :
   ```bash
-  xcrun stapler validate dist/Lucie.app
+  xcrun stapler validate dist/Beaume.app
   ```
 
 ### Build prend 20+ minutes

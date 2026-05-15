@@ -76,7 +76,7 @@ Green ≥ 90%, amber 70-89%, red < 70%.*
 | Reliability — 16q multi-angle battery | **62.5%** ([evidence](bench/results/2026-05-12_battery_16q_post_p2a.md)) |
 | Reliability — 50q economic-dismissal core battery | **recalibrating** ([status](bench/results/2026-05-12_battery_50q_post_p2a.md)) |
 | Three-brain architecture | Oiseaux ✓ · Humain ✓ · Pieuvre in progress (Sprint 9-10) |
-| Next milestone | Sprint 7 — client-file ingestion (PDF/docx) |
+| Next milestones | K-1 BGE-M3 full-corpus benchmark · Sprint W-1 onboarding wizard · Sprint Packaging signed `.dmg` · then Sprint 8 — Cerveau Déterministe |
 | Funding | Solo bootstrap, self-funded, zero VC |
 | Application | Y Combinator Summer 2026 |
 | Author | Mathieu Bellot, 18 |
@@ -197,7 +197,13 @@ A Developer ID-signed `.dmg` build is in preparation.
 | Stage | Content | Target |
 |-------|---------|--------|
 | Sprint 6 P2a | Retriever unbounded + Verifier normalized | shipped 2026-05-12 |
-| Sprint 7 | Client-file ingestion (PDF/docx) | 2026-05 |
+| Sprint 6 P3 | KB `lic_eco` gaps filled (L1233-65/66/67/68) | shipped 2026-05-15 |
+| Sprint G-1 | Beaume Engine + corpus pack manifest schema (pharma ANSM demo) | shipped 2026-05-15 |
+| Sprint 7 | Client-file ingestion (PDF/docx) — deterministic, additive | shipped 2026-05-15 |
+| Sprint K-1 | KB binary signatures (Matryoshka) + reference graph + PageRank | shipped 2026-05-15 (full-corpus BGE-M3 benchmark pending) |
+| Sprint UA fix | Neutral user-agent on DILA opendata fetches | shipped 2026-05-15 |
+| Sprint W-1 | First-launch onboarding wizard | 2026-05 |
+| Sprint Packaging | Developer ID-signed `.dmg` build | 2026-05 |
 | Sprint 8 | Cerveau Déterministe — mathematical logic of statutes (severance computation, deadlines, ceilings) | 2026-06 |
 | Sprint 9-10 | Full three-brain architecture (Cerveau Pieuvre operational) | 2026-07 |
 | Extended alpha | Alpha test with French lawyers | Q3 2026 |

@@ -29,8 +29,18 @@ the README. **Truth rule.**
 | **62.5%** on the 16q multi-angle battery (2026-05-12) | [`bench/results/2026-05-12_battery_16q_post_p2a.md`](../bench/results/2026-05-12_battery_16q_post_p2a.md) | `BEAUME_RETRIEVER_DEBRIDE=1 BEAUME_VERIFICATEUR_NORMALISE=1 python3 bench/run_legal_traps.py --prompts bench/swiss_watch_50.json --filter SW-LECO --json /tmp/run.json` |
 | 50q battery — **clean measurement in progress** | [`bench/results/2026-05-12_battery_50q_post_p2a.md`](../bench/results/2026-05-12_battery_50q_post_p2a.md) | To publish once stabilized. No number cited until the clean run is delivered. |
 | `verifier_score ≥ 0.70` threshold calibrated on deduplicated citations | [`bench/CHANGELOG.md`](../bench/CHANGELOG.md), [`bench/swiss_watch_50.json`](../bench/swiss_watch_50.json) (`pass_criteria.verifier_score_min`) | `grep -A2 verifier_score_min bench/swiss_watch_50.json \| head -30` |
-| Tests: 23 `test_*.py` files, ~132 unit tests | [`tests/`](../tests/) | `pytest tests/ --collect-only -q \| tail -5` |
+| Tests: 72 `test_*.py` files, 762 tests collected (point-in-time 2026-05-15; this metric evolves per sprint) | [`tests/`](../tests/), [`lucie_v1_standalone/tests/`](../lucie_v1_standalone/tests/) | `pytest --co --quiet \| tail -5` (re-measure live; 3 collection errors in offline venvs missing optional `cbor2` / `pypdf` / `python-docx` dependencies) |
 | Truth rule applied architecturally (refusal before LLM) | [`lucie_v1_standalone/verificateur.py`](../lucie_v1_standalone/verificateur.py) + [`docs/architecture.md`](architecture.md) section "Truth enforcement" | Direct read + `tests/test_truth_rule_pattern.py` |
+
+## Recent sprints (shipped 2026-05-15)
+
+| README claim | Proof | Verification |
+|---|---|---|
+| Sprint 6 P3 — three `lic_eco` KB gaps filled (L1233-65/66/67/68) | [`knowledge/droit_social/licenciement_economique/`](../knowledge/droit_social/licenciement_economique/) — `index.json` v1.1.0, 20 articles | `jq '.version, (.articles \| length)' knowledge/droit_social/licenciement_economique/index.json` |
+| Sprint G-1 — corpus pack manifest schema + pharma ANSM demo (additive, `--corpus` flag) | [`corpus/_schema/manifest_schema.py`](../corpus/_schema/manifest_schema.py) (Pydantic v2 strict), [`corpus/fr_pharma_ansm/manifest.yaml`](../corpus/fr_pharma_ansm/manifest.yaml) | `pytest tests/test_corpus/ -v` and `scripts/demo_pharma_ansm.sh` |
+| Sprint 7 — client-file ingestion (PDF/docx), deterministic, additive, zero LLM in-module | [`lucie_v1_standalone/document_analyzer/`](../lucie_v1_standalone/document_analyzer/) (7 modules) | `pytest lucie_v1_standalone/tests/test_document_analyzer/ -v` (28 tests; requires `pypdf` + `python-docx`) |
+| Sprint K-1 — KB binary signatures (Matryoshka) + reference graph + PageRank (magic `BEAUMEK1`) | [`lucie_v1_standalone/knowledge_legifrance/kb_compact/`](../lucie_v1_standalone/knowledge_legifrance/kb_compact/), [`docs/kb_compact_pipeline.md`](kb_compact_pipeline.md) | `pytest tests/test_kb_compact/ -v` (49 tests; requires `cbor2` + `hnswlib` + `zstandard`). Full-corpus BGE-M3 recall@10 benchmark pending. |
+| Fix UA — neutral user-agent on DILA opendata (no `Lucie-Legifrance-Sync` identifier leaked) | [`lucie_v1_standalone/knowledge_legifrance/downloader.py:40`](../lucie_v1_standalone/knowledge_legifrance/downloader.py) (`BEAUME_USER_AGENT`) | `pytest tests/test_legifrance/test_user_agent_neutre.py -v` (4 tests including regression guard) |
 
 ## Runtime stack
 

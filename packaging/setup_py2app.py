@@ -1,12 +1,9 @@
 """
-Config py2app pour Lucie — packaging macOS natif.
+Config py2app pour Beaume — packaging macOS natif.
 
 Usage :
     cd <racine du repo>
     python3 packaging/setup_py2app.py py2app
-
-Ne PAS confondre avec le `setup.py` à la racine du repo (utilitaire d'init env,
-non lié au build). Ce fichier-ci est appelé par `packaging/build.sh`.
 
 Tree-shaking agressif : on exclut torch / faster-whisper / onnxruntime /
 ctranslate2 / scipy du bundle (dictée inactive en v1, cible DMG < 500 MB).
@@ -19,7 +16,7 @@ from setuptools import setup
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_ENTRY = str(REPO_ROOT / "main_hud.py")
 
-# Ressources statiques à embarquer dans Lucie.app/Contents/Resources/.
+# Ressources statiques à embarquer dans Beaume.app/Contents/Resources/.
 # La base Légifrance (~3 GB) n'est PAS incluse — elle est téléchargée au
 # premier lancement par scripts/legifrance_sync.py (cf. plan packaging).
 DATA_FILES = [
@@ -52,11 +49,10 @@ OPTIONS = {
     "argv_emulation": False,
     # Plist custom (metadata + usage strings TCC).
     "plist": str(REPO_ROOT / "packaging" / "Info.plist"),
-    # Icône officielle Lucie (Logo A validé le 2026-04-21).
-    # Source : Proposition_A/ (wordmark EB Garamond + monogramme L).
-    # Regénérable depuis packaging/Lucie.iconset/ via :
-    #   iconutil -c icns packaging/Lucie.iconset -o packaging/Lucie.icns
-    "iconfile": str(REPO_ROOT / "packaging" / "Lucie.icns"),
+    # Icône officielle Beaume (Logo A validé le 2026-04-21, wordmark EB Garamond).
+    # Regénérable depuis packaging/Beaume.iconset/ via :
+    #   iconutil -c icns packaging/Beaume.iconset -o packaging/Beaume.icns
+    "iconfile": str(REPO_ROOT / "packaging" / "Beaume.icns"),
     # Packages Python à embarquer entiers.
     "packages": [
         "app",
@@ -118,7 +114,7 @@ OPTIONS = {
 }
 
 setup(
-    name="Lucie",
+    name="Beaume",
     version="0.2.2",
     app=[APP_ENTRY],
     data_files=DATA_FILES,
