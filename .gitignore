@@ -158,6 +158,7 @@ bench/results/diagnostic_*
 bench/results/_repro_*
 bench/results/_latest*
 Rapport_diagnostic_*.md
+Plan_*.md
 docs/sprints_private/
 docs/CONTRIBUTING_INTERNAL.md
 STASH_PRIVATE.md
