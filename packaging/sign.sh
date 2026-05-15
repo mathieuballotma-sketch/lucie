@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# packaging/sign.sh — signe Lucie.app avec un Developer ID Application.
+# packaging/sign.sh — signe Beaume.app avec un Developer ID Application.
 #
 # Usage :
 #   bash packaging/sign.sh "Developer ID Application: Mathieu Ballot (TEAMID)"
@@ -10,7 +10,7 @@
 #   bash packaging/sign.sh
 #
 # Prérequis :
-#   - dist/Lucie.app existe (lancer build.sh d'abord)
+#   - dist/Beaume.app existe (lancer build.sh d'abord)
 #   - certificat Developer ID Application installé dans le trousseau
 #     (Keychain Access → Mes certificats)
 #
@@ -52,8 +52,8 @@ if [[ "$DEV_ID" == /* || "$DEV_ID" == *.p12 || "$DEV_ID" == *.cer ]]; then
     exit 1
 fi
 
-APP="dist/Lucie.app"
-ENTITLEMENTS="packaging/Lucie.entitlements"
+APP="dist/Beaume.app"
+ENTITLEMENTS="packaging/Beaume.entitlements"
 
 # --- Vérifications préalables ---
 

@@ -163,9 +163,11 @@ applied.
   - Pipeline disclaimer + system prompts (small_talk, direct,
     redacteur_search).
   - `main_hud.py` (header + launch log).
-  - **Preserved** (risky internal rename): `LucieState` class,
-    `_lucie_state` variable, `lucie_v1_standalone.*` imports,
+  - **Preserved** (deferred KI-SW-002 — post-pilot): `_lucie_state`
+    internal variable, `lucie_v1_standalone.*` package imports,
     `LUCIE_*` env variables (backward compatibility).
+  - **`LucieState` class** renamed to `BeaumeState` in the horloger
+    cleanup on 2026-05-15 (see entry `[1.3.0-horloger-sprints]`).
 - **Python module alias** (new): `beaume/__init__.py` re-exports
   everything from `lucie_v1_standalone/` — `from beaume import
   pipeline` works. Physical package rename deferred post-pilot.

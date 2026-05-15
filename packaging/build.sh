@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# packaging/build.sh — build Lucie.app via py2app.
+# packaging/build.sh — build Beaume.app via py2app.
 #
 # Usage :
 #   bash packaging/build.sh
 #
 # Idempotent : nettoie build/ et dist/ avant de builder.
-# Produit : dist/Lucie.app (non signée — utiliser sign.sh ensuite).
+# Produit : dist/Beaume.app (non signée — utiliser sign.sh ensuite).
 #
 
 set -euo pipefail
@@ -62,7 +62,7 @@ fi
 
 # --- Vérification artefact ---
 
-APP_PATH="dist/Lucie.app"
+APP_PATH="dist/Beaume.app"
 if [[ ! -d "$APP_PATH" ]]; then
     echo "❌ [build] $APP_PATH n'existe pas — le build a échoué silencieusement."
     exit 1

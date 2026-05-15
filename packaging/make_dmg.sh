@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# packaging/make_dmg.sh — crée un DMG signé + notarizé contenant Lucie.app.
+# packaging/make_dmg.sh — crée un DMG signé + notarizé contenant Beaume.app.
 #
 # Usage :
 #   bash packaging/make_dmg.sh
 #
 # Lit DEVELOPER_ID, APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PWD depuis l'env.
 #
-# Produit : dist/Lucie.dmg (glissable dans /Applications par l'utilisateur).
+# Produit : dist/Beaume.dmg (glissable dans /Applications par l'utilisateur).
 #
 # Idempotent : écrase le DMG précédent.
 #
@@ -18,9 +18,9 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-APP="dist/Lucie.app"
-DMG="dist/Lucie.dmg"
-VOL_NAME="Lucie"
+APP="dist/Beaume.app"
+DMG="dist/Beaume.dmg"
+VOL_NAME="Beaume"
 STAGING_DIR="dist/dmg_staging"
 
 # --- Vérifications préalables ---

@@ -95,9 +95,12 @@ pas de feature creep — uniquement les 7 règles produit appliquées.
   - Tous les strings user-facing du HUD (sender name, états, notifications).
   - Disclaimer pipeline + prompts système (small_talk, direct, redacteur_search).
   - `main_hud.py` (header + log de lancement).
-  - **Préservé** (rename interne risqué) : `LucieState` class,
-    `_lucie_state` variable, imports `lucie_v1_standalone.*`,
+  - **Préservé** (différé KI-SW-002 — post-pilote) : variable
+    `_lucie_state` interne, imports `lucie_v1_standalone.*`,
     variables d'env `LUCIE_*` (compat backward).
+  - **Classe `LucieState`** renommée en `BeaumeState` lors du
+    nettoyage horloger du 2026-05-15 (voir entrée
+    `[1.3.0-horloger-sprints]`).
 - **Alias module Python** (nouveau) : `beaume/__init__.py` ré-exporte
   tout depuis `lucie_v1_standalone/` — `from beaume import pipeline`
   fonctionne. Rename physique du package reporté post-pilote.

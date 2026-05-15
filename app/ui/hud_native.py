@@ -65,7 +65,7 @@ _STREAM_INTERVAL = 0.04  # seconds between ticks (~100 chars/s)
 
 # ─── State machine ───────────────────────────────────────────────────────────
 
-class LucieState:
+class BeaumeState:
     IDLE      = "idle"
     THINKING  = "thinking"
     SEARCHING = "searching"
@@ -77,13 +77,13 @@ class LucieState:
 
 # (dot_rgba, status_text, sound_name_or_None)
 _STATE_CONFIG: Dict[str, Tuple[Tuple[float, ...], str, Optional[str]]] = {
-    LucieState.IDLE:      ((0.20, 0.85, 0.40, 0.9), "Prête",                   None),
-    LucieState.THINKING:  ((1.00, 0.60, 0.00, 0.9), "Beaume réfléchit…",       None),
-    LucieState.SEARCHING: ((0.27, 0.52, 0.97, 0.9), "Recherche en cours…",    None),
-    LucieState.WRITING:   ((0.70, 0.40, 1.00, 0.9), "Rédaction en cours…",    None),
-    LucieState.EXECUTING: ((1.00, 0.60, 0.00, 0.9), "Exécution…",             "Funk"),
-    LucieState.DONE:      ((0.20, 0.85, 0.40, 0.9), "Terminé",                "Hero"),
-    LucieState.ERROR:     ((1.00, 0.25, 0.20, 0.9), "Erreur",                 "Basso"),
+    BeaumeState.IDLE:      ((0.20, 0.85, 0.40, 0.9), "Prête",                   None),
+    BeaumeState.THINKING:  ((1.00, 0.60, 0.00, 0.9), "Beaume réfléchit…",       None),
+    BeaumeState.SEARCHING: ((0.27, 0.52, 0.97, 0.9), "Recherche en cours…",    None),
+    BeaumeState.WRITING:   ((0.70, 0.40, 1.00, 0.9), "Rédaction en cours…",    None),
+    BeaumeState.EXECUTING: ((1.00, 0.60, 0.00, 0.9), "Exécution…",             "Funk"),
+    BeaumeState.DONE:      ((0.20, 0.85, 0.40, 0.9), "Terminé",                "Hero"),
+    BeaumeState.ERROR:     ((1.00, 0.25, 0.20, 0.9), "Erreur",                 "Basso"),
 }
 
 
@@ -2272,7 +2272,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
 
         self._hide_output_card()
         self._hide_proposal_card()
-        self.set_state(LucieState.THINKING)
+        self.set_state(BeaumeState.THINKING)
 
         threading.Thread(target=self._process_query, args=(query,), daemon=True).start()
 
@@ -2952,7 +2952,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     # ── Streaming (word-chunk mode) ───────────────────────────────────────────
 
     def _start_streaming(self, sender: str, full_text: Any, user: bool = False) -> None:
-        self.set_state(LucieState.WRITING)
+        self.set_state(BeaumeState.WRITING)
         if self._streaming_timer is not None:
             self._streaming_timer.invalidate()
             self._streaming_timer = None
@@ -2981,7 +2981,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     @objc.python_method  # type: ignore[untyped-decorator]
     def _begin_live_stream(self, sender: str) -> None:
         """Prépare l'affichage avant l'arrivée des premiers tokens (main thread)."""
-        self.set_state(LucieState.WRITING)
+        self.set_state(BeaumeState.WRITING)
         if self._streaming_timer is not None:
             self._streaming_timer.invalidate()
             self._streaming_timer = None
@@ -3038,7 +3038,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
             latency = time.time() - self._processing_start_time
             self._latency_label.setStringValue_(f"{latency:.2f}s")
             self._is_dragging = False
-            self.set_state(LucieState.DONE)  # Hero sound + green + "Terminé"
+            self.set_state(BeaumeState.DONE)  # Hero sound + green + "Terminé"
             # Décision d'affichage post-streaming : ProposalCard / DraggableFileCard
             # / boutons Oui-Non / rien, selon les meta du PipelineResponse.
             self._on_streaming_complete()
@@ -3107,7 +3107,7 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self.append_message_safe("Beaume", error_text, False)
         self._is_processing = False
         self._is_dragging = False
-        self.set_state(LucieState.ERROR)  # Basso sound + red + "Erreur"
+        self.set_state(BeaumeState.ERROR)  # Basso sound + red + "Erreur"
         # Zone d'étapes : si une ligne est en erreur, on garde visible + bouton
         # Ré-essayer ; sinon on fade-out proprement.
         if hasattr(self, "_stages_view") and not self._stages_view.isHidden():
@@ -3279,12 +3279,12 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
     def set_state(self, state: str) -> None:
         """Transition vers un nouvel état — met à jour couleur, texte, sons, indicateur."""
         if not hasattr(self, "_lucie_state"):
-            self._lucie_state = LucieState.IDLE
+            self._lucie_state = BeaumeState.IDLE
         if self._lucie_state == state:
             return
         self._lucie_state = state
 
-        cfg = _STATE_CONFIG.get(state, _STATE_CONFIG[LucieState.IDLE])
+        cfg = _STATE_CONFIG.get(state, _STATE_CONFIG[BeaumeState.IDLE])
         rgba, status_text, sound = cfg
         color = ns_color(*rgba)
 
@@ -3293,8 +3293,8 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._status_text.setStringValue_(status_text)
 
         # Thinking label + indicator
-        active_states = {LucieState.THINKING, LucieState.SEARCHING,
-                         LucieState.WRITING, LucieState.EXECUTING}
+        active_states = {BeaumeState.THINKING, BeaumeState.SEARCHING,
+                         BeaumeState.WRITING, BeaumeState.EXECUTING}
         if state in active_states:
             self._thinking_indicator.startAnimating()
             # Cross-fade label text

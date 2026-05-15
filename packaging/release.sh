@@ -26,7 +26,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "════════════════════════════════════════════════"
-echo "  Lucie — release pipeline"
+echo "  Beaume — release pipeline"
 echo "  repo : $REPO_ROOT"
 echo "════════════════════════════════════════════════"
 
@@ -54,10 +54,10 @@ echo ""
 echo "──── [3/4] NOTARIZE ────"
 if [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" && -n "${APPLE_APP_PWD:-}" ]]; then
     # On ne peut notariser que si l'app est signée.
-    if codesign --verify --verbose=1 dist/Lucie.app 2>/dev/null; then
+    if codesign --verify --verbose=1 dist/Beaume.app 2>/dev/null; then
         bash packaging/notarize.sh
     else
-        echo "⚠️  Lucie.app non signée → notarize impossible."
+        echo "⚠️  Beaume.app non signée → notarize impossible."
     fi
 else
     echo "⚠️  APPLE_ID / APPLE_TEAM_ID / APPLE_APP_PWD non définis → notarize skippée."
@@ -68,10 +68,10 @@ fi
 
 echo ""
 echo "──── [4/4] DMG ────"
-if codesign --verify --verbose=1 dist/Lucie.app 2>/dev/null; then
+if codesign --verify --verbose=1 dist/Beaume.app 2>/dev/null; then
     bash packaging/make_dmg.sh
 else
-    echo "⚠️  Lucie.app non signée → DMG skippé (FORCE_UNSIGNED=1 pour override)."
+    echo "⚠️  Beaume.app non signée → DMG skippé (FORCE_UNSIGNED=1 pour override)."
 fi
 
 # --- Bilan ---
@@ -80,12 +80,12 @@ echo ""
 echo "════════════════════════════════════════════════"
 echo "  Bilan release"
 echo "════════════════════════════════════════════════"
-[[ -d dist/Lucie.app ]] && echo "✅ dist/Lucie.app : $(du -sh dist/Lucie.app | cut -f1)"
-[[ -f dist/Lucie.dmg ]] && echo "✅ dist/Lucie.dmg : $(du -sh dist/Lucie.dmg | cut -f1)"
+[[ -d dist/Beaume.app ]] && echo "✅ dist/Beaume.app : $(du -sh dist/Beaume.app | cut -f1)"
+[[ -f dist/Beaume.dmg ]] && echo "✅ dist/Beaume.dmg : $(du -sh dist/Beaume.dmg | cut -f1)"
 echo ""
 echo "Prochaine étape :"
-if [[ -f dist/Lucie.dmg ]]; then
-    echo "  Distribuer dist/Lucie.dmg aux avocats pilotes."
+if [[ -f dist/Beaume.dmg ]]; then
+    echo "  Distribuer dist/Beaume.dmg aux avocats pilotes."
 else
     echo "  Configurer les creds Apple (cf. packaging/README.md) puis relancer."
 fi

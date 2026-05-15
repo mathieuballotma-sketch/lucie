@@ -1,7 +1,7 @@
 .PHONY: help demo test clean
 
 help:
-	@echo "Lucie — public showcase targets"
+	@echo "Beaume — public showcase targets"
 	@echo ""
 	@echo "  make demo    Run the truth rule demonstration"
 	@echo "  make test    Run the public test suite"
