@@ -16,6 +16,33 @@
 
 ---
 
+> ## ⏸️ Project on pause — June to early September 2026
+>
+> Active development of Beaume pauses from **June 1, 2026** to **early
+> September 2026**. The repository stays public and read-only during
+> this period. The alpha pilot with French lawyers, initially planned
+> for summer 2026, is **postponed to autumn 2026**. The
+> **Y Combinator Summer 2026 application has been withdrawn**.
+>
+> The decision is mine. Neither the product nor I are mature enough
+> right now to sustain a YC batch with the standards that matter to a
+> practising lawyer. Beaume is real code with real users in sight, but
+> the path from "promising prototype" to "system a senior partner can
+> rely on for an economic-dismissal procedure" needs more time — on the
+> product side and on me as a founder. Shipping under pressure now
+> would compromise the only invariant that matters: that the answer
+> can be trusted.
+>
+> **These three months are not idle time.** I'm using them to prepare
+> my next working environment — the setup, the discipline and the
+> conditions that will let me ship concrete improvements, real lawyer
+> feedback and verifiable evidence when development resumes in
+> September. The 762 tests stay green in the meantime.
+>
+> *— Mathieu Bellot, 2026-05-18*
+
+---
+
 ## Mission
 
 Beaume is a 100% on-device legal assistant for French lawyers
@@ -78,7 +105,8 @@ Green ≥ 90%, amber 70-89%, red < 70%.*
 | Three-brain architecture | Oiseaux ✓ · Humain ✓ · Pieuvre in progress (Sprint 9-10) |
 | Next milestones | K-1 BGE-M3 full-corpus benchmark · Sprint W-1 onboarding wizard · Sprint Packaging signed `.dmg` · then Sprint 8 — Cerveau Déterministe |
 | Funding | Solo bootstrap, self-funded, zero VC |
-| Application | Y Combinator Summer 2026 |
+| YC application | Withdrawn 2026-05-18 — product and founder not ready |
+| Status | On pause June–early September 2026 (see top of README) |
 | Author | Mathieu Bellot, 18 |
 
 **Beaume is not production-ready.** The lawyer pilot (week of
@@ -217,11 +245,15 @@ this is deliberate.
 ## Project status
 
 - **Solo bootstrap**, self-funded (zero VC, zero pre-sales)
-- Mathieu Bellot, 18, applying to **Y Combinator Summer 2026**
+- Mathieu Bellot, 18 — **Y Combinator Summer 2026 application
+  withdrawn on 2026-05-18** (product and founder not mature enough)
+- **On pause June 2026 → early September 2026**, returning in autumn
+  with the alpha pilot rescheduled
 - Mac M4 24 GB, cumulative budget ≈ €500 over 5 months
 - No team, no paid marketing, no self-promotional blog posts
 
-For partner lawyers interested in the pilot or serious collaborators:
+For partner lawyers interested in the rescheduled autumn pilot or
+serious collaborators (please note replies will resume in September):
 [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
 
 ---

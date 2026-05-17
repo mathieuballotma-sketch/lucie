@@ -16,6 +16,35 @@
 
 ---
 
+> ## ⏸️ Projet en pause — juin à début septembre 2026
+>
+> Le développement actif de Beaume est en pause du **1er juin 2026** au
+> **début septembre 2026**. Le dépôt reste public en lecture seule
+> pendant cette période. Le pilote alpha avec les avocats français,
+> initialement prévu pour l'été 2026, est **reporté à l'automne 2026**.
+> La **candidature Y Combinator Summer 2026 a été retirée**.
+>
+> Cette décision est la mienne. Ni le produit ni moi ne sommes assez
+> matures aujourd'hui pour tenir une batch YC avec les standards
+> qu'attend un avocat en exercice. Beaume, c'est du vrai code avec de
+> vrais utilisateurs en vue, mais le chemin entre « prototype prometteur »
+> et « système sur lequel un avocat associé peut s'appuyer pour une
+> procédure de licenciement économique » demande plus de temps —
+> côté produit comme côté fondateur. Pousser sous pression maintenant
+> compromettrait le seul invariant qui compte : que la réponse soit
+> fiable.
+>
+> **Ces trois mois ne sont pas un temps mort.** Je m'en sers pour
+> préparer mon prochain environnement de travail — le setup, la
+> discipline et les conditions qui me permettront, au retour en
+> septembre, de livrer des améliorations concrètes, des retours
+> avocats réels et des preuves vérifiables. Les 762 tests resteront
+> verts d'ici là.
+>
+> *— Mathieu Bellot, 2026-05-18*
+
+---
+
 ## Mission
 
 Beaume est un assistant juridique 100 % local pour avocats français.
@@ -76,7 +105,8 @@ Vert ≥ 90 %, ambre 70-89 %, rouge < 70 %.*
 | Architecture trois cerveaux | Oiseaux ✓ · Humain ✓ · Pieuvre en cours (Sprint 9-10) |
 | Prochain milestone | Sprint 7 — lecture dossier client PDF/docx |
 | Financement | Bootstrap solo, fonds propres, zéro VC |
-| Candidature | Y Combinator Summer 2026 |
+| Candidature YC | Retirée le 2026-05-18 — produit et fondateur pas prêts |
+| Statut | En pause juin → début septembre 2026 (voir haut de README) |
 | Auteur | Mathieu Bellot, 18 ans |
 
 **Beaume n'est pas production-ready.** Le pilote avocat
@@ -212,13 +242,17 @@ c'est volontaire.
 ## Statut du projet
 
 - **Solo bootstrap**, fonds propres (zéro VC, zéro pré-vente)
-- Mathieu Bellot, 18 ans, candidature **Y Combinator Summer 2026**
+- Mathieu Bellot, 18 ans — **candidature Y Combinator Summer 2026
+  retirée le 2026-05-18** (produit et fondateur pas assez matures)
+- **En pause juin 2026 → début septembre 2026**, retour à l'automne
+  avec le pilote alpha replanifié
 - Mac M4 24 Go, budget cumulé ≈ €500 sur 5 mois
 - Pas de team, pas de communication payante, pas de blog post
   auto-promotionnel
 
-Pour les avocats partenaires intéressés par le pilote ou les
-collaborateurs sérieux : [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
+Pour les avocats partenaires intéressés par le pilote d'automne
+replanifié ou les collaborateurs sérieux (les réponses reprendront
+en septembre) : [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
 
 ---
 
