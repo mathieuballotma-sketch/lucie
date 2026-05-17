@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-BSL_1.1-1a365d?style=flat-square"/></a>
-  <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
+  <img alt="Status" src="https://img.shields.io/badge/⏸️_status-PAUSED_until_Sept_2026-9333ea?style=flat-square"/>
   <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-lightgrey?style=flat-square&logo=apple"/>
   <img alt="LLM" src="https://img.shields.io/badge/LLM-Gemma_4_e4b-1a365d?style=flat-square"/>
   <a href="https://python.org"><img alt="Python" src="https://img.shields.io/badge/python-3.11+-green?style=flat-square&logo=python&logoColor=white"/></a>
@@ -16,30 +16,95 @@
 
 ---
 
-> ## ⏸️ Project on pause — June to early September 2026
+> # ⏸️ Project on pause — June 2026 → early September 2026
 >
-> Active development of Beaume pauses from **June 1, 2026** to **early
-> September 2026**. The repository stays public and read-only during
-> this period. The alpha pilot with French lawyers, initially planned
-> for summer 2026, is **postponed to autumn 2026**. The
-> **Y Combinator Summer 2026 application has been withdrawn**.
+> **TL;DR.** Active development pauses from **June 1, 2026** to **early
+> September 2026**. The repo stays public, read-only, with 762 tests
+> green. The alpha pilot with French lawyers is **postponed to autumn
+> 2026**. The **Y Combinator Summer 2026 application has been
+> withdrawn**. I'll be back in September.
 >
-> The decision is mine. Neither the product nor I are mature enough
-> right now to sustain a YC batch with the standards that matter to a
-> practising lawyer. Beaume is real code with real users in sight, but
-> the path from "promising prototype" to "system a senior partner can
-> rely on for an economic-dismissal procedure" needs more time — on the
-> product side and on me as a founder. Shipping under pressure now
-> would compromise the only invariant that matters: that the answer
-> can be trusted.
+> ### Why
 >
-> **These three months are not idle time.** I'm using them to prepare
-> my next working environment — the setup, the discipline and the
-> conditions that will let me ship concrete improvements, real lawyer
-> feedback and verifiable evidence when development resumes in
-> September. The 762 tests stay green in the meantime.
+> Neither the product nor I are mature enough right now to sustain a
+> YC batch with the standards that matter to a practising lawyer.
+> Beaume is real code with real users in sight, but the path from
+> "promising prototype" to "system a senior partner can rely on for
+> an economic-dismissal procedure" needs more time — on the product
+> side and on me as a founder. Shipping under pressure now would
+> compromise the only invariant that matters: **that the answer can
+> be trusted**.
+>
+> ### What's shipped as of the pause (2026-05-18)
+>
+> - **Three-brain architecture** — Cerveau Oiseaux (deterministic
+>   router) and Cerveau Humain (local Gemma 4 e4b) operational;
+>   Cerveau Pieuvre (multi-agent) work-in-progress.
+> - **Deterministic verifier** — every Légifrance citation checked
+>   against the local FTS5 index before reaching the user (truth rule).
+> - **762 Python tests green** — last main commit `f9a628a`
+>   (2026-05-15). Verified by `pytest tests/`.
+> - **Battery 16q multi-angle** — 62.5 % reliability, fully
+>   reproducible from a clean clone (see [`docs/REPRODUCE.md`](docs/REPRODUCE.md)).
+> - **Sprint Packaging 0.5.0** — Apple Developer ID-signed `.dmg`
+>   pipeline ready (`make dmg-signed`), macOS-14 GitHub Actions
+>   workflow, install tests, full operator doc
+>   ([`docs/PACKAGING_GUIDE.md`](docs/PACKAGING_GUIDE.md)). Only the
+>   actual Apple credentials remain to wire in.
+> - **100 % local invariant** — verified by `make dmg-check-secrets`
+>   (zero cloud SDKs, zero hardcoded API keys in the bundle).
+>
+> ### What resumes in September
+>
+> - **Lawyer alpha pilot** rescheduled to autumn 2026 (signed `.dmg`
+>   distribution to one to three lawyers on a real economic-dismissal
+>   case)
+> - **Sprint 8 — Cerveau Déterministe** (mathematical logic of
+>   statutes: severance computation, deadlines, ceilings)
+> - **Sprint 9-10 — Cerveau Pieuvre** operational (multi-agent
+>   orchestration)
+> - **Sparkle auto-update** runtime integration (currently shipped as
+>   a stub, see [`docs/SPARKLE_SETUP.md`](docs/SPARKLE_SETUP.md))
+> - **Reliability** — push the 16q battery from 62.5 % toward the
+>   ≥ 90 % pilot threshold
+>
+> ### What I'm doing during the pause
+>
+> Not idle time. I'm preparing my next working environment — the
+> setup, the discipline and the conditions that will let me return in
+> September with **concrete improvements, real lawyer feedback and
+> verifiable evidence**, not just promises.
+>
+> ### How to reach me
+>
+> Email at [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
+> Replies will resume in September. Lawyers interested in the autumn
+> pilot are welcome to write in the meantime — I'll come back to you
+> when I'm back.
 >
 > *— Mathieu Bellot, 2026-05-18*
+
+---
+
+### A note on the "three brains" naming
+
+The "**Cerveau Oiseaux / Humain / Pieuvre**" wording you'll see across
+this README and the codebase is a **presentation theme**, not a claim
+about reproducing biology or cognition. Beaume does not model neurons,
+brains, or animals. What's actually implemented is **logic**, with
+concrete code:
+
+| Metaphor name | What it really is | Source code |
+|---|---|---|
+| Cerveau Oiseaux | Deterministic Python router, < 1 ms, zero LLM calls | [`lucie_v1_standalone/router.py`](lucie_v1_standalone/router.py) |
+| Cerveau Humain | HTTPX async client to a locally-served Gemma 4 e4b via Ollama | [`lucie_v1_standalone/ollama_client.py`](lucie_v1_standalone/ollama_client.py) |
+| Cerveau Pieuvre | Multi-agent orchestration layer (work in progress, Sprint 9-10) | not yet shipped |
+| Verifier (truth rule) | Deterministic check of every Légifrance citation against the local FTS5 index | [`lucie_v1_standalone/verificateur.py`](lucie_v1_standalone/verificateur.py) |
+| Pipeline orchestrator | Async coordinator that wires the four pieces together | [`lucie_v1_standalone/pipeline.py`](lucie_v1_standalone/pipeline.py) |
+
+The metaphor helps explain the architecture to lawyers — who do not
+read Python — in two sentences. The code is just code: verifiable,
+tested, reproducible. **No biology involved.**
 
 ---
 

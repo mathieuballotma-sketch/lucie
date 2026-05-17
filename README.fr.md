@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-BSL_1.1-1a365d?style=flat-square"/></a>
-  <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
+  <img alt="Status" src="https://img.shields.io/badge/⏸️_statut-EN_PAUSE_jusqu_à_sept_2026-9333ea?style=flat-square"/>
   <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-lightgrey?style=flat-square&logo=apple"/>
   <img alt="LLM" src="https://img.shields.io/badge/LLM-Gemma_4_e4b-1a365d?style=flat-square"/>
   <a href="https://python.org"><img alt="Python" src="https://img.shields.io/badge/python-3.11+-green?style=flat-square&logo=python&logoColor=white"/></a>
@@ -16,32 +16,99 @@
 
 ---
 
-> ## ⏸️ Projet en pause — juin à début septembre 2026
+> # ⏸️ Projet en pause — juin 2026 → début septembre 2026
 >
-> Le développement actif de Beaume est en pause du **1er juin 2026** au
-> **début septembre 2026**. Le dépôt reste public en lecture seule
-> pendant cette période. Le pilote alpha avec les avocats français,
-> initialement prévu pour l'été 2026, est **reporté à l'automne 2026**.
-> La **candidature Y Combinator Summer 2026 a été retirée**.
+> **En bref.** Développement actif en pause du **1er juin 2026** au
+> **début septembre 2026**. Le dépôt reste public, en lecture seule,
+> avec 762 tests verts. Le pilote alpha avocats est **reporté à
+> l'automne 2026**. La **candidature Y Combinator Summer 2026 a été
+> retirée**. Je reviens en septembre.
 >
-> Cette décision est la mienne. Ni le produit ni moi ne sommes assez
-> matures aujourd'hui pour tenir une batch YC avec les standards
-> qu'attend un avocat en exercice. Beaume, c'est du vrai code avec de
-> vrais utilisateurs en vue, mais le chemin entre « prototype prometteur »
-> et « système sur lequel un avocat associé peut s'appuyer pour une
-> procédure de licenciement économique » demande plus de temps —
-> côté produit comme côté fondateur. Pousser sous pression maintenant
-> compromettrait le seul invariant qui compte : que la réponse soit
-> fiable.
+> ### Pourquoi
 >
-> **Ces trois mois ne sont pas un temps mort.** Je m'en sers pour
-> préparer mon prochain environnement de travail — le setup, la
-> discipline et les conditions qui me permettront, au retour en
-> septembre, de livrer des améliorations concrètes, des retours
-> avocats réels et des preuves vérifiables. Les 762 tests resteront
-> verts d'ici là.
+> Ni le produit ni moi ne sommes assez matures aujourd'hui pour tenir
+> une batch YC avec les standards qu'attend un avocat en exercice.
+> Beaume, c'est du vrai code avec de vrais utilisateurs en vue, mais le
+> chemin entre « prototype prometteur » et « système sur lequel un
+> avocat associé peut s'appuyer pour une procédure de licenciement
+> économique » demande plus de temps — côté produit comme côté
+> fondateur. Pousser sous pression maintenant compromettrait le seul
+> invariant qui compte : **que la réponse soit fiable**.
+>
+> ### Ce qui est livré au moment de la pause (2026-05-18)
+>
+> - **Architecture trois cerveaux** — Cerveau Oiseaux (routeur
+>   déterministe) et Cerveau Humain (Gemma 4 e4b local) opérationnels ;
+>   Cerveau Pieuvre (multi-agents) en cours.
+> - **Vérificateur déterministe** — chaque citation Légifrance
+>   contrôlée contre l'index local FTS5 avant d'arriver à l'avocat
+>   (truth rule).
+> - **762 tests Python verts** — dernier commit `main` `f9a628a`
+>   (2026-05-15). Vérifiable via `pytest tests/`.
+> - **Battery 16q multi-angles** — 62,5 % de fiabilité, entièrement
+>   reproductible depuis un clone propre (voir [`docs/REPRODUCE.md`](docs/REPRODUCE.md)).
+> - **Sprint Packaging 0.5.0** — pipeline `.dmg` signé Apple Developer
+>   ID prêt (`make dmg-signed`), workflow GitHub Actions `macos-14`,
+>   tests d'installation, doc opérateur complète
+>   ([`docs/PACKAGING_GUIDE.md`](docs/PACKAGING_GUIDE.md)). Il ne
+>   manque que les vrais credentials Apple à brancher.
+> - **Invariant 100 % local** — vérifié par `make dmg-check-secrets`
+>   (zéro SDK cloud, zéro clé API hardcodée dans le bundle).
+>
+> ### Ce qui reprend en septembre
+>
+> - **Pilote alpha avocats** replanifié à l'automne 2026 (distribution
+>   du `.dmg` signé à un à trois avocats sur un vrai dossier de
+>   licenciement économique)
+> - **Sprint 8 — Cerveau Déterministe** (logique mathématique des
+>   articles : calcul d'indemnités, délais, plafonds)
+> - **Sprints 9-10 — Cerveau Pieuvre** opérationnel (orchestration
+>   multi-agents)
+> - **Sparkle auto-update** — intégration runtime (livré aujourd'hui
+>   en stub, voir [`docs/SPARKLE_SETUP.md`](docs/SPARKLE_SETUP.md))
+> - **Fiabilité** — pousser la battery 16q de 62,5 % vers le seuil
+>   pilote ≥ 90 %
+>
+> ### Ce que je fais pendant la pause
+>
+> Pas un temps mort. Je prépare mon prochain environnement de travail
+> — le setup, la discipline et les conditions qui me permettront de
+> revenir en septembre avec **des améliorations concrètes, des
+> retours avocats réels et des preuves vérifiables**, pas juste des
+> promesses.
+>
+> ### Pour me joindre
+>
+> Email à [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
+> Les réponses reprennent en septembre. Les avocats intéressés par le
+> pilote d'automne peuvent écrire entre-temps — je reviendrai vers
+> eux à mon retour.
 >
 > *— Mathieu Bellot, 2026-05-18*
+
+---
+
+### Une note sur l'appellation « trois cerveaux »
+
+La nomenclature « **Cerveau Oiseaux / Humain / Pieuvre** » que vous
+croiserez dans ce README et dans le code est un **thème de
+présentation**, pas une prétention à reproduire la biologie ou la
+cognition. Beaume ne modélise ni neurones, ni cerveaux, ni animaux.
+Ce qui est réellement implémenté, c'est de la **logique**, avec du
+code concret :
+
+| Nom métaphorique | Ce que c'est vraiment | Code source |
+|---|---|---|
+| Cerveau Oiseaux | Routeur Python déterministe, < 1 ms, zéro appel LLM | [`lucie_v1_standalone/router.py`](lucie_v1_standalone/router.py) |
+| Cerveau Humain | Client HTTPX async vers un Gemma 4 e4b servi localement par Ollama | [`lucie_v1_standalone/ollama_client.py`](lucie_v1_standalone/ollama_client.py) |
+| Cerveau Pieuvre | Couche d'orchestration multi-agents (en cours, Sprint 9-10) | pas encore livré |
+| Vérificateur (truth rule) | Contrôle déterministe de chaque citation Légifrance contre l'index FTS5 local | [`lucie_v1_standalone/verificateur.py`](lucie_v1_standalone/verificateur.py) |
+| Orchestrateur pipeline | Coordinateur async qui câble les quatre pièces ensemble | [`lucie_v1_standalone/pipeline.py`](lucie_v1_standalone/pipeline.py) |
+
+La métaphore sert à expliquer l'architecture à des avocats — qui ne
+lisent pas le Python — en deux phrases. Le code, lui, n'est que du
+code : vérifiable, testé, reproductible. **Aucune biologie
+là-dedans.**
 
 ---
 
