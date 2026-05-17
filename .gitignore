@@ -202,3 +202,12 @@ scripts/check_groupe_0.py
 scripts/check_groupe_1.py
 tests/diagnostic_results.txt
 app/services/p2p/MOBILE_SPEC.md
+
+# ===== SPRINT PACKAGING 0.5.0 (2026-05-17) =====
+# Clés Sparkle Ed25519 (priv key JAMAIS commitée — vault 1Password)
+packaging/sparkle/priv_key*
+packaging/sparkle/*.private
+# Rapport généré par scripts/test_install.sh
+tests/manual/install_test_report.md
+# Variables Apple Developer locales
+.env.packaging

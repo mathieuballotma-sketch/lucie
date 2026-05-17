@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Beaume — Sparkle appcast (template)
+
+    Ce fichier décrit les versions disponibles à l'auto-update via Sparkle.
+    Remplacer les placeholders {{...}} et publier sur l'URL annoncée dans
+    Info.plist sous la clé SUFeedURL (à ajouter en sprint v2).
+
+    Pour générer la signature Ed25519 d'un DMG :
+        ./bin/sign_update Beaume-0.5.0.dmg
+    (binaire fourni par le Sparkle SDK, voir docs/SPARKLE_SETUP.md)
+
+    Le pubDate doit suivre le format RFC 822.
+-->
+<rss version="2.0"
+     xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Beaume Updates</title>
+        <link>https://beaume.app/appcast.xml</link>
+        <description>Auto-update feed for Beaume — assistant juridique 100% local.</description>
+        <language>fr</language>
+
+        <item>
+            <title>Version {{VERSION}}</title>
+            <pubDate>{{PUB_DATE}}</pubDate>
+            <sparkle:version>{{VERSION}}</sparkle:version>
+            <sparkle:shortVersionString>{{VERSION}}</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+                <h2>Beaume {{VERSION}}</h2>
+                <p>{{RELEASE_NOTES_HTML}}</p>
+            ]]></description>
+            <enclosure
+                url="{{DOWNLOAD_URL}}"
+                sparkle:edSignature="{{SIGNATURE_ED25519}}"
+                length="{{LENGTH_BYTES}}"
+                type="application/octet-stream" />
+        </item>
+    </channel>
+</rss>

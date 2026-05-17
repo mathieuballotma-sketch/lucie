@@ -1,0 +1,123 @@
+name: macOS Build
+
+# Trigger restreint pour ne pas brûler les minutes macOS (10× le coût Ubuntu).
+# - workflow_dispatch : déclenchement manuel pour test
+# - push tags v*      : release officielle (build + sign + notarize + GitHub Release)
+on:
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: "Tenter signature + notarization (requires Apple secrets)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build Beaume.dmg
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install py2app
+
+      - name: Verify version alignment
+        run: make version-check
+
+      - name: Detect Apple credentials
+        id: detect-creds
+        env:
+          DEVELOPER_ID: ${{ secrets.DEVELOPER_ID }}
+        run: |
+          # Signature uniquement si tous les secrets sont configurés ET (tag v* OU input sign=true)
+          if [ -n "$DEVELOPER_ID" ] && \
+             { [ "${{ github.event_name }}" = "push" ] || \
+               [ "${{ github.event.inputs.sign }}" = "true" ]; }; then
+            echo "should_sign=true" >> $GITHUB_OUTPUT
+            echo "✅ Apple credentials present + sign requested → will build signed"
+          else
+            echo "should_sign=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No Apple credentials or sign not requested → will build unsigned only"
+          fi
+
+      - name: Build unsigned DMG (sanity)
+        run: make dmg-unsigned
+
+      - name: Check no cloud SDKs in bundle
+        run: make dmg-check-secrets
+
+      - name: Test install (unsigned mode)
+        run: bash scripts/test_install.sh
+
+      - name: Upload unsigned artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Beaume-${{ github.sha }}-unsigned
+          path: |
+            dist/Beaume.dmg
+            tests/manual/install_test_report.md
+          retention-days: 30
+
+      # ====== Branche signature (conditionnelle) ======
+
+      - name: Import codesign certificate
+        if: steps.detect-creds.outputs.should_sign == 'true'
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.CERT_P12_BASE64 }}
+          p12-password: ${{ secrets.CERT_P12_PASSWORD }}
+
+      - name: Clean before signed build
+        if: steps.detect-creds.outputs.should_sign == 'true'
+        run: make dmg-clean
+
+      - name: Build signed + notarized DMG
+        if: steps.detect-creds.outputs.should_sign == 'true'
+        env:
+          DEVELOPER_ID: ${{ secrets.DEVELOPER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PWD: ${{ secrets.APPLE_APP_PWD }}
+        run: make dmg-signed
+
+      - name: Test install (require-signed mode)
+        if: steps.detect-creds.outputs.should_sign == 'true'
+        run: bash scripts/test_install.sh --require-signed
+
+      - name: Upload signed artifact
+        if: steps.detect-creds.outputs.should_sign == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Beaume-${{ github.sha }}-signed
+          path: |
+            dist/Beaume.dmg
+            tests/manual/install_test_report.md
+          retention-days: 90
+
+      # ====== Release GitHub (uniquement sur tag v*) ======
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') && steps.detect-creds.outputs.should_sign == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Beaume.dmg
+          generate_release_notes: true
+          fail_on_unmatched_files: true

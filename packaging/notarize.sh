@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# packaging/notarize.sh — soumet Lucie.app à Apple pour notarization.
+# packaging/notarize.sh — soumet Beaume.app à Apple pour notarization.
 #
 # Usage (via args) :
 #   bash packaging/notarize.sh <apple-id> <team-id> <app-specific-password>
@@ -12,7 +12,7 @@
 #   bash packaging/notarize.sh
 #
 # Prérequis :
-#   - dist/Lucie.app existe ET est signée (lancer sign.sh d'abord)
+#   - dist/Beaume.app existe ET est signée (lancer sign.sh d'abord)
 #   - Apple Developer Program actif (99 €/an)
 #   - App-specific password généré sur https://appleid.apple.com
 #     (Sign-In and Security → App-Specific Passwords)
@@ -59,8 +59,8 @@ EOF
     exit 1
 fi
 
-APP="dist/Lucie.app"
-ZIP="dist/Lucie.zip"
+APP="dist/Beaume.app"
+ZIP="dist/Beaume.zip"
 
 # --- Vérifications préalables ---
 

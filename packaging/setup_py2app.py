@@ -115,7 +115,7 @@ OPTIONS = {
 
 setup(
     name="Beaume",
-    version="0.2.2",
+    version="0.5.0",
     app=[APP_ENTRY],
     data_files=DATA_FILES,
     options={"py2app": OPTIONS},

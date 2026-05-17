@@ -7,6 +7,51 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.5.0] — 2026-05-17 — Packaging signé + CI macOS
+
+Sprint Packaging livré. Première release distribuable aux avocats pilotes (Mac M1+
+avec Ollama). Versions alignées sur semver propre — abandon des tags
+`X.Y.Z-sprint-name` accumulés en mai 2026.
+
+### ✨ Added
+
+- `Makefile` — cibles `dmg-build`, `dmg-unsigned`, `dmg-signed`, `dmg-check-secrets`,
+  `dmg-test-install`, `version-check`, `dmg-clean`. Wrap les `packaging/*.sh` existants.
+- `scripts/check_no_cloud_sdks.sh` — negative grep dans le bundle final pour bloquer
+  toute fuite `openai/anthropic/sentry_sdk/posthog/mixpanel/datadog` ou clé API hardcodée.
+- `scripts/test_install.sh` — automatise montage DMG, vérif signature, codesign verify,
+  taille bundle. Flag `--require-signed` pour CI.
+- `tests/manual/INSTALLATION_CHECKLIST.md` — 15 cases à cocher pour test sur Mac vierge.
+- `.github/workflows/macos-build.yml` — pipeline GHA `macos-14` arm64 Python 3.13,
+  trigger manuel + tag `v*`, signature conditionnelle sur présence des secrets.
+- `packaging/sparkle/` — stub v1 (template appcast.xml, README). Intégration runtime
+  Sparkle reportée à un sprint dédié (cf. `docs/SPARKLE_SETUP.md`).
+- `docs/PACKAGING_GUIDE.md` — guide 6 étapes pour Mathieu de l'inscription Apple
+  Developer Program à la release GHA.
+- `docs/SPARKLE_SETUP.md` — préparation auto-update v2.
+- `docs/POST_PACKAGING_BUGS.md` — log placeholder pour bugs Python découverts hors scope.
+- `BEAUME_SPRINT_PACKAGING_REPORT.md` — rapport de sprint 7 sections.
+
+### 🔧 Fixed
+
+- `packaging/notarize.sh` — refs résiduelles `Lucie.app` / `Lucie.zip` corrigées
+  (le script échouait silencieusement car `dist/Lucie.app` n'existe jamais après
+  rebrand). Lignes 3, 15, 62, 63.
+
+### 🔁 Changed
+
+- Version alignée à `0.5.0` partout : `pyproject.toml`, `packaging/setup_py2app.py`,
+  `packaging/Info.plist` (CFBundleVersion + CFBundleShortVersionString). Précédemment
+  désynchronisé `0.5.0 / 0.2.2 / 0.2.2`.
+
+### 🚫 Out of scope (sprint v2)
+
+- Intégration runtime Sparkle (XPC, `Sparkle.framework` embed, appcast publié)
+- Activation GitHub Pages pour l'appcast
+- Tests E2E sur Mac vierge automatisés (irréaliste sans VM Sequoia)
+
+---
+
 ## [1.3.0-horloger-sprints] — 2026-05-15
 
 Five sprints landed together on `main` between 2026-05-13 and 2026-05-15.
