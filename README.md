@@ -18,34 +18,50 @@
 
 > # ⏸️ Project on pause — June 2026 → early September 2026
 >
-> **TL;DR.** Active development pauses from **June 1, 2026** to **early
-> September 2026**. The repo stays public, read-only, with 762 tests
-> green. The alpha pilot with French lawyers is **postponed to autumn
-> 2026**. The **Y Combinator Summer 2026 application has been
+> **TL;DR.** Beaume is **not stopping** — the codebase is close to
+> feature-complete after four months of intensive build. What's
+> pausing is **my development cycle**, from **June 1, 2026** to
+> **early September 2026**, to relocate my working environment for
+> the next phase. The repo stays public, read-only, with 375 tests
+> green and the Sprint K-1 knowledge-base embedding still running
+> autonomously on my machine. The lawyer alpha pilot is **postponed
+> to autumn 2026** and **pivots from feature-building to lawyer
+> listening**. The **Y Combinator Summer 2026 application has been
 > withdrawn**. I'll be back in September.
 >
 > ### Why
 >
 > Neither the product nor I are mature enough right now to sustain a
-> YC batch with the standards that matter to a practising lawyer.
-> Beaume is real code with real users in sight, but the path from
-> "promising prototype" to "system a senior partner can rely on for
-> an economic-dismissal procedure" needs more time — on the product
-> side and on me as a founder. Shipping under pressure now would
-> compromise the only invariant that matters: **that the answer can
-> be trusted**.
+> YC batch with the standards that matter to a practising lawyer —
+> and more importantly, **the next bottleneck is no longer code, it's
+> contact with real lawyers**. Beaume has ~138 modules, ~30k lines of
+> code (after the April–May cleanup), 375 Python tests green, a
+> deterministic verifier, and a full-corpus Légifrance embedding
+> already underway. Shipping more features without listening to
+> practitioners first would be lean-startup malpractice. Pushing
+> under pressure now would also compromise the only invariant that
+> matters: **that the answer can be trusted**.
 >
 > ### What's shipped as of the pause (2026-05-18)
 >
-> - **Three-brain architecture** — Cerveau Oiseaux (deterministic
->   router) and Cerveau Humain (local Gemma 4 e4b) operational;
->   Cerveau Pieuvre (multi-agent) work-in-progress.
+> - **Local-first three-brain architecture** — Cerveau Oiseaux
+>   (deterministic router, < 1 ms) and Cerveau Humain (Gemma 4 e4b
+>   via local Ollama) operational; Cerveau Pieuvre (multi-agent)
+>   work-in-progress. See the metaphor table below for the actual
+>   files.
 > - **Deterministic verifier** — every Légifrance citation checked
->   against the local FTS5 index before reaching the user (truth rule).
-> - **762 Python tests green** — last main commit `f9a628a`
->   (2026-05-15). Verified by `pytest tests/`.
+>   against the local FTS5 index before reaching the lawyer (truth
+>   rule, no hallucinated articles).
+> - **375 Python tests green** on the deterministic suite (no LLM, no
+>   integration). Last main commit `f9a628a` (2026-05-15).
+> - **Sprint K-1 full-corpus embedding** — BGE-M3 indexing of
+>   ~**672,000 Légifrance articles** currently in progress on my
+>   Mac, ~27 % complete as of 2026-05-18, finishing autonomously
+>   during the pause. This is Beaume's most expensive prerequisite
+>   and it runs while I step back.
 > - **Battery 16q multi-angle** — 62.5 % reliability, fully
->   reproducible from a clean clone (see [`docs/REPRODUCE.md`](docs/REPRODUCE.md)).
+>   reproducible from a clean clone
+>   (see [`docs/REPRODUCE.md`](docs/REPRODUCE.md)).
 > - **Sprint Packaging 0.5.0** — Apple Developer ID-signed `.dmg`
 >   pipeline ready (`make dmg-signed`), macOS-14 GitHub Actions
 >   workflow, install tests, full operator doc
@@ -54,32 +70,54 @@
 > - **100 % local invariant** — verified by `make dmg-check-secrets`
 >   (zero cloud SDKs, zero hardcoded API keys in the bundle).
 >
-> ### What resumes in September
+> ### Strategic pivot — from build to listen
+>
+> At this stage Beaume does not need more features added blind. It
+> needs **real lawyers ranking what to build next**. So the September
+> restart begins with a **lawyer listening tour**, not a new sprint:
+>
+> - **First**, in-person sessions with 10 to 15 French employment-law
+>   attorneys — paid feedback, no pitch, no slides, Beaume running on
+>   the table, structured discovery of their actual frictions.
+> - **Then**, sprints reordered by what the recorded feedback
+>   actually demands, not by what looked good on a pre-pilot roadmap.
+> - **Then**, the lawyer alpha pilot proper, on real
+>   economic-dismissal cases.
+>
+> ### What resumes in September (subject to what lawyers say)
 >
 > - **Lawyer alpha pilot** rescheduled to autumn 2026 (signed `.dmg`
->   distribution to one to three lawyers on a real economic-dismissal
->   case)
+>   distribution to a small cohort on real cases)
 > - **Sprint 8 — Cerveau Déterministe** (mathematical logic of
->   statutes: severance computation, deadlines, ceilings)
-> - **Sprint 9-10 — Cerveau Pieuvre** operational (multi-agent
->   orchestration)
-> - **Sparkle auto-update** runtime integration (currently shipped as
->   a stub, see [`docs/SPARKLE_SETUP.md`](docs/SPARKLE_SETUP.md))
-> - **Reliability** — push the 16q battery from 62.5 % toward the
->   ≥ 90 % pilot threshold
+>   statutes: severance computation, deadlines, ceilings) — if the
+>   listening tour confirms it's the right next gap
+> - **Sprint 9-10 — Cerveau Pieuvre** (multi-agent orchestration)
+> - **Sparkle auto-update** runtime integration (currently shipped
+>   as a stub, see [`docs/SPARKLE_SETUP.md`](docs/SPARKLE_SETUP.md))
+> - **Reliability** — push the 16q battery toward the ≥ 90 % pilot
+>   threshold using the real failure modes surfaced during the
+>   listening tour
 >
 > ### What I'm doing during the pause
 >
-> Not idle time. I'm preparing my next working environment — the
-> setup, the discipline and the conditions that will let me return in
-> September with **concrete improvements, real lawyer feedback and
-> verifiable evidence**, not just promises.
+> Two things in parallel:
+>
+> 1. The **Sprint K-1 embedding keeps running** on my machine through
+>    June. Beaume's heaviest prerequisite finishes itself while I
+>    step back — when I return, the full Légifrance index is ready.
+> 2. I'm **relocating my working environment** — physically,
+>    organisationally, mentally — so that the September restart
+>    happens close to practising lawyers and free of the friction
+>    that was blocking serious shipping. The details are personal;
+>    the outcome is not: a setup that can actually carry Beaume to
+>    its pilot.
 >
 > ### How to reach me
 >
 > Email at [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
-> Replies will resume in September. Lawyers interested in the autumn
-> pilot are welcome to write in the meantime — I'll come back to you
+> Replies will resume in September. Employment-law attorneys
+> interested in the paid feedback sessions or the autumn pilot are
+> warmly welcome to write in the meantime — I'll come back to you
 > when I'm back.
 >
 > *— Mathieu Bellot, 2026-05-18*

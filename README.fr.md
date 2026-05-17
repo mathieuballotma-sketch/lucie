@@ -18,35 +18,51 @@
 
 > # ⏸️ Projet en pause — juin 2026 → début septembre 2026
 >
-> **En bref.** Développement actif en pause du **1er juin 2026** au
-> **début septembre 2026**. Le dépôt reste public, en lecture seule,
-> avec 762 tests verts. Le pilote alpha avocats est **reporté à
-> l'automne 2026**. La **candidature Y Combinator Summer 2026 a été
-> retirée**. Je reviens en septembre.
+> **En bref.** Beaume **ne s'arrête pas** — la base de code est
+> proche d'être feature-complete après quatre mois de build intensif.
+> Ce qui pause, c'est **mon cycle de développement**, du **1er juin
+> 2026** au **début septembre 2026**, le temps de transitionner mon
+> environnement de travail vers la phase suivante. Le dépôt reste
+> public, en lecture seule, avec 375 tests verts et l'embedding Sprint
+> K-1 de la base de connaissances qui continue de tourner en autonomie
+> sur ma machine. Le pilote alpha avocats est **reporté à l'automne
+> 2026** et **bascule du build de features à l'écoute terrain**. La
+> **candidature Y Combinator Summer 2026 a été retirée**. Je reviens
+> en septembre.
 >
 > ### Pourquoi
 >
 > Ni le produit ni moi ne sommes assez matures aujourd'hui pour tenir
-> une batch YC avec les standards qu'attend un avocat en exercice.
-> Beaume, c'est du vrai code avec de vrais utilisateurs en vue, mais le
-> chemin entre « prototype prometteur » et « système sur lequel un
-> avocat associé peut s'appuyer pour une procédure de licenciement
-> économique » demande plus de temps — côté produit comme côté
-> fondateur. Pousser sous pression maintenant compromettrait le seul
-> invariant qui compte : **que la réponse soit fiable**.
+> une batch YC avec les standards qu'attend un avocat en exercice — et
+> surtout, **le prochain goulot n'est plus du code, c'est le contact
+> avec de vrais avocats**. Beaume, c'est ~138 modules, ~30k lignes de
+> code (après le nettoyage avril–mai), 375 tests Python verts, un
+> vérificateur déterministe et un embedding full-corpus Légifrance
+> déjà lancé. Ajouter des features de plus sans écouter les praticiens
+> en premier serait une faute lean startup. Pousser sous pression
+> maintenant compromettrait aussi le seul invariant qui compte :
+> **que la réponse soit fiable**.
 >
 > ### Ce qui est livré au moment de la pause (2026-05-18)
 >
-> - **Architecture trois cerveaux** — Cerveau Oiseaux (routeur
->   déterministe) et Cerveau Humain (Gemma 4 e4b local) opérationnels ;
->   Cerveau Pieuvre (multi-agents) en cours.
+> - **Architecture local-first trois cerveaux** — Cerveau Oiseaux
+>   (routeur déterministe, < 1 ms) et Cerveau Humain (Gemma 4 e4b via
+>   Ollama local) opérationnels ; Cerveau Pieuvre (multi-agents) en
+>   cours. Voir le tableau de la métaphore plus bas pour les vrais
+>   fichiers.
 > - **Vérificateur déterministe** — chaque citation Légifrance
 >   contrôlée contre l'index local FTS5 avant d'arriver à l'avocat
->   (truth rule).
-> - **762 tests Python verts** — dernier commit `main` `f9a628a`
->   (2026-05-15). Vérifiable via `pytest tests/`.
+>   (truth rule, zéro article halluciné).
+> - **375 tests Python verts** sur la suite déterministe (sans LLM,
+>   sans intégration). Dernier commit `main` `f9a628a` (2026-05-15).
+> - **Sprint K-1 — embedding full-corpus en cours** — indexation
+>   BGE-M3 de ~**672 000 articles Légifrance** qui tourne actuellement
+>   sur mon Mac, ~27 % complété au 2026-05-18, terminaison
+>   autonome pendant la pause. C'est le prérequis le plus coûteux de
+>   Beaume, et il s'auto-termine pendant que je prends du recul.
 > - **Battery 16q multi-angles** — 62,5 % de fiabilité, entièrement
->   reproductible depuis un clone propre (voir [`docs/REPRODUCE.md`](docs/REPRODUCE.md)).
+>   reproductible depuis un clone propre
+>   (voir [`docs/REPRODUCE.md`](docs/REPRODUCE.md)).
 > - **Sprint Packaging 0.5.0** — pipeline `.dmg` signé Apple Developer
 >   ID prêt (`make dmg-signed`), workflow GitHub Actions `macos-14`,
 >   tests d'installation, doc opérateur complète
@@ -55,34 +71,60 @@
 > - **Invariant 100 % local** — vérifié par `make dmg-check-secrets`
 >   (zéro SDK cloud, zéro clé API hardcodée dans le bundle).
 >
-> ### Ce qui reprend en septembre
+> ### Pivot stratégique — du build à l'écoute
+>
+> À ce stade, Beaume n'a pas besoin que j'ajoute des features à
+> l'aveugle. Il a besoin que **des avocats réels classent ce qu'il
+> faut construire ensuite**. Le redémarrage de septembre commence
+> donc par une **tournée d'écoute avocats**, pas par un nouveau
+> sprint :
+>
+> - **D'abord**, des sessions en présentiel avec 10 à 15 avocats
+>   français en droit social — feedback rémunéré, pas de pitch, pas
+>   de slides, Beaume qui tourne sur la table, découverte structurée
+>   de leurs frictions réelles.
+> - **Ensuite**, sprints réordonnés selon ce que le feedback
+>   enregistré réclame vraiment, pas selon ce qui faisait bien sur
+>   une roadmap pré-pilote.
+> - **Ensuite**, le pilote alpha avocats à proprement parler, sur de
+>   vrais dossiers de licenciement économique.
+>
+> ### Ce qui reprend en septembre (sous réserve de ce que diront les avocats)
 >
 > - **Pilote alpha avocats** replanifié à l'automne 2026 (distribution
->   du `.dmg` signé à un à trois avocats sur un vrai dossier de
->   licenciement économique)
+>   du `.dmg` signé à une petite cohorte sur de vrais dossiers)
 > - **Sprint 8 — Cerveau Déterministe** (logique mathématique des
->   articles : calcul d'indemnités, délais, plafonds)
-> - **Sprints 9-10 — Cerveau Pieuvre** opérationnel (orchestration
->   multi-agents)
+>   articles : calcul d'indemnités, délais, plafonds) — si la tournée
+>   d'écoute confirme que c'est le bon gap suivant
+> - **Sprints 9-10 — Cerveau Pieuvre** (orchestration multi-agents)
 > - **Sparkle auto-update** — intégration runtime (livré aujourd'hui
 >   en stub, voir [`docs/SPARKLE_SETUP.md`](docs/SPARKLE_SETUP.md))
-> - **Fiabilité** — pousser la battery 16q de 62,5 % vers le seuil
->   pilote ≥ 90 %
+> - **Fiabilité** — pousser la battery 16q vers le seuil pilote ≥ 90 %
+>   en s'appuyant sur les vrais modes d'échec remontés pendant
+>   l'écoute terrain
 >
 > ### Ce que je fais pendant la pause
 >
-> Pas un temps mort. Je prépare mon prochain environnement de travail
-> — le setup, la discipline et les conditions qui me permettront de
-> revenir en septembre avec **des améliorations concrètes, des
-> retours avocats réels et des preuves vérifiables**, pas juste des
-> promesses.
+> Deux choses en parallèle :
+>
+> 1. **L'embedding Sprint K-1 continue de tourner** sur ma machine
+>    pendant juin. Le prérequis le plus lourd de Beaume s'auto-termine
+>    pendant que je prends du recul — à mon retour, l'index Légifrance
+>    complet sera prêt.
+> 2. **Je transitionne mon environnement de travail** — physiquement,
+>    organisationnellement, mentalement — pour que le redémarrage de
+>    septembre se fasse au plus près des avocats en exercice et sans
+>    la friction qui empêchait un shipping sérieux. Les détails sont
+>    personnels ; le résultat ne l'est pas : un cadre qui peut
+>    réellement porter Beaume jusqu'à son pilote.
 >
 > ### Pour me joindre
 >
 > Email à [mathieu.ballotma@gmail.com](mailto:mathieu.ballotma@gmail.com).
-> Les réponses reprennent en septembre. Les avocats intéressés par le
-> pilote d'automne peuvent écrire entre-temps — je reviendrai vers
-> eux à mon retour.
+> Les réponses reprennent en septembre. Les avocats en droit social
+> intéressés par les sessions de feedback rémunérées ou par le pilote
+> d'automne sont les bienvenus pour écrire entre-temps — je reviendrai
+> vers eux à mon retour.
 >
 > *— Mathieu Bellot, 2026-05-18*
 
