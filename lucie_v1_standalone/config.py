@@ -168,7 +168,13 @@ REDACTEUR_SEARCH_PARAMS = {
     "temperature": 0.3,
     "top_p": 0.9,
     "repeat_penalty": 1.1,
-    "num_predict": 1024,
+    # Sprint Latence 0.5.1 patch 2 — observé chez Mathieu 2026-05-22 21:32 :
+    # avec num_predict=1024 et sources médiocres (incluant un README à cause
+    # du bug retriever), gemma4:e4b générait 1024 tokens en 68.8s (~15 tok/s
+    # sur MPS Apple Silicon M-series). En limitant à 384, le worst case
+    # devient ~25-26s. Les vraies réponses chat font 150-300 tokens donc 384
+    # garde encore de la marge sans saturer la fenêtre par accident.
+    "num_predict": 384,
     **_BASE_GPU_OPTIONS,
 }
 

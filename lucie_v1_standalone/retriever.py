@@ -38,12 +38,42 @@ _LEGAL_REF_RE = re.compile(r'L\.?\s*\d{4}(?:-\d+)?', re.IGNORECASE)
 _index: Optional[List[Dict[str, Any]]] = None
 
 
+# Sprint Latence 0.5.1 (2026-05-22) — Filtre les .md non-articles.
+# Bug observé : la query « préavis liscensime » ramenait README.md en top-3
+# source avec pertinence 0.58, faisant passer le short-circuit "no-knowledge"
+# et déclenchant 68s de génération LLM inutile. Le retriever doit ignorer
+# les fichiers méta (README, CHANGELOG, NOTES, TODO, index.json) qui ne sont
+# pas des articles de loi mais qui matchent BM25 sur "licenciement" parce
+# qu'ils en parlent dans leur préambule.
+_ARTICLE_FILENAME_RE = re.compile(r"^[LR]\d", re.IGNORECASE)
+
+
+def _is_article_file(path: Any) -> bool:
+    """Retourne True si le nom de fichier ressemble à un article de loi.
+
+    Format attendu : L1233-3.md, R1234-2.md, L.1233-3.md (avec ou sans point).
+    Tout autre nom (README.md, CHANGELOG.md, NOTES.md, TODO.md…) est rejeté.
+    """
+    stem = path.stem.upper().lstrip(".")  # "L1233-3" ou ".L1233-3" → "L1233-3"
+    # Cas L.1233-3 → stem est "L.1233-3" qui matche aussi
+    return bool(_ARTICLE_FILENAME_RE.match(stem)) or bool(
+        _ARTICLE_FILENAME_RE.match(stem.replace(".", ""))
+    )
+
+
 def _build_index() -> List[Dict[str, Any]]:
-    """Indexe tous les fichiers .md de la base curatée."""
+    """Indexe tous les fichiers .md d'articles de loi de la base curatée.
+
+    Filtre les fichiers méta (README, CHANGELOG…) pour éviter qu'ils ne
+    polluent les résultats BM25 (cf. bug Sprint Latence 0.5.1).
+    """
     index = []
     if not KNOWLEDGE_BASE_PATH.exists():
         return index
     for path in sorted(KNOWLEDGE_BASE_PATH.rglob("*.md")):
+        if not _is_article_file(path):
+            logger.debug("KB index: skip non-article file %s", path.name)
+            continue
         try:
             content = path.read_text(encoding="utf-8")
             tokens = re.findall(r'\w+', content.lower())

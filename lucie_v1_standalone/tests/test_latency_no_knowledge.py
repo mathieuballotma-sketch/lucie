@@ -282,3 +282,53 @@ def test_evaluate_sources_quality_missing_pertinence_key():
     q = pipeline._evaluate_sources_quality(js)
     assert q["nb_sources"] == 1
     assert q["top_pertinence"] == 0.0
+
+
+# ─── A4.6 : Patch 2 — filtre non-articles dans _build_index ──────────────────
+# Bug Mathieu 2026-05-22 21:32 : README.md remontait en top-3 source avec
+# pertinence 0.58 sur la query « préavis liscensime », faisant échouer le
+# short-circuit. Test que _is_article_file rejette correctement les méta-files.
+
+
+def test_is_article_file_accepts_law_articles(tmp_path):
+    from lucie_v1_standalone.retriever import _is_article_file
+
+    for name in ["L1233-3.md", "L.1233-3.md", "R1234-2.md", "L1232-1.md", "l1233-3.md"]:
+        p = tmp_path / name
+        p.touch()
+        assert _is_article_file(p), f"{name} doit être accepté"
+
+
+def test_is_article_file_rejects_meta_files(tmp_path):
+    from lucie_v1_standalone.retriever import _is_article_file
+
+    for name in ["README.md", "CHANGELOG.md", "NOTES.md", "TODO.md", "INDEX.md", "GUIDE.md"]:
+        p = tmp_path / name
+        p.touch()
+        assert not _is_article_file(p), f"{name} doit être rejeté"
+
+
+def test_build_index_skips_readme_and_changelog(tmp_path, monkeypatch):
+    """_build_index ne doit indexer que les .md d'articles, pas README/CHANGELOG."""
+    from lucie_v1_standalone import retriever as r
+
+    # Crée un faux dossier KB avec un mix article + méta
+    kb = tmp_path / "kb"
+    kb.mkdir()
+    (kb / "L1233-3.md").write_text("# L.1233-3\nMotif économique du licenciement.", encoding="utf-8")
+    (kb / "L1233-67.md").write_text("# L.1233-67\nIndemnité spécifique.", encoding="utf-8")
+    (kb / "README.md").write_text(
+        "# KB Licenciement Économique\n\nGuide d'utilisation, préavis, etc.",
+        encoding="utf-8",
+    )
+    (kb / "CHANGELOG.md").write_text("# Changelog\n- ajout licenciement préavis", encoding="utf-8")
+
+    monkeypatch.setattr(r, "KNOWLEDGE_BASE_PATH", kb)
+    monkeypatch.setattr(r, "_index", None)  # force rebuild
+
+    index = r._build_index()
+    ids = {doc["id"] for doc in index}
+    assert "L1233-3" in ids
+    assert "L1233-67" in ids
+    assert "README" not in ids, f"README ne doit pas être indexé (vu : {ids})"
+    assert "CHANGELOG" not in ids, f"CHANGELOG ne doit pas être indexé (vu : {ids})"
