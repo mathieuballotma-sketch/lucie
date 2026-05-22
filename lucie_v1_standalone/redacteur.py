@@ -19,8 +19,18 @@ from pathlib import Path
 from typing import AsyncIterator, Literal, Tuple
 
 from . import ollama_client
-from .config import REDACTEUR_PARAMS
+from .config import REDACTEUR_PARAMS, REDACTEUR_SEARCH_PARAMS
 from .perf.events import child_event_stage
+
+
+def _params_for_mode(mode: Literal["document", "search"]) -> dict:
+    """Sélectionne le dict de paramètres Ollama selon le mode.
+
+    Sprint Latence 0.5.1 — `mode="search"` (chat HUD N2) utilise
+    `num_predict=1024` au lieu de 4096 (gain ~30s sur worst case gemma4:e4b).
+    Le mode "document" (N3 notes formelles) reste à 4096.
+    """
+    return REDACTEUR_SEARCH_PARAMS if mode == "search" else REDACTEUR_PARAMS
 
 logger = logging.getLogger(__name__)
 
@@ -130,11 +140,12 @@ async def handle(
                 "Chaque affirmation juridique doit être suivie de sa source entre crochets [ID]."
             )
 
-    options = {k: v for k, v in REDACTEUR_PARAMS.items() if k != "model"}
+    params = _params_for_mode(mode)
+    options = {k: v for k, v in params.items() if k != "model"}
 
     async with child_event_stage("redige", mode=mode):
         return await ollama_client.generate(
-            model=REDACTEUR_PARAMS["model"],
+            model=params["model"],
             prompt=prompt,
             system=system,
             options=options,
@@ -204,10 +215,11 @@ async def handle_stream(
         )
         return
 
-    options = {k: v for k, v in REDACTEUR_PARAMS.items() if k != "model"}
+    params = _params_for_mode(mode)
+    options = {k: v for k, v in params.items() if k != "model"}
     async with child_event_stage("redige", mode=mode):
         async for chunk in ollama_client.generate_stream(
-            model=REDACTEUR_PARAMS["model"],
+            model=params["model"],
             prompt=prompt,
             system=system,
             options=options,

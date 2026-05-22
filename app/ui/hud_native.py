@@ -2899,7 +2899,16 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._stream_mode = None
 
         # Reset zone d'étapes avant le run (main thread).
+        # Sprint Latence 0.5.1 — on fade_in IMMÉDIATEMENT au submit, sans
+        # attendre le 1er event "started". Avant ce sprint, la zone restait
+        # invisible (alpha=0, hidden=True) car le 1er event était parfois
+        # "completed" (ex : router/intent_classifier) ce qui ne déclenchait
+        # pas le fade_in dans `_on_pipeline_event`. Résultat : Mathieu voyait
+        # juste "Beaume réfléchit…" pendant 51s sans aucun détail. Avec ce
+        # fade_in proactif, la zone apparaît dès le submit et se peuple à
+        # mesure que les events arrivent (router → retriever → redacteur → verif).
         AppHelper.callAfter(self._reset_pipeline_stages)
+        AppHelper.callAfter(self._fade_in_stages_for_run)
 
         async def _consume() -> None:
             nonlocal meta, got_chunks
@@ -3407,6 +3416,22 @@ class HUDWindow(AppKit.NSPanel):  # type: ignore[misc]
         self._stages_view.reset()
         if hasattr(self, "_retry_btn"):
             self._retry_btn.setHidden_(True)
+
+    @objc.python_method  # type: ignore[untyped-decorator]
+    def _fade_in_stages_for_run(self) -> None:
+        """Affiche la zone d'étapes proactivement au submit (main thread).
+
+        Sprint Latence 0.5.1 : appelée immédiatement par
+        `_run_live_streaming_pipeline` après `_reset_pipeline_stages`. Garantit
+        que l'avocat voit les étapes du pipeline en live dès la 1ère seconde,
+        sans dépendre de l'arrivée du 1er event "started".
+        """
+        if not hasattr(self, "_stages_view"):
+            return
+        # Pré-alpha à 0 pour que l'animation fade_in soit visible (sinon
+        # la vue saute brusquement à alpha=1.0 si déjà visible précédemment).
+        self._stages_view.setAlphaValue_(0.0)
+        self._stages_view.fade_in()
 
     @objc.python_method  # type: ignore[untyped-decorator]
     def _on_pipeline_event(self, evt: Any) -> None:

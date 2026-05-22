@@ -99,6 +99,14 @@ def sub_label(hook_name: str, details: Optional[dict] = None) -> str:
         if n_ok is not None and n_total is not None:
             return f"{n_ok}/{n_total} citations OK"
         return "Je vérifie les citations"
+    # ── Sprint Latence 0.5.1 — Court-circuit "no-knowledge" (KB insuffisante) ──
+    # Affiche pourquoi Beaume n'a pas lancé le LLM (transparence > opacité).
+    if hook_name == "kb_insufficient":
+        nb = details.get("nb_sources")
+        top_p = details.get("top_pertinence")
+        if nb is not None and top_p is not None:
+            return f"Couverture insuffisante ({nb} candidats, pertinence max {top_p:.2f})"
+        return "Couverture insuffisante"
     # Hook inconnu — affichage minimal sans exposer le nom technique.
     return "Je travaille"
 

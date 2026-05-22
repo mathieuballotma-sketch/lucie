@@ -20,6 +20,31 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+
+def _promote_legacy_env_vars() -> None:
+    """Migre les env vars `LUCIE_*` du shell utilisateur vers `BEAUME_*`.
+
+    Sprint Latence 0.5.1 (2026-05-22) — fait disparaître le warning
+    « LUCIE_X is deprecated; use BEAUME_X instead » au démarrage du HUD pour
+    les utilisateurs (dont Mathieu) qui ont gardé `LUCIE_LEGIFRANCE=1` ou
+    similaire dans leur `~/.zshrc` / launchd plist depuis le rebrand
+    2026-05-02. Le shim `env_legacy()` reste intact pour les cloneurs OSS du
+    repo (ne casse pas leur setup), mais ici on coupe l'herbe sous le pied
+    du warning en renommant les vars dès le boot, AVANT que le pipeline
+    n'importe `config.py`.
+    """
+    for legacy_key in [k for k in os.environ if k.startswith("LUCIE_")]:
+        new_key = "BEAUME_" + legacy_key[len("LUCIE_"):]
+        if new_key not in os.environ:
+            os.environ[new_key] = os.environ.pop(legacy_key)
+        else:
+            # BEAUME_X et LUCIE_X coexistent → BEAUME_X gagne, on retire le legacy
+            # pour éviter qu'`env_legacy` ne le voie et émette le warning.
+            os.environ.pop(legacy_key, None)
+
+
+_promote_legacy_env_vars()
+
 log = logging.getLogger("lucie.warmup")
 
 

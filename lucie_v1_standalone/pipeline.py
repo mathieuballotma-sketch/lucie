@@ -114,6 +114,131 @@ _VERIFICATION_META: "ContextVar[Optional[Dict[str, Any]]]" = ContextVar(
 )
 
 
+# ── Sprint Latence 0.5.1 (2026-05-22) — Short-circuit "no-knowledge" ──────────
+# Avant ce sprint, le Rédacteur était appelé même si le Retriever ramenait des
+# sources marginales : le LLM consommait 48-50s pour finir en "couverture KB
+# insuffisante" (verdict du Vérificateur en aval). Cas observé sur la query
+# « délai préavis légal liscensime » 2026-05-22 → 51s pour un refus.
+#
+# Maintenant : on évalue la qualité des sources juste après le Retriever. Si
+# la meilleure pertinence est sous le seuil OU si on a moins de N sources, on
+# court-circuite le LLM et on retourne un refus poli en <2s. Le seuil reste
+# ajustable via env var `BEAUME_NO_KNOWLEDGE_MIN_PERTINENCE` (défaut 0.35).
+#
+# Truth rule : ce short-circuit peut écarter des questions où le retriever est
+# imprécis mais le LLM aurait pu répondre depuis ses sources. On log chaque
+# décision avec query+top_pertinence pour calibration empirique.
+def _no_knowledge_min_pertinence() -> float:
+    try:
+        return float(env_legacy("NO_KNOWLEDGE_MIN_PERTINENCE", "0.35") or "0.35")
+    except (TypeError, ValueError):
+        return 0.35
+
+
+def _no_knowledge_min_count() -> int:
+    try:
+        return int(env_legacy("NO_KNOWLEDGE_MIN_COUNT", "1") or "1")
+    except (TypeError, ValueError):
+        return 1
+
+
+def _evaluate_sources_quality(sources_json: str) -> Dict[str, Any]:
+    """Parse le JSON du Retriever et calcule la métrique de qualité.
+
+    Returns:
+        {
+          "nb_sources":     int  - count sources (lois) + jurisprudences
+          "top_pertinence": float - pertinence max parmi tout (0.0 si vide)
+          "top_refs":       List[str] - top-3 IDs d'articles pour affichage HUD
+        }
+    """
+    try:
+        data = json.loads(sources_json) if sources_json else {}
+    except (json.JSONDecodeError, TypeError):
+        return {"nb_sources": 0, "top_pertinence": 0.0, "top_refs": []}
+
+    sources = data.get("sources") or []
+    juris = data.get("jurisprudences") or []
+    all_items = list(sources) + list(juris)
+    nb = len(all_items)
+
+    # Pertinence par défaut conservatrice : si la clé est manquante (cas Légifrance
+    # pré-Sprint 6 P3 ou source manuelle), on traite comme pertinence faible plutôt
+    # que parfaite, pour ne pas bypass le short-circuit par accident.
+    pertinences = [float(s.get("pertinence", 0.0) or 0.0) for s in all_items]
+    top_p = max(pertinences) if pertinences else 0.0
+
+    top_refs = [str(s.get("id", "?")) for s in sources[:3]]
+
+    return {"nb_sources": nb, "top_pertinence": top_p, "top_refs": top_refs}
+
+
+def _should_short_circuit(quality: Dict[str, Any]) -> bool:
+    return (
+        quality["nb_sources"] < _no_knowledge_min_count()
+        or quality["top_pertinence"] < _no_knowledge_min_pertinence()
+    )
+
+
+def _log_n2_timing(
+    *,
+    query: str,
+    intent: str,
+    t_retriever_ms: float,
+    t_redacteur_ms: float,
+    t_verif_ms: float,
+    t_total_ms: float,
+    quality: Dict[str, Any],
+    n_citations_ok: int,
+    short_circuit: bool,
+) -> None:
+    """Logue une ligne JSON unique avec le breakdown de latence N2.
+
+    Format aligné pour parsing rapide (jq, grep). Utilisé pour calibrer le
+    seuil `NO_KNOWLEDGE_MIN_PERTINENCE` et mesurer le before/after du fix
+    latence Sprint 0.5.1.
+    """
+    payload = {
+        "query": query[:80],
+        "intent": intent,
+        "t_retriever_ms": round(t_retriever_ms, 1),
+        "t_redacteur_ms": round(t_redacteur_ms, 1),
+        "t_verif_ms": round(t_verif_ms, 1),
+        "t_total_ms": round(t_total_ms, 1),
+        "n_sources": quality.get("nb_sources", 0),
+        "top_pertinence": round(quality.get("top_pertinence", 0.0), 3),
+        "top_refs": quality.get("top_refs", []),
+        "n_citations_ok": n_citations_ok,
+        "short_circuit": short_circuit,
+    }
+    logger.info("[N2Timing] %s", json.dumps(payload, ensure_ascii=False))
+
+
+def _format_kb_insufficient_response(query: str, quality: Dict[str, Any]) -> str:
+    """Refus poli en <2s quand le Retriever ne ramène pas de sources pertinentes.
+
+    Format aligné sur les autres refus contextuels (lic_perso, imprecise_legal) :
+    on dit pourquoi (couverture insuffisante), on cite les sujets couverts pour
+    orienter, et on évite le ton « j'abandonne ».
+    """
+    redirect = "; ".join(_LIC_PERSO_REDIRECTIONS)
+    found = quality.get("nb_sources", 0)
+    top_p = quality.get("top_pertinence", 0.0)
+    detail = (
+        f"({found} article(s) candidats, meilleure pertinence {top_p:.2f}<{_no_knowledge_min_pertinence():.2f})"
+        if found > 0
+        else "(aucun article candidat dans ma base)"
+    )
+    return (
+        "**Couverture insuffisante.** Je n'ai pas d'articles assez pertinents dans "
+        f"ma base pour répondre précisément à cette question {detail}.\n\n"
+        "Ma base v1 couvre principalement le **licenciement économique** : "
+        f"{redirect}.\n\n"
+        "Reformulez en précisant la procédure ou citez un article (L.1233-3, "
+        "R.1234-2…), ou consultez un avocat pour cette question hors-périmètre."
+    )
+
+
 @dataclass
 class PipelineResponse:
     answer: str
@@ -517,6 +642,7 @@ async def run(
             return _build_lic_perso_refusal()
 
         intent = classify_intent(query)
+        emit("router", "completed", details={"intent": intent.value})
         logger.info(
             "[Routage] query=%r → intent=%s → handler=%s",
             query[:60],
@@ -741,6 +867,26 @@ async def _search_and_write(query: str, faits_json: str, verbose: bool) -> str:
     if verbose:
         print("✅ Retriever : sources récupérées", flush=True)
 
+    # Sprint Latence 0.5.1 — short-circuit "no-knowledge" avant tout appel LLM.
+    quality = _evaluate_sources_quality(sources_json)
+    if _should_short_circuit(quality):
+        logger.info(
+            "[ShortCircuit] no-knowledge query=%r nb_sources=%d top_pertinence=%.2f "
+            "(seuil=%.2f) → refus poli sans LLM",
+            query[:60],
+            quality["nb_sources"],
+            quality["top_pertinence"],
+            _no_knowledge_min_pertinence(),
+        )
+        emit(
+            "verificateur",
+            "completed",
+            hook_name="kb_insufficient",
+            nb_sources=quality["nb_sources"],
+            top_pertinence=quality["top_pertinence"],
+        )
+        return _format_kb_insufficient_response(query, quality)
+
     # Rédacteur (mode search : prompt dédié)
     if verbose:
         print("✍️  Rédacteur : rédaction de la réponse…", flush=True)
@@ -934,6 +1080,7 @@ async def run_stream(
             return
 
         intent = classify_intent(query)
+        emit("router", "completed", details={"intent": intent.value})
         if intent == Intent.SMALL_TALK:
             yield PipelineResponse(
                 answer=small_talk_reply(query),
@@ -1045,13 +1192,72 @@ async def run_stream(
                     for ev in drain_nowait(evq):
                         yield ev
                     raise
+                t_retriever_ms = (time.perf_counter() - t_r) * 1000
+                quality = _evaluate_sources_quality(sources_json)
                 emit(
                     "retriever",
                     "completed",
-                    duration_ms=(time.perf_counter() - t_r) * 1000,
+                    duration_ms=t_retriever_ms,
+                    details={
+                        "num_candidates": quality["nb_sources"],
+                        "top_refs": quality["top_refs"],
+                        "top_pertinence": round(quality["top_pertinence"], 2),
+                    },
                 )
                 for ev in drain_nowait(evq):
                     yield ev
+
+                # Sprint Latence 0.5.1 — short-circuit "no-knowledge" avant LLM.
+                # Évite 48-50s de génération inutile pour finir en refus poli.
+                if _should_short_circuit(quality):
+                    logger.info(
+                        "[ShortCircuit] no-knowledge query=%r nb_sources=%d "
+                        "top_pertinence=%.2f (seuil=%.2f) → refus en <2s",
+                        query[:60],
+                        quality["nb_sources"],
+                        quality["top_pertinence"],
+                        _no_knowledge_min_pertinence(),
+                    )
+                    emit(
+                        "verificateur",
+                        "completed",
+                        hook_name="kb_insufficient",
+                        nb_sources=quality["nb_sources"],
+                        top_pertinence=quality["top_pertinence"],
+                    )
+                    for ev in drain_nowait(evq):
+                        yield ev
+                    refusal = _format_kb_insufficient_response(query, quality)
+                    _mark_pipeline_ttft()
+                    yield refusal
+                    response = PipelineResponse(
+                        answer=refusal,
+                        mode=mode,
+                        refused=True,
+                        early_validation_triggered="kb_insufficient",
+                        validation_details={
+                            "nb_sources": quality["nb_sources"],
+                            "top_pertinence": quality["top_pertinence"],
+                            "min_pertinence": _no_knowledge_min_pertinence(),
+                        },
+                    )
+                    _log_n2_timing(
+                        query=query,
+                        intent=routing["intent"],
+                        t_retriever_ms=t_retriever_ms,
+                        t_redacteur_ms=0.0,
+                        t_verif_ms=0.0,
+                        t_total_ms=(time.perf_counter() - t_pipeline_start) * 1000,
+                        quality=quality,
+                        n_citations_ok=0,
+                        short_circuit=True,
+                    )
+                    yield _attach_suggested_replies(response)
+                    if memory is not None:
+                        await _memory_observe(
+                            memory, query, "search", routing["intent"]
+                        )
+                    return
 
                 # --- Rédacteur (streaming)
                 t_d = time.perf_counter()
@@ -1076,10 +1282,11 @@ async def run_stream(
                     for ev in drain_nowait(evq):
                         yield ev
                     raise
+                t_redacteur_ms = (time.perf_counter() - t_d) * 1000
                 emit(
                     "redacteur",
                     "completed",
-                    duration_ms=(time.perf_counter() - t_d) * 1000,
+                    duration_ms=t_redacteur_ms,
                 )
                 for ev in drain_nowait(evq):
                     yield ev
@@ -1102,10 +1309,11 @@ async def run_stream(
                     for ev in drain_nowait(evq):
                         yield ev
                     raise
+                t_verif_ms = (time.perf_counter() - t_v) * 1000
                 emit(
                     "verificateur",
                     "completed",
-                    duration_ms=(time.perf_counter() - t_v) * 1000,
+                    duration_ms=t_verif_ms,
                 )
                 for ev in drain_nowait(evq):
                     yield ev
@@ -1119,6 +1327,17 @@ async def run_stream(
                     response.citations_ok = meta["citations_ok"]
                     response.citations_invalid = meta["citations_invalid"]
                     response.verdict = meta["verdict"]
+                _log_n2_timing(
+                    query=query,
+                    intent=routing["intent"],
+                    t_retriever_ms=t_retriever_ms,
+                    t_redacteur_ms=t_redacteur_ms,
+                    t_verif_ms=t_verif_ms,
+                    t_total_ms=(time.perf_counter() - t_pipeline_start) * 1000,
+                    quality=quality,
+                    n_citations_ok=response.citations_ok,
+                    short_circuit=False,
+                )
                 yield _attach_suggested_replies(response)
                 if memory is not None:
                     await _memory_observe(memory, query, "search", routing["intent"])

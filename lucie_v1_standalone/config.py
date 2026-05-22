@@ -153,7 +153,22 @@ REDACTEUR_PARAMS = {
     "temperature": 0.3,
     "top_p": 0.9,
     "repeat_penalty": 1.1,
-    "num_predict": 4096,   # Augmenté (2048 → 4096) : notes tronquées sinon
+    "num_predict": 4096,   # mode="document" (N3) — notes formelles longues, gardées à 4096 pour ne pas tronquer
+    **_BASE_GPU_OPTIONS,
+}
+
+# Sprint Latence 0.5.1 (2026-05-22) — params dédiés mode "search" (chat HUD N2).
+# POURQUOI un dict séparé : `num_predict=4096` partagé avec mode document forçait
+# Ollama à tenir 48-50s sur gemma4:e4b même pour des réponses chat de 200-400 tokens
+# (51s observés bout-en-bout sur la query « délai préavis légal liscensime »
+# 2026-05-22). Les réponses search réelles font 150-400 tokens : 1024 garde une
+# marge confortable tout en bornant le worst case à ~10-15s.
+REDACTEUR_SEARCH_PARAMS = {
+    "model": SPEED_MODEL,
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "repeat_penalty": 1.1,
+    "num_predict": 1024,
     **_BASE_GPU_OPTIONS,
 }
 
