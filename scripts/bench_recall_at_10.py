@@ -152,6 +152,7 @@ def run_bench(
     ))
 
     results: list[QuestionResult] = []
+    latencies_ms: list[float] = []
     n_matchable = 0
     n_hit = 0
     t_start = time.monotonic()
@@ -191,9 +192,11 @@ def run_bench(
             ))
             continue
 
+        t_q0 = time.perf_counter()
         query_vec = embedder.embed_one(prompt)
         query_sig = binary_quantize(query_vec[np.newaxis, :], LONG_BITS)[0]
         top_rows = hamming_top_k(query_sig, sigs_long, top_k).tolist()
+        latencies_ms.append((time.perf_counter() - t_q0) * 1000.0)
 
         hit = bool(set(top_rows) & set(expected_rows))
         n_matchable += 1
@@ -225,6 +228,15 @@ def run_bench(
         "threshold": RECALL_THRESHOLD,
         "pass_threshold": pass_threshold,
         "wall_clock_seconds": elapsed,
+        "latency_ms_per_query": (
+            {
+                "p50": float(np.median(latencies_ms)),
+                "p95": float(np.percentile(latencies_ms, 95)),
+                "mean": float(np.mean(latencies_ms)),
+                "n_samples": len(latencies_ms),
+            }
+            if latencies_ms else None
+        ),
         "remediation_proposals_if_fail": [
             "Matryoshka 2048-bit (doubler résolution signatures)",
             "Hybride BM25 + binary (combine lexical et sémantique)",

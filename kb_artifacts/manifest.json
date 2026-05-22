@@ -1,0 +1,36 @@
+{
+  "build_date": "2026-05-19T20:05:55+0200",
+  "damping": 0.85,
+  "files": {
+    "graph.cbor.zst": {
+      "bytes": 1598803,
+      "sha256": "ee8237705990dcec72ed2b22adbcfcd56da367d2a48b7e3d0b4434435631c228"
+    },
+    "pagerank.f32": {
+      "bytes": 2688092,
+      "sha256": "b0ed73cf94f3d850f021ec68209f20b650e44109fd9ba0ebb120b1a4e89c16c5"
+    },
+    "sigs_mrl.bin": {
+      "bytes": 91393348,
+      "sha256": "67d57cbd713395216efbad2b0395ceda1ef434d550d6cf31bbe7907b3631e4ec"
+    },
+    "sigs_mrl.index.cbor": {
+      "bytes": 31453213,
+      "sha256": "a6ca5d693524a543cde1c9029b6b60caf873899d5bf46af89631e930c6164f07"
+    }
+  },
+  "limit_applied": null,
+  "long_bits": 1024,
+  "max_iter_pagerank": 50,
+  "model_name": "BAAI/bge-m3",
+  "n_articles": 672009,
+  "n_edges": 433050,
+  "schema_version": 1,
+  "seed": 42,
+  "short_bits": 64,
+  "source": {
+    "db_path": "/Users/mathieu/Library/Application Support/Beaume/legifrance/legi.sqlite",
+    "sha256": "4dd775933a090cddc005847c80e4b4f0eded7f98a9659fc9466c719d4fd11392"
+  },
+  "sprint": "K-1"
+}

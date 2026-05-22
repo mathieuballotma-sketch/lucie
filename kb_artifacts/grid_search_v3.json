@@ -1,0 +1,188 @@
+{
+  "n_matchable": 9,
+  "summary": {
+    "V2a_K100_w03_w_ct0": {
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "spec": {
+        "K": 100,
+        "w_pr": 0.3,
+        "w_ct": 0.0
+      }
+    },
+    "V7a_K100_w03_w_ct005": {
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "spec": {
+        "K": 100,
+        "w_pr": 0.3,
+        "w_ct": 0.05
+      }
+    },
+    "V7b_K100_w03_w_ct010": {
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "spec": {
+        "K": 100,
+        "w_pr": 0.3,
+        "w_ct": 0.1
+      }
+    },
+    "V7c_K100_w03_w_ct015": {
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "spec": {
+        "K": 100,
+        "w_pr": 0.3,
+        "w_ct": 0.15
+      }
+    },
+    "V7d_K100_w03_w_ct020": {
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "spec": {
+        "K": 100,
+        "w_pr": 0.3,
+        "w_ct": 0.2
+      }
+    },
+    "V7e_K100_w03_w_ct030": {
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "spec": {
+        "K": 100,
+        "w_pr": 0.3,
+        "w_ct": 0.3
+      }
+    },
+    "V7f_K200_w03_w_ct015": {
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "spec": {
+        "K": 200,
+        "w_pr": 0.3,
+        "w_ct": 0.15
+      }
+    },
+    "V7g_K200_w03_w_ct020": {
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "spec": {
+        "K": 200,
+        "w_pr": 0.3,
+        "w_ct": 0.2
+      }
+    },
+    "V7h_K500_w03_w_ct015": {
+      "hits": 7,
+      "recall": 0.7777777777777778,
+      "spec": {
+        "K": 500,
+        "w_pr": 0.3,
+        "w_ct": 0.15
+      }
+    }
+  },
+  "detail": {
+    "V2a_K100_w03_w_ct0": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V7a_K100_w03_w_ct005": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V7b_K100_w03_w_ct010": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V7c_K100_w03_w_ct015": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V7d_K100_w03_w_ct020": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V7e_K100_w03_w_ct030": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V7f_K200_w03_w_ct015": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V7g_K200_w03_w_ct020": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V7h_K500_w03_w_ct015": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": false,
+      "SW-LECO-010": true
+    }
+  },
+  "code_travail_cid": "LEGITEXT000006072050"
+}

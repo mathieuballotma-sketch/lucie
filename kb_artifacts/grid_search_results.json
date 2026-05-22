@@ -1,0 +1,833 @@
+{
+  "n_matchable": 9,
+  "results": [
+    {
+      "top_k_underlying": 50,
+      "w_pop": 1.0,
+      "w_pr": 0.0,
+      "hits": 4,
+      "recall": 0.4444444444444444,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": false,
+        "SW-LECO-007": true,
+        "SW-LECO-008": false,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 50,
+      "w_pop": 0.8,
+      "w_pr": 0.2,
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 50,
+      "w_pop": 0.7,
+      "w_pr": 0.3,
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 50,
+      "w_pop": 0.6,
+      "w_pr": 0.4,
+      "hits": 7,
+      "recall": 0.7777777777777778,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 50,
+      "w_pop": 0.5,
+      "w_pr": 0.5,
+      "hits": 7,
+      "recall": 0.7777777777777778,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 50,
+      "w_pop": 0.4,
+      "w_pr": 0.6,
+      "hits": 7,
+      "recall": 0.7777777777777778,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 50,
+      "w_pop": 0.30000000000000004,
+      "w_pr": 0.7,
+      "hits": 6,
+      "recall": 0.6666666666666666,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 50,
+      "w_pop": 0.19999999999999996,
+      "w_pr": 0.8,
+      "hits": 6,
+      "recall": 0.6666666666666666,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 50,
+      "w_pop": 0.0,
+      "w_pr": 1.0,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 1.0,
+      "w_pr": 0.0,
+      "hits": 4,
+      "recall": 0.4444444444444444,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": false,
+        "SW-LECO-007": true,
+        "SW-LECO-008": false,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 0.8,
+      "w_pr": 0.2,
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 0.7,
+      "w_pr": 0.3,
+      "hits": 8,
+      "recall": 0.8888888888888888,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 0.6,
+      "w_pr": 0.4,
+      "hits": 7,
+      "recall": 0.7777777777777778,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 0.5,
+      "w_pr": 0.5,
+      "hits": 6,
+      "recall": 0.6666666666666666,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 0.4,
+      "w_pr": 0.6,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 0.30000000000000004,
+      "w_pr": 0.7,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 0.19999999999999996,
+      "w_pr": 0.8,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 100,
+      "w_pop": 0.0,
+      "w_pr": 1.0,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 1.0,
+      "w_pr": 0.0,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": false,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 0.8,
+      "w_pr": 0.2,
+      "hits": 7,
+      "recall": 0.7777777777777778,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": true,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 0.7,
+      "w_pr": 0.3,
+      "hits": 7,
+      "recall": 0.7777777777777778,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 0.6,
+      "w_pr": 0.4,
+      "hits": 4,
+      "recall": 0.4444444444444444,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 0.5,
+      "w_pr": 0.5,
+      "hits": 4,
+      "recall": 0.4444444444444444,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 0.4,
+      "w_pr": 0.6,
+      "hits": 3,
+      "recall": 0.3333333333333333,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 0.30000000000000004,
+      "w_pr": 0.7,
+      "hits": 4,
+      "recall": 0.4444444444444444,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 0.19999999999999996,
+      "w_pr": 0.8,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": true,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 200,
+      "w_pop": 0.0,
+      "w_pr": 1.0,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": true,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": true
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 1.0,
+      "w_pr": 0.0,
+      "hits": 4,
+      "recall": 0.4444444444444444,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": false,
+        "SW-LECO-007": true,
+        "SW-LECO-008": false,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 0.8,
+      "w_pr": 0.2,
+      "hits": 6,
+      "recall": 0.6666666666666666,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 0.7,
+      "w_pr": 0.3,
+      "hits": 5,
+      "recall": 0.5555555555555556,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 0.6,
+      "w_pr": 0.4,
+      "hits": 3,
+      "recall": 0.3333333333333333,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 0.5,
+      "w_pr": 0.5,
+      "hits": 3,
+      "recall": 0.3333333333333333,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 0.4,
+      "w_pr": 0.6,
+      "hits": 3,
+      "recall": 0.3333333333333333,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 0.30000000000000004,
+      "w_pr": 0.7,
+      "hits": 3,
+      "recall": 0.3333333333333333,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 0.19999999999999996,
+      "w_pr": 0.8,
+      "hits": 3,
+      "recall": 0.3333333333333333,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 500,
+      "w_pop": 0.0,
+      "w_pr": 1.0,
+      "hits": 3,
+      "recall": 0.3333333333333333,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 1.0,
+      "w_pr": 0.0,
+      "hits": 4,
+      "recall": 0.4444444444444444,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": false,
+        "SW-LECO-007": true,
+        "SW-LECO-008": false,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 0.8,
+      "w_pr": 0.2,
+      "hits": 6,
+      "recall": 0.6666666666666666,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 0.7,
+      "w_pr": 0.3,
+      "hits": 6,
+      "recall": 0.6666666666666666,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": true,
+        "SW-LECO-006": true,
+        "SW-LECO-007": true,
+        "SW-LECO-008": true,
+        "SW-LECO-009": true,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 0.6,
+      "w_pr": 0.4,
+      "hits": 3,
+      "recall": 0.3333333333333333,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": true,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 0.5,
+      "w_pr": 0.5,
+      "hits": 2,
+      "recall": 0.2222222222222222,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": false,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 0.4,
+      "w_pr": 0.6,
+      "hits": 2,
+      "recall": 0.2222222222222222,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": false,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 0.30000000000000004,
+      "w_pr": 0.7,
+      "hits": 2,
+      "recall": 0.2222222222222222,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": false,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 0.19999999999999996,
+      "w_pr": 0.8,
+      "hits": 2,
+      "recall": 0.2222222222222222,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": true,
+        "SW-LECO-005": false,
+        "SW-LECO-006": false,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    },
+    {
+      "top_k_underlying": 1000,
+      "w_pop": 0.0,
+      "w_pr": 1.0,
+      "hits": 1,
+      "recall": 0.1111111111111111,
+      "details": {
+        "SW-LECO-001": false,
+        "SW-LECO-003": false,
+        "SW-LECO-004": false,
+        "SW-LECO-005": false,
+        "SW-LECO-006": false,
+        "SW-LECO-007": false,
+        "SW-LECO-008": true,
+        "SW-LECO-009": false,
+        "SW-LECO-010": false
+      }
+    }
+  ],
+  "best": {
+    "top_k_underlying": 50,
+    "w_pop": 0.8,
+    "w_pr": 0.2,
+    "hits": 8,
+    "recall": 0.8888888888888888,
+    "details": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    }
+  }
+}

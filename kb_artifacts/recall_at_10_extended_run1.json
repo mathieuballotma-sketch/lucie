@@ -1,0 +1,3038 @@
+{
+  "schema_version": 2,
+  "sprint": "K-1",
+  "model": "BAAI/bge-m3",
+  "n_questions_total": 71,
+  "n_questions_matchable": 30,
+  "top_k_underlying": 100,
+  "top_k_final": 10,
+  "variants": {
+    "V1_binary_only": {
+      "hits": 21,
+      "recall": 0.7,
+      "pct": 70.0
+    },
+    "V2_binary_pr_rerank": {
+      "hits": 27,
+      "recall": 0.9,
+      "pct": 90.0
+    },
+    "V3_hybrid_rrf": {
+      "hits": 21,
+      "recall": 0.7,
+      "pct": 70.0
+    },
+    "V4_hybrid_rrf_pr_filter": {
+      "hits": 25,
+      "recall": 0.8333333333333334,
+      "pct": 83.33333333333334
+    }
+  },
+  "threshold": 0.9,
+  "wall_clock_seconds": 628.7126667920002,
+  "questions": [
+    {
+      "qid": "SW-LECO-001",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-3"
+        ],
+        [
+          "L",
+          "1233-4"
+        ]
+      ],
+      "expected_rows": [
+        435745,
+        122089,
+        407647,
+        435746,
+        122090,
+        400976
+      ],
+      "n_expected_resolvable": 6,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            591418,
+            591420,
+            117597,
+            357216,
+            184012,
+            591419,
+            400968,
+            167275,
+            339439,
+            593596
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            401040,
+            400968,
+            397031,
+            184013,
+            400975,
+            167276,
+            291029,
+            339848,
+            357216,
+            497457
+          ],
+          "hit": false
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            117597,
+            357216,
+            167275,
+            167276,
+            400978,
+            591420,
+            591419,
+            497457,
+            401040,
+            396983
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            401040,
+            397031,
+            184013,
+            400975,
+            400968,
+            339848,
+            167276,
+            291029,
+            497457,
+            400974
+          ],
+          "hit": false
+        }
+      ],
+      "fts_query": "\"procédure\" OR \"licenciement\" OR \"économique\" OR \"individuel\"",
+      "latency_ms_total": 18192.505374999655
+    },
+    {
+      "qid": "SW-LECO-002",
+      "category": "lic_eco",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LECO-003",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-3"
+        ]
+      ],
+      "expected_rows": [
+        435745,
+        122089,
+        407647
+      ],
+      "n_expected_resolvable": 3,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            167275,
+            339439,
+            184012,
+            393165,
+            180585,
+            396757,
+            382804,
+            606423,
+            324974,
+            167283
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            396756,
+            167275,
+            10343,
+            396568,
+            339848,
+            92103,
+            493956,
+            407647,
+            614508,
+            506165
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            339439,
+            167275,
+            396757,
+            167283,
+            339848,
+            403204,
+            397036,
+            180669,
+            204834,
+            397028
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            10343,
+            397031,
+            339848,
+            400968,
+            407647,
+            291029,
+            167275,
+            291031,
+            401038,
+            377148
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"conditions\" OR \"motif\" OR \"économique\" OR \"article\" OR \"1233\"",
+      "latency_ms_total": 14034.009417000107
+    },
+    {
+      "qid": "SW-LECO-004",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-5"
+        ]
+      ],
+      "expected_rows": [
+        514440,
+        400975
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            400975,
+            184012,
+            291031,
+            407644,
+            407646,
+            400976,
+            400968,
+            167275,
+            397020,
+            401040
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            400975,
+            396756,
+            401040,
+            480751,
+            400968,
+            407647,
+            397031,
+            400974,
+            291031,
+            400976
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            400975,
+            396756,
+            396758,
+            180912,
+            56043,
+            291031,
+            230938,
+            365976,
+            396760,
+            184012
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            400975,
+            396756,
+            262709,
+            323865,
+            401040,
+            400968,
+            407647,
+            400974,
+            400967,
+            482032
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"critères\" OR \"ordre\" OR \"licenciements\" OR \"économiques\"",
+      "latency_ms_total": 5706.937417000063
+    },
+    {
+      "qid": "SW-LECO-005",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-4"
+        ]
+      ],
+      "expected_rows": [
+        435746,
+        122090,
+        400976
+      ],
+      "n_expected_resolvable": 3,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            400976,
+            397035,
+            366528,
+            176988,
+            366065,
+            591418,
+            400975,
+            403240,
+            473097,
+            400968
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            473097,
+            400975,
+            400968,
+            401040,
+            400976,
+            312603,
+            400967,
+            397031,
+            51813,
+            366528
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            366528,
+            366065,
+            403240,
+            397035,
+            473097,
+            180911,
+            400976,
+            403239,
+            21526,
+            176988
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            473097,
+            400975,
+            401040,
+            312603,
+            400968,
+            400967,
+            397031,
+            51813,
+            400976,
+            268665
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"obligation\" OR \"reclassement\" OR \"employeur\" OR \"cas\" OR \"licenciement\" OR \"économique\"",
+      "latency_ms_total": 9582.263667000007
+    },
+    {
+      "qid": "SW-LECO-006",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-61"
+        ],
+        [
+          "L",
+          "1233-25"
+        ]
+      ],
+      "expected_rows": [
+        400967,
+        167283
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            439603,
+            449481,
+            498252,
+            485452,
+            206770,
+            379248,
+            309497,
+            486365,
+            431665,
+            401963
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            400967,
+            493958,
+            597230,
+            346237,
+            551507,
+            396996,
+            654063,
+            179863,
+            439603,
+            498242
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            309497,
+            400967,
+            396996,
+            400971,
+            186816,
+            439603,
+            282935,
+            449481,
+            404492,
+            498252
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            378442,
+            400967,
+            268665,
+            551507,
+            346237,
+            307574,
+            502961,
+            497389,
+            396996,
+            497448
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"seuil\" OR \"déclenchement\" OR \"pse\" OR \"plan\" OR \"sauvegarde\" OR \"emploi\"",
+      "latency_ms_total": 9598.955916999785
+    },
+    {
+      "qid": "SW-LECO-007",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-16"
+        ]
+      ],
+      "expected_rows": [
+        407646
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            407646,
+            407644,
+            591418,
+            591420,
+            591419,
+            184012,
+            400979,
+            230938,
+            357216,
+            167320
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            396756,
+            401040,
+            397031,
+            400975,
+            407644,
+            400979,
+            407646,
+            291029,
+            184013,
+            357216
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            357216,
+            591419,
+            591420,
+            591418,
+            498269,
+            291029,
+            180953,
+            400979,
+            403198,
+            396940
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            396756,
+            401040,
+            403403,
+            397031,
+            400975,
+            184013,
+            400979,
+            291029,
+            407644,
+            416960
+          ],
+          "hit": false
+        }
+      ],
+      "fts_query": "\"mentions\" OR \"obligatoires\" OR \"lettre\" OR \"licenciement\" OR \"économique\"",
+      "latency_ms_total": 11984.28049999984
+    },
+    {
+      "qid": "SW-LECO-008",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1234-9"
+        ],
+        [
+          "R",
+          "1234-2"
+        ]
+      ],
+      "expected_rows": [
+        396787,
+        277781,
+        396789
+      ],
+      "n_expected_resolvable": 3,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            665688,
+            606921,
+            234123,
+            428758,
+            244782,
+            156780,
+            449360,
+            396989,
+            407643,
+            396788
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            396787,
+            407643,
+            400975,
+            63637,
+            339848,
+            400968,
+            316255,
+            396743,
+            665688,
+            606921
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            665688,
+            606921,
+            234123,
+            396989,
+            428758,
+            396790,
+            117009,
+            116776,
+            498711,
+            615687
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            396787,
+            407643,
+            400975,
+            339848,
+            400968,
+            316255,
+            396743,
+            400979,
+            316257,
+            167320
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"calcule\" OR \"indemnité\" OR \"licenciement\" OR \"économique\" OR \"légale\"",
+      "latency_ms_total": 17432.27274999981
+    },
+    {
+      "qid": "SW-LECO-009",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1235-7"
+        ],
+        [
+          "L",
+          "1471-1"
+        ]
+      ],
+      "expected_rows": [
+        400978,
+        122097,
+        407649,
+        565067
+      ],
+      "n_expected_resolvable": 4,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            428758,
+            400978,
+            291029,
+            454387,
+            449204,
+            553526,
+            360488,
+            531302,
+            591419,
+            400974
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            396756,
+            449204,
+            493960,
+            291029,
+            397031,
+            400974,
+            167276,
+            400978,
+            400968,
+            396988
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            400978,
+            357231,
+            167461,
+            523347,
+            435588,
+            443091,
+            435589,
+            397061,
+            370065,
+            461573
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            396756,
+            449204,
+            493960,
+            397031,
+            291029,
+            340961,
+            400974,
+            167276,
+            400978,
+            396988
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"délais\" OR \"contester\" OR \"licenciement\" OR \"économique\" OR \"prud\" OR \"hommes\"",
+      "latency_ms_total": 12767.506208000214
+    },
+    {
+      "qid": "SW-LECO-010",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-65"
+        ]
+      ],
+      "expected_rows": [
+        253325
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            339848,
+            591618,
+            332958,
+            591599,
+            591620,
+            649226,
+            339849,
+            332960,
+            416927,
+            591600
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            493931,
+            339848,
+            112924,
+            416927,
+            262708,
+            253325,
+            385694,
+            378442,
+            438606,
+            340795
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            591618,
+            591599,
+            332958,
+            332962,
+            339849,
+            416927,
+            339848,
+            332960,
+            332959,
+            591600
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            339848,
+            571318,
+            112924,
+            253325,
+            378442,
+            416927,
+            438606,
+            433171,
+            264988,
+            665053
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"contrat\" OR \"sécurisation\" OR \"professionnelle\" OR \"csp\" OR \"peut\" OR \"bénéficier\"",
+      "latency_ms_total": 5167.552459000035
+    },
+    {
+      "qid": "SW-LPER-001",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-002",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-003",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-004",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-005",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-006",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-007",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-008",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-009",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LPER-010",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-CONG-001",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-CONG-002",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-CONG-003",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-CONG-004",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-CONG-005",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-DEMR-001",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-DEMR-002",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-DEMR-003",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-DEMR-004",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-DEMR-005",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-ARTI-001",
+      "category": "article_inexistant",
+      "expected_refs": [
+        [
+          "L",
+          "1234-999"
+        ]
+      ],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "refs_not_resolvable_in_kb",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-ARTI-002",
+      "category": "article_inexistant",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-ARTI-003",
+      "category": "article_inexistant",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-ARTI-004",
+      "category": "article_inexistant",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-ARTI-005",
+      "category": "article_inexistant",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-OOS-001",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-OOS-002",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-OOS-003",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-OOS-004",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-OOS-005",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PETI-001",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PETI-002",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PETI-003",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PETI-004",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PETI-005",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PIEG-001",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PIEG-002",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PIEG-003",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PIEG-004",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-PIEG-005",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior",
+      "variants": [],
+      "fts_query": "",
+      "latency_ms_total": 0.0
+    },
+    {
+      "qid": "SW-LECO-011",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-2"
+        ]
+      ],
+      "expected_rows": [
+        184012,
+        435744,
+        122088
+      ],
+      "n_expected_resolvable": 3,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            184012,
+            591418,
+            591420,
+            25265,
+            400979,
+            184013,
+            606921,
+            665688,
+            591419,
+            234123
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            184013,
+            401040,
+            400975,
+            400979,
+            397031,
+            113932,
+            339848,
+            184012,
+            400968,
+            407647
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            184012,
+            184013,
+            25265,
+            234123,
+            400978,
+            606921,
+            665688,
+            117009,
+            238500,
+            396757
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            401040,
+            184013,
+            400975,
+            397031,
+            339848,
+            400979,
+            400968,
+            407647,
+            291029,
+            400974
+          ],
+          "hit": false
+        }
+      ],
+      "fts_query": "\"tout\" OR \"licenciement\" OR \"motif\" OR \"économique\" OR \"doit\" OR \"motivé\"",
+      "latency_ms_total": 1700.1834590000726
+    },
+    {
+      "qid": "SW-LECO-012",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-4"
+        ]
+      ],
+      "expected_rows": [
+        435746,
+        122090,
+        400976
+      ],
+      "n_expected_resolvable": 3,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            176988,
+            400976,
+            366528,
+            403239,
+            636952,
+            400968,
+            400975,
+            397035,
+            403240,
+            167289
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            473097,
+            396756,
+            400975,
+            400968,
+            312603,
+            400976,
+            339848,
+            397031,
+            176988,
+            167276
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            176988,
+            403239,
+            403240,
+            366528,
+            636952,
+            400976,
+            167275,
+            167276,
+            473097,
+            357216
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            473097,
+            400975,
+            312603,
+            401040,
+            400968,
+            339848,
+            397031,
+            400976,
+            400967,
+            167276
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"obligations\" OR \"reclassement\" OR \"employeur\" OR \"avant\" OR \"licenciement\" OR \"économique\" OR \"individuel\"",
+      "latency_ms_total": 3013.6467500001345
+    },
+    {
+      "qid": "SW-LECO-013",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-4"
+        ]
+      ],
+      "expected_rows": [
+        435746,
+        122090,
+        400976
+      ],
+      "n_expected_resolvable": 3,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            505415,
+            67504,
+            123630,
+            525462,
+            75433,
+            303939,
+            503752,
+            415680,
+            57870,
+            98290
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            503752,
+            71552,
+            525462,
+            400976,
+            505415,
+            67504,
+            123630,
+            75433,
+            303939,
+            415680
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            525462,
+            604270,
+            531303,
+            124588,
+            123630,
+            400976,
+            100161,
+            375374,
+            522062,
+            237064
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            503752,
+            400976,
+            504232,
+            400966,
+            430296,
+            487512,
+            151866
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"reclassement\" OR \"peut\" OR \"porter\" OR \"postes\" OR \"catégorie\" OR \"inférieure\"",
+      "latency_ms_total": 5030.631000000085
+    },
+    {
+      "qid": "SW-LECO-014",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-5"
+        ]
+      ],
+      "expected_rows": [
+        514440,
+        400975
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            400975,
+            167320,
+            397031,
+            407646,
+            407644,
+            230938,
+            167280,
+            167284,
+            291031,
+            400974
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            400975,
+            396756,
+            397031,
+            401040,
+            400974,
+            400968,
+            291031,
+            312603,
+            291029,
+            396755
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            400975,
+            167280,
+            167284,
+            230938,
+            396758,
+            396755,
+            180912,
+            396756,
+            396760,
+            407646
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            400975,
+            262709,
+            396756,
+            401040,
+            397031,
+            495946,
+            400968,
+            400974,
+            396755,
+            291029
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"employeur\" OR \"définit\" OR \"ordre\" OR \"licenciements\" OR \"économiques\"",
+      "latency_ms_total": 2400.3371250000782
+    },
+    {
+      "qid": "SW-LECO-015",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-5"
+        ]
+      ],
+      "expected_rows": [
+        514440,
+        400975
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            400975,
+            180912,
+            495949,
+            167280,
+            167284,
+            56043,
+            531302,
+            113310,
+            396756,
+            396940
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            400975,
+            396756,
+            401040,
+            397031,
+            636955,
+            400968,
+            113932,
+            184013,
+            497457,
+            400974
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            400975,
+            180912,
+            167280,
+            167284,
+            56043,
+            396756,
+            396755,
+            396760,
+            156779,
+            495949
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            400975,
+            396756,
+            323865,
+            401040,
+            397031,
+            400968,
+            396755,
+            400974,
+            497457,
+            416965
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"critères\" OR \"doivent\" OR \"pris\" OR \"compte\" OR \"ordre\" OR \"licenciements\"",
+      "latency_ms_total": 5238.6586669999815
+    },
+    {
+      "qid": "SW-LECO-016",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-13"
+        ]
+      ],
+      "expected_rows": [
+        167278
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            605895,
+            531302,
+            180922,
+            525461,
+            636955,
+            522612,
+            184016,
+            146919,
+            180673,
+            167263
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            167263,
+            636955,
+            401040,
+            397031,
+            167276,
+            407643,
+            497457,
+            397102,
+            146903,
+            605895
+          ],
+          "hit": false
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            180922,
+            531302,
+            605895,
+            525461,
+            403239,
+            167267,
+            522612,
+            396948,
+            636955,
+            167276
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            167263,
+            401040,
+            397031,
+            167276,
+            497457,
+            339848,
+            146903,
+            268450,
+            167717,
+            400979
+          ],
+          "hit": false
+        }
+      ],
+      "fts_query": "\"salarié\" OR \"peut\" OR \"assisté\" OR \"lors\" OR \"entretien\" OR \"préalable\" OR \"licenciement\"",
+      "latency_ms_total": 52465.358791000195
+    },
+    {
+      "qid": "SW-LECO-017",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-11"
+        ]
+      ],
+      "expected_rows": [
+        167276
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            167276,
+            167263,
+            531302,
+            605895,
+            397031,
+            25265,
+            396983,
+            525461,
+            522612,
+            291029
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            167276,
+            167263,
+            396756,
+            397031,
+            396926,
+            401040,
+            636955,
+            291029,
+            400975,
+            396755
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            167276,
+            357216,
+            167263,
+            146919,
+            25265,
+            396983,
+            531302,
+            403239,
+            605895,
+            525461
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            167263,
+            167276,
+            396756,
+            397031,
+            401040,
+            400975,
+            396755,
+            291029,
+            268450,
+            396988
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"employeur\" OR \"convoque\" OR \"salarié\" OR \"entretien\" OR \"préalable\" OR \"licenciement\" OR \"économique\"",
+      "latency_ms_total": 7274.089500000173
+    },
+    {
+      "qid": "SW-LECO-018",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-15"
+        ]
+      ],
+      "expected_rows": [
+        357216
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            167276,
+            357216,
+            400978,
+            397031,
+            291029,
+            605895,
+            531302,
+            591420,
+            25265,
+            591419
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            167276,
+            396756,
+            397031,
+            167263,
+            291029,
+            357216,
+            400978,
+            636955,
+            407643,
+            312603
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            357216,
+            167276,
+            400978,
+            591420,
+            591419,
+            591600,
+            372603,
+            291029,
+            591418,
+            531302
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            396756,
+            397031,
+            167276,
+            167263,
+            291029,
+            407643,
+            357216,
+            400978,
+            339848,
+            400974
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"délai\" OR \"minimum\" OR \"doit\" OR \"séparer\" OR \"entretien\" OR \"préalable\" OR \"notification\" OR \"licenciement\" OR \"individuel\" OR \"motif\" OR \"économique\"",
+      "latency_ms_total": 10870.689459000005
+    },
+    {
+      "qid": "SW-LECO-019",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-15"
+        ],
+        [
+          "L",
+          "1233-16"
+        ]
+      ],
+      "expected_rows": [
+        357216,
+        407646
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            291029,
+            357216,
+            591418,
+            591420,
+            230938,
+            397031,
+            167320,
+            591419,
+            180669,
+            180674
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            291029,
+            397031,
+            401040,
+            357216,
+            396756,
+            167276,
+            230938,
+            167320,
+            591418,
+            184013
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            357216,
+            291029,
+            167276,
+            397031,
+            167275,
+            401040,
+            180669,
+            180674,
+            400978,
+            230938
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            401040,
+            397031,
+            291029,
+            357216,
+            400975,
+            184013,
+            167276,
+            339848,
+            400968,
+            400974
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"employeur\" OR \"notifie\" OR \"licenciement\" OR \"individuel\" OR \"motif\" OR \"économique\"",
+      "latency_ms_total": 9277.960041999904
+    },
+    {
+      "qid": "SW-LECO-020",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-19"
+        ],
+        [
+          "L",
+          "1233-46"
+        ]
+      ],
+      "expected_rows": [
+        167282,
+        397031
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            397031,
+            167282,
+            167320,
+            180669,
+            291029,
+            291031,
+            230938,
+            180674,
+            167289,
+            396757
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            397031,
+            401040,
+            291029,
+            400975,
+            291031,
+            167320,
+            400968,
+            557016,
+            268665,
+            167282
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            230938,
+            167282,
+            167289,
+            113362,
+            113988,
+            396760,
+            167280,
+            114405,
+            167284,
+            403236
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            396756,
+            397031,
+            401040,
+            291029,
+            400975,
+            400967,
+            291031,
+            400968,
+            268665,
+            557016
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"employeur\" OR \"doit\" OR \"notifier\" OR \"licenciements\" OR \"économiques\" OR \"administration\"",
+      "latency_ms_total": 14883.757875000356
+    },
+    {
+      "qid": "SW-LECO-021",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-61"
+        ]
+      ],
+      "expected_rows": [
+        400967
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            616280,
+            400967,
+            396756,
+            551507,
+            407645,
+            208364,
+            507429,
+            591418,
+            400968,
+            649357
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            396756,
+            473097,
+            400967,
+            401040,
+            616280,
+            472121,
+            407643,
+            400968,
+            397031,
+            339848
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            400967,
+            396757,
+            396756,
+            400972,
+            396758,
+            591418,
+            400968,
+            268665,
+            400975,
+            616280
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            396756,
+            473097,
+            401040,
+            400967,
+            307578,
+            400968,
+            400975,
+            339848,
+            616280,
+            268665
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"entreprise\" OR \"salariés\" OR \"partir\" OR \"combien\" OR \"licenciements\" OR \"faut\" OR \"pse\"",
+      "latency_ms_total": 8726.36995899984
+    },
+    {
+      "qid": "SW-LECO-022",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-30"
+        ]
+      ],
+      "expected_rows": [
+        396756
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            396756,
+            400974,
+            396751,
+            407645,
+            591418,
+            453249,
+            396946,
+            401002,
+            557016,
+            400998
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            396756,
+            401040,
+            400974,
+            339848,
+            400975,
+            397031,
+            557016,
+            400968,
+            497457,
+            407645
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            396756,
+            400974,
+            401002,
+            114005,
+            453249,
+            396751,
+            396988,
+            396760,
+            403204,
+            401040
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            396756,
+            401040,
+            403403,
+            339848,
+            400974,
+            400975,
+            397031,
+            400968,
+            557016,
+            497457
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"cse\" OR \"doit\" OR \"consulté\" OR \"cas\" OR \"projet\" OR \"licenciement\" OR \"économique\" OR \"collectif\"",
+      "latency_ms_total": 15156.442583000171
+    },
+    {
+      "qid": "SW-LECO-023",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-25"
+        ]
+      ],
+      "expected_rows": [
+        167283
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            167283,
+            588322,
+            407618,
+            361538,
+            407647,
+            114767,
+            114051,
+            573280,
+            488591,
+            632302
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            167203,
+            167283,
+            517306,
+            407647,
+            407622,
+            346575,
+            407618,
+            616280,
+            504760,
+            551507
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            167283,
+            407647,
+            523246,
+            588322,
+            573280,
+            396757,
+            184485,
+            295560,
+            407618,
+            133391
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            517306,
+            401062,
+            407622,
+            407647,
+            346575,
+            407618,
+            400974,
+            616280,
+            504760,
+            167283
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"passe\" OR \"salariés\" OR \"refusent\" OR \"modification\" OR \"contrat\" OR \"motif\" OR \"économique\"",
+      "latency_ms_total": 13133.651666999867
+    },
+    {
+      "qid": "SW-LECO-024",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-66"
+        ]
+      ],
+      "expected_rows": [
+        339848
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            339848,
+            591620,
+            268665,
+            401040,
+            396757,
+            497457,
+            400974,
+            396758,
+            591418,
+            403218
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            339848,
+            493931,
+            473097,
+            401040,
+            396756,
+            338044,
+            268665,
+            400975,
+            400968,
+            400967
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            339848,
+            591620,
+            401040,
+            464194,
+            591418,
+            591600,
+            176988,
+            400974,
+            453249,
+            473097
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            473097,
+            339848,
+            401040,
+            338044,
+            400975,
+            268665,
+            400967,
+            400968,
+            400974,
+            497457
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"entreprises\" OR \"employeur\" OR \"doit\" OR \"proposer\" OR \"csp\" OR \"salarié\" OR \"visé\" OR \"licenciement\" OR \"économique\"",
+      "latency_ms_total": 9356.337041000188
+    },
+    {
+      "qid": "SW-LECO-025",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-67"
+        ]
+      ],
+      "expected_rows": [
+        339849
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            591599,
+            339849,
+            609427,
+            332959,
+            416927,
+            339848,
+            436813,
+            609087,
+            591618,
+            332955
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            493931,
+            339848,
+            416927,
+            450004,
+            385699,
+            253325,
+            385698,
+            438606,
+            340795,
+            653585
+          ],
+          "hit": false
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            591599,
+            339849,
+            609427,
+            416927,
+            591618,
+            436813,
+            609087,
+            339848,
+            591449,
+            332959
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            493931,
+            339848,
+            416927,
+            253325,
+            378442,
+            340795,
+            438606,
+            653585,
+            396728,
+            516927
+          ],
+          "hit": false
+        }
+      ],
+      "fts_query": "\"effets\" OR \"adhésion\" OR \"salarié\" OR \"contrat\" OR \"sécurisation\" OR \"professionnelle\"",
+      "latency_ms_total": 4513.4897920002
+    },
+    {
+      "qid": "SW-LECO-026",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1234-1"
+        ]
+      ],
+      "expected_rows": [
+        122091,
+        167301
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            106087,
+            400978,
+            512877,
+            67418,
+            665686,
+            606919,
+            357216,
+            234123,
+            117009,
+            167301
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            26188,
+            167301,
+            400978,
+            473097,
+            396756,
+            312603,
+            512877,
+            357216,
+            106087,
+            291029
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            591419,
+            591420,
+            312603,
+            117009,
+            234123,
+            591418,
+            176988,
+            67418,
+            400978,
+            339849
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            473097,
+            167301,
+            312603,
+            397031,
+            236265,
+            291029,
+            400978,
+            357216,
+            400974,
+            340775
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"durée\" OR \"préavis\" OR \"salarié\" OR \"licencié\" OR \"motif\" OR \"économique\"",
+      "latency_ms_total": 6192.940750000162
+    },
+    {
+      "qid": "SW-LECO-027",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "R",
+          "1234-2"
+        ]
+      ],
+      "expected_rows": [
+        277781,
+        396789
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            396789,
+            177949,
+            45036,
+            307964,
+            44992,
+            345528,
+            156780,
+            123232,
+            206314,
+            407643
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            407643,
+            63637,
+            396789,
+            316255,
+            177949,
+            45036,
+            230530,
+            307964,
+            44992,
+            345528
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            177949,
+            156780,
+            396789,
+            230530,
+            407643,
+            206314,
+            566904,
+            249899,
+            200898,
+            451590
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            407643,
+            366512,
+            133958,
+            417605,
+            396789,
+            230530,
+            177949,
+            103178,
+            396788,
+            132302
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"montant\" OR \"minimum\" OR \"indemnité\" OR \"légale\" OR \"licenciement\" OR \"année\" OR \"ancienneté\"",
+      "latency_ms_total": 7075.196958000106
+    },
+    {
+      "qid": "SW-LECO-028",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1234-9"
+        ]
+      ],
+      "expected_rows": [
+        396787
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            396789,
+            177949,
+            345528,
+            307964,
+            123232,
+            45036,
+            258706,
+            44992,
+            455111,
+            512878
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            396787,
+            407643,
+            167301,
+            113932,
+            63637,
+            396789,
+            177949,
+            230530,
+            345528,
+            307964
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            177949,
+            156780,
+            113106,
+            396789,
+            428758,
+            249899,
+            230530,
+            606921,
+            665688,
+            407643
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            396787,
+            407643,
+            167301,
+            642673,
+            230530,
+            396789,
+            177949,
+            512878,
+            133747,
+            396788
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"ancienneté\" OR \"minimum\" OR \"permet\" OR \"bénéficier\" OR \"indemnité\" OR \"légale\" OR \"licenciement\"",
+      "latency_ms_total": 4934.840208999958
+    },
+    {
+      "qid": "SW-LECO-029",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1235-3"
+        ]
+      ],
+      "expected_rows": [
+        407643,
+        122095
+      ],
+      "n_expected_resolvable": 2,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            184013,
+            512858,
+            400979,
+            606921,
+            665688,
+            113310,
+            167310,
+            167301,
+            113932,
+            400968
+          ],
+          "hit": false
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            26188,
+            184013,
+            167301,
+            400979,
+            113932,
+            401040,
+            400968,
+            397031,
+            512858,
+            407643
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            400979,
+            184013,
+            113310,
+            113933,
+            184012,
+            606921,
+            665688,
+            113932,
+            495949,
+            25265
+          ],
+          "hit": false
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            26188,
+            184013,
+            167301,
+            401040,
+            400979,
+            400968,
+            397031,
+            407643,
+            66630,
+            416751
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"dit\" OR \"loi\" OR \"cas\" OR \"licenciement\" OR \"cause\" OR \"réelle\" OR \"sérieuse\"",
+      "latency_ms_total": 8745.874083999752
+    },
+    {
+      "qid": "SW-LECO-030",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1235-7"
+        ],
+        [
+          "L",
+          "1471-1"
+        ]
+      ],
+      "expected_rows": [
+        400978,
+        122097,
+        407649,
+        565067
+      ],
+      "n_expected_resolvable": 4,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            400978,
+            428758,
+            291029,
+            449204,
+            360488,
+            138354,
+            400974,
+            25265,
+            407530,
+            117009
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            449204,
+            396756,
+            312996,
+            400978,
+            493960,
+            291029,
+            397031,
+            400974,
+            407643,
+            312603
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            400978,
+            357216,
+            538905,
+            435589,
+            435585,
+            291029,
+            435587,
+            435586,
+            435582,
+            435584
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            167459,
+            312996,
+            449204,
+            493960,
+            401040,
+            397031,
+            198447,
+            291029,
+            400978,
+            400974
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"délai\" OR \"salarié\" OR \"peut\" OR \"contester\" OR \"licenciement\" OR \"motif\" OR \"économique\" OR \"devant\" OR \"prud\" OR \"hommes\"",
+      "latency_ms_total": 8750.31595900009
+    },
+    {
+      "qid": "SW-LECO-031",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-45"
+        ]
+      ],
+      "expected_rows": [
+        312603
+      ],
+      "n_expected_resolvable": 1,
+      "skipped_reason": null,
+      "variants": [
+        {
+          "name": "V1_binary_only",
+          "top10_rows": [
+            312603,
+            176988,
+            55541,
+            167242,
+            400976,
+            400975,
+            407548,
+            407646,
+            407644,
+            234123
+          ],
+          "hit": true
+        },
+        {
+          "name": "V2_binary_pr_rerank",
+          "top10_rows": [
+            312603,
+            473097,
+            400975,
+            167242,
+            167301,
+            51813,
+            339848,
+            400976,
+            400967,
+            400974
+          ],
+          "hit": true
+        },
+        {
+          "name": "V3_hybrid_rrf",
+          "top10_rows": [
+            312603,
+            167242,
+            407548,
+            400978,
+            234123,
+            407646,
+            396742,
+            407644,
+            115029,
+            397053
+          ],
+          "hit": true
+        },
+        {
+          "name": "V4_hybrid_rrf_pr_filter",
+          "top10_rows": [
+            312603,
+            415474,
+            473097,
+            396787,
+            400975,
+            401062,
+            401040,
+            167242,
+            51813,
+            339848
+          ],
+          "hit": true
+        }
+      ],
+      "fts_query": "\"salarié\" OR \"licencié\" OR \"motif\" OR \"économique\" OR \"droit\" OR \"priorité\" OR \"réembauche\"",
+      "latency_ms_total": 6988.7798330000805
+    }
+  ]
+}

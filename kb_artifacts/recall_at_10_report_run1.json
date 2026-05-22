@@ -1,0 +1,724 @@
+{
+  "schema_version": 1,
+  "sprint": "K-1",
+  "model": "BAAI/bge-m3",
+  "n_questions_total": 50,
+  "n_questions_matchable": 9,
+  "n_questions_hit": 4,
+  "recall_at_10": 0.4444444444444444,
+  "threshold": 0.9,
+  "pass_threshold": false,
+  "wall_clock_seconds": 130.13423137500013,
+  "latency_ms_per_query": {
+    "p50": 219.0735419999328,
+    "p95": 13205.537249600085,
+    "mean": 2626.236217555541,
+    "n_samples": 9
+  },
+  "remediation_proposals_if_fail": [
+    "Matryoshka 2048-bit (doubler résolution signatures)",
+    "Hybride BM25 + binary (combine lexical et sémantique)",
+    "Re-rank top-100 par PageRank pour favoriser articles centraux"
+  ],
+  "questions": [
+    {
+      "qid": "SW-LECO-001",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-3"
+        ],
+        [
+          "L",
+          "1233-4"
+        ]
+      ],
+      "expected_rows": [
+        435745,
+        122089,
+        407647,
+        435746,
+        122090,
+        400976
+      ],
+      "top10_rows": [
+        591418,
+        591420,
+        117597,
+        357216,
+        184012,
+        591419,
+        400968,
+        167275,
+        339439,
+        593596
+      ],
+      "hit": false,
+      "n_expected_resolvable": 6,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LECO-002",
+      "category": "lic_eco",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LECO-003",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-3"
+        ]
+      ],
+      "expected_rows": [
+        435745,
+        122089,
+        407647
+      ],
+      "top10_rows": [
+        167275,
+        339439,
+        184012,
+        393165,
+        180585,
+        396757,
+        382804,
+        606423,
+        167283,
+        324974
+      ],
+      "hit": false,
+      "n_expected_resolvable": 3,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LECO-004",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-5"
+        ]
+      ],
+      "expected_rows": [
+        514440,
+        400975
+      ],
+      "top10_rows": [
+        400975,
+        184012,
+        407644,
+        291031,
+        407646,
+        400976,
+        400968,
+        167275,
+        397020,
+        396756
+      ],
+      "hit": true,
+      "n_expected_resolvable": 2,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LECO-005",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-4"
+        ]
+      ],
+      "expected_rows": [
+        435746,
+        122090,
+        400976
+      ],
+      "top10_rows": [
+        400976,
+        366528,
+        397035,
+        176988,
+        591418,
+        366065,
+        400975,
+        403240,
+        473097,
+        400968
+      ],
+      "hit": true,
+      "n_expected_resolvable": 3,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LECO-006",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-61"
+        ],
+        [
+          "L",
+          "1233-25"
+        ]
+      ],
+      "expected_rows": [
+        400967,
+        167283
+      ],
+      "top10_rows": [
+        439603,
+        449481,
+        498252,
+        485452,
+        206770,
+        379248,
+        431665,
+        309497,
+        486365,
+        498242
+      ],
+      "hit": false,
+      "n_expected_resolvable": 2,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LECO-007",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-16"
+        ]
+      ],
+      "expected_rows": [
+        407646
+      ],
+      "top10_rows": [
+        407644,
+        407646,
+        591418,
+        591420,
+        591419,
+        184012,
+        230938,
+        400979,
+        357216,
+        167320
+      ],
+      "hit": true,
+      "n_expected_resolvable": 1,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LECO-008",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1234-9"
+        ],
+        [
+          "R",
+          "1234-2"
+        ]
+      ],
+      "expected_rows": [
+        396787,
+        277781,
+        396789
+      ],
+      "top10_rows": [
+        665688,
+        606921,
+        234123,
+        428758,
+        156780,
+        244782,
+        449360,
+        396989,
+        407643,
+        396788
+      ],
+      "hit": false,
+      "n_expected_resolvable": 3,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LECO-009",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1235-7"
+        ],
+        [
+          "L",
+          "1471-1"
+        ]
+      ],
+      "expected_rows": [
+        400978,
+        122097,
+        407649,
+        565067
+      ],
+      "top10_rows": [
+        428758,
+        400978,
+        291029,
+        454387,
+        449204,
+        553526,
+        360488,
+        531302,
+        591419,
+        400974
+      ],
+      "hit": true,
+      "n_expected_resolvable": 4,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LECO-010",
+      "category": "lic_eco",
+      "expected_refs": [
+        [
+          "L",
+          "1233-65"
+        ]
+      ],
+      "expected_rows": [
+        253325
+      ],
+      "top10_rows": [
+        339848,
+        591618,
+        332958,
+        591599,
+        591620,
+        649226,
+        339849,
+        332960,
+        416927,
+        591600
+      ],
+      "hit": false,
+      "n_expected_resolvable": 1,
+      "skipped_reason": null
+    },
+    {
+      "qid": "SW-LPER-001",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-002",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-003",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-004",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-005",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-006",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-007",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-008",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-009",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-LPER-010",
+      "category": "lic_perso",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-CONG-001",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-CONG-002",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-CONG-003",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-CONG-004",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-CONG-005",
+      "category": "conges_rtt",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-DEMR-001",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-DEMR-002",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-DEMR-003",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-DEMR-004",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-DEMR-005",
+      "category": "dem_rupture_conv",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-ARTI-001",
+      "category": "article_inexistant",
+      "expected_refs": [
+        [
+          "L",
+          "1234-999"
+        ]
+      ],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "refs_not_resolvable_in_kb"
+    },
+    {
+      "qid": "SW-ARTI-002",
+      "category": "article_inexistant",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-ARTI-003",
+      "category": "article_inexistant",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-ARTI-004",
+      "category": "article_inexistant",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-ARTI-005",
+      "category": "article_inexistant",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-OOS-001",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-OOS-002",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-OOS-003",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-OOS-004",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-OOS-005",
+      "category": "hors_scope",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PETI-001",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PETI-002",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PETI-003",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PETI-004",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PETI-005",
+      "category": "petites_taches",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PIEG-001",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PIEG-002",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PIEG-003",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PIEG-004",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    },
+    {
+      "qid": "SW-PIEG-005",
+      "category": "pieges",
+      "expected_refs": [],
+      "expected_rows": [],
+      "top10_rows": [],
+      "hit": false,
+      "n_expected_resolvable": 0,
+      "skipped_reason": "no_expected_refs_in_behavior"
+    }
+  ]
+}

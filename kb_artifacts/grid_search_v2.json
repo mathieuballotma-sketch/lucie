@@ -1,0 +1,142 @@
+{
+  "n_matchable": 9,
+  "summary": {
+    "V1_binary_only_top10": {
+      "hits": 4,
+      "recall": 0.4444444444444444
+    },
+    "V2a_binary_pr_K100_w03": {
+      "hits": 8,
+      "recall": 0.8888888888888888
+    },
+    "V2b_binary_pr_K50_w02": {
+      "hits": 8,
+      "recall": 0.8888888888888888
+    },
+    "V5a_codified_K100_w03": {
+      "hits": 8,
+      "recall": 0.8888888888888888
+    },
+    "V5b_codified_K200_w02": {
+      "hits": 8,
+      "recall": 0.8888888888888888
+    },
+    "V5c_codified_K500_w03": {
+      "hits": 5,
+      "recall": 0.5555555555555556
+    },
+    "V5d_codified_K100_w05": {
+      "hits": 6,
+      "recall": 0.6666666666666666
+    },
+    "V6a_union_codified_K100_w03": {
+      "hits": 8,
+      "recall": 0.8888888888888888
+    },
+    "V6b_union_codified_K200_w03": {
+      "hits": 5,
+      "recall": 0.5555555555555556
+    }
+  },
+  "detail": {
+    "V1_binary_only_top10": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": false,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": false,
+      "SW-LECO-007": true,
+      "SW-LECO-008": false,
+      "SW-LECO-009": true,
+      "SW-LECO-010": false
+    },
+    "V2a_binary_pr_K100_w03": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V2b_binary_pr_K50_w02": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V5a_codified_K100_w03": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V5b_codified_K200_w02": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V5c_codified_K500_w03": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": false,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": false,
+      "SW-LECO-010": false
+    },
+    "V5d_codified_K100_w05": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": false,
+      "SW-LECO-008": true,
+      "SW-LECO-009": false,
+      "SW-LECO-010": true
+    },
+    "V6a_union_codified_K100_w03": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": true,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": true,
+      "SW-LECO-008": true,
+      "SW-LECO-009": true,
+      "SW-LECO-010": true
+    },
+    "V6b_union_codified_K200_w03": {
+      "SW-LECO-001": false,
+      "SW-LECO-003": false,
+      "SW-LECO-004": true,
+      "SW-LECO-005": true,
+      "SW-LECO-006": true,
+      "SW-LECO-007": false,
+      "SW-LECO-008": true,
+      "SW-LECO-009": false,
+      "SW-LECO-010": true
+    }
+  }
+}

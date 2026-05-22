@@ -1,0 +1,38 @@
+{
+  "args": {
+    "auto_download": true,
+    "batch_size": 64,
+    "db": "/Users/mathieu/Library/Application Support/Beaume/legifrance/legi.sqlite",
+    "device": null,
+    "legi_size_bytes": 4703961088,
+    "limit": null,
+    "log_level": "INFO",
+    "long_bits": 1024,
+    "model": "BAAI/bge-m3",
+    "output": "kb_artifacts",
+    "seed": 42,
+    "short_bits": 64
+  },
+  "compression_ratio_vs_legi_sqlite": 37.000182611255376,
+  "stats": {
+    "embed_seconds": 209665.456536167,
+    "graph_compressed_bytes": 1598803,
+    "graph_raw_bytes": 4594588,
+    "graph_seconds": 66.32953504199395,
+    "n_articles": 672009,
+    "n_articles_empty_text": 162,
+    "n_edges": 433050,
+    "n_refs_resolved": 433050,
+    "n_refs_unresolved": 134762,
+    "pagerank_bytes": 2688092,
+    "pagerank_seconds": 1.3885920000029728,
+    "sha_graph": "ee8237705990dcec72ed2b22adbcfcd56da367d2a48b7e3d0b4434435631c228",
+    "sha_legi_sqlite": "4dd775933a090cddc005847c80e4b4f0eded7f98a9659fc9466c719d4fd11392",
+    "sha_pagerank": "b0ed73cf94f3d850f021ec68209f20b650e44109fd9ba0ebb120b1a4e89c16c5",
+    "sha_sigs_bin": "67d57cbd713395216efbad2b0395ceda1ef434d550d6cf31bbe7907b3631e4ec",
+    "sha_sigs_index": "a6ca5d693524a543cde1c9029b6b60caf873899d5bf46af89631e930c6164f07",
+    "sigs_bin_bytes": 91393348,
+    "sigs_index_bytes": 31453213,
+    "total_seconds": 209737.77839504203
+  }
+}
