@@ -1,0 +1,149 @@
+[
+  {
+    "id": "SW-LECO-011",
+    "category": "lic_eco",
+    "prompt": "Tout licenciement pour motif économique doit-il être motivé ?",
+    "expected_behavior": "Oui, la motivation est obligatoire — citation L.1233-2.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-012",
+    "category": "lic_eco",
+    "prompt": "Quelles sont les obligations de reclassement de l'employeur avant un licenciement économique individuel ?",
+    "expected_behavior": "Recherche préalable de reclassement sur postes équivalents ou inférieurs — citation L.1233-4.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-013",
+    "category": "lic_eco",
+    "prompt": "Le reclassement peut-il porter sur des postes d'une catégorie inférieure ?",
+    "expected_behavior": "Oui, l'employeur doit proposer des postes équivalents ou, à défaut, inférieurs — citation L.1233-4.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-014",
+    "category": "lic_eco",
+    "prompt": "Comment l'employeur définit-il l'ordre des licenciements économiques ?",
+    "expected_behavior": "Critères fixés par accord collectif ou par l'employeur après consultation CSE — citation L.1233-5.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-015",
+    "category": "lic_eco",
+    "prompt": "Quels critères doivent être pris en compte dans l'ordre des licenciements ?",
+    "expected_behavior": "Charges familiales, ancienneté, situation sociale, qualités professionnelles — citation L.1233-5.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-016",
+    "category": "lic_eco",
+    "prompt": "Par qui le salarié peut-il être assisté lors de l'entretien préalable au licenciement ?",
+    "expected_behavior": "Par une personne de l'entreprise ou un conseiller extérieur si pas de représentant — citation L.1233-13.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-017",
+    "category": "lic_eco",
+    "prompt": "Comment l'employeur convoque-t-il un salarié à l'entretien préalable de licenciement économique ?",
+    "expected_behavior": "Lettre recommandée ou remise en main propre avec délai minimum — citation L.1233-11.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-018",
+    "category": "lic_eco",
+    "prompt": "Quel délai minimum doit séparer l'entretien préalable de la notification du licenciement individuel pour motif économique ?",
+    "expected_behavior": "Délai de 7 jours ouvrables (15 jours ouvrables pour cadres) — citation L.1233-15.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-019",
+    "category": "lic_eco",
+    "prompt": "Comment l'employeur notifie-t-il un licenciement individuel pour motif économique ?",
+    "expected_behavior": "Lettre recommandée AR avec énoncé du motif économique précis — citation L.1233-15 ou L.1233-16.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-020",
+    "category": "lic_eco",
+    "prompt": "L'employeur doit-il notifier les licenciements économiques à l'administration ?",
+    "expected_behavior": "Information de la DREETS pour licenciement collectif — citation L.1233-19 ou L.1233-46.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-021",
+    "category": "lic_eco",
+    "prompt": "Dans une entreprise d'au moins 50 salariés, à partir de combien de licenciements faut-il un PSE ?",
+    "expected_behavior": "PSE obligatoire si projet de 10 licenciements ou plus sur 30 jours dans entreprise ≥50 salariés — citation L.1233-61.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-022",
+    "category": "lic_eco",
+    "prompt": "Le CSE doit-il être consulté en cas de projet de licenciement économique collectif ?",
+    "expected_behavior": "Consultation obligatoire du CSE — citation L.1233-30.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-023",
+    "category": "lic_eco",
+    "prompt": "Que se passe-t-il si au moins 10 salariés refusent une modification de leur contrat pour motif économique ?",
+    "expected_behavior": "Le refus de la modification déclenche la procédure de licenciement collectif — citation L.1233-25.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-024",
+    "category": "lic_eco",
+    "prompt": "Dans quelles entreprises l'employeur doit-il proposer un CSP au salarié visé par un licenciement économique ?",
+    "expected_behavior": "Entreprises non soumises au congé de reclassement (moins de 1000 salariés) — citation L.1233-66.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-025",
+    "category": "lic_eco",
+    "prompt": "Quels sont les effets de l'adhésion d'un salarié au contrat de sécurisation professionnelle ?",
+    "expected_behavior": "Rupture du contrat de travail d'un commun accord, sans préavis — citation L.1233-67.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-026",
+    "category": "lic_eco",
+    "prompt": "Quelle est la durée du préavis pour un salarié licencié pour motif économique ?",
+    "expected_behavior": "Préavis selon ancienneté (1 mois entre 6 mois et 2 ans, 2 mois au-delà) — citation L.1234-1.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-027",
+    "category": "lic_eco",
+    "prompt": "Quel est le montant minimum de l'indemnité légale de licenciement par année d'ancienneté ?",
+    "expected_behavior": "1/4 mois par année (<10 ans), 1/3 mois par année (>10 ans) — citation R.1234-2.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-028",
+    "category": "lic_eco",
+    "prompt": "Quelle ancienneté minimum permet de bénéficier de l'indemnité légale de licenciement ?",
+    "expected_behavior": "Au moins 8 mois d'ancienneté ininterrompue — citation L.1234-9.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-029",
+    "category": "lic_eco",
+    "prompt": "Que dit la loi en cas de licenciement sans cause réelle et sérieuse ?",
+    "expected_behavior": "Indemnité forfaitaire encadrée selon ancienneté (barème Macron) — citation L.1235-3.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-030",
+    "category": "lic_eco",
+    "prompt": "Sous quel délai un salarié peut-il contester son licenciement pour motif économique devant les prud'hommes ?",
+    "expected_behavior": "12 mois à compter de la notification — citation L.1235-7 ou L.1471-1.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  },
+  {
+    "id": "SW-LECO-031",
+    "category": "lic_eco",
+    "prompt": "Le salarié licencié pour motif économique a-t-il un droit de priorité de réembauche ?",
+    "expected_behavior": "Oui, pendant 12 mois après la rupture du contrat — citation L.1233-45.",
+    "pass_criteria": {"rule": "swiss_watch_quality", "answer_min_chars": 200, "verifier_score_min": 0.7, "citations_total_min": 1, "wall_clock_ms_max": 90000}
+  }
+]
