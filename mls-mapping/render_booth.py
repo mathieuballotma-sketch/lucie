@@ -15,10 +15,10 @@ OUT_DIR = "/tmp/booth_render"
 OUT = "/home/user/lucie/mls-mapping/monte-le-son-led.mp4"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-F_ITAL = "/usr/share/fonts/truetype/freefont/FreeSansBoldOblique.ttf"
+F_SCRIPT = os.path.join(os.path.dirname(__file__), "fonts/KaushanScript-Regular.ttf")
 
 def font(s):
-    try: return ImageFont.truetype(F_ITAL, s)
+    try: return ImageFont.truetype(F_SCRIPT, s)
     except Exception: return ImageFont.load_default()
 
 def hsl_rgb(h, s=1.0, l=0.6):
@@ -37,18 +37,24 @@ def make_text():
         L = int(rng.integers(W//8, W//3)); a = math.radians(rng.uniform(-22, -6))
         d.line([(x0, y0), (x0+L*math.cos(a), y0+L*math.sin(a))],
                fill=(255, 255, 255, int(rng.integers(40, 120))), width=int(rng.integers(2, 8)))
-    # MONTE LE  /  SON  (empile, style nom d'artiste)
-    f1 = font(int(H*0.26)); f2 = font(int(H*0.40))
-    l1, l2 = "MONTE LE", "SON"
+    # Monte Le  /  Son  (script brush empile, style nom d'artiste)
+    f1 = font(int(H*0.30)); f2 = font(int(H*0.46))
+    l1, l2 = "Monte Le", "Son"
     b1 = d.textbbox((0,0), l1, font=f1); b2 = d.textbbox((0,0), l2, font=f2)
-    y1 = int(H*0.13)
+    y1 = int(H*0.10)
     x1 = (W-(b1[2]-b1[0]))//2 - b1[0]
     d.text((x1, y1), l1, font=f1, fill=(255,255,255,255),
-           stroke_width=6, stroke_fill=(0,0,0,255))
-    y2 = y1 + (b1[3]-b1[1]) - int(H*0.04)
+           stroke_width=5, stroke_fill=(0,0,0,255))
+    y2 = y1 + (b1[3]-b1[1]) - int(H*0.06)
     x2 = (W-(b2[2]-b2[0]))//2 - b2[0]
     d.text((x2, y2), l2, font=f2, fill=(255,255,255,255),
-           stroke_width=8, stroke_fill=(0,0,0,255))
+           stroke_width=7, stroke_fill=(0,0,0,255))
+    # longs traits qui filent (speed lines facon ref)
+    for _ in range(7):
+        yy_ = int(rng.integers(int(H*0.25), int(H*0.85)))
+        d.line([(int(W*0.05), yy_+int(rng.integers(-8,8))),
+                (int(W*0.95), yy_+int(rng.integers(-30,30)))],
+               fill=(255,255,255,int(rng.integers(120,210))), width=int(rng.integers(2,5)))
     return im
 
 BASE_TXT = make_text()
