@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Contenu d'ECRAN LED plein cadre (style de la reference) : fond noir,
-'MONTE LE SON' en gros, graffiti glitch qui change de couleur. Sortie : mp4.
-A jouer directement sur l'ecran LED / a projeter."""
+"""Ecran LED plein cadre facon 'DAMIEN RK' : texte blanc brush 'MONTE LE SON'
+sur fond noir, glitch chromatique (copies decalees vert/rouge) + eclats +
+decoupes. Sortie : mp4 a jouer sur l'ecran LED."""
 
 import os, math, subprocess
 import numpy as np
@@ -9,110 +9,103 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 W, H = 1280, 720
 FPS = 30
-DUR = 12
+DUR = 10
 NF = FPS * DUR
 OUT_DIR = "/tmp/booth_render"
 OUT = "/home/user/lucie/mls-mapping/monte-le-son-led.mp4"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-F_SCRIPT = os.path.join(os.path.dirname(__file__), "fonts/KaushanScript-Regular.ttf")
+F_SCRIPT = os.path.join(os.path.dirname(__file__), "fonts/Damion-Regular.ttf")
+NAME = "Monte Le Son"
 
 def font(s):
     try: return ImageFont.truetype(F_SCRIPT, s)
     except Exception: return ImageFont.load_default()
 
-def hsl_rgb(h, s=1.0, l=0.6):
-    h = h % 360/60.0; cc=(1-abs(2*l-1))*s; x=cc*(1-abs(h%2-1)); m=l-cc/2
-    r,g,b=[(cc,x,0),(x,cc,0),(0,cc,x),(0,x,cc),(x,0,cc),(cc,0,x)][int(h)%6]
-    return np.array([r+m,g+m,b+m], np.float32)*255
-
-# ---- texte 'MONTE LE SON' (blanc, graffiti, fond transparent) -> reutilise
+# ---- texte blanc brush 'Monte Le Son' (alpha plein cadre, une ligne) ----
 def make_text():
+    # taille de police pour remplir ~82% de la largeur
+    fs = 40
+    while True:
+        f = font(fs)
+        bb = f.getbbox(NAME)
+        if bb[2]-bb[0] > W*0.82 or fs > 400: break
+        fs += 4
+    f = font(fs - 4)
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
+    bb = d.textbbox((0, 0), NAME, font=f)
+    x = (W-(bb[2]-bb[0]))//2 - bb[0]
+    y = (H-(bb[3]-bb[1]))//2 - bb[1]
     rng = np.random.default_rng(3)
-    # coups de pinceau / slashes graffiti derriere
-    for _ in range(22):
-        x0 = int(rng.integers(0, W)); y0 = int(rng.integers(int(H*0.2), int(H*0.85)))
-        L = int(rng.integers(W//8, W//3)); a = math.radians(rng.uniform(-22, -6))
-        d.line([(x0, y0), (x0+L*math.cos(a), y0+L*math.sin(a))],
-               fill=(255, 255, 255, int(rng.integers(40, 120))), width=int(rng.integers(2, 8)))
-    # Monte Le  /  Son  (script brush empile, style nom d'artiste)
-    f1 = font(int(H*0.30)); f2 = font(int(H*0.46))
-    l1, l2 = "Monte Le", "Son"
-    b1 = d.textbbox((0,0), l1, font=f1); b2 = d.textbbox((0,0), l2, font=f2)
-    y1 = int(H*0.10)
-    x1 = (W-(b1[2]-b1[0]))//2 - b1[0]
-    d.text((x1, y1), l1, font=f1, fill=(255,255,255,255),
-           stroke_width=5, stroke_fill=(0,0,0,255))
-    y2 = y1 + (b1[3]-b1[1]) - int(H*0.06)
-    x2 = (W-(b2[2]-b2[0]))//2 - b2[0]
-    d.text((x2, y2), l2, font=f2, fill=(255,255,255,255),
-           stroke_width=7, stroke_fill=(0,0,0,255))
-    # longs traits qui filent (speed lines facon ref)
-    for _ in range(7):
-        yy_ = int(rng.integers(int(H*0.25), int(H*0.85)))
-        d.line([(int(W*0.05), yy_+int(rng.integers(-8,8))),
-                (int(W*0.95), yy_+int(rng.integers(-30,30)))],
-               fill=(255,255,255,int(rng.integers(120,210))), width=int(rng.integers(2,5)))
-    return im
+    # longs traits qui filent (speed lines facon ref), dans le blanc
+    for _ in range(8):
+        yy_ = int(rng.integers(int(H*0.35), int(H*0.68)))
+        d.line([(int(W*0.04), yy_+int(rng.integers(-6,6))),
+                (int(W*0.96), yy_+int(rng.integers(-26,26)))],
+               fill=(255,255,255,int(rng.integers(120,220))), width=int(rng.integers(2,5)))
+    d.text((x, y), NAME, font=f, fill=(255,255,255,255),
+           stroke_width=max(2, fs//30), stroke_fill=(255,255,255,255))
+    return (np.asarray(im, np.float32)[..., 3]/255.0)        # alpha (H,W)
 
-BASE_TXT = make_text()
-TXT = np.asarray(BASE_TXT, np.float32)
-
-# fond : quelques trainees colorees (visuel LED) precalculees en gabarit blanc
-def make_streaks():
-    im = Image.new("L", (W, H), 0); d = ImageDraw.Draw(im)
-    rng = np.random.default_rng(8)
-    for _ in range(16):
-        x0 = int(rng.integers(-100, W)); y0 = int(rng.integers(0, H))
-        L = int(rng.integers(W//3, W)); a = math.radians(rng.uniform(-18, -4))
-        d.line([(x0, y0), (x0+L*math.cos(a), y0+L*math.sin(a))],
-               fill=int(rng.integers(60, 160)), width=int(rng.integers(3, 10)))
-    return np.asarray(im.filter(ImageFilter.GaussianBlur(2)), np.float32)/255.0
-STREAKS = make_streaks()
-
+ALPHA = make_text()
 rng = np.random.default_rng(11)
+
+def shards(t, f):
+    """Eclats angulaires vert/rouge facon glitch-art autour du texte."""
+    im = Image.new("RGB", (W, H), (0, 0, 0)); d = ImageDraw.Draw(im)
+    for _ in range(rng.integers(3, 8)):
+        cx = int(rng.integers(int(W*0.15), int(W*0.85)))
+        cy = int(rng.integers(int(H*0.3), int(H*0.7)))
+        s = int(rng.integers(20, 90))
+        col = (0, 230, 80) if rng.random() < 0.5 else (235, 30, 50)
+        a = rng.uniform(0, math.pi)
+        pts = [(cx, cy),
+               (cx+int(math.cos(a)*s), cy+int(math.sin(a)*s)),
+               (cx+int(math.cos(a+0.5)*s*0.5), cy+int(math.sin(a+0.5)*s*0.5))]
+        d.polygon(pts, fill=col)
+    return np.asarray(im, np.float32)
+
 print(f"Rendu {NF} frames...")
 for old in os.listdir(OUT_DIR):
     if old.endswith(".png"): os.remove(os.path.join(OUT_DIR, old))
 
 for f in range(NF):
     t = f/FPS
-    canvas = np.zeros((H, W, 3), np.float32)            # fond NOIR
+    canvas = np.zeros((H, W, 3), np.float32)
 
-    # ---- trainees colorees de fond (le visuel de l'ecran LED)
-    bgcol = hsl_rgb((t*120 + 40) % 360, 1, 0.5)
-    canvas += STREAKS[..., None] * bgcol[None, None, :] * 0.5
+    # eclats glitch derriere
+    canvas += shards(t, f) * 0.7
 
-    # ---- texte qui change de couleur
-    rgb = TXT[..., :3].copy(); a = TXT[..., 3:4]/255.0
-    col = hsl_rgb((t*150) % 360, 1.0, 0.62)
-    rgb = rgb * (col[None, None, :]/255.0)
-    # flashs durs (vert / rouge / cyan / blanc) facon LED
-    if (f % 16) < 3:
-        hard = [(60,255,110),(255,50,70),(60,210,255),(255,255,255)][int(t*4) % 4]
-        rgb = rgb*0.2 + (a > 0.05)*np.array(hard, np.float32)[None, None, :]*0.95
-    rgb = np.clip(rgb*1.15, 0, 255)
-    # RGB split
-    if rng.random() < 0.5:
-        s = int(rng.integers(4, 16))
-        rgb[..., 0] = np.roll(rgb[..., 0], s, 1); rgb[..., 2] = np.roll(rgb[..., 2], -s, 1)
-    # decoupes horizontales (glitch)
-    if rng.random() < 0.55:
-        for _ in range(int(rng.integers(3, 8))):
-            y0 = int(rng.integers(0, H-12)); hh = int(rng.integers(4, 16)); off = int(rng.integers(-40, 40))
-            rgb[y0:y0+hh] = np.roll(rgb[y0:y0+hh], off, 1); a[y0:y0+hh] = np.roll(a[y0:y0+hh], off, 1)
-    rgb[::2] *= 0.82                                    # scanlines
+    A = ALPHA.copy()
+    # decoupes horizontales (glitch) sur le masque
+    if rng.random() < 0.6:
+        for _ in range(int(rng.integers(2, 7))):
+            y0 = int(rng.integers(0, H-12)); hh = int(rng.integers(4, 16)); off = int(rng.integers(-50, 50))
+            A[y0:y0+hh] = np.roll(A[y0:y0+hh], off, 1)
 
-    # composite + halo
-    canvas = canvas*(1-a) + rgb*a
-    canvas += rgb*a*0.3
+    # aberration chromatique : copie verte + copie rouge decalees
+    burst = 1.0 if (f % 14) < 3 else 0.0
+    sx = int(6 + 16*burst + rng.integers(0, 6))
+    sy = int(2 + 6*burst)
+    red = np.roll(np.roll(A, -sx, 1), -sy, 0)
+    grn = np.roll(np.roll(A,  sx, 1),  sy, 0)
+    core = A
 
-    # ---- glitch global occasionnel
-    if rng.random() < 0.12:
-        s = int(rng.integers(4, 12))
-        canvas[..., 0] = np.roll(canvas[..., 0], s, 1); canvas[..., 2] = np.roll(canvas[..., 2], -s, 1)
+    canvas[..., 0] += red * 235          # frange rouge
+    canvas[..., 1] += grn * 235          # frange verte
+    canvas += core[..., None] * 255      # coeur blanc
+
+    # flash blanc occasionnel
+    if (f % 40) in (0, 1):
+        canvas += core[..., None] * 120
+
+    # scanlines + leger glitch global
+    canvas[::2] *= 0.85
+    if rng.random() < 0.15:
+        s = int(rng.integers(4, 14))
+        canvas[..., 0] = np.roll(canvas[..., 0], s, 1)
+        canvas[..., 2] = np.roll(canvas[..., 2], -s, 1)
 
     Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8)).save(f"{OUT_DIR}/f_{f:04d}.png")
     if f % 30 == 0: print(f"  {f}/{NF}")
