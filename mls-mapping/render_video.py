@@ -159,6 +159,31 @@ def feedback(prev, t):
             resample=Image.BILINEAR, center=(W/2,H/2))
     return apply_hue(np.asarray(img,np.float32), 0.20) * 0.66
 
+# ---------------------------------------------------------------- formes tournantes
+def shapes_layer(t, beat, cx, cy):
+    im = Image.new("RGB", (W, H), (0, 0, 0))
+    d = ImageDraw.Draw(im)
+    # (cotes, rayon, vitesse de rotation)
+    defs = [(3,300,0.7),(4,360,-0.45),(6,235,0.32),(8,180,-0.22),(12,430,0.5),(5,130,-0.6)]
+    for k, (sides, rad, sp) in enumerate(defs):
+        rr = rad*(1+0.09*math.sin(t*2.2+k))*(1+beat*0.18)
+        rot = t*sp*70 + k*20
+        pts = [(cx+math.cos(math.radians(rot+j*360/sides))*rr,
+                cy+math.sin(math.radians(rot+j*360/sides))*rr) for j in range(sides)]
+        col = tuple(int(c) for c in hsl_rgb((t*90+k*60)%360, 1, 0.6))
+        d.line(pts+[pts[0]], fill=col, width=5)
+    # rayons/branches qui tournent
+    NR = 14
+    for j in range(NR):
+        a = math.radians(t*120 + j*360/NR)
+        r0, r1 = 60, 330*(1+beat*0.2)
+        col = tuple(int(c) for c in hsl_rgb((t*140+j*25)%360, 1, 0.55))
+        d.line([(cx+math.cos(a)*r0, cy+math.sin(a)*r0),
+                (cx+math.cos(a)*r1, cy+math.sin(a)*r1)], fill=col, width=2)
+    arr = np.asarray(im, np.float32)
+    glow = np.asarray(im.filter(ImageFilter.GaussianBlur(7)), np.float32)
+    return arr*0.9 + glow*0.8
+
 # ---------------------------------------------------------------- rendu
 def render():
   for old in os.listdir(OUT_DIR):
@@ -204,9 +229,16 @@ def render():
     canvas = np.maximum(canvas, canvas[:, ::-1])
     canvas = np.maximum(canvas, canvas[::-1, :])
 
-    # ---- logo complet : glitch + couleur + clignotement + zoom/pulse
+    # ---- position du logo (flottement) + formes geometriques tournantes
+    cxL = W/2 + math.sin(t*1.1)*70
+    cyL = H*0.42 + math.cos(t*1.4)*38
+    canvas += shapes_layer(t, beat, cxL, cyL)
+
+    # ---- logo complet : rotation + glitch + couleur + clignotement + zoom/pulse
     scale = 0.78+0.10*beat
-    lw = int(W*0.40*scale); logo = base_logo.resize((lw,lw))
+    lw = int(W*0.40*scale)
+    spin = t*48 + 12*math.sin(t*1.6)                     # le logo tourne
+    logo = base_logo.resize((lw,lw)).rotate(spin, resample=Image.BICUBIC)
     la = np.asarray(logo,np.float32); rgb, alpha = la[...,:3], la[...,3:4]/255.0
     rgb = apply_hue(rgb, t*2.4+0.5)
     if (f % 16) < 3:
@@ -220,8 +252,8 @@ def render():
             y0=rng.integers(0,lw-12); hh=rng.integers(4,16); off=rng.integers(-26,26)
             rgb[y0:y0+hh]=np.roll(rgb[y0:y0+hh],off,1)
     blink = 0.12 if (f % 18) in (6,8) else 1.0
-    add_sprite(canvas, rgb*alpha*blink*0.9, W/2, H*0.42)     # halo
-    lx=int(W/2-lw/2); ly=int(H*0.42-lw/2)
+    add_sprite(canvas, rgb*alpha*blink*0.9, cxL, cyL)        # halo
+    lx=int(cxL-lw/2); ly=int(cyL-lw/2)
     x0,y0=max(0,lx),max(0,ly); x1,y1=min(W,lx+lw),min(H,ly+lw)
     a = alpha[y0-ly:y1-ly, x0-lx:x1-lx]*blink
     canvas[y0:y1,x0:x1] = canvas[y0:y1,x0:x1]*(1-a)+rgb[y0-ly:y1-ly,x0-lx:x1-lx]*a
